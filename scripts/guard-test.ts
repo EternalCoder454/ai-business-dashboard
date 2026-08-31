@@ -11,7 +11,12 @@ import { readJsonWithin, withinRate } from "../src/lib/guard";
 import { safeDestination } from "../src/app/signin/page";
 import { applyOp, emptyWorkspace } from "../src/lib/workspace";
 import { filesForDepartment } from "../src/lib/files";
-import { COMPANY_ID } from "../src/lib/seed";
+import { COACH_ID, COMPANY_ID, leadershipCoach } from "../src/lib/seed";
+import {
+  SHIPPED_COACH_PROMPTS,
+  promptFingerprint,
+  seedCoachSkills,
+} from "../src/lib/coachSkills";
 
 let failures = 0;
 
@@ -147,6 +152,29 @@ console.log("\na write immediately after a create can see it");
 
     const stranger = filesForDepartment(library, "nobody");
     check("an unknown department sees only company wide", stranger.length === 1);
+  }
+
+  console.log("\nthe coach upgrades only while she has never been edited");
+  {
+    const shipped = leadershipCoach(9).systemPrompt;
+    check("the current prompt is stable under hashing",
+      promptFingerprint(shipped) === promptFingerprint(shipped));
+    check("a different prompt hashes differently",
+      promptFingerprint(shipped) !== promptFingerprint(shipped + " "));
+    check("the previous shipped version is recognised",
+      SHIPPED_COACH_PROMPTS.has("1q6yu07"));
+    check("an edited prompt is not",
+      !SHIPPED_COACH_PROMPTS.has(promptFingerprint("I rewrote this myself.")));
+
+    const skills = seedCoachSkills();
+    check("she has playbooks", skills.length >= 8, String(skills.length));
+    check("all scoped to her", skills.every((s) => s.departmentId === COACH_ID));
+    check("ids are stable across runs",
+      seedCoachSkills().map((s) => s.id).join() === skills.map((s) => s.id).join());
+    check("ids are unique", new Set(skills.map((s) => s.id)).size === skills.length);
+    check("every one has a trigger line", skills.every((s) => s.description.length > 20));
+    check("none quotes a vendor statistic",
+      !skills.some((s) => /[0-9]+ ?(%|per cent of cases)/.test(s.content)));
   }
 
 

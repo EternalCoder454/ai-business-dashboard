@@ -36,6 +36,11 @@ import {
   PROJECT_ACCENTS,
   seedDepartments,
 } from "./seed";
+import {
+  SHIPPED_COACH_PROMPTS,
+  promptFingerprint,
+  seedCoachSkills,
+} from "./coachSkills";
 import { seedSkills } from "./seedSkills";
 import type {
   AllHandsRun,
@@ -259,20 +264,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
        * existed, and only in the owner's. Checked on every load rather than
        * once, because there is no migration step that runs in a browser.
        */
-      if (isOwner && !snapshot.departments.some((d) => d.id === COACH_ID)) {
+      if (isOwner) {
+        const existing = snapshot.departments.find((d) => d.id === COACH_ID);
         const order = snapshot.departments.reduce((max, d) => Math.max(max, d.order), 0) + 1;
-        await fetch("/api/workspace", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ops: [
-              { table: "departments", action: "upsert", rows: [leadershipCoach(order)] },
-            ],
-          }),
-        });
-        return fetch("/api/workspace").then((r) =>
-          r.ok ? (r.json() as Promise<Workspace>) : snapshot,
+        const ops: MutationOp[] = [];
+
+        if (!existing) {
+          ops.push({ table: "departments", action: "upsert", rows: [leadershipCoach(order)] });
+        } else if (SHIPPED_COACH_PROMPTS.has(promptFingerprint(existing.systemPrompt))) {
+          // Never edited, so an improved version is an upgrade rather than a
+          // loss. Once it has been edited it stops being managed from here.
+          ops.push({
+            table: "departments",
+            action: "upsert",
+            rows: [{ ...leadershipCoach(existing.order), avatarUrl: existing.avatarUrl }],
+          });
+        }
+
+        const have = new Set(
+          snapshot.skills.filter((s) => s.departmentId === COACH_ID).map((s) => s.id),
         );
+        const missing = seedCoachSkills().filter((s) => !have.has(s.id));
+        if (missing.length) ops.push({ table: "skills", action: "upsert", rows: missing });
+
+        if (ops.length) {
+          await fetch("/api/workspace", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ops }),
+          });
+          return fetch("/api/workspace").then((r) =>
+            r.ok ? (r.json() as Promise<Workspace>) : snapshot,
+          );
+        }
       }
 
       return snapshot;
