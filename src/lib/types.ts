@@ -60,6 +60,8 @@ export interface Message {
   attachments?: Attachment[];
   /** What the reply cost. Assistant messages only, recorded when it arrived. */
   usage?: TokenUsage;
+  /** Who wrote it, on a shared conversation. Absent means the owner. */
+  authorEmail?: string;
   /** The model that produced it, since the setting can change between replies. */
   model?: string;
 }
@@ -83,11 +85,20 @@ export interface Project {
   dueOn: string;
   createdAt: number;
   updatedAt: number;
+  /**
+   * Addresses this project is shared with. The owner is not listed here.
+   * Present only on a project the signed-in account owns.
+   */
+  sharedWith?: string[];
+  /** Set when this project belongs to someone else and was shared with you. */
+  ownerEmail?: string;
 }
 
 export interface Conversation {
   id: string;
   departmentId: string;
+  /** Set when the conversation belongs to someone else, through a shared project. */
+  ownerEmail?: string;
   /** The project this belongs to, when it belongs to one. */
   projectId?: string;
   title: string;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { signOutAction } from "@/app/auth-actions";
 import { useStore } from "@/lib/store";
 import { Button, Card } from "./ui";
 
@@ -91,7 +92,7 @@ export function AccountCard() {
         </div>
       ) : null}
 
-      <form action="/api/auth/signout" method="post">
+      <form action={signOutAction}>
         <Button type="submit" variant="outlined">
           Sign out
         </Button>

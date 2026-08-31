@@ -12,6 +12,7 @@ import {
   TextInput,
   cx,
 } from "@/components/ui";
+import { signOutAction } from "@/app/auth-actions";
 import { buildUserContext } from "@/lib/prompts";
 import { useStore } from "@/lib/store";
 import type { UserAccount } from "@/lib/types";
@@ -125,9 +126,18 @@ export default function AccountPage() {
                 </p>
               </div>
 
-              <Chip tone={storage === "hosted" ? "success" : "neutral"}>
-                {storage === "hosted" ? "Synced" : "This browser"}
-              </Chip>
+              <div className="flex flex-none items-center gap-2">
+                <Chip tone={storage === "hosted" ? "success" : "neutral"}>
+                  {storage === "hosted" ? "Synced" : "This browser"}
+                </Chip>
+                {storage === "hosted" ? (
+                  <form action={signOutAction}>
+                    <Button type="submit" size="sm" variant="outlined">
+                      Sign out
+                    </Button>
+                  </form>
+                ) : null}
+              </div>
             </div>
 
             {storage !== "hosted" ? (

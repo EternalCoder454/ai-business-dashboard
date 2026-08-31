@@ -113,6 +113,14 @@ export const messages = pgTable(
     /** File ids, resolved against the files table. Kept out of the row itself. */
     attachmentIds: jsonb("attachment_ids").$type<string[]>().notNull().default([]),
     /**
+     * Who wrote it, when that is not the conversation's owner.
+     *
+     * user_email stays the scope key so a conversation's rows are found
+     * together. In a shared project several people write into one conversation,
+     * and without this every message would appear to be the owner's.
+     */
+    authorEmail: text("author_email"),
+    /**
      * What the reply cost, on assistant rows only.
      *
      * Recorded per message rather than summed somewhere, because the question
@@ -358,5 +366,29 @@ export const directMessages = pgTable(
     index("dm_unread_idx").on(table.toEmail, table.readAt),
     // The overview needs everything either address touched, in one pass.
     index("dm_from_idx").on(table.fromEmail, table.sentAt),
+  ],
+);
+
+/**
+ * Who a project is shared with.
+ *
+ * A project still belongs to the person who made it; this grants read and write
+ * to other people rather than transferring ownership. Membership is what makes
+ * the project's conversations reachable by more than one account, so it is the
+ * single place a sharing decision is recorded.
+ */
+export const projectMembers = pgTable(
+  "project_members",
+  {
+    projectId: text("project_id").notNull(),
+    /** The project's owner, which is also the scope key its rows are stored under. */
+    ownerEmail: text("owner_email").notNull(),
+    memberEmail: text("member_email").notNull(),
+    addedAt: created(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ownerEmail, table.projectId, table.memberEmail] }),
+    // "Which projects am I in", asked on every workspace load.
+    index("project_members_member_idx").on(table.memberEmail),
   ],
 );
