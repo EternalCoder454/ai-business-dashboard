@@ -106,6 +106,8 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     deleteConversation,
     createDeliverable,
     files,
+    projects,
+    pullShared,
     skillsFor,
     profile,
     settings,
@@ -148,6 +150,37 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   useEffect(() => {
     setStream(EMPTY_STREAM);
   }, [active?.id]);
+
+  /**
+   * A shared thread pulls in what other people wrote.
+   *
+   * Five seconds while the tab is visible, nothing while it is not, and
+   * nothing at all on a conversation only one person can reach, which is
+   * almost all of them.
+   */
+  const sharedProject = active?.projectId
+    ? projects.find((p) => p.id === active.projectId)
+    : undefined;
+  const isShared = Boolean(
+    sharedProject && (sharedProject.ownerEmail || sharedProject.sharedWith?.length),
+  );
+
+  useEffect(() => {
+    if (!isShared || !active?.id) return;
+    const id = active.id;
+
+    const pull = () => {
+      if (document.visibilityState !== "visible" || isStreaming) return;
+      void pullShared(id);
+    };
+
+    const timer = window.setInterval(pull, 5_000);
+    document.addEventListener("visibilitychange", pull);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", pull);
+    };
+  }, [isShared, active?.id, isStreaming, pullShared]);
 
   /**
    * "Send to" in the Library opens a fresh conversation with a file already
@@ -793,7 +826,13 @@ function MessageBubble({
 
   if (message.role === "user") {
     return (
-      <div className="animate-rise flex justify-end">
+      <div className="animate-rise flex flex-col items-end">
+        {/* Only on a shared thread, where "who said this" is a real question. */}
+        {message.authorEmail ? (
+          <span className="md-label-sm mb-1 mr-1 text-on-variant/75">
+            {message.authorEmail}
+          </span>
+        ) : null}
         <div className="max-w-[85%] rounded-3xl rounded-br-lg bg-primary-container px-4 py-3 text-on-primary-container shadow-e1">
           {message.attachments?.length ? (
             <ul

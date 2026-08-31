@@ -137,6 +137,13 @@ interface StoreValue {
   };
   /** Files a conversation under a project, or clears it when given undefined. */
   setConversationProject: (conversationId: string, projectId?: string) => Promise<void>;
+  /** Shares a project with a colleague, or takes it back. Owner only. */
+  shareProject: (projectId: string, email: string, remove?: boolean) => Promise<string | null>;
+  /**
+   * Pulls anything written to a shared conversation by someone else and merges
+   * it in. Returns how many arrived, so a caller can decide whether to scroll.
+   */
+  pullShared: (conversationId: string) => Promise<number>;
 
   createDeliverable: (input: Partial<Deliverable>) => Promise<Deliverable>;
   updateDeliverable: (id: string, patch: Partial<Deliverable>) => Promise<void>;
@@ -929,6 +936,59 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           projectId,
           updatedAt: Date.now(),
         });
+      },
+
+      shareProject: async (projectId, email, remove) => {
+        const response = await fetch("/api/projects/share", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId, email, remove }),
+        });
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        if (!response.ok) return body?.error ?? "That did not work.";
+
+        // The membership list lives on the project row, so re-read rather than
+        // guessing at what the server now thinks.
+        const fresh = await fetch("/api/workspace")
+          .then((r) => (r.ok ? (r.json() as Promise<Workspace>) : null))
+          .catch(() => null);
+        if (fresh) commitRemote(fresh);
+        return null;
+      },
+
+      pullShared: async (conversationId) => {
+        const current = remoteRef.current?.conversations.find((c) => c.id === conversationId);
+        if (!current) return 0;
+
+        const since = current.messages.reduce((max, m) => Math.max(max, m.timestamp), 0);
+        const response = await fetch(
+          `/api/projects/conversation?id=${encodeURIComponent(conversationId)}&since=${since}`,
+        );
+        if (!response.ok) return 0;
+
+        const body = (await response.json()) as { messages: Message[] };
+        const incoming = body.messages ?? [];
+        if (!incoming.length) return 0;
+
+        // Merged by id, so a message this browser already has from its own
+        // send is not duplicated by the poll that follows it.
+        const byId = new Map(current.messages.map((m) => [m.id, m]));
+        let added = 0;
+        for (const message of incoming) {
+          if (!byId.has(message.id)) added += 1;
+          byId.set(message.id, message);
+        }
+        if (!added) return 0;
+
+        const merged = [...byId.values()].sort((a, b) => a.timestamp - b.timestamp);
+        commitRemote(
+          applyOp(remoteRef.current!, {
+            table: "conversations",
+            action: "upsert",
+            rows: [{ ...current, messages: merged }],
+          }),
+        );
+        return added;
       },
 
       createDeliverable: async (input) => {
