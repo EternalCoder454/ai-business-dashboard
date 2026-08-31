@@ -320,6 +320,64 @@ async function main() {
       released.files.every((f) => !f.projectId),
   );
 
+  console.log("\nthe studio record survives a round trip");
+  {
+    const now = Date.now();
+    await applyMutations(USER, [
+      {
+        table: "memory",
+        action: "upsert",
+        rows: [
+          {
+            id: "mem_smoke_1",
+            kind: "decision",
+            label: "Smoke decision",
+            value: "",
+            detail: "Because the test said so.",
+            revisitWhen: "The test is deleted",
+            departmentId: "company",
+            occurredAt: now - 86_400_000,
+            archived: false,
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: "mem_smoke_2",
+            kind: "figure",
+            label: "Wishlists",
+            value: "1,240",
+            detail: "",
+            revisitWhen: "",
+            departmentId: "marketing",
+            occurredAt: now,
+            archived: false,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+      },
+    ]);
+
+    const back = await loadWorkspace(USER);
+    check("both entries came back", back.memory.length === 2, `${back.memory.length}`);
+    const decision = back.memory.find((entry) => entry.id === "mem_smoke_1");
+    check("the kind survived", decision?.kind === "decision");
+    check("the reasoning survived", decision?.detail === "Because the test said so.");
+    check("the trigger survived", decision?.revisitWhen === "The test is deleted");
+    // A bigint read back as a string would silently break every date on screen.
+    check("occurredAt is still a number", typeof decision?.occurredAt === "number");
+    check("and still the same instant", decision?.occurredAt === now - 86_400_000);
+    check("archived defaults to false", decision?.archived === false);
+    const figure = back.memory.find((entry) => entry.id === "mem_smoke_2");
+    check("the reading survived", figure?.value === "1,240");
+    check("newest first", back.memory[0]?.id === "mem_smoke_2", back.memory[0]?.id);
+
+    await applyMutations(USER, [
+      { table: "memory", action: "delete", ids: ["mem_smoke_1", "mem_smoke_2"] },
+    ]);
+    check("and they delete", (await loadWorkspace(USER)).memory.length === 0);
+  }
+
   console.log("\ndeleting a head takes its conversations with it");
   await applyMutations(USER, [{ table: "departments", action: "delete", ids: ["design"] }]);
   const afterDelete = await loadWorkspace(USER);

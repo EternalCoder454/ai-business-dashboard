@@ -9,6 +9,7 @@ import type {
   Department,
   Conversation,
   Deliverable,
+  MemoryEntry,
   Message,
   Project,
   Settings,
@@ -43,6 +44,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
     messageRows,
     skillRows,
     deliverableRows,
+    memoryRows,
     fileRows,
     runRows,
     roundRows,
@@ -56,6 +58,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
     db.select().from(t.messages).where(eq(t.messages.userEmail, userEmail)).orderBy(asc(t.messages.sentAt)),
     db.select().from(t.skills).where(eq(t.skills.userEmail, userEmail)).orderBy(desc(t.skills.updatedAt)),
     db.select().from(t.deliverables).where(eq(t.deliverables.userEmail, userEmail)).orderBy(desc(t.deliverables.updatedAt)),
+    db.select().from(t.memory).where(eq(t.memory.userEmail, userEmail)).orderBy(desc(t.memory.occurredAt)),
     db.select().from(t.files).where(eq(t.files.userEmail, userEmail)).orderBy(desc(t.files.updatedAt)),
     db.select().from(t.allHandsRuns).where(eq(t.allHandsRuns.userEmail, userEmail)).orderBy(desc(t.allHandsRuns.updatedAt)),
     db.select().from(t.allHandsRounds).where(eq(t.allHandsRounds.userEmail, userEmail)).orderBy(asc(t.allHandsRounds.sortOrder)),
@@ -172,6 +175,22 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       departmentId: row.departmentId,
       projectId: row.projectId ?? undefined,
       status: row.status as Deliverable["status"],
+      sourceConversationId: row.sourceConversationId ?? undefined,
+      createdAt: ms(row.createdAt),
+      updatedAt: ms(row.updatedAt),
+    })),
+
+    memory: memoryRows.map((row) => ({
+      id: row.id,
+      kind: row.kind as MemoryEntry["kind"],
+      label: row.label,
+      value: row.value,
+      detail: row.detail,
+      revisitWhen: row.revisitWhen,
+      departmentId: row.departmentId,
+      projectId: row.projectId ?? undefined,
+      occurredAt: row.occurredAt,
+      archived: row.archived,
       sourceConversationId: row.sourceConversationId ?? undefined,
       createdAt: ms(row.createdAt),
       updatedAt: ms(row.updatedAt),
@@ -368,6 +387,12 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
                   and(eq(t.files.userEmail, userEmail), inArray(t.files.projectId, op.ids)),
                 );
               await tx
+                .update(t.memory)
+                .set({ projectId: null })
+                .where(
+                  and(eq(t.memory.userEmail, userEmail), inArray(t.memory.projectId, op.ids)),
+                );
+              await tx
                 .delete(t.projects)
                 .where(and(eq(t.projects.userEmail, userEmail), inArray(t.projects.id, op.ids)));
             }
@@ -550,6 +575,42 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               .values(values)
               .onConflictDoUpdate({
                 target: [t.deliverables.userEmail, t.deliverables.id],
+                set: values,
+              });
+          }
+          break;
+        }
+
+        case "memory": {
+          if (op.action === "delete") {
+            if (op.ids.length) {
+              await tx
+                .delete(t.memory)
+                .where(and(eq(t.memory.userEmail, userEmail), inArray(t.memory.id, op.ids)));
+            }
+            break;
+          }
+          for (const row of op.rows) {
+            const values = {
+              id: row.id,
+              userEmail,
+              kind: row.kind,
+              label: row.label,
+              value: row.value,
+              detail: row.detail,
+              revisitWhen: row.revisitWhen,
+              departmentId: row.departmentId,
+              projectId: row.projectId ?? null,
+              occurredAt: row.occurredAt,
+              archived: row.archived,
+              sourceConversationId: row.sourceConversationId ?? null,
+              updatedAt: now,
+            };
+            await tx
+              .insert(t.memory)
+              .values(values)
+              .onConflictDoUpdate({
+                target: [t.memory.userEmail, t.memory.id],
                 set: values,
               });
           }

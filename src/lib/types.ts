@@ -198,6 +198,50 @@ export interface CompanyProfile {
 
 export type DeliverableStatus = "backlog" | "in-progress" | "done";
 
+/**
+ * What the studio has decided and what it has measured.
+ *
+ * The panel was advice with no memory: every conversation started from the
+ * same static Company Profile, so a head would happily contradict a decision
+ * made last month and had no figure to reason from. This is the part that
+ * accumulates. Entries are written by hand or captured from a reply, and are
+ * injected into every head's prompt.
+ *
+ * Two kinds, because they age differently. A decision stands until something
+ * overtakes it. A figure is true on a date and is replaced by the next
+ * reading rather than corrected, so a series shares one label.
+ */
+export type MemoryKind = "decision" | "figure";
+
+export interface MemoryEntry {
+  id: string;
+  kind: MemoryKind;
+  /**
+   * A decision in one line, or what a figure measures.
+   *
+   * For figures this is the series key, so "Wishlists" written the same way
+   * each time reads as a trend rather than as unrelated numbers.
+   */
+  label: string;
+  /** Figures only: the reading as written, units included. */
+  value: string;
+  /** Decisions only: the reasoning worth keeping, so it is not relitigated. */
+  detail: string;
+  /** Decisions only: what would reopen this. Without one it is permanent. */
+  revisitWhen: string;
+  /** The head this belongs to, or the company id for every head. */
+  departmentId: string;
+  projectId?: string;
+  /** When it was decided or measured, which is rarely when it was typed. */
+  occurredAt: number;
+  /** Overtaken entries stay for history and leave the prompt. */
+  archived: boolean;
+  /** The conversation it was captured from, when it came out of a chat. */
+  sourceConversationId?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Deliverable {
   id: string;
   title: string;

@@ -1,6 +1,13 @@
+import { buildMemoryBlock } from "./memory";
 import { SHARED_OPERATING_RULES, WRITING_RULES } from "./seed";
 import { buildSkillsBlock } from "./skills";
-import type { CompanyProfile, Department, Skill, UserAccount } from "./types";
+import type {
+  CompanyProfile,
+  Department,
+  MemoryEntry,
+  Skill,
+  UserAccount,
+} from "./types";
 
 /**
  * The order the profile is written into a prompt, and the label each field
@@ -121,6 +128,7 @@ export function buildSystemPrompt(
   skills: Skill[] = [],
   writingRules: string = WRITING_RULES,
   account?: UserAccount,
+  memory: MemoryEntry[] = [],
 ): string {
   const context = buildCompanyContext(profile, companyName);
 
@@ -138,6 +146,9 @@ export function buildSystemPrompt(
     buildSkillsBlock(skills),
     context,
     account ? buildUserContext(account, companyName) : "",
+    // Late on purpose. The prompt is one cached prefix, so a change here
+    // leaves everything above it cached, and the record is what changes most.
+    buildMemoryBlock(memory, department.id),
     SHARED_OPERATING_RULES,
     writingRules.trim(),
   ].filter(Boolean);

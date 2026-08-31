@@ -38,6 +38,7 @@ import {
   seedDepartments,
 } from "./seed";
 import { handbookSkills } from "./handbookSkills";
+import { memoryFor as liveMemoryFor } from "./memory";
 import { skillReconciliation } from "./shippedSkills";
 import {
   SHIPPED_COACH_PROMPTS,
@@ -54,6 +55,8 @@ import type {
   DeliverableStatus,
   Department,
   LibraryFile,
+  MemoryEntry,
+  MemoryKind,
   Message,
   Project,
   Settings,
@@ -89,6 +92,13 @@ interface StoreValue {
   allHandsRuns: AllHandsRun[];
   skills: Skill[];
   files: LibraryFile[];
+  /** The studio's own record: decisions that stand, and figures. */
+  memory: MemoryEntry[];
+  /** One head's slice of it, plus everything company-wide. Live entries only. */
+  memoryFor: (departmentId: string) => MemoryEntry[];
+  saveMemory: (input: Partial<MemoryEntry> & { kind: MemoryKind; label: string }) => Promise<MemoryEntry>;
+  updateMemory: (id: string, patch: Partial<MemoryEntry>) => Promise<void>;
+  deleteMemory: (id: string) => Promise<void>;
   profile: CompanyProfile;
   settings: Settings;
   account: UserAccount;
@@ -453,6 +463,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     undefined,
   );
 
+  const memory = useLiveQuery(
+    async () => (!db || !local ? [] : db.memory.orderBy("occurredAt").reverse().toArray()),
+    [seeded, local],
+    undefined,
+  );
+
   const files = useLiveQuery(
     async () => (!db || !local ? [] : db.files.orderBy("updatedAt").reverse().toArray()),
     [seeded, local],
@@ -584,6 +600,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const departmentList = hosted ? (remote?.departments ?? NONE) : (allDepartments ?? NONE);
   const conversationList = hosted ? (remote?.conversations ?? NONE) : (conversations ?? NONE);
   const deliverableList = hosted ? (remote?.deliverables ?? NONE) : (deliverables ?? NONE);
+  const memoryList = hosted ? (remote?.memory ?? NONE) : (memory ?? NONE);
   const projectList = hosted ? (remote?.projects ?? NONE) : (projects ?? NONE);
   const skillList = hosted ? (remote?.skills ?? NONE) : (skills ?? NONE);
   const fileList = hosted ? (remote?.files ?? NONE) : (files ?? NONE);
@@ -635,6 +652,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ceo: departmentList.find((d) => d.isCeo) ?? departmentList.find((d) => d.id === CEO_ID),
       conversations: conversationList,
       deliverables: deliverableList,
+      memory: memoryList,
       projects: projectList,
       allHandsRuns: runList,
       skills: skillList,
@@ -1079,6 +1097,59 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         else await requireDb().deliverables.delete(id);
       },
 
+      memoryFor: (departmentId) => liveMemoryFor(memoryList, departmentId),
+
+      /**
+       * Writes a decision or a figure.
+       *
+       * `occurredAt` defaults to now but is meant to be overridden: a reading
+       * taken last Friday belongs on last Friday, or the trend the heads read
+       * is wrong.
+       */
+      saveMemory: async (input) => {
+        const now = Date.now();
+        const entry: MemoryEntry = {
+          id: input.id ?? newId("mem"),
+          kind: input.kind,
+          label: input.label.trim(),
+          value: input.value?.trim() ?? "",
+          detail: input.detail?.trim() ?? "",
+          revisitWhen: input.revisitWhen?.trim() ?? "",
+          departmentId: input.departmentId ?? COMPANY_ID,
+          projectId: input.projectId,
+          occurredAt: input.occurredAt ?? now,
+          archived: input.archived ?? false,
+          sourceConversationId: input.sourceConversationId,
+          createdAt: input.createdAt ?? now,
+          updatedAt: now,
+        };
+        if (hosted) await push({ table: "memory", action: "upsert", rows: [entry] });
+        else await requireDb().memory.put(entry);
+        return entry;
+      },
+
+      updateMemory: async (id, patch) => {
+        if (hosted) {
+          const current = remoteRef.current?.memory.find((entry) => entry.id === id);
+          if (!current) {
+            console.error("[workspace] nothing to update with id", id, "- write dropped");
+            return;
+          }
+          await push({
+            table: "memory",
+            action: "upsert",
+            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+          });
+          return;
+        }
+        await requireDb().memory.update(id, { ...patch, updatedAt: Date.now() });
+      },
+
+      deleteMemory: async (id) => {
+        if (hosted) await push({ table: "memory", action: "delete", ids: [id] });
+        else await requireDb().memory.delete(id);
+      },
+
       /**
        * Moves everything in this browser into the signed-in account, in one
        * batch. Existing rows with the same id are overwritten, so running it
@@ -1087,11 +1158,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       uploadLocalWorkspace: async () => {
         if (!hosted || !db) return { pushed: 0 };
 
-        const [depts, convs, skls, dels, projs, fls, runs, prof, sets] = await Promise.all([
+        const [depts, convs, skls, dels, mems, projs, fls, runs, prof, sets] = await Promise.all([
           db.departments.toArray(),
           db.conversations.toArray(),
           db.skills.toArray(),
           db.deliverables.toArray(),
+          db.memory.toArray(),
           db.projects.toArray(),
           db.files.toArray(),
           db.allHands.toArray(),
@@ -1107,6 +1179,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (projs.length) ops.push({ table: "projects", action: "upsert", rows: projs });
         if (skls.length) ops.push({ table: "skills", action: "upsert", rows: skls });
         if (dels.length) ops.push({ table: "deliverables", action: "upsert", rows: dels });
+        if (mems.length) ops.push({ table: "memory", action: "upsert", rows: mems });
         if (fls.length) ops.push({ table: "files", action: "upsert", rows: fls });
         if (runs.length) ops.push({ table: "allHands", action: "upsert", rows: runs });
         // Conversations carry their messages and attachments, so they go last
@@ -1142,6 +1215,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [
     hosted,
     commitRemote,
+    memoryList,
     mode,
     signedInEmail,
     serverKey,

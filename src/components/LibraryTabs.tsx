@@ -7,17 +7,25 @@ import { cx } from "./ui";
 import { createRipple } from "./ui/ripple";
 
 /**
- * Files, deliverables, and skills are all "things the studio keeps", so they
- * share one destination and one tab bar rather than three sidebar entries.
+ * Files, deliverables, skills, and the studio's own record are all "things the
+ * studio keeps", so they share one destination and one tab bar rather than
+ * four sidebar entries.
  */
 export function LibraryTabs() {
   const pathname = usePathname();
-  const { files, deliverables, skills } = useStore();
+  const { files, deliverables, skills, memory } = useStore();
 
   const tabs = [
     { href: "/library", label: "Files", count: files.length },
     { href: "/library/deliverables", label: "Deliverables", count: deliverables.length },
     { href: "/library/skills", label: "Skills", count: skills.length },
+    // Live entries only: an archived decision is history, not something
+    // the heads still work from, and the count should say so.
+    {
+      href: "/library/memory",
+      label: "Memory",
+      count: memory.filter((entry) => !entry.archived).length,
+    },
   ];
 
   return (

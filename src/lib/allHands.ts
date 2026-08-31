@@ -6,6 +6,7 @@ import type {
   AllHandsRun,
   CompanyProfile,
   Department,
+  MemoryEntry,
   Role,
   RoomBrevity,
   Settings,
@@ -31,6 +32,8 @@ export interface AllHandsOptions {
   skillsFor: (departmentId: string) => Skill[];
   /** Who is asking, so the heads address them by name in the room too. */
   account?: UserAccount;
+  /** The studio's record, so the room argues from the same facts as a 1:1. */
+  memory?: MemoryEntry[];
   /** Whether the CEO reads across the round once every head has answered. */
   synthesize: boolean;
   onProgress: (run: AllHandsRun) => void;
@@ -127,6 +130,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
     settings,
     skillsFor,
     account,
+    memory = [],
     synthesize,
     onProgress,
     signal,
@@ -184,6 +188,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
           skillsFor(department.id),
           settings.writingRules,
           account,
+          memory,
         ),
         messages: buildHeadHistory(priorRounds, department.id, question, budget),
         model: settings.model,
@@ -241,6 +246,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
           skillsFor(ceo.id),
           settings.writingRules,
           account,
+          memory,
         ),
         messages: [
           {

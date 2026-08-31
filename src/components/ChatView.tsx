@@ -34,9 +34,12 @@ import {
   Chip,
   Dialog,
   DocIcon,
+  Field,
   SendIcon,
   SparkIcon,
   StatusDot,
+  TextArea,
+  TextInput,
   TrashIcon,
   cx,
 } from "./ui";
@@ -85,6 +88,26 @@ function toWire(message: Message): string | WireContent[] {
   return blocks;
 }
 
+/**
+ * Splits a reply into a one-line decision and the reasoning under it.
+ *
+ * A first pass only. What matters is that the label is short enough to sit in
+ * every future prompt, so both halves are capped and the user edits from here.
+ */
+function splitForCapture(content: string): { label: string; detail: string; revisitWhen: string } {
+  const clean = content
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*/g, "")
+    .trim();
+  const [first = "", ...rest] = clean.split(/\n{2,}/);
+  const sentence = first.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? first;
+  return {
+    label: sentence.trim().slice(0, 160),
+    detail: [first.slice(sentence.length), ...rest].join(" ").replace(/\s+/g, " ").trim().slice(0, 400),
+    revisitWhen: "",
+  };
+}
+
 const MAX_COMPOSER_HEIGHT = 220;
 
 /** Grows the composer with its content, up to a cap, then lets it scroll. */
@@ -105,9 +128,11 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     setMessages,
     deleteConversation,
     createDeliverable,
+    saveMemory,
     files,
     projects,
     serverKey,
+    memory,
     pullShared,
     skillsFor,
     profile,
@@ -141,6 +166,15 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   const [pending, setPending] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  /**
+   * A decision being captured out of a reply.
+   *
+   * Deliberately a dialog rather than a one-click save. Every entry goes into
+   * every prompt from here on, so a four hundred word answer pasted in whole
+   * would cost tokens on every message and bury the line that mattered. The
+   * prefill is a starting point to cut down, not the finished entry.
+   */
+  const [capture, setCapture] = useState<{ label: string; detail: string; revisitWhen: string } | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -294,6 +328,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           skillsFor(departmentId),
           settings.writingRules,
           account,
+          memory,
         ),
         messages: history.map((m) => ({
           role: m.role,
@@ -354,6 +389,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   }, [
     draft,
     pending,
+    memory,
     isStreaming,
     department,
     active,
@@ -531,6 +567,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
                   sourceConversationId: active?.id,
                 });
               }}
+              onRecordDecision={() => setCapture(splitForCapture(message.content))}
             />
           ))}
 
@@ -748,6 +785,70 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             </ul>
           </Dialog>
 
+          <Dialog
+            open={Boolean(capture)}
+            title="Record a decision"
+            onClose={() => setCapture(null)}
+            footer={
+              <>
+                <Button variant="text" onClick={() => setCapture(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  disabled={!capture?.label.trim()}
+                  onClick={async () => {
+                    if (!capture?.label.trim()) return;
+                    await saveMemory({
+                      kind: "decision",
+                      label: capture.label,
+                      detail: capture.detail,
+                      revisitWhen: capture.revisitWhen,
+                      departmentId,
+                      projectId: active?.projectId,
+                      sourceConversationId: active?.id,
+                    });
+                    setCapture(null);
+                  }}
+                >
+                  Record it
+                </Button>
+              </>
+            }
+          >
+            {capture ? (
+              <div className="space-y-4">
+                <p className="md-body text-on-variant">
+                  This goes into {department.personaName || department.name}&apos;s prompt from
+                  now on, so cut it to the line that will still matter in a month.
+                </p>
+                <Field label="The decision" hint="One line, in the past tense.">
+                  <TextInput
+                    autoFocus
+                    value={capture.label}
+                    onChange={(e) => setCapture({ ...capture, label: e.target.value })}
+                  />
+                </Field>
+                <Field label="Why" hint="The reasoning worth keeping, so it is not argued again.">
+                  <TextArea
+                    rows={3}
+                    value={capture.detail}
+                    onChange={(e) => setCapture({ ...capture, detail: e.target.value })}
+                  />
+                </Field>
+                <Field
+                  label="Revisit when"
+                  hint="What would reopen this. A decision with no trigger is permanent."
+                >
+                  <TextInput
+                    value={capture.revisitWhen}
+                    onChange={(e) => setCapture({ ...capture, revisitWhen: e.target.value })}
+                    placeholder="Frontier Assembly ships"
+                  />
+                </Field>
+              </div>
+            ) : null}
+          </Dialog>
+
           <input
             ref={fileRef}
             type="file"
@@ -838,9 +939,11 @@ function Welcome({
 function MessageBubble({
   message,
   onSaveDeliverable,
+  onRecordDecision,
 }: {
   message: Message;
   onSaveDeliverable: () => Promise<void>;
+  onRecordDecision: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -930,6 +1033,9 @@ function MessageBubble({
             }}
           >
             {saved ? <CheckIcon className="h-3.5 w-3.5" /> : <BookmarkIcon className="h-3.5 w-3.5" />}
+          </IconAction>
+          <IconAction label="Record a decision" onClick={onRecordDecision}>
+            <SparkIcon className="h-3.5 w-3.5" />
           </IconAction>
         </div>
       ) : null}

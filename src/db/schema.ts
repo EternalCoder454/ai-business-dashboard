@@ -309,6 +309,36 @@ export const settings = pgTable("settings", {
   updatedAt: updated(),
 });
 
+/**
+ * The studio's own record: decisions that stand, and figures that were true on
+ * a date. Read into every head's prompt, so this is the table that makes the
+ * advice specific to this business rather than to businesses in general.
+ */
+export const memory = pgTable(
+  "memory",
+  {
+    id: text("id").notNull(),
+    userEmail: owner(),
+    kind: text("kind").notNull(),
+    label: text("label").notNull(),
+    value: text("value").notNull().default(""),
+    detail: text("detail").notNull().default(""),
+    revisitWhen: text("revisit_when").notNull().default(""),
+    departmentId: text("department_id").notNull(),
+    projectId: text("project_id"),
+    occurredAt: bigint("occurred_at", { mode: "number" }).notNull(),
+    archived: boolean("archived").notNull().default(false),
+    sourceConversationId: text("source_conversation_id"),
+    createdAt: created(),
+    updatedAt: updated(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userEmail, table.id] }),
+    // The prompt reads the live entries for one head, newest first.
+    index("memory_owner_idx").on(table.userEmail, table.archived, table.occurredAt),
+  ],
+);
+
 export const conversationRelations = relations(conversations, ({ many }) => ({
   messages: many(messages),
 }));

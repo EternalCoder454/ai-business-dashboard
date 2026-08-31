@@ -16,6 +16,7 @@ import type {
   Conversation,
   Deliverable,
   Department,
+  MemoryEntry,
   Project,
   Settings,
   Skill,
@@ -50,6 +51,7 @@ class CeoHqDatabase extends Dexie {
   deliverables!: Table<Deliverable, string>;
   allHands!: Table<AllHandsRun, string>;
   skills!: Table<Skill, string>;
+  memory!: Table<MemoryEntry, string>;
   files!: Table<LibraryFile, string>;
   account!: Table<StoredAccount, string>;
   profile!: Table<StoredProfile, string>;
@@ -228,6 +230,25 @@ class CeoHqDatabase extends Dexie {
         );
         if (additions.length) await table.bulkPut(additions);
       });
+
+    /**
+     * v12 adds the studio's own record: decisions that stand, and figures that
+     * were true on a date. Indexed by kind and by when it happened, which is
+     * how the prompt reads it. Nothing else changes, so there is no upgrade.
+     */
+    this.version(12).stores({
+      departments: "id, order, isCeo",
+      projects: "id, status, updatedAt",
+      conversations: "id, departmentId, projectId, updatedAt",
+      deliverables: "id, departmentId, projectId, status, updatedAt",
+      allHands: "id, createdAt, updatedAt",
+      skills: "id, departmentId, updatedAt",
+      memory: "id, kind, departmentId, projectId, archived, occurredAt",
+      files: "id, kind, departmentId, projectId, updatedAt",
+      account: "id",
+      profile: "id",
+      settings: "id",
+    });
 
     // v11 adds projects, which group work across departments. Conversations,
     // deliverables, and files gain a projectId index so a project page can be
