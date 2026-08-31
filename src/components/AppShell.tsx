@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { CommandPalette, SearchIcon } from "./CommandPalette";
+import { useMessages } from "@/lib/messages";
 import { PRIMARY_LINKS, Sidebar, SidebarContent, isActive } from "./Sidebar";
-import { CloseIcon, cx } from "./ui";
+import { CloseIcon, NavBadge, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
 
 /**
@@ -261,6 +262,7 @@ function RailItem({
   link: (typeof PRIMARY_LINKS)[number];
   active: boolean;
 }) {
+  const { unread } = useMessages();
   return (
     <Link
       href={link.href}
@@ -270,11 +272,14 @@ function RailItem({
     >
       <span
         className={cx(
-          "md-state grid h-8 w-14 place-items-center rounded-full transition-colors",
+          "md-state relative grid h-8 w-14 place-items-center rounded-full transition-colors",
           active ? "bg-secondary-container text-on-secondary-container" : "text-on-variant",
         )}
       >
         {link.icon}
+        {link.href === "/messages" ? (
+          <NavBadge count={unread} label={`${unread} unread messages`} />
+        ) : null}
       </span>
       <span className={cx("md-label-sm", active ? "text-on-surface" : "text-on-variant")}>
         {link.short}
@@ -291,6 +296,7 @@ function BottomBar({
   pathname: string;
   onOpenDrawer: () => void;
 }) {
+  const { unread } = useMessages();
   return (
     <nav className="safe-bottom safe-x flex flex-none items-stretch border-t border-outline-variant bg-low medium:hidden">
       {PRIMARY_LINKS.slice(0, 4).map((link) => {
@@ -305,13 +311,16 @@ function BottomBar({
           >
             <span
               className={cx(
-                "md-state grid h-8 w-16 place-items-center rounded-full transition-colors",
+                "md-state relative grid h-8 w-16 place-items-center rounded-full transition-colors",
                 active
                   ? "bg-secondary-container text-on-secondary-container"
                   : "text-on-variant",
               )}
             >
               {link.icon}
+              {link.href === "/messages" ? (
+                <NavBadge count={unread} label={`${unread} unread messages`} />
+              ) : null}
             </span>
             <span className={cx("md-label-sm", active ? "text-on-surface" : "text-on-variant")}>
               {link.short}

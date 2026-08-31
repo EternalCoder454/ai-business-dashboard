@@ -299,3 +299,38 @@ export const roundRelations = relations(allHandsRounds, ({ one }) => ({
 
 export type AttachmentRow = typeof files.$inferSelect;
 export type StoredAttachment = Attachment;
+
+/**
+ * Direct messages between two people.
+ *
+ * The only table here that is not scoped by a single owner, and deliberately
+ * so. Every other row belongs to one workspace; a message belongs to two, and
+ * scoping it by `user_email` would mean storing it twice and keeping the copies
+ * in step forever.
+ *
+ * `thread_key` is the two addresses sorted and joined, so a conversation has
+ * one stable key whichever direction a message travels. Sorting is what makes
+ * it stable: without it, A-to-B and B-to-A would be different threads.
+ */
+export const directMessages = pgTable(
+  "direct_messages",
+  {
+    id: text("id").primaryKey(),
+    threadKey: text("thread_key").notNull(),
+    fromEmail: text("from_email").notNull(),
+    toEmail: text("to_email").notNull(),
+    body: text("body").notNull(),
+    sentAt: bigint("sent_at", { mode: "number" }).notNull(),
+    /** Null until the recipient has actually opened the thread. */
+    readAt: bigint("read_at", { mode: "number" }),
+    createdAt: created(),
+  },
+  (table) => [
+    // Reading one thread, newest last. The common query by a wide margin.
+    index("dm_thread_idx").on(table.threadKey, table.sentAt),
+    // Unread counts, which the navigation badge asks for on a timer.
+    index("dm_unread_idx").on(table.toEmail, table.readAt),
+    // The overview needs everything either address touched, in one pass.
+    index("dm_from_idx").on(table.fromEmail, table.sentAt),
+  ],
+);

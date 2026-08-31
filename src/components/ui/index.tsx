@@ -505,6 +505,38 @@ export const CopyIcon = icon(
 export const SparkIcon = icon(
   <path d="m12 3 2.2 5.4L20 10.5l-5.8 2.1L12 18l-2.2-5.4L4 10.5l5.8-2.1Z" />,
 );
+/**
+ * A Material navigation badge: the count of something waiting, sitting on the
+ * icon it belongs to. Absolute, so whatever holds it needs `relative`.
+ *
+ * Hidden from assistive technology because the number alone says nothing. The
+ * navigation item labels itself instead, which is why every caller passes a
+ * label naming what is unread.
+ */
+export function NavBadge({ count, label }: { count: number; label: string }) {
+  if (count <= 0) return null;
+  return (
+    <>
+      <span
+        aria-hidden
+        className={cx(
+          "absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full px-1",
+          "bg-error text-on-error text-[0.625rem] font-semibold leading-none",
+        )}
+      >
+        {count > 99 ? "99+" : count}
+      </span>
+      <span className="sr-only">{label}</span>
+    </>
+  );
+}
+
+export const MailIcon = icon(
+  <>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="m3.5 7 8.5 6 8.5-6" />
+  </>,
+);
 export const FolderIcon = icon(
   <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
 );

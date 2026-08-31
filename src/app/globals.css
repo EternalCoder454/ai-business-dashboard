@@ -33,6 +33,7 @@
   --md-success: #6fdd8b;
   --md-warning: #f2c45a;
   --md-error: #ffb4ab;
+  --md-on-error: #690005;
   --md-error-container: #93000a;
   --md-on-error-container: #ffdad6;
 
@@ -79,6 +80,7 @@
   --md-success: #146c2e;
   --md-warning: #8a6100;
   --md-error: #ba1a1a;
+  --md-on-error: #ffffff;
   --md-error-container: #ffdad6;
   --md-on-error-container: #410002;
 
@@ -126,6 +128,7 @@
   --color-success: var(--md-success);
   --color-warning: var(--md-warning);
   --color-error: var(--md-error);
+  --color-on-error: var(--md-on-error);
   --color-error-container: var(--md-error-container);
   --color-on-error-container: var(--md-on-error-container);
 

@@ -14,7 +14,8 @@
     "smoke": "tsx --env-file=.env.local scripts/smoke.ts",
     "guard-test": "tsx scripts/guard-test.ts",
     "lint": "eslint .",
-    "payload-check": "tsx --env-file=.env.local scripts/payload-check.ts"
+    "payload-check": "tsx --env-file=.env.local scripts/payload-check.ts",
+    "messages-test": "tsx --env-file=.env.local scripts/messages-test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

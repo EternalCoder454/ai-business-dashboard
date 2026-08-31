@@ -249,3 +249,44 @@ export type ChatStreamEvent =
   | { type: "usage"; usage: TokenUsage }
   | { type: "error"; message: string }
   | { type: "done" };
+
+/* ------------------------------------------------------------------ *
+ * Messages
+ *
+ * Person to person, as opposed to the Message type above, which is a turn
+ * in a conversation with a department head. These are the only records in
+ * the app that belong to two accounts rather than one.
+ * ------------------------------------------------------------------ */
+
+export interface DirectMessage {
+  id: string;
+  fromEmail: string;
+  toEmail: string;
+  body: string;
+  sentAt: number;
+  /** Set once the recipient has opened the thread. */
+  readAt?: number;
+}
+
+/** One row in the message list: who, the last thing said, and what is unread. */
+export interface MessageThread {
+  /** The other person. The thread is identified by them, not by an id. */
+  email: string;
+  lastBody: string;
+  lastSentAt: number;
+  lastFromSelf: boolean;
+  unread: number;
+}
+
+/** Someone who can be written to. */
+export interface Colleague {
+  email: string;
+  displayName?: string;
+  roleTitle?: string;
+  avatarUrl?: string;
+  /**
+   * False for someone on the allowlist who has never signed in. They can still
+   * be written to; the message is waiting when they arrive.
+   */
+  hasSignedIn: boolean;
+}

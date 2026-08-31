@@ -32,6 +32,7 @@ export default [
     },
   },
   {
-    ignores: [".next/**", ".next-build/**", "node_modules/**", "drizzle/**"],
+    // Any build output, whatever NEXT_DIST_DIR was set to when it was made.
+    ignores: [".next*/**", "node_modules/**", "drizzle/**"],
   },
 ];

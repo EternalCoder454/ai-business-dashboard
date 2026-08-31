@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/AppShell";
+import { MessagesProvider } from "@/lib/messages";
 import { StoreProvider } from "@/lib/store";
 
 /**
@@ -12,7 +13,11 @@ import { StoreProvider } from "@/lib/store";
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <StoreProvider>
-      <AppShell>{children}</AppShell>
+      {/* Inside the store, and inside the group, so the sign-in page never
+          starts a poll for messages nobody is signed in to read. */}
+      <MessagesProvider>
+        <AppShell>{children}</AppShell>
+      </MessagesProvider>
     </StoreProvider>
   );
 }

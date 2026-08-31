@@ -1,0 +1,10 @@
+{"timestamp":"00:00:01.032","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:00:01.032","source":"Server","level":"LOG","message":"  We detected TypeScript in your project and reconfigured your tsconfig.json file for you."}
+{"timestamp":"00:00:01.032","source":"Server","level":"LOG","message":"  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n"}
+{"timestamp":"00:00:01.032","source":"Server","level":"LOG","message":"  \t- include was updated to add '.next-noauth/types/**/*.ts'"}
+{"timestamp":"00:00:01.032","source":"Server","level":"LOG","message":"  \t- include was updated to add '.next-noauth/dev/types/**/*.ts'"}
+{"timestamp":"00:00:01.032","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:00:01.117","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:03:50.909","source":"Browser","level":"INFO","message":"Download the React DevTools for a better development experience: https://react.dev/link/react-devtools"}
+{"timestamp":"00:04:08.513","source":"Browser","level":"INFO","message":"Download the React DevTools for a better development experience: https://react.dev/link/react-devtools"}
+{"timestamp":"00:05:08.963","source":"Server","level":"LOG","message":"✓ Compiled in 201ms"}

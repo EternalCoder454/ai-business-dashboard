@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { CEO_ID } from "@/lib/seed";
 import { conversationHref, departmentHref, formatRelativeTime } from "@/lib/routes";
+import { useMessages } from "@/lib/messages";
 import { useStore } from "@/lib/store";
 import {
   BriefcaseIcon,
@@ -12,6 +13,8 @@ import {
   DocIcon,
   FolderIcon,
   GearIcon,
+  MailIcon,
+  NavBadge,
   OrgIcon,
   PersonIcon,
   PlusIcon,
@@ -44,6 +47,12 @@ export const COMPANY_LINKS: NavLink[] = [
     label: "All Hands",
     short: "Room",
     icon: <UsersIcon className="h-5 w-5" />,
+  },
+  {
+    href: "/messages",
+    label: "Messages",
+    short: "Messages",
+    icon: <MailIcon className="h-5 w-5" />,
   },
   {
     href: "/projects",
@@ -122,6 +131,7 @@ export function SidebarContent({
     updateSettings,
     createConversation,
   } = useStore();
+  const { unread } = useMessages();
 
   const [subtitle, setSubtitle] = useState(settings.companySubtitle);
 
@@ -215,7 +225,12 @@ export function SidebarContent({
                 active={isActive(pathname, link.href)}
                 onNavigate={onNavigate}
               >
-                <span className="text-on-variant [&>svg]:h-4 [&>svg]:w-4">{link.icon}</span>
+                <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
+                  {link.icon}
+                  {link.href === "/messages" ? (
+                    <NavBadge count={unread} label={`${unread} unread messages`} />
+                  ) : null}
+                </span>
                 <span className="md-body truncate">{link.label}</span>
               </NavRow>
             </li>

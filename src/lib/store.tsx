@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -152,6 +153,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // for one that would be ignored anyway.
   const [serverKey, setServerKey] = useState(false);
   const [remote, setRemote] = useState<Workspace | null>(null);
+
+  /**
+   * The same workspace as `remote`, kept in a ref.
+   *
+   * `remote` is state, so it only becomes visible on the next render, and every
+   * function on the context value closes over the render it was built in. That
+   * made writes that follow a create silently disappear: send() created a
+   * conversation and immediately called setMessages, whose captured list did not
+   * contain it yet, so the lookup missed and the message was dropped without a
+   * word. Reads that happen during a write go through this instead.
+   */
+  const remoteRef = useRef<Workspace | null>(null);
+
+  /** The only way remote changes, so the ref can never fall behind the state. */
+  const commitRemote = useCallback((next: Workspace | null) => {
+    remoteRef.current = next;
+    setRemote(next);
+  }, []);
   const [googleIdentity, setGoogleIdentity] = useState<{
     email?: string;
     name?: string;
@@ -230,7 +249,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     load()
       .then((snapshot) => {
-        if (!cancelled && snapshot) setRemote(snapshot);
+        if (!cancelled && snapshot) commitRemote(snapshot);
       })
       .catch(() => {
         // Leaving remote null keeps the app in its loading state rather
@@ -239,7 +258,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [hosted]);
+  }, [hosted, commitRemote]);
 
   useEffect(() => {
     // Seeding writes to IndexedDB, which a hosted browser never reads.
@@ -433,7 +452,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    */
   const push = useCallback(
     async (op: MutationOp) => {
-      setRemote((current) => (current ? applyOp(current, op) : current));
+      // Applied against the ref rather than through a functional update, so a
+      // second write in the same tick sees the first one.
+      commitRemote(remoteRef.current ? applyOp(remoteRef.current, op) : remoteRef.current);
       try {
         const response = await fetch("/api/workspace", {
           method: "POST",
@@ -446,10 +467,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const fresh = await fetch("/api/workspace")
           .then((r) => (r.ok ? (r.json() as Promise<Workspace>) : null))
           .catch(() => null);
-        if (fresh) setRemote(fresh);
+        if (fresh) commitRemote(fresh);
       }
     },
-    [],
+    [commitRemote],
   );
 
   const value = useMemo<StoreValue>(() => {
@@ -560,8 +581,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       updateDepartment: async (id, patch) => {
         if (hosted) {
-          const current = departmentList.find((d) => d.id === id);
-          if (!current) return;
+          const current = remoteRef.current?.departments.find((d) => d.id === id);
+          if (!current) {
+            console.error("[workspace] nothing to update with id", id, "- write dropped");
+            return;
+          }
           await push({ table: "departments", action: "upsert", rows: [{ ...current, ...patch }] });
           return;
         }
@@ -597,8 +621,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       updateConversation: async (id, patch) => {
         if (hosted) {
-          const current = conversationList.find((c) => c.id === id);
-          if (!current) return;
+          const current = remoteRef.current?.conversations.find((c) => c.id === id);
+          if (!current) {
+            console.error("[workspace] nothing to update with id", id, "- write dropped");
+            return;
+          }
           await push({
             table: "conversations",
             action: "upsert",
@@ -611,8 +638,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       setMessages: async (id, messages) => {
         if (hosted) {
-          const current = conversationList.find((c) => c.id === id);
-          if (!current) return;
+          const current = remoteRef.current?.conversations.find((c) => c.id === id);
+          if (!current) {
+            console.error("[workspace] nothing to update with id", id, "- write dropped");
+            return;
+          }
           await push({
             table: "conversations",
             action: "upsert",
@@ -645,8 +675,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       updateFile: async (id, patch) => {
         if (hosted) {
-          const current = fileList.find((f) => f.id === id);
-          if (!current) return;
+          const current = remoteRef.current?.files.find((f) => f.id === id);
+          if (!current) {
+            console.error("[workspace] nothing to update with id", id, "- write dropped");
+            return;
+          }
           await push({
             table: "files",
             action: "upsert",
@@ -681,8 +714,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       updateSkill: async (id, patch) => {
         if (hosted) {
-          const current = skillList.find((sk) => sk.id === id);
-          if (!current) return;
+          const current = remoteRef.current?.skills.find((sk) => sk.id === id);
+          if (!current) {
+            console.error("[workspace] nothing to update with id", id, "- write dropped");
+            return;
+          }
           await push({
             table: "skills",
             action: "upsert",
@@ -717,8 +753,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       updateProject: async (id, patch) => {
         if (hosted) {
-          const current = projectList.find((row) => row.id === id);
-          if (!current) return;
+          const current = remoteRef.current?.projects.find((row) => row.id === id);
+          if (!current) {
+            console.error("[workspace] nothing to update with id", id, "- write dropped");
+            return;
+          }
           await push({
             table: "projects",
             action: "upsert",
@@ -782,8 +821,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       setConversationProject: async (conversationId, projectId) => {
         if (hosted) {
-          const current = conversationList.find((row) => row.id === conversationId);
-          if (!current) return;
+          const current = remoteRef.current?.conversations.find(
+            (row) => row.id === conversationId,
+          );
+          if (!current) {
+            console.error("[workspace] no conversation", conversationId, "- write dropped");
+            return;
+          }
           await push({
             table: "conversations",
             action: "upsert",
@@ -816,8 +860,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       updateDeliverable: async (id, patch) => {
         if (hosted) {
-          const current = deliverableList.find((d) => d.id === id);
-          if (!current) return;
+          const current = remoteRef.current?.deliverables.find((d) => d.id === id);
+          if (!current) {
+            console.error("[workspace] nothing to update with id", id, "- write dropped");
+            return;
+          }
           await push({
             table: "deliverables",
             action: "upsert",
@@ -885,7 +932,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (!response.ok) throw new Error("The upload was refused.");
 
         const fresh = await fetch("/api/workspace").then((r) => r.json() as Promise<Workspace>);
-        setRemote(fresh);
+        commitRemote(fresh);
 
         return {
           pushed:
@@ -895,6 +942,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [
     hosted,
+    commitRemote,
     mode,
     signedInEmail,
     serverKey,
