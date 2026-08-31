@@ -382,18 +382,33 @@ export const EFFORT_OPTIONS = [
   { id: "max", label: "Max", hint: "correctness over cost" },
 ] as const;
 
+/** A dot and a wash for one accent, both resolved per theme. */
+function accent(key: string, label: string) {
+  return {
+    key,
+    label,
+    dot: `var(--md-accent-${key})`,
+    // Mixed at paint time rather than baked as rgba, so the wash follows the
+    // dot when the theme changes instead of staying the dark theme's colour.
+    soft: `color-mix(in srgb, var(--md-accent-${key}) 16%, transparent)`,
+  };
+}
+
 /**
  * Project accents. Six is enough to tell a handful of projects apart at a
- * glance without turning the list into a colour chart, and each maps to a
- * token pair already in the theme rather than a raw hex value.
+ * glance without turning the list into a colour chart.
+ *
+ * Themed tokens rather than raw hex: the same value cannot clear 3:1 against
+ * both a near-black and a near-white card, so a dot picked here used to be
+ * close to invisible in the light theme.
  */
 export const PROJECT_ACCENTS = [
-  { key: "violet", label: "Violet", dot: "#8B7CF6", soft: "rgba(139,124,246,0.16)" },
-  { key: "cyan", label: "Cyan", dot: "#4DD0E1", soft: "rgba(77,208,225,0.16)" },
-  { key: "amber", label: "Amber", dot: "#F0B429", soft: "rgba(240,180,41,0.16)" },
-  { key: "rose", label: "Rose", dot: "#F26D85", soft: "rgba(242,109,133,0.16)" },
-  { key: "lime", label: "Lime", dot: "#9CCC65", soft: "rgba(156,204,101,0.16)" },
-  { key: "slate", label: "Slate", dot: "#94A3B8", soft: "rgba(148,163,184,0.16)" },
+  accent("violet", "Violet"),
+  accent("cyan", "Cyan"),
+  accent("amber", "Amber"),
+  accent("rose", "Rose"),
+  accent("lime", "Lime"),
+  accent("slate", "Slate"),
 ] as const;
 
 export function projectAccent(key: string) {
@@ -461,9 +476,9 @@ Never flatter. "Good question" and "that is a great instinct" are noise. If some
  */
 export const DEPARTMENT_ACCENTS = [
   ...PROJECT_ACCENTS,
-  { key: "blue", label: "Blue", dot: "#5B9BF8", soft: "rgba(91,155,248,0.16)" },
-  { key: "teal", label: "Teal", dot: "#2FB8A0", soft: "rgba(47,184,160,0.16)" },
-  { key: "orchid", label: "Orchid", dot: "#C879D0", soft: "rgba(200,121,208,0.16)" },
+  accent("blue", "Blue"),
+  accent("teal", "Teal"),
+  accent("orchid", "Orchid"),
 ] as const;
 
 /**

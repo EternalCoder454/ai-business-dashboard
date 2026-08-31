@@ -125,7 +125,7 @@ export default function SettingsPage() {
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 expanded:px-8 py-6">
-        <div className="measure flex flex-col gap-5">
+        <div className="measure-wide grid items-start gap-5 expanded:grid-cols-2">
           <Card>
             <h2 className="md-title-lg mb-1">Anthropic API</h2>
 
@@ -353,7 +353,7 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <Card>
+          <Card className="expanded:col-span-2">
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
                 <h2 className="md-title-lg">Departments</h2>
@@ -427,7 +427,7 @@ export default function SettingsPage() {
             </ul>
           </Card>
 
-          <Card>
+          <Card className="expanded:col-span-2">
             <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
               <h2 className="md-title-lg">House writing rules</h2>
               <Button

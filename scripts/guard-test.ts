@@ -7,6 +7,8 @@
  *
  * Run with: npm run guard-test
  */
+import { readFileSync } from "node:fs";
+
 import { readJsonWithin, withinRate } from "../src/lib/guard";
 import { safeDestination } from "../src/app/signin/page";
 import { applyOp, emptyWorkspace } from "../src/lib/workspace";
@@ -239,9 +241,19 @@ console.log("\na write immediately after a create can see it");
       "accent keys are unique",
       new Set(DEPARTMENT_ACCENTS.map((a) => a.key)).size === DEPARTMENT_ACCENTS.length,
     );
+    // Accents resolve per theme now, so the check is that each one points at
+    // its own token and that both themes actually define it. A dangling var()
+    // renders as nothing at all, which is worse than the wrong colour.
+    const css = readFileSync("src/app/globals.css", "utf8");
+    const dangling = DEPARTMENT_ACCENTS.filter((a) => {
+      if (a.dot !== `var(--md-accent-${a.key})`) return true;
+      const declared = css.match(new RegExp(`--md-accent-${a.key}:`, "g")) ?? [];
+      return declared.length < 2;
+    });
     check(
-      "every accent has a visible dot colour",
-      DEPARTMENT_ACCENTS.every((a) => /^#[0-9A-Fa-f]{6}$/.test(a.dot)),
+      "every accent is a token defined in both themes",
+      dangling.length === 0,
+      dangling.map((a) => a.key).join(","),
     );
   }
 

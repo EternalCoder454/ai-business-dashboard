@@ -9,33 +9,54 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --md-surface: #1a1c1e;
-  --md-surface-dim: #121416;
-  --md-container-lowest: #0d0f11;
-  --md-container-low: #1e2022;
-  --md-container: #212426;
-  --md-container-high: #2b2e31;
-  --md-container-highest: #35383b;
+  /* Value carries the structure, so the ramp is a regular lightness
+     progression in one hue family at low saturation. Hue and saturation
+     are layered on top of it rather than asked to do its job. */
+  --md-surface: #171a1c;
+  --md-surface-dim: #101213;
+  --md-container-lowest: #0c0d0e;
+  --md-container-low: #1d2023;
+  --md-container: #23262a;
+  --md-container-high: #2c3135;
+  --md-container-highest: #383e43;
 
-  --md-on-surface: #e3e2e6;
-  --md-on-surface-variant: #bfc6cb;
+  --md-on-surface: #e7e8e9;
+  --md-on-surface-variant: #c0c5c9;
   --md-outline: #89929a;
-  --md-outline-variant: #3f474d;
+  --md-outline-variant: #434a51;
 
-  --md-primary: #4fd8eb;
-  --md-on-primary: #00363d;
-  --md-primary-container: #004f58;
-  --md-on-primary-container: #97f0ff;
+  /* The one saturated hue. Pulled back from where it was, because a
+     saturated colour used for every link and button is the palette
+     shouting continuously, and nothing else can then be heard. */
+  --md-primary: #62c6da;
+  --md-on-primary: #04313a;
+  --md-primary-container: #1d525d;
+  --md-on-primary-container: #c2ecf5;
+  --md-secondary-container: #364a4e;
+  --md-on-secondary-container: #d1e2e6;
 
-  --md-secondary-container: #33484d;
-  --md-on-secondary-container: #cce7ed;
+  /* Semantics share one saturation and one value, so they read as a set
+     rather than three colours that arrived separately. */
+  --md-success: #73dea5;
+  --md-warning: #debe73;
+  --md-error: #e0857b;
+  --md-on-error: #400d07;
+  --md-error-container: #71261e;
+  --md-on-error-container: #f6cfcb;
 
-  --md-success: #6fdd8b;
-  --md-warning: #f2c45a;
-  --md-error: #ffb4ab;
-  --md-on-error: #690005;
-  --md-error-container: #93000a;
-  --md-on-error-container: #ffdad6;
+  /* One per department, evenly spread around the wheel. Tuned per theme
+     because a single mid-lightness colour cannot clear 3:1 against both a
+     near-black and a near-white card. Lightness varies by hue: the eye
+     does not read yellow and blue as equally light at the same value. */
+  --md-accent-amber: #d2ad56;
+  --md-accent-rose: #d86e83;
+  --md-accent-cyan: #56bdd2;
+  --md-accent-violet: #a77edd;
+  --md-accent-lime: #87d256;
+  --md-accent-slate: #6ea0d8;
+  --md-accent-teal: #4ed0b2;
+  --md-accent-blue: #7e91dd;
+  --md-accent-orchid: #db76d4;
 
   --md-state-hover: rgb(227 226 230 / 0.07);
   --md-state-pressed: rgb(227 226 230 / 0.12);
@@ -56,33 +77,54 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  --md-surface: #f7fafb;
-  --md-surface-dim: #d8dbdd;
+  /* Value carries the structure, so the ramp is a regular lightness
+     progression in one hue family at low saturation. Hue and saturation
+     are layered on top of it rather than asked to do its job. */
+  --md-surface: #fafafa;
+  --md-surface-dim: #d5d9dc;
   --md-container-lowest: #ffffff;
-  --md-container-low: #f1f4f6;
-  --md-container: #ebeef0;
-  --md-container-high: #e5e8ea;
-  --md-container-highest: #dfe2e4;
+  --md-container-low: #f4f5f6;
+  --md-container: #eef0f1;
+  --md-container-high: #e6e8ea;
+  --md-container-highest: #dee1e3;
 
-  --md-on-surface: #191c1e;
-  --md-on-surface-variant: #40484c;
-  --md-outline: #6f797d;
-  --md-outline-variant: #bfc8cc;
+  --md-on-surface: #1c1f22;
+  --md-on-surface-variant: #464d53;
+  --md-outline: #717b84;
+  --md-outline-variant: #cdd1d6;
 
-  --md-primary: #00687a;
+  /* The one saturated hue. Pulled back from where it was, because a
+     saturated colour used for every link and button is the palette
+     shouting continuously, and nothing else can then be heard. */
+  --md-primary: #156d7f;
   --md-on-primary: #ffffff;
-  --md-primary-container: #a7eeff;
-  --md-on-primary-container: #001f26;
+  --md-primary-container: #c5eaf1;
+  --md-on-primary-container: #073740;
+  --md-secondary-container: #d7e7ea;
+  --md-on-secondary-container: #103941;
 
-  --md-secondary-container: #cde7ed;
-  --md-on-secondary-container: #051f24;
-
-  --md-success: #146c2e;
-  --md-warning: #8a6100;
-  --md-error: #ba1a1a;
+  /* Semantics share one saturation and one value, so they read as a set
+     rather than three colours that arrived separately. */
+  --md-success: #177242;
+  --md-warning: #855a0f;
+  --md-error: #af2b1d;
   --md-on-error: #ffffff;
-  --md-error-container: #ffdad6;
-  --md-on-error-container: #410002;
+  --md-error-container: #fad5d1;
+  --md-on-error-container: #4e140e;
+
+  /* One per department, evenly spread around the wheel. Tuned per theme
+     because a single mid-lightness colour cannot clear 3:1 against both a
+     near-black and a near-white card. Lightness varies by hue: the eye
+     does not read yellow and blue as equally light at the same value. */
+  --md-accent-amber: #886920;
+  --md-accent-rose: #ae2943;
+  --md-accent-cyan: #1e7080;
+  --md-accent-violet: #702fc6;
+  --md-accent-lime: #437c1d;
+  --md-accent-slate: #2762a5;
+  --md-accent-teal: #1c7862;
+  --md-accent-blue: #2d4abe;
+  --md-accent-orchid: #ae29a5;
 
   --md-state-hover: rgb(25 28 30 / 0.06);
   --md-state-pressed: rgb(25 28 30 / 0.11);

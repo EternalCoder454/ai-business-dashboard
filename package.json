@@ -15,6 +15,7 @@
     "guard-test": "tsx scripts/guard-test.ts",
     "skills-test": "tsx scripts/skills-test.ts",
     "memory-test": "tsx scripts/memory-test.ts",
+    "contrast-test": "tsx scripts/contrast-test.ts",
     "skills-fingerprint": "tsx scripts/shipped-skills.ts",
     "lint": "eslint .",
     "payload-check": "tsx --env-file=.env.local scripts/payload-check.ts",

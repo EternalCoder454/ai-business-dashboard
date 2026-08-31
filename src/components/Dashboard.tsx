@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
-import { DepartmentAvatar } from "./DepartmentAvatar";
 import {
   CheckIcon,
   ChevronIcon,
@@ -14,10 +13,8 @@ import {
 } from "./ui";
 import { createRipple } from "./ui/ripple";
 import { figureSeries } from "@/lib/memory";
-import { useDepartmentStatus } from "@/lib/presence";
 import { hasProfileContent } from "@/lib/prompts";
-import { conversationHref, departmentHref, formatRelativeTime } from "@/lib/routes";
-import { CEO_ID } from "@/lib/seed";
+import { conversationHref, formatRelativeTime } from "@/lib/routes";
 import { useStore } from "@/lib/store";
 
 /**
@@ -36,7 +33,6 @@ export function Dashboard() {
   const {
     ready,
     departments,
-    ceo,
     allDepartments,
     conversations,
     deliverables,
@@ -185,163 +181,114 @@ export function Dashboard() {
         )}
       </section>
 
-      <div className="grid gap-5 expanded:grid-cols-3">
-        <section className="expanded:col-span-2">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="md-label-sm text-on-variant">Who you can ask</h2>
-            <span className="md-label-sm text-on-variant/75">
-              {threads} thread{threads === 1 ? "" : "s"} · {openTasks.length} open ·{" "}
-              {activeProjects} project
-              {activeProjects === 1 ? "" : "s"}
-            </span>
-          </div>
-          <div className="grid gap-2 medium:grid-cols-2 large:grid-cols-3">
-            {ceo ? <HeadCard department={ceo} href="/ceo" lead /> : null}
-            {departments
-              .filter((d) => d.id !== CEO_ID)
-              .map((department) => (
-                <HeadCard
-                  key={department.id}
-                  department={department}
-                  href={departmentHref(department)}
-                />
-              ))}
-          </div>
-        </section>
+      {/* One line of counts, then the panels. The heads used to sit here as a
+          grid of cards, which was the sidebar again in a second typeface. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span className="md-label-sm text-on-variant/75">
+          {threads} thread{threads === 1 ? "" : "s"}
+        </span>
+        <span className="md-label-sm text-on-variant/75">
+          {openTasks.length} task{openTasks.length === 1 ? "" : "s"} open
+        </span>
+        <span className="md-label-sm text-on-variant/75">
+          {activeProjects} active project{activeProjects === 1 ? "" : "s"}
+        </span>
+        <span className="md-label-sm text-on-variant/75">
+          {deliverables.length} saved
+        </span>
+      </div>
 
-        <div className="space-y-4">
-          <PaneList
-            title="Open tasks"
-            icon={<CheckIcon className="h-3.5 w-3.5" />}
-            href="/tasks"
-            empty="Nothing outstanding."
-            items={openTasks.slice(0, 5).map((task) => ({
-              key: task.id,
-              href: "/tasks",
-              primary: task.title,
-              secondary: `${nameOf(task.departmentId)}${
-                task.dueAt
-                  ? ` · due ${new Date(task.dueAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`
-                  : ""
-              }`,
+      <div className="grid gap-4 medium:grid-cols-2 large:grid-cols-3">
+        <PaneList
+          title="Open tasks"
+          icon={<CheckIcon className="h-3.5 w-3.5" />}
+          href="/tasks"
+          empty="Nothing outstanding."
+          items={openTasks.slice(0, 5).map((task) => ({
+            key: task.id,
+            href: "/tasks",
+            primary: task.title,
+            secondary: `${nameOf(task.departmentId)}${
+              task.dueAt
+                ? ` · due ${new Date(task.dueAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`
+                : ""
+            }`,
+          }))}
+        />
+
+        <PaneList
+          title="Standing decisions"
+          icon={<SparkIcon className="h-3.5 w-3.5" />}
+          href="/library/memory"
+          empty="Nothing settled yet. Record one so it stops being reopened."
+          items={decisions.map((entry) => ({
+            key: entry.id,
+            href: "/library/memory",
+            primary: entry.label,
+            secondary: `${nameOf(entry.departmentId)} · ${formatRelativeTime(entry.occurredAt)}`,
+          }))}
+        />
+
+        <PaneList
+          title="Recent output"
+          icon={<DocIcon className="h-3.5 w-3.5" />}
+          href="/library/deliverables"
+          empty="Nothing saved yet. Hit Save on any reply."
+          items={deliverables.slice(0, 4).map((item) => ({
+            key: item.id,
+            href: "/library/deliverables",
+            primary: item.title,
+            secondary: `${nameOf(item.departmentId)} · ${formatRelativeTime(item.updatedAt)}`,
+          }))}
+        />
+
+        <PaneList
+          title="Pick up where you left off"
+          icon={<ChevronIcon className="h-3.5 w-3.5" />}
+          href="/ceo"
+          empty="No conversations yet."
+          items={conversations
+            .filter((c) => c.messages.length > 0)
+            .slice(0, 4)
+            .map((conversation) => ({
+              key: conversation.id,
+              href: conversationHref(conversation.departmentId, conversation.id),
+              primary: conversation.title,
+              secondary: `${nameOf(conversation.departmentId)} · ${formatRelativeTime(
+                conversation.updatedAt,
+              )}`,
             }))}
-          />
+        />
 
-          <PaneList
-            title="Standing decisions"
-            icon={<SparkIcon className="h-3.5 w-3.5" />}
-            href="/library/memory"
-            empty="Nothing settled yet. Record one so it stops being reopened."
-            items={decisions.map((entry) => ({
-              key: entry.id,
-              href: "/library/memory",
-              primary: entry.label,
-              secondary: `${nameOf(entry.departmentId)} · ${formatRelativeTime(entry.occurredAt)}`,
-            }))}
-          />
+        <PaneList
+          title="Recent rooms"
+          icon={<UsersIcon className="h-3.5 w-3.5" />}
+          href="/all-hands"
+          empty="You have not put anything to everyone yet."
+          items={allHandsRuns.slice(0, 3).map((run) => ({
+            key: run.id,
+            href: "/all-hands",
+            primary: run.title,
+            secondary: `${run.rounds.length} ${
+              run.rounds.length === 1 ? "question" : "questions"
+            } · ${formatRelativeTime(run.updatedAt)}`,
+          }))}
+        />
 
-          <PaneList
-            title="Recent output"
-            icon={<DocIcon className="h-3.5 w-3.5" />}
-            href="/library/deliverables"
-            empty="Nothing saved yet. Hit Save on any reply."
-            items={deliverables.slice(0, 4).map((item) => ({
-              key: item.id,
-              href: "/library/deliverables",
-              primary: item.title,
-              secondary: `${nameOf(item.departmentId)} · ${formatRelativeTime(item.updatedAt)}`,
-            }))}
-          />
-
-          <PaneList
-            title="Pick up where you left off"
-            icon={<ChevronIcon className="h-3.5 w-3.5" />}
-            href="/ceo"
-            empty="No conversations yet."
-            items={conversations
-              .filter((c) => c.messages.length > 0)
-              .slice(0, 4)
-              .map((conversation) => ({
-                key: conversation.id,
-                href: conversationHref(conversation.departmentId, conversation.id),
-                primary: conversation.title,
-                secondary: `${nameOf(conversation.departmentId)} · ${formatRelativeTime(
-                  conversation.updatedAt,
-                )}`,
-              }))}
-          />
-
-          <PaneList
-            title="Recent rooms"
-            icon={<UsersIcon className="h-3.5 w-3.5" />}
-            href="/all-hands"
-            empty="You have not put anything to everyone yet."
-            items={allHandsRuns.slice(0, 3).map((run) => ({
-              key: run.id,
-              href: "/all-hands",
-              primary: run.title,
-              secondary: `${run.rounds.length} ${
-                run.rounds.length === 1 ? "question" : "questions"
-              } · ${formatRelativeTime(run.updatedAt)}`,
-            }))}
-          />
-
-          <PaneList
-            title="Projects"
-            icon={<FolderIcon className="h-3.5 w-3.5" />}
-            href="/projects"
-            empty="No projects yet."
-            items={projects.slice(0, 3).map((project) => ({
-              key: project.id,
-              href: `/projects/${project.id}`,
-              primary: project.name,
-              secondary: `${project.status} · ${formatRelativeTime(project.updatedAt)}`,
-            }))}
-          />
-        </div>
+        <PaneList
+          title="Projects"
+          icon={<FolderIcon className="h-3.5 w-3.5" />}
+          href="/projects"
+          empty="No projects yet."
+          items={projects.slice(0, 3).map((project) => ({
+            key: project.id,
+            href: `/projects/${project.id}`,
+            primary: project.name,
+            secondary: `${project.status} · ${formatRelativeTime(project.updatedAt)}`,
+          }))}
+        />
       </div>
     </div>
-  );
-}
-
-function HeadCard({
-  department,
-  href,
-  lead,
-}: {
-  department: { id: string; name: string; personaName: string; roleTitle: string };
-  href: string;
-  lead?: boolean;
-}) {
-  const { settings, serverKey, ownSkillsFor } = useStore();
-  const status = useDepartmentStatus(Boolean(serverKey || settings.apiKey))(department.id);
-  const count = ownSkillsFor(department.id).length;
-
-  return (
-    <Link
-      href={href}
-      onClick={createRipple}
-      className={cx(
-        "md-state flex items-center gap-3 rounded-2xl border p-3 transition-shadow hover:shadow-e2",
-        lead
-          ? "border-primary/40 bg-primary-container/25 medium:col-span-2 large:col-span-3"
-          : "border-outline-variant bg-container",
-      )}
-    >
-      <DepartmentAvatar
-        department={department as never}
-        size={lead ? 44 : 38}
-        status={status}
-      />
-      <div className="min-w-0 flex-1">
-        <p className="md-title truncate">{department.personaName || department.name}</p>
-        <p className="md-label-sm truncate text-on-variant">{department.roleTitle}</p>
-      </div>
-      <span className="md-label-sm flex-none text-on-variant/75">
-        {count} skill{count === 1 ? "" : "s"}
-      </span>
-      <ChevronIcon className="h-4 w-4 flex-none text-on-variant/60" />
-    </Link>
   );
 }
 
