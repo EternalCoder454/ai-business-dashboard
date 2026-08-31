@@ -6,7 +6,8 @@ out
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
-.next-build
+# Any build output, whatever NEXT_DIST_DIR was set to when it was made.
+.next-*
 .next-recover-*
 
 # Next.js build output for the second dev instance
