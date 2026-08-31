@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/AppShell";
+import { siteUrl } from "@/lib/site";
 import { StoreProvider } from "@/lib/store";
 import "./globals.css";
 
@@ -14,6 +15,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: "Eterneon",
   description: "A personal AI operating system for running Eterneon Studio.",
   applicationName: "Eterneon",

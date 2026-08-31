@@ -1,36 +1,17 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
+import type { MutationOp, Workspace } from "@/lib/workspace";
 import type {
   AllHandsRun,
   Attachment,
-  CompanyProfile,
-  Conversation,
-  Deliverable,
   Department,
-  LibraryFile,
+  Deliverable,
   Message,
   Settings,
-  Skill,
 } from "@/lib/types";
 
-/**
- * The whole workspace for one account.
- *
- * The client already holds all of this in memory, so a single snapshot read
- * plus batched mutations matches how the app actually behaves. Per-entity REST
- * would mean a dozen round trips to render one page.
- */
-export interface Workspace {
-  departments: Department[];
-  conversations: Conversation[];
-  skills: Skill[];
-  deliverables: Deliverable[];
-  files: LibraryFile[];
-  allHandsRuns: AllHandsRun[];
-  profile: CompanyProfile;
-  settings: Omit<Settings, "id" | "apiKey">;
-}
+export type { MutationOp, Workspace };
 
 const ms = (value: Date) => value.getTime();
 
@@ -196,22 +177,6 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
 /* ------------------------------------------------------------------ *
  * Mutations
  * ------------------------------------------------------------------ */
-
-export type MutationOp =
-  | { table: "departments"; action: "upsert"; rows: Department[] }
-  | { table: "departments"; action: "delete"; ids: string[] }
-  | { table: "conversations"; action: "upsert"; rows: Conversation[] }
-  | { table: "conversations"; action: "delete"; ids: string[] }
-  | { table: "skills"; action: "upsert"; rows: Skill[] }
-  | { table: "skills"; action: "delete"; ids: string[] }
-  | { table: "deliverables"; action: "upsert"; rows: Deliverable[] }
-  | { table: "deliverables"; action: "delete"; ids: string[] }
-  | { table: "files"; action: "upsert"; rows: LibraryFile[] }
-  | { table: "files"; action: "delete"; ids: string[] }
-  | { table: "allHands"; action: "upsert"; rows: AllHandsRun[] }
-  | { table: "allHands"; action: "delete"; ids: string[] }
-  | { table: "profile"; action: "upsert"; row: CompanyProfile }
-  | { table: "settings"; action: "upsert"; row: Partial<Omit<Settings, "id" | "apiKey">> };
 
 /**
  * Applies a batch in one transaction, so a half-written conversation cannot

@@ -11,7 +11,21 @@ import {
   type ReactNode,
 } from "react";
 import { db, ensureSeeded, newId } from "./db";
-import { CEO_ID, COMPANY_ID, DEFAULT_PROFILE, DEFAULT_SETTINGS } from "./seed";
+import {
+  applyOp,
+  type MutationOp,
+  type StorageMode,
+  type Workspace,
+  type WorkspaceStatus,
+} from "./workspace";
+import {
+  CEO_ID,
+  COMPANY_ID,
+  DEFAULT_PROFILE,
+  DEFAULT_SETTINGS,
+  seedDepartments,
+} from "./seed";
+import { seedSkills } from "./seedSkills";
 import type {
   AllHandsRun,
   CompanyProfile,
@@ -27,6 +41,12 @@ import type {
 
 interface StoreValue {
   ready: boolean;
+  /** Where this browser is reading and writing: the account, or this device. */
+  storage: StorageMode;
+  /** The signed-in address when the workspace is hosted. */
+  accountEmail?: string;
+  /** Pushes everything in this browser into the signed-in account. */
+  uploadLocalWorkspace: () => Promise<{ pushed: number }>;
   /** Department heads only. The CEO is excluded. */
   departments: Department[];
   /** Every department including the CEO, for lookups. */
@@ -82,8 +102,90 @@ const StoreContext = createContext<StoreValue | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [seeded, setSeeded] = useState(false);
+  const [mode, setMode] = useState<StorageMode>("resolving");
+  const [account, setAccount] = useState<string | undefined>();
+  const [remote, setRemote] = useState<Workspace | null>(null);
+
+  /**
+   * Ask the server which storage this browser is on before touching either.
+   * A local checkout with no database answers hosted:false and everything
+   * carries on in IndexedDB exactly as before.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/workspace/status")
+      .then((response) => (response.ok ? (response.json() as Promise<WorkspaceStatus>) : null))
+      .then((status) => {
+        if (cancelled) return;
+        if (status?.hosted && status.signedIn) {
+          setAccount(status.email);
+          setMode("hosted");
+        } else {
+          setMode("local");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setMode("local");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const hosted = mode === "hosted";
+
+  // The hosted snapshot is read once; every later change is applied to it
+  // locally and sent to the server, so no request is needed to re-render.
+  useEffect(() => {
+    if (!hosted) return;
+    let cancelled = false;
+
+    const load = async () => {
+      const snapshot = await fetch("/api/workspace").then((r) =>
+        r.ok ? (r.json() as Promise<Workspace>) : null,
+      );
+      if (cancelled || !snapshot) return snapshot;
+
+      // A brand new account has no departments at all. Seed it with the same
+      // eight heads and shipped skills a fresh browser would get, so signing in
+      // on a second device never lands on an empty org chart.
+      if (snapshot.departments.length === 0) {
+        const { id: _id, apiKey: _key, ...defaultSettings } = DEFAULT_SETTINGS;
+        const ops: MutationOp[] = [
+          { table: "departments", action: "upsert", rows: seedDepartments() },
+          { table: "skills", action: "upsert", rows: seedSkills() },
+          { table: "profile", action: "upsert", row: DEFAULT_PROFILE },
+          { table: "settings", action: "upsert", row: defaultSettings },
+        ];
+        await fetch("/api/workspace", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ops }),
+        });
+        return fetch("/api/workspace").then((r) =>
+          r.ok ? (r.json() as Promise<Workspace>) : snapshot,
+        );
+      }
+
+      return snapshot;
+    };
+
+    load()
+      .then((snapshot) => {
+        if (!cancelled && snapshot) setRemote(snapshot);
+      })
+      .catch(() => {
+        // Leaving remote null keeps the app in its loading state rather
+        // than showing an empty workspace that is not really empty.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hosted]);
 
   useEffect(() => {
+    // Seeding writes to IndexedDB, which a hosted browser never reads.
+    if (mode === "resolving" || hosted) return;
     let cancelled = false;
     ensureSeeded()
       .then(() => {
@@ -96,68 +198,77 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [mode, hosted]);
 
   const allDepartments = useLiveQuery(
-    async () => (db ? db.departments.orderBy("order").toArray() : []),
-    [seeded],
+    async () => (!db || hosted ? [] : db.departments.orderBy("order").toArray()),
+    [seeded, hosted],
     undefined,
   );
 
   const conversations = useLiveQuery(
     async () =>
-      db ? db.conversations.orderBy("updatedAt").reverse().toArray() : [],
-    [seeded],
+      !db || hosted ? [] : db.conversations.orderBy("updatedAt").reverse().toArray(),
+    [seeded, hosted],
     undefined,
   );
 
   const deliverables = useLiveQuery(
     async () =>
-      db ? db.deliverables.orderBy("updatedAt").reverse().toArray() : [],
-    [seeded],
+      !db || hosted ? [] : db.deliverables.orderBy("updatedAt").reverse().toArray(),
+    [seeded, hosted],
     undefined,
   );
 
   const skills = useLiveQuery(
-    async () => (db ? db.skills.orderBy("updatedAt").reverse().toArray() : []),
-    [seeded],
+    async () => (!db || hosted ? [] : db.skills.orderBy("updatedAt").reverse().toArray()),
+    [seeded, hosted],
     undefined,
   );
 
   const files = useLiveQuery(
-    async () => (db ? db.files.orderBy("updatedAt").reverse().toArray() : []),
-    [seeded],
+    async () => (!db || hosted ? [] : db.files.orderBy("updatedAt").reverse().toArray()),
+    [seeded, hosted],
     undefined,
   );
 
   const allHandsRuns = useLiveQuery(
-    async () => (db ? db.allHands.orderBy("updatedAt").reverse().toArray() : []),
-    [seeded],
+    async () => (!db || hosted ? [] : db.allHands.orderBy("updatedAt").reverse().toArray()),
+    [seeded, hosted],
     undefined,
   );
 
   const storedProfile = useLiveQuery(
-    async () => (db ? db.profile.get("profile") : undefined),
-    [seeded],
+    async () => (!db || hosted ? undefined : db.profile.get("profile")),
+    [seeded, hosted],
     undefined,
   );
 
   const storedSettings = useLiveQuery(
-    async () => (db ? db.settings.get("app") : undefined),
-    [seeded],
+    async () => (!db || hosted ? undefined : db.settings.get("app")),
+    [seeded, hosted],
     undefined,
   );
 
+  /**
+   * Reads come from whichever storage is in use. Hosted keeps its snapshot in
+   * state; local keeps the live Dexie queries. Everything below this line is
+   * written against these names and never has to know which one it got.
+   */
   const settings: Settings = useMemo(
-    () => ({ ...DEFAULT_SETTINGS, ...(storedSettings ?? {}) }),
-    [storedSettings],
+    () =>
+      hosted
+        ? { ...DEFAULT_SETTINGS, ...(remote?.settings ?? {}), apiKey: "" }
+        : { ...DEFAULT_SETTINGS, ...(storedSettings ?? {}) },
+    [hosted, remote?.settings, storedSettings],
   );
 
   const profile: CompanyProfile = useMemo(() => {
+    if (hosted) return remote?.profile ?? DEFAULT_PROFILE;
     if (!storedProfile) return DEFAULT_PROFILE;
     const { id: _id, ...rest } = storedProfile;
     return { ...DEFAULT_PROFILE, ...rest };
-  }, [storedProfile]);
+  }, [hosted, remote?.profile, storedProfile]);
 
   /**
    * The theme lives on <html>. It is also mirrored into localStorage, because
@@ -174,52 +285,220 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [settings.theme]);
 
-  const departmentList = allDepartments ?? [];
+  const departmentList = hosted ? (remote?.departments ?? []) : (allDepartments ?? []);
+  const conversationList = hosted ? (remote?.conversations ?? []) : (conversations ?? []);
+  const deliverableList = hosted ? (remote?.deliverables ?? []) : (deliverables ?? []);
+  const skillList = hosted ? (remote?.skills ?? []) : (skills ?? []);
+  const fileList = hosted ? (remote?.files ?? []) : (files ?? []);
+  const runList = hosted ? (remote?.allHandsRuns ?? []) : (allHandsRuns ?? []);
+
+  /**
+   * Sends one change to the account and applies it locally at once, so the
+   * interface never waits on a round trip. A failed write refetches rather than
+   * leaving the screen showing something the database refused.
+   */
+  const push = useCallback(
+    async (op: MutationOp) => {
+      setRemote((current) => (current ? applyOp(current, op) : current));
+      try {
+        const response = await fetch("/api/workspace", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ops: [op] }),
+        });
+        if (!response.ok) throw new Error(String(response.status));
+      } catch (error) {
+        console.error("[workspace] write failed, reloading", error);
+        const fresh = await fetch("/api/workspace")
+          .then((r) => (r.ok ? (r.json() as Promise<Workspace>) : null))
+          .catch(() => null);
+        if (fresh) setRemote(fresh);
+      }
+    },
+    [],
+  );
 
   const value = useMemo<StoreValue>(() => {
-    const conversationList = conversations ?? [];
-
     const requireDb = () => {
       if (!db) throw new Error("Database is only available in the browser.");
       return db;
     };
 
     return {
-      ready: seeded && allDepartments !== undefined,
+      ready: hosted ? remote !== null : seeded && allDepartments !== undefined,
+      storage: mode,
+      accountEmail: account,
       allDepartments: departmentList,
       departments: departmentList.filter((d) => !d.isCeo),
       ceo: departmentList.find((d) => d.isCeo) ?? departmentList.find((d) => d.id === CEO_ID),
       conversations: conversationList,
-      deliverables: deliverables ?? [],
-      allHandsRuns: allHandsRuns ?? [],
-      skills: skills ?? [],
-      files: files ?? [],
+      deliverables: deliverableList,
+      allHandsRuns: runList,
+      skills: skillList,
+      files: fileList,
       profile,
       settings,
 
       getDepartment: (id: string) => departmentList.find((d) => d.id === id),
 
-      skillsFor: (departmentId: string) => {
-        const all = skills ?? [];
-        return [
-          ...all.filter((skill) => skill.departmentId === COMPANY_ID),
-          ...all.filter((skill) => skill.departmentId === departmentId),
-        ];
-      },
+      skillsFor: (departmentId: string) => [
+        ...skillList.filter((skill) => skill.departmentId === COMPANY_ID),
+        ...skillList.filter((skill) => skill.departmentId === departmentId),
+      ],
 
       ownSkillsFor: (departmentId: string) =>
-        (skills ?? []).filter((skill) => skill.departmentId === departmentId),
+        skillList.filter((skill) => skill.departmentId === departmentId),
+
+      conversationsFor: (departmentId: string) =>
+        conversationList.filter((c) => c.departmentId === departmentId),
+
+      /* ---------------------------------------------------------------- *
+       * Writes
+       *
+       * Each one builds the finished row, then hands it to whichever storage
+       * is in use. Hosted mode needs the whole row rather than a patch, since
+       * the server upserts; local mode can keep using Dexie's partial update.
+       * ---------------------------------------------------------------- */
+
+      updateSettings: async (patch) => {
+        if (hosted) {
+          const { apiKey: _ignored, ...rest } = { ...patch } as Partial<Settings>;
+          await push({ table: "settings", action: "upsert", row: rest });
+          return;
+        }
+        await requireDb().settings.put({ ...settings, ...patch, id: "app" });
+      },
+
+      updateProfile: async (patch) => {
+        const next = { ...profile, ...patch };
+        if (hosted) {
+          await push({ table: "profile", action: "upsert", row: next });
+          return;
+        }
+        await requireDb().profile.put({ id: "profile", ...next });
+      },
+
+      createDepartment: async (input) => {
+        const maxOrder = departmentList.reduce((max, d) => Math.max(max, d.order), 0);
+        const department: Department = {
+          id: input.id ?? newId("dept"),
+          name: input.name?.trim() || "New Department",
+          emoji: input.emoji || "\u{1F3E2}",
+          personaName: input.personaName?.trim() || "",
+          persona: input.persona ?? "",
+          roleTitle:
+            input.roleTitle?.trim() || `Head of ${input.name?.trim() || "New Department"}`,
+          systemPrompt: input.systemPrompt ?? "",
+          status: input.status ?? "online",
+          order: input.order ?? maxOrder + 1,
+        };
+        if (hosted) await push({ table: "departments", action: "upsert", rows: [department] });
+        else await requireDb().departments.put(department);
+        return department;
+      },
+
+      updateDepartment: async (id, patch) => {
+        if (hosted) {
+          const current = departmentList.find((d) => d.id === id);
+          if (!current) return;
+          await push({ table: "departments", action: "upsert", rows: [{ ...current, ...patch }] });
+          return;
+        }
+        await requireDb().departments.update(id, patch);
+      },
+
+      deleteDepartment: async (id) => {
+        if (hosted) {
+          await push({ table: "departments", action: "delete", ids: [id] });
+          return;
+        }
+        const database = requireDb();
+        await database.transaction("rw", database.departments, database.conversations, async () => {
+          await database.departments.delete(id);
+          await database.conversations.where("departmentId").equals(id).delete();
+        });
+      },
+
+      createConversation: async (departmentId, title) => {
+        const now = Date.now();
+        const conversation: Conversation = {
+          id: newId("conv"),
+          departmentId,
+          title: title ?? "New conversation",
+          messages: [],
+          createdAt: now,
+          updatedAt: now,
+        };
+        if (hosted) await push({ table: "conversations", action: "upsert", rows: [conversation] });
+        else await requireDb().conversations.put(conversation);
+        return conversation;
+      },
+
+      updateConversation: async (id, patch) => {
+        if (hosted) {
+          const current = conversationList.find((c) => c.id === id);
+          if (!current) return;
+          await push({
+            table: "conversations",
+            action: "upsert",
+            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+          });
+          return;
+        }
+        await requireDb().conversations.update(id, { ...patch, updatedAt: Date.now() });
+      },
+
+      setMessages: async (id, messages) => {
+        if (hosted) {
+          const current = conversationList.find((c) => c.id === id);
+          if (!current) return;
+          await push({
+            table: "conversations",
+            action: "upsert",
+            rows: [{ ...current, messages, updatedAt: Date.now() }],
+          });
+          return;
+        }
+        await requireDb().conversations.update(id, { messages, updatedAt: Date.now() });
+      },
+
+      deleteConversation: async (id) => {
+        if (hosted) await push({ table: "conversations", action: "delete", ids: [id] });
+        else await requireDb().conversations.delete(id);
+      },
+
+      saveAllHandsRun: async (run) => {
+        if (hosted) await push({ table: "allHands", action: "upsert", rows: [run] });
+        else await requireDb().allHands.put(run);
+      },
+
+      deleteAllHandsRun: async (id) => {
+        if (hosted) await push({ table: "allHands", action: "delete", ids: [id] });
+        else await requireDb().allHands.delete(id);
+      },
 
       addFile: async (file) => {
-        await requireDb().files.put(file);
+        if (hosted) await push({ table: "files", action: "upsert", rows: [file] });
+        else await requireDb().files.put(file);
       },
 
       updateFile: async (id, patch) => {
+        if (hosted) {
+          const current = fileList.find((f) => f.id === id);
+          if (!current) return;
+          await push({
+            table: "files",
+            action: "upsert",
+            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+          });
+          return;
+        }
         await requireDb().files.update(id, { ...patch, updatedAt: Date.now() });
       },
 
       deleteFile: async (id) => {
-        await requireDb().files.delete(id);
+        if (hosted) await push({ table: "files", action: "delete", ids: [id] });
+        else await requireDb().files.delete(id);
       },
 
       createSkill: async (input) => {
@@ -234,103 +513,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           createdAt: now,
           updatedAt: now,
         };
-        await requireDb().skills.put(skill);
+        if (hosted) await push({ table: "skills", action: "upsert", rows: [skill] });
+        else await requireDb().skills.put(skill);
         return skill;
       },
 
       updateSkill: async (id, patch) => {
+        if (hosted) {
+          const current = skillList.find((sk) => sk.id === id);
+          if (!current) return;
+          await push({
+            table: "skills",
+            action: "upsert",
+            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+          });
+          return;
+        }
         await requireDb().skills.update(id, { ...patch, updatedAt: Date.now() });
       },
 
       deleteSkill: async (id) => {
-        await requireDb().skills.delete(id);
-      },
-
-      conversationsFor: (departmentId: string) =>
-        conversationList.filter((c) => c.departmentId === departmentId),
-
-      updateSettings: async (patch) => {
-        await requireDb().settings.put({ ...settings, ...patch, id: "app" });
-      },
-
-      updateProfile: async (patch) => {
-        await requireDb().profile.put({ id: "profile", ...profile, ...patch });
-      },
-
-      createDepartment: async (input) => {
-        const database = requireDb();
-        const maxOrder = departmentList.reduce((max, d) => Math.max(max, d.order), 0);
-        const department: Department = {
-          id: input.id ?? newId("dept"),
-          name: input.name?.trim() || "New Department",
-          emoji: input.emoji || "🏢",
-          personaName: input.personaName?.trim() || "",
-          persona: input.persona ?? "",
-          roleTitle: input.roleTitle?.trim() || `Head of ${input.name?.trim() || "New Department"}`,
-          systemPrompt: input.systemPrompt ?? "",
-          skillCount: input.skillCount ?? 0,
-          status: input.status ?? "online",
-          order: input.order ?? maxOrder + 1,
-        };
-        await database.departments.put(department);
-        return department;
-      },
-
-      updateDepartment: async (id, patch) => {
-        await requireDb().departments.update(id, patch);
-      },
-
-      deleteDepartment: async (id) => {
-        const database = requireDb();
-        await database.transaction(
-          "rw",
-          database.departments,
-          database.conversations,
-          async () => {
-            await database.departments.delete(id);
-            await database.conversations.where("departmentId").equals(id).delete();
-          },
-        );
-      },
-
-      createConversation: async (departmentId, title) => {
-        const now = Date.now();
-        const conversation: Conversation = {
-          id: newId("conv"),
-          departmentId,
-          title: title ?? "New conversation",
-          messages: [],
-          createdAt: now,
-          updatedAt: now,
-        };
-        await requireDb().conversations.put(conversation);
-        return conversation;
-      },
-
-      updateConversation: async (id, patch) => {
-        await requireDb().conversations.update(id, {
-          ...patch,
-          updatedAt: Date.now(),
-        });
-      },
-
-      setMessages: async (id, messages) => {
-        await requireDb().conversations.update(id, {
-          messages,
-          updatedAt: Date.now(),
-        });
-      },
-
-      deleteConversation: async (id) => {
-        await requireDb().conversations.delete(id);
-      },
-
-      saveAllHandsRun: async (run) => {
-        await requireDb().allHands.put(run);
-      },
-
-      deleteAllHandsRun: async (id) => {
-        await requireDb().allHands.delete(id);
+        if (hosted) await push({ table: "skills", action: "delete", ids: [id] });
+        else await requireDb().skills.delete(id);
       },
 
       createDeliverable: async (input) => {
@@ -345,30 +549,99 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           updatedAt: now,
           sourceConversationId: input.sourceConversationId,
         };
-        await requireDb().deliverables.put(deliverable);
+        if (hosted) await push({ table: "deliverables", action: "upsert", rows: [deliverable] });
+        else await requireDb().deliverables.put(deliverable);
         return deliverable;
       },
 
       updateDeliverable: async (id, patch) => {
-        await requireDb().deliverables.update(id, {
-          ...patch,
-          updatedAt: Date.now(),
-        });
+        if (hosted) {
+          const current = deliverableList.find((d) => d.id === id);
+          if (!current) return;
+          await push({
+            table: "deliverables",
+            action: "upsert",
+            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+          });
+          return;
+        }
+        await requireDb().deliverables.update(id, { ...patch, updatedAt: Date.now() });
       },
 
       deleteDeliverable: async (id) => {
-        await requireDb().deliverables.delete(id);
+        if (hosted) await push({ table: "deliverables", action: "delete", ids: [id] });
+        else await requireDb().deliverables.delete(id);
+      },
+
+      /**
+       * Moves everything in this browser into the signed-in account, in one
+       * batch. Existing rows with the same id are overwritten, so running it
+       * twice is safe and the second run is a no-op.
+       */
+      uploadLocalWorkspace: async () => {
+        if (!hosted || !db) return { pushed: 0 };
+
+        const [depts, convs, skls, dels, fls, runs, prof, sets] = await Promise.all([
+          db.departments.toArray(),
+          db.conversations.toArray(),
+          db.skills.toArray(),
+          db.deliverables.toArray(),
+          db.files.toArray(),
+          db.allHands.toArray(),
+          db.profile.get("profile"),
+          db.settings.get("app"),
+        ]);
+
+        const ops: MutationOp[] = [];
+        if (depts.length) ops.push({ table: "departments", action: "upsert", rows: depts });
+        if (skls.length) ops.push({ table: "skills", action: "upsert", rows: skls });
+        if (dels.length) ops.push({ table: "deliverables", action: "upsert", rows: dels });
+        if (fls.length) ops.push({ table: "files", action: "upsert", rows: fls });
+        if (runs.length) ops.push({ table: "allHands", action: "upsert", rows: runs });
+        // Conversations carry their messages and attachments, so they go last
+        // and in their own operation to keep any single request manageable.
+        if (convs.length) ops.push({ table: "conversations", action: "upsert", rows: convs });
+        if (prof) {
+          const { id: _id, ...rest } = prof;
+          ops.push({ table: "profile", action: "upsert", row: rest });
+        }
+        if (sets) {
+          const { id: _id, apiKey: _key, ...rest } = sets;
+          ops.push({ table: "settings", action: "upsert", row: rest });
+        }
+
+        if (ops.length === 0) return { pushed: 0 };
+
+        const response = await fetch("/api/workspace", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ops }),
+        });
+        if (!response.ok) throw new Error("The upload was refused.");
+
+        const fresh = await fetch("/api/workspace").then((r) => r.json() as Promise<Workspace>);
+        setRemote(fresh);
+
+        return {
+          pushed:
+            depts.length + convs.length + skls.length + dels.length + fls.length + runs.length,
+        };
       },
     };
   }, [
+    hosted,
+    mode,
+    account,
+    remote,
+    push,
     seeded,
     allDepartments,
     departmentList,
-    conversations,
-    deliverables,
-    allHandsRuns,
-    skills,
-    files,
+    conversationList,
+    deliverableList,
+    skillList,
+    fileList,
+    runList,
     profile,
     settings,
   ]);
