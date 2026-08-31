@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ALLOWED_EMAILS, auth, authEnabled, signIn } from "@/auth";
+import { auth, authEnabled, signIn } from "@/auth";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -53,7 +53,7 @@ export default async function SignInPage({
         {error ? (
           <p className="md-label mt-5 rounded-xl border border-error/30 bg-error-container/20 px-4 py-3 text-error">
             {error === "AccessDenied"
-              ? "That account is not on the allowlist for this workspace."
+              ? "That account is not approved for this workspace. If you are expecting access, ask whoever set it up to add you."
               : "Sign in did not complete. Try again."}
           </p>
         ) : null}
@@ -73,10 +73,11 @@ export default async function SignInPage({
           </button>
         </form>
 
+        {/* Neither the addresses nor how many there are. This page is public,
+            and naming the one account that can get in hands anyone who finds
+            the URL the exact address to aim a phishing attempt at. */}
         <p className="md-label-sm mt-6 text-on-variant/75">
-          {ALLOWED_EMAILS.length === 1
-            ? `Only ${ALLOWED_EMAILS[0]} can get in.`
-            : `${ALLOWED_EMAILS.length} accounts are allowed.`}
+          Access is limited to approved accounts.
         </p>
       </div>
     </div>
