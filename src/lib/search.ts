@@ -40,6 +40,7 @@ export interface SearchCorpus {
 }
 
 const PAGES: { title: string; subtitle: string; href: string }[] = [
+  { title: "Start here", subtitle: "How to use this and what not to do", href: "/onboarding" },
   { title: "Org Chart", subtitle: "Every head and how they report", href: "/" },
   { title: "CEO Office", subtitle: "Talk to Ruth", href: "/ceo" },
   { title: "All Hands", subtitle: "Ask the whole room at once", href: "/all-hands" },

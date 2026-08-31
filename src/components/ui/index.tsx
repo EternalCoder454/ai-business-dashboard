@@ -535,6 +535,12 @@ export function NavBadge({ count, label }: { count: number; label: string }) {
   );
 }
 
+export const BookIcon = icon(
+  <>
+    <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z" />
+    <path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H19v3H6.5" />
+  </>,
+);
 export const ShieldIcon = icon(
   <path d="M12 3.5 5 6v5.5c0 4 2.9 7.4 7 8.5 4.1-1.1 7-4.5 7-8.5V6z" />,
 );

@@ -11,6 +11,7 @@ import {
 } from "@/lib/search";
 import { useStore } from "@/lib/store";
 import {
+  BookIcon,
   BriefcaseIcon,
   BuildingIcon,
   CloseIcon,
@@ -224,6 +225,7 @@ function ResultIcon({ kind, href }: { kind: ResultKind; href: string }) {
 
   if (kind === "page") {
     const byHref: [string, ReactNode][] = [
+      ["/onboarding", <BookIcon key="onboarding" className={className} />],
       ["/ceo", <BriefcaseIcon key="ceo" className={className} />],
       ["/all-hands", <UsersIcon key="room" className={className} />],
       ["/messages", <MailIcon key="messages" className={className} />],

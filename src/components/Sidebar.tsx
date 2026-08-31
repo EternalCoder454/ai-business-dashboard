@@ -11,6 +11,7 @@ import { useStore } from "@/lib/store";
 import {
   BriefcaseIcon,
   BuildingIcon,
+  BookIcon,
   DocIcon,
   FolderIcon,
   GearIcon,
@@ -91,6 +92,12 @@ export const COMPANY_LINKS: NavLink[] = [
     label: "Settings",
     short: "Settings",
     icon: <GearIcon className="h-5 w-5" />,
+  },
+  {
+    href: "/onboarding",
+    label: "Start here",
+    short: "Start",
+    icon: <BookIcon className="h-5 w-5" />,
   },
 ];
 
