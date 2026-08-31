@@ -1,29 +1,31 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { OrgChart } from "@/components/OrgChart";
+import { Dashboard } from "@/components/Dashboard";
 import { Button, PageHeader, PlusIcon, UsersIcon } from "@/components/ui";
 import { conversationHref } from "@/lib/routes";
 import { CEO_ID } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 
-export default function OrgChartPage() {
+export default function DashboardPage() {
   const router = useRouter();
-  const { ready, createConversation, departments, settings } = useStore();
+  const { ready, createConversation, settings, memory } = useStore();
+
+  const live = memory.filter((entry) => !entry.archived).length;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader
-        eyebrow="Org chart"
+        eyebrow="Dashboard"
         title={settings.companyName}
         description={
-          // Counting before the workspace has loaded says "over 0 departments"
-          // for the length of one fetch, on the page most refreshes land on.
+          // Counting before the workspace has loaded reads as zero for the
+          // length of one fetch, on the page most refreshes land on.
           ready
-            ? `One CEO orchestrator over ${departments.length} department${
-                departments.length === 1 ? "" : "s"
-              }. Tap a head to open a workspace that already knows its domain.`
-            : "Tap a head to open a workspace that already knows its domain."
+            ? live > 0
+              ? `Working from ${live} recorded fact${live === 1 ? "" : "s"} about the business.`
+              : "Nothing recorded about the business yet, so every head is answering from the Company Profile alone."
+            : " "
         }
         actions={
           <>
@@ -41,13 +43,13 @@ export default function OrgChartPage() {
                 router.push(conversationHref(CEO_ID, conversation.id));
               }}
             >
-              Brief the CEO
+              New conversation
             </Button>
           </>
         }
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <OrgChart />
+        <Dashboard />
       </div>
     </div>
   );

@@ -19,7 +19,7 @@ import {
   FolderIcon,
   GearIcon,
   MailIcon,
-  OrgIcon,
+  DashboardIcon,
   PersonIcon,
   SparkIcon,
   UsersIcon,
@@ -237,7 +237,7 @@ function ResultIcon({ kind, href }: { kind: ResultKind; href: string }) {
       ["/account", <PersonIcon key="account" className={className} />],
       ["/settings", <GearIcon key="settings" className={className} />],
     ];
-    return <>{byHref.find(([path]) => href.startsWith(path))?.[1] ?? <OrgIcon className={className} />}</>;
+    return <>{byHref.find(([path]) => href.startsWith(path))?.[1] ?? <DashboardIcon className={className} />}</>;
   }
 
   const byKind: Record<Exclude<ResultKind, "page">, ReactNode> = {

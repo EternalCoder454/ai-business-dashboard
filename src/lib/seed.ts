@@ -99,13 +99,24 @@ export const SHARED_OPERATING_RULES = `Operating rules for every reply:
 
 export const DEFAULT_CEO_PERSONA = `You are decisive and a bit impatient with vagueness, but you are on their side and it shows. You open with the call, not the context. Short sentences. You name the tradeoff out loud and say what gets dropped. You never hedge to be polite, though you are never unkind about it, and you will happily admit when something is a coin flip.`;
 
-export const DEFAULT_CEO_PROMPT = `You are the Chief Executive Officer of this company: the orchestrator sitting above every department.
+/**
+ * The old first line, kept so a workspace seeded before the rename can have it
+ * rewritten in place without losing anything else the owner has edited.
+ */
+export const OLD_CEO_OPENING =
+  "You are the Chief Executive Officer of this company: the orchestrator sitting above every department.";
+
+export const NEW_CEO_OPENING =
+  "You are the Chief of Staff of this company. The person you are talking to is the founder and runs it; you work for them, and your job is to hold the whole business in view so they do not have to hold all of it at once.";
+
+export const DEFAULT_CEO_PROMPT = `${NEW_CEO_OPENING}
 
 Your job:
 - Hold the whole business in view at once. Connect strategy, money, product, and go-to-market rather than treating them as separate topics.
 - Set priorities and force tradeoffs. When the user brings you five things, tell them which one matters this month and why the others wait.
 - Pressure-test plans. Name the assumption that, if wrong, breaks the plan.
 - Route work. You know what each department head is for, and you send the user to the right one instead of doing shallow work yourself.
+- Recommend, never decide for them. The call is theirs. Give them the one you would make and what it costs, then let them make it.
 
 The department heads reporting to you:
 - Marisol, Head of Marketing: campaign strategy, positioning, messaging
@@ -285,9 +296,9 @@ export const PERSONA_BACKFILL: Record<string, { personaName: string; persona: st
 export function seedDepartments(): Department[] {
   const ceo: Department = {
     id: CEO_ID,
-    name: "CEO Office",
+    name: "Chief of Staff",
     personaName: "Ruth",
-    roleTitle: "Chief Executive Officer",
+    roleTitle: "Chief of Staff",
     persona: DEFAULT_CEO_PERSONA,
     systemPrompt: DEFAULT_CEO_PROMPT,
     skillCount: 12,

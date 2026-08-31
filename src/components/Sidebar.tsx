@@ -15,12 +15,12 @@ import {
   BuildingIcon,
   ChevronIcon,
   BookIcon,
+  DashboardIcon,
   DocIcon,
   FolderIcon,
   GearIcon,
   MailIcon,
   NavBadge,
-  OrgIcon,
   ShieldIcon,
   PersonIcon,
   PlusIcon,
@@ -43,15 +43,20 @@ export interface NavLink {
 export const WORK_LINKS: NavLink[] = [
   {
     href: "/ceo",
-    label: "CEO Office",
-    short: "CEO",
+    label: "Chief of Staff",
+    short: "Staff",
     icon: <BriefcaseIcon className="h-5 w-5" />,
   },
-  { href: "/", label: "Org Chart", short: "Org", icon: <OrgIcon className="h-5 w-5" /> },
+  {
+    href: "/",
+    label: "Dashboard",
+    short: "Home",
+    icon: <DashboardIcon className="h-5 w-5" />,
+  },
   {
     href: "/all-hands",
-    label: "All Hands",
-    short: "Room",
+    label: "Ask Everyone",
+    short: "Everyone",
     icon: <UsersIcon className="h-5 w-5" />,
   },
   {
@@ -106,8 +111,8 @@ export const SETUP_LINKS: NavLink[] = [
   },
   {
     href: "/onboarding",
-    label: "Start here",
-    short: "Start",
+    label: "Internal Wiki",
+    short: "Wiki",
     icon: <BookIcon className="h-5 w-5" />,
   },
 ];

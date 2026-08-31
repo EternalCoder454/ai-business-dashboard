@@ -22,8 +22,8 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icon", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
-      { name: "CEO Office", short_name: "CEO", url: "/ceo" },
-      { name: "All Hands", short_name: "Room", url: "/all-hands" },
+      { name: "Chief of Staff", short_name: "Staff", url: "/ceo" },
+      { name: "Ask Everyone", short_name: "Everyone", url: "/all-hands" },
       { name: "Deliverables", short_name: "Output", url: "/deliverables" },
     ],
   };

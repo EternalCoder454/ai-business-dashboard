@@ -32,6 +32,8 @@ import {
   DEFAULT_PROFILE,
   COACH_ID,
   DEFAULT_SETTINGS,
+  NEW_CEO_OPENING,
+  OLD_CEO_OPENING,
   WRITING_RULES,
   leadershipCoach,
   PROJECT_ACCENTS,
@@ -322,24 +324,47 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       /**
-       * Two prompt fixes that have to reach a workspace already carrying the
-       * old wording, since neither lives in code.
+       * Wording fixes that have to reach a workspace already carrying the old
+       * version, since none of it lives in code once seeded.
        *
-       * The scope line is rewritten in place rather than replacing the whole
-       * prompt, so anything else someone has edited survives. The writing
-       * rules are replaced only when untouched.
+       * Everything here is rewritten in place or matched exactly against what
+       * was shipped, so anything the owner has edited survives untouched.
        */
       {
         const ops: MutationOp[] = [];
 
-        const stale = snapshot.departments.filter((d) =>
-          d.systemPrompt.includes(OLD_SCOPE_PREFIX),
+        /**
+         * Ruth was seeded as the Chief Executive Officer, which is the person
+         * using this app rather than the head answering them. Renamed to Chief
+         * of Staff: the same seniority, doing the work on the founder's
+         * behalf. Only a department still carrying both shipped strings is
+         * touched, so a renamed one is left alone.
+         */
+        const rewriteCeo = (d: Department): Department => {
+          let next = d;
+          if (d.id === CEO_ID && d.name === "CEO Office" && d.roleTitle === "Chief Executive Officer") {
+            next = { ...next, name: "Chief of Staff", roleTitle: "Chief of Staff" };
+          }
+          if (d.systemPrompt.includes(OLD_CEO_OPENING)) {
+            next = {
+              ...next,
+              systemPrompt: next.systemPrompt.replace(OLD_CEO_OPENING, NEW_CEO_OPENING),
+            };
+          }
+          return next;
+        };
+
+        const stale = snapshot.departments.filter(
+          (d) =>
+            d.systemPrompt.includes(OLD_SCOPE_PREFIX) ||
+            d.systemPrompt.includes(OLD_CEO_OPENING) ||
+            (d.id === CEO_ID && d.name === "CEO Office"),
         );
         if (stale.length) {
           ops.push({
             table: "departments",
             action: "upsert",
-            rows: stale.map((d) => ({
+            rows: stale.map((d) => rewriteCeo({
               ...d,
               systemPrompt: d.systemPrompt.replace(OLD_SCOPE_PREFIX, NEW_SCOPE_PREFIX),
             })),

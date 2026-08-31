@@ -82,7 +82,7 @@ export default function InformationPage() {
     { label: "Conversations", value: conversations.filter((c) => c.messages.length > 0).length },
     { label: "Messages", value: conversations.reduce((n, c) => n + c.messages.length, 0) },
     { label: "Deliverables", value: deliverables.length },
-    { label: "All Hands rounds", value: allHandsRuns.reduce((n, r) => n + r.rounds.length, 0) },
+    { label: "Ask Everyone rounds", value: allHandsRuns.reduce((n, r) => n + r.rounds.length, 0) },
     { label: "Library files", value: files.length },
   ];
 
@@ -231,7 +231,7 @@ export default function InformationPage() {
                 href="/settings"
               />
               <Fact
-                label="All Hands reply length"
+                label="Ask Everyone reply length"
                 value={`${settings.roomBrevity === "standard" ? "140" : "60"} words each`}
                 href="/all-hands"
               />

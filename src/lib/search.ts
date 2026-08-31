@@ -41,10 +41,10 @@ export interface SearchCorpus {
 
 const PAGES: { title: string; subtitle: string; href: string }[] = [
   { title: "Inbox", subtitle: "Direct messages with colleagues", href: "/messages" },
-  { title: "Start here", subtitle: "How to use this and what not to do", href: "/onboarding" },
-  { title: "Org Chart", subtitle: "Every head and how they report", href: "/" },
-  { title: "CEO Office", subtitle: "Talk to Ruth", href: "/ceo" },
-  { title: "All Hands", subtitle: "Ask the whole room at once", href: "/all-hands" },
+  { title: "Internal Wiki", subtitle: "How this works and what not to do", href: "/onboarding" },
+  { title: "Dashboard", subtitle: "The numbers, what is open, and who to ask", href: "/" },
+  { title: "Chief of Staff", subtitle: "Talk to Ruth", href: "/ceo" },
+  { title: "Ask Everyone", subtitle: "Put one question to every head at once", href: "/all-hands" },
   { title: "Projects", subtitle: "Work grouped across departments", href: "/projects" },
   { title: "Library", subtitle: "Files, deliverables, and skills", href: "/library" },
   { title: "Skills", subtitle: "SKILL.md playbooks", href: "/library/skills" },
@@ -220,7 +220,7 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
         id: `room:${run.id}`,
         kind: "room",
         title: run.title,
-        subtitle: `All Hands · ${run.rounds.length} ${
+        subtitle: `Ask Everyone · ${run.rounds.length} ${
           run.rounds.length === 1 ? "question" : "questions"
         }`,
         snippet,
@@ -241,7 +241,7 @@ export const KIND_LABEL: Record<ResultKind, string> = {
   skill: "Skills",
   deliverable: "Deliverables",
   project: "Projects",
-  room: "All Hands",
+  room: "Ask Everyone",
 };
 
 /** Groups results for display while preserving the overall ranking. */

@@ -18,7 +18,7 @@ export default function OnboardingPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader
-        eyebrow="Start here"
+        eyebrow="Internal Wiki"
         title={`Working with ${company}`}
         description="10 minute read · Highly recommended"
       />
@@ -67,11 +67,11 @@ export default function OnboardingPage() {
           </Section>
 
           <Section title="The rest of the app">
-            <Definition term="CEO Office">
+            <Definition term="Chief of Staff">
               For decisions that cross departments, or when you do not know who to
               ask. Answers the executive layer and points you at the right department.
             </Definition>
-            <Definition term="All Hands">
+            <Definition term="Ask Everyone">
               One question to every department at once. Worth it for a genuinely
               company-wide question, wasteful otherwise, since it costs roughly
               eight replies instead of one.
@@ -119,7 +119,7 @@ export default function OnboardingPage() {
           <Section title="A note on cost">
             <p>
               Every reply is billed by length, on one shared account. Long rambling
-              threads cost more than short specific ones, and All Hands costs about
+              threads cost more than short specific ones, and Ask Everyone costs about
               eight times a single question. Keeping a conversation to one topic is
               cheaper and gets better answers, since nothing is sifting through three
               unrelated topics to find yours.

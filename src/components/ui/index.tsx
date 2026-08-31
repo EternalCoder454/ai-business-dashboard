@@ -455,12 +455,13 @@ function icon(path: ReactNode) {
 export const PlusIcon = icon(<path d="M12 5v14M5 12h14" />);
 export const CloseIcon = icon(<path d="M18 6 6 18M6 6l12 12" />);
 export const SendIcon = icon(<path d="M4.5 12h15m0 0-6-6m6 6-6 6" />);
-export const OrgIcon = icon(
+/** Panels, for the dashboard. The org chart it replaced is gone. */
+export const DashboardIcon = icon(
   <>
-    <rect x="9" y="3" width="6" height="5" rx="1.5" />
-    <rect x="3" y="16" width="6" height="5" rx="1.5" />
-    <rect x="15" y="16" width="6" height="5" rx="1.5" />
-    <path d="M12 8v4M6 16v-2h12v2" />
+    <rect x="3" y="3" width="7.5" height="8" rx="1.5" />
+    <rect x="13.5" y="3" width="7.5" height="5" rx="1.5" />
+    <rect x="3" y="14" width="7.5" height="7" rx="1.5" />
+    <rect x="13.5" y="11" width="7.5" height="10" rx="1.5" />
   </>,
 );
 export const BriefcaseIcon = icon(
