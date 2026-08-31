@@ -68,7 +68,11 @@ async function main() {
   check("ceo flag survives", Boolean(seeded.departments.find((d) => d.isCeo)));
   check("order preserved", seeded.departments[0]?.order === 0);
   check("persona text survives", (seeded.departments[1]?.persona.length ?? 0) > 20);
-  check("skills round trip", seeded.skills.length === 35, `${seeded.skills.length}`);
+  check(
+    "skills round trip",
+    seeded.skills.length === seedSkills().length,
+    `${seeded.skills.length} of ${seedSkills().length}`,
+  );
   check(
     "company wide skills present",
     seeded.skills.filter((s) => s.departmentId === "company").length === 2,

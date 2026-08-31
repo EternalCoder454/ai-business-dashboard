@@ -23,95 +23,10 @@ interface SeedSkill {
  */
 const HANDBOOK_SKILLS: SeedSkill[] = [
   /* ------------------------------------------------------------ CEO */
-  {
-    departmentId: CEO_ID,
-    name: "Which One This Month",
-    description:
-      "Use when the founder brings several things at once, or asks how to fit everything in.",
-    content: `Two people run three businesses. The scarce resource is attention, not information, and fragmenting it across too many live threads costs a large share of the useful hours. So the answer to five things is never a plan for five things.
-
-Give them:
-1. The one that matters this month, and why that one.
-2. What waits, named, so it is a decision rather than a thing being dropped quietly.
-3. What would tell them in three weeks that the call was wrong.
-
-Hold to three or four active pieces of work at once. Past that, adding work subtracts output.
-
-Two standing biases when you choose:
-
-**Frontier Assembly needs defending.** It is the long bet and the easiest thing to crowd out, because it never has a deadline and client work always does. If it has been squeezed for weeks, say so.
-
-**Client web work is scheduled revenue, not an interrupt.** It gets a defined window. Letting it expand to fill the week is how the game stops moving.`,
-  },
 
   /* ------------------------------------------------------ Marketing */
-  {
-    departmentId: "marketing",
-    name: "Wishlists Before Next Fest",
-    description:
-      "Use for Frontier Assembly launch planning, Steam page questions, or anything about Next Fest timing.",
-    content: `The wishlist is the funnel. Steam Next Fest multiplies what is already there; it does not create it.
-
-From a survey of 208 developers after February 2025's Next Fest, median new wishlists earned that week:
-
-- Entering under 1,000 wishlists: about 462, and none reached the top tier
-- Entering 10,000 to 99,999: about 6,360
-- Entering 100,000 or more: about 23,731
-
-The order that follows from that: store page, then playable demo, then an early wishlist push, and only then Next Fest. Entering cold wastes the single biggest event available.
-
-What a wishlist buys at launch is a personal notification on release day, which is reach no ad budget buys. Launch discounts conventionally run 10 to 20 per cent.
-
-Capsule art deserves disproportionate effort. Click-through on it is one of the very few funnel steps entirely inside the studio's control, so it is worth more attention than its size suggests. Noor owns the critique.`,
-  },
-  {
-    departmentId: "marketing",
-    name: "Mod Listing Discovery",
-    description:
-      "Use for Vandrix, any mod or modpack release, or questions about CurseForge and Modrinth reach.",
-    content: `Discovery happens on platforms the studio does not own, so listing quality is the whole lever.
-
-Every listing needs accurate version and loader tags (NeoForge 1.21.1 for Vandrix), real screenshots rather than renders, and a changelog kept genuinely current. Download velocity feeds each platform's own search ranking, so a listing that stalls keeps stalling.
-
-Modrinth has the cleaner API, so prefer it as the target if any of this gets automated later.
-
-Past the listing, growth is Discord-shaped rather than campaign-shaped: word of mouth inside servers, not paid reach. That part is Kai's.
-
-Do not propose an ad spend here. It is not how this line grows.`,
-  },
-  {
-    departmentId: "marketing",
-    name: "Ask For The Referral",
-    description:
-      "Use for client website work: pipeline, growth, marketing spend, or what to do at the end of a project.",
-    content: `This line runs on referrals, not campaigns. Around nine in ten freelance web designers name word of mouth their most-used channel, and roughly eight in ten their most effective, well ahead of social. Treat those as directional but act on the direction.
-
-The two highest-leverage pieces of marketing here are unglamorous:
-
-**A current portfolio site.** Fast, and actually showing recent work. It is the thing a referral checks before calling.
-
-**A deliberate ask at project close.** Not a hope that one appears. Write it into the handoff so it happens every time: name what you want (an intro to someone with a similar problem), make it easy to forward, and ask while the work is fresh and they are pleased.
-
-If asked about campaigns for this line, say plainly that the money is better spent on the portfolio and the ask.`,
-  },
 
   /* --------------------------------------------------- Social Media */
-  {
-    departmentId: "social",
-    name: "Devlog Cadence",
-    description:
-      "Use for Frontier Assembly content plans, short-form video, or the run-up to a game launch.",
-    content: `Short-form devlogs are the discovery engine, and they have to start 12 to 18 months before launch. Starting in the final stretch is the most common and least recoverable mistake.
-
-A cadence that survives contact with development:
-
-- Three to five short clips a week on TikTok and YouTube Shorts, built from bugs, satisfying mechanics, and small odd moments. Failure and jank perform; polish alone does not.
-- A longer YouTube devlog every couple of weeks, which is what converts a casual viewer into a Discord member and a wishlist.
-
-Bluesky is worth a presence for professional visibility and press since much of the gamedev community moved there, even though raw reach is smaller. Treat it as networking, not distribution.
-
-Write the actual script and the actual caption. A description of the kind of clip to make is not usable.`,
-  },
   {
     departmentId: "social",
     name: "Discord As An Operating System",
@@ -132,42 +47,8 @@ Discord listing sites are a modest but real discovery source and worth being on.
 
 Feed community chatter back as three piles: bugs for Jun, requests for the roadmap, and noise. Doing that triage is the job, not reading everything.`,
   },
-  {
-    departmentId: "social",
-    name: "When Social Is Not The Channel",
-    description:
-      "Use when asked to build a social strategy for the client website business.",
-    content: `Say plainly that social is not the growth engine for this line. Word of mouth already carries that job, and a content calendar for client web work is effort spent away from the thing that actually produces leads.
-
-Where social does help here is narrow and worth doing:
-
-- A before and after post of a finished client build
-- A short case study naming the problem and the result
-
-Both function as portfolio proof for someone already considering the studio, not as discovery. Frame them that way and keep the effort proportionate.
-
-If pushed for a full calendar for this line, push back once and explain the trade before writing one.`,
-  },
 
   /* --------------------------------------------------------- Design */
-  {
-    departmentId: "design",
-    name: "Game HUD Decisions",
-    description:
-      "Use for Frontier Assembly interface work: HUD, overlays, readability during combat.",
-    content: `The general design handbook covers the rest of the studio's UI. This is what it does not cover.
-
-Non-diegetic elements, floating over the screen, are the default and usually correct for a fast first-person shooter, because readability under pressure beats immersion.
-
-A hybrid is usually the better answer for a factory shooter specifically:
-
-- Critical combat data stays non-diegetic. Health and ammo have to be readable without looking for them.
-- Secondary information moves onto the wrist or the weapon model. Tool state, suit status, machine readouts. Immersive, and glanceable when there is time to glance.
-
-Let players reposition, resize, and toggle elements. A locked layout fails someone at a different distance from a different sized screen, and factory games are played for long sessions.
-
-Ask which state the player is in when they read a given element. That decides where it belongs more than taste does.`,
-  },
   {
     departmentId: "design",
     name: "Teaching Without Stopping Play",
@@ -223,31 +104,6 @@ Client website work is the exception. Those carry the client's identity, not the
   /* -------------------------------------------------------- Finance */
   {
     departmentId: "finance",
-    name: "UE5 Royalty Arithmetic",
-    description:
-      "Use for any Frontier Assembly revenue projection, pricing model, or question about what Epic takes.",
-    content: `Epic's terms, as fixed numbers:
-
-- 5 per cent of lifetime gross revenue above 1,000,000 dollars, per product
-- 3.5 per cent under Launch Everywhere, if the game releases on the Epic Games Store at or before other stores
-- No royalty in any calendar quarter where the product earns under 10,000 dollars
-- Revenue earned through the Epic Games Store itself never carries a royalty
-
-Worked examples:
-
-| Scenario | Owed |
-| --- | --- |
-| Lifetime under 1,000,000 | 0 |
-| 1,500,000 lifetime, standard | 5% of 500,000 = 25,000 |
-| 1,500,000 lifetime, Launch Everywhere | 3.5% of 500,000 = 17,500 |
-| A quarter under 10,000 | 0 for that quarter |
-
-The threshold is on revenue above the first million, not on the whole amount. Getting that wrong overstates the cost by a factor of three.
-
-Launch Everywhere is a commercial decision with a distribution cost, not free money. Say what it trades away before recommending it. The compliance side, including the reports owed even at zero, is Priya's.`,
-  },
-  {
-    departmentId: "finance",
     name: "Kickstarter Goal Sizing",
     description:
       "Use when crowdfunding comes up for the game, or when sizing a funding target.",
@@ -265,29 +121,6 @@ Do not run one without all four of these:
 Day one momentum decides the rest. A campaign that opens quiet stays quiet.
 
 Treat these figures as directional; they come from industry reporting rather than primary data. The shape of the advice holds regardless: size the goal to what the community can actually carry.`,
-  },
-  {
-    departmentId: "finance",
-    name: "Quoting Client Web Work",
-    description:
-      "Use for pricing a website build, writing a quote, or handling scope creep on a client project.",
-    content: `Market bands, directional and worth checking before a quote leans on them:
-
-- Hourly runs 30 to 200, with most experienced work at 50 to 100
-- A basic small-business site sits around 2,000 to 8,000
-- The realistic band for an established small-business client is 3,000 to 8,000
-- About 82 per cent of the industry prices by project rather than hourly
-
-Price by project, and then make scope discipline part of the price. A project quote without a scope boundary is an hourly job at a fixed fee.
-
-Every quote states:
-
-- What is included, as deliverables rather than activities
-- How many revision rounds are included, matching what the contract says, usually two or three
-- The hourly rate that applies past those rounds, named up front rather than negotiated later
-- The payment split, commonly 50/50 or milestones
-
-Scope creep is a finance problem before it is a legal one. The contract clauses are Priya's; the rate that makes them bite is yours.`,
   },
   {
     departmentId: "finance",
@@ -348,48 +181,6 @@ Check these before something goes public rather than after. Retrofitting a discl
   },
   {
     departmentId: "legal",
-    name: "Mod Licence Compatibility",
-    description:
-      "Use before forking a mod, using someone else's code, or picking a licence for studio code.",
-    content: `Forking is a licence question first, and the Minecraft case is unusual.
-
-Minecraft's own copyright is effectively all rights reserved. That makes plain **GPL incompatible with modding it**, because GPL requires everything linked to it to be open source too, and Minecraft cannot be. This surprises people and it is the most common serious mistake on this line.
-
-What works instead:
-
-- **LGPL-3.0.** The usual fix, and what most modding libraries use.
-- **A source's own linking exception.** Some GPL projects add one specifically for this.
-- **MIT.** Permissive, safe to build on inside an all-rights-reserved project like Codex.
-- **Apache-2.0.** Also permissive, additionally grants patent rights, and requires notice of changed files.
-
-Two rules that get missed:
-
-**Licence code and assets separately.** Textures, models, and sounds are not covered by the code licence and frequently have different terms.
-
-**Carry attribution forward.** Whatever the original licence requires travels with the code, including into a private project.
-
-When someone names a mod they want to fork, ask for its licence file before anything else.`,
-  },
-  {
-    departmentId: "legal",
-    name: "Client Contract Clauses",
-    description:
-      "Use when drafting, reviewing, or arguing about a client website contract.",
-    content: `Build from the AIGA Standard Form of Agreement and Andy Clarke's Contract Killer 3. Where they differ, AIGA is the higher-authority source, being attorney-drafted.
-
-The load-bearing clauses, and why each one is there:
-
-- **IP transfers only when payment clears in full**, not on delivery. Delivery-based transfer means a non-paying client owns the work.
-- **Third-party assets are licensed to the client, never owned.** Stock, fonts, premium plugins. The studio cannot transfer what it does not own.
-- **The studio keeps portfolio rights.** Without this, the best work cannot be shown, which costs referrals on a line that runs on them.
-- **Two to three revision rounds included; past that, hourly change orders at a named rate.** The rate has to be in the contract or it is unenforceable in practice.
-- **Payment 50/50 or milestones, with a stated late fee**, commonly 1.5 per cent a month.
-- **Liability capped at fees actually paid.** Uncapped liability on a 4,000 dollar site is an unacceptable trade.
-
-When reviewing a client's own contract, check for these by absence first.`,
-  },
-  {
-    departmentId: "legal",
     name: "UE5 Compliance Calendar",
     description:
       "Use for Frontier Assembly release planning or anything about obligations to Epic.",
@@ -409,38 +200,21 @@ Terms change. Before anything material leans on these, check the live EULA rathe
     name: "Studio Licence Posture",
     description:
       "Use when publishing a repository, choosing a licence, answering whether someone may use studio code, or handling a contribution.",
-    content: `The studio's default for its own code is **source-available, not open source**. Published so it can be read and audited, not so it can be reused.
+    content: `Three lines, three answers. Using one licence everywhere would either strangle the mods or give away the panel.
 
-Say "source-available" and never "open source". Open source has a definition, it requires the right to make derivative works and redistribute, and this deliberately withholds both. Calling it open source invites a correction the studio does not need.
+**Internal tools, the panel, Codex.** PolyForm Strict 1.0.0 plus a separate grant permitting a copy solely to prepare a contribution. Source-available, never called open source: that term requires the right to make derivative works and redistribute, and this withholds both. Strict permits noncommercial purposes only, which is right for a tool nobody else should run and wrong for anything a commercial user needs.
 
-**The standard stack**
+**Minecraft mods.** LGPL-3.0-or-later for code, all rights reserved for assets. The one line where control is deliberately given up: a mod that cannot be forked dies when the studio stops updating it. LGPL rather than MIT so a fork stays open; LGPL rather than GPL because Minecraft is effectively all rights reserved. Assets stay reserved and say so in their own file, so a fork continues the code without the studio's art, and the name is trademark rather than copyright so the LGPL does not license it either.
 
-- **PolyForm Strict 1.0.0** as the licence. Attorney-drafted and standardised, so it does not need defending the way a hand-written licence does. It grants everything except distributing the software or making changes and new works.
-- **A narrow contribution grant**, in a clearly separate section rather than edited into the licence text. PolyForm Strict alone would forbid contributing, because preparing a pull request means copying and editing. The grant permits copying and editing solely to prepare and submit a contribution, and ends when the contribution is merged, declined, or abandoned.
-- **Contribution terms in CONTRIBUTING.md**, granting the studio a perpetual, irrevocable, royalty-free licence to use and relicense the contribution, with the contributor keeping their copyright. Without this every accepted pull request leaves someone else holding rights inside an otherwise all-rights-reserved project.
+**Client websites.** The contract governs. IP transfers on payment in full. Nothing here applies.
 
-**Three things this cannot do, and say them plainly**
+**Frontier Assembly.** Not published. Epic's terms cover the engine.
 
-1. **It cannot stop forking on GitHub.** GitHub's Terms of Service grant every user a licence to reproduce a public repository by forking, through GitHub's functionality, whatever the LICENSE file says. What the licence governs is what may be done with that copy: reading and contributing yes, publishing, building on, or taking parts into other software no.
-2. **PolyForm Strict permits noncommercial purposes only.** There is no clause granting commercial use. For an internal tool that is fine and probably intended. For anything a commercial user needs to run, it is the wrong licence, and PolyForm Noncommercial or a bespoke commercial grant is the conversation instead.
-3. **It is worth what enforcing it is worth.** A licence is a basis for asking someone to stop, not a technical control. Two people will not litigate. Its real value is making the position unambiguous, which is usually enough.
+**Three things a licence cannot do, and say them plainly.** It cannot stop forking on GitHub, whose Terms of Service grant every user a licence to reproduce a public repository by forking whatever the LICENSE file says; what it governs is what may be done with that copy. It cannot make contributions safe on its own, which is why CONTRIBUTING.md grants the studio a licence to what is submitted. And it is worth what enforcing it is worth: two people will not litigate, so its value is making the position unambiguous.
 
-**It is not one licence across all three lines**
+**When someone asks to use studio code**, the answer differs by line. For the panel: reading is permitted, running is a licence question, building on it is a separate commercial conversation. For a mod: forking and continuing it needs no permission, while shipping it with the studio's art or under its name does. Point at the LGPL and ASSETS.md rather than negotiating.
 
-- **Internal tools and the panel.** Strict fits. Nobody else should be running them.
-- **Minecraft mods. LGPL-3.0-or-later for the code, all rights reserved for the assets.** The one line where the studio deliberately gives up control, and it is a decision rather than an oversight. A mod that cannot be forked dies when the studio stops updating it; every version bump orphans mods whose authors moved on, and the ones that survive are the ones somebody was allowed to pick up. LGPL rather than MIT because a fork then has to stay open, so it can be continued but not taken closed. LGPL rather than GPL because Minecraft is effectively all rights reserved and plain GPL would require everything linked to it to be open too. Assets stay reserved, so a fork continues the code without shipping the studio's art, and the name is trademark rather than copyright so it is not licensed either.
-- **Client websites.** A different regime entirely. The contract governs, IP transfers to the client on payment in full, and the studio's licence posture does not apply.
-- **Frontier Assembly.** Shipped as a binary. Not source-available at all, and Epic's terms govern the engine side.
-
-**When someone asks to use studio code**
-
-Ask what they actually want, because the answer is usually narrower than "the code", and the answer differs by line.
-
-For the panel and internal tools: reading it to check it is already permitted, running it is a licence question, and building on it is a no plus a conversation about a separate commercial licence rather than a change to the public one.
-
-For a mod: forking and continuing it is already permitted and needs no permission. Shipping it with the studio's art, or under the studio's name, is not. Point them at the LGPL and at ASSETS.md rather than negotiating.
-
-Anything with money attached goes to a licensed attorney before it is relied on.`,
+Check what the code links against before applying any of this. Linking copyleft means the combined work inherits those terms, and a restrictive licence over a work containing copyleft code is a violation rather than protection.`,
   },
 
   /* ----------------------------------------------------- Operations */
@@ -463,23 +237,6 @@ Anything with money attached goes to a licensed attorney before it is relied on.
 
 When someone reports lag, get the Spark profile before changing anything. Jun has the tuning order once you have it.`,
   },
-  {
-    departmentId: "operations",
-    name: "Scope Discipline On Client Work",
-    description:
-      "Use for client website projects: intake, revisions, handoff, or a project running long.",
-    content: `The operational risk on this line is scope creep, not tooling. Two people quietly working outside what was priced is how a profitable project becomes a loss.
-
-Three documents carry it:
-
-**A client intake SOP.** What is being built, for whom, by when, and explicitly what is not included. The exclusions matter more than the inclusions.
-
-**A revision-round tracker tied to what the contract actually promises.** Not a general sense of how many rounds have happened. Count them, and say out loud when the included rounds are used up, before the next one starts.
-
-**A handoff checklist at project close.** What the client receives, what they can edit themselves, what happens if something breaks, and the referral ask Marisol wants made while the work is fresh.
-
-When a request arrives mid-project, name whether it is inside scope, a revision round, or a change order, before discussing whether to do it. Answering the request first makes the boundary unarguable later.`,
-  },
 
   /* ---------------------------------------------------- Engineering */
   {
@@ -496,38 +253,6 @@ Format: keep JSON in development because being able to read a save is worth a lo
 The versioning question to ask early, because retrofitting it is painful: what happens to a save from the previous build? A factory game is played across months of updates, so a save that breaks on patch is a player lost permanently.
 
 In review, check that every saved field is something that cannot be recomputed. Most save bloat is recomputable state that someone stored because it was easier at the time.`,
-  },
-  {
-    departmentId: "engineering",
-    name: "UE5 Performance Method",
-    description:
-      "Use for frame rate problems, large-scene slowdowns, or optimisation questions in the game.",
-    content: `Optimisation in UE5 is highly contextual, so guessing is worse than useless: it burns time and hides the real cause.
-
-The method:
-
-1. **Profile with Unreal Insights first.** Always. A theory about what is slow is not a measurement.
-2. **Change one variable at a time.** Two changes and an improvement tells you nothing about which one to keep.
-3. **Measure again.**
-
-For large factory scenes specifically, the two things that bite are UObject counts and dynamic lighting. The standard fixes are World Partition and baked lighting wherever the scene allows it. That category of change is what let Satisfactory's own UE5 move improve large-factory performance meaningfully.
-
-Say plainly when a proposed optimisation is premature. A frame budget spent on something that was never the bottleneck is a frame budget spent twice.`,
-  },
-  {
-    departmentId: "engineering",
-    name: "NeoForge Conventions",
-    description:
-      "Use when scaffolding a mod, reviewing mod structure, or debugging registry and resource issues.",
-    content: `NeoForge 1.21.1 is the baseline. Follow NeoForged's documented structure rather than inventing one; most confusing registry and resource bugs come from breaking these.
-
-- \`neoforge.mods.toml\` metadata correct and complete
-- The mod's top-level Java package **matching its mod group ID**
-- The mod ID used consistently as both the registry namespace and the resource namespace
-
-That last one is the recurring cause of resources that silently fail to load: a mismatch between the namespace used to register and the namespace the files sit under. It does not error, it just does not appear.
-
-When something is not loading and nothing is logged, check the namespace before anything else.`,
   },
   {
     departmentId: "engineering",

@@ -38,6 +38,7 @@ import {
   seedDepartments,
 } from "./seed";
 import { handbookSkills } from "./handbookSkills";
+import { skillReconciliation } from "./shippedSkills";
 import {
   SHIPPED_COACH_PROMPTS,
   SHIPPED_WRITING_RULES,
@@ -279,26 +280,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       /**
-       * The coach arrives even in a workspace that was seeded before it
-       * existed, and only in the owner's. Checked on every load rather than
-       * once, because there is no migration step that runs in a browser.
-       */
-      /**
-       * Reconcile what this app ships against what the workspace already has.
+       * Reconcile the shipped skill library against what the workspace has.
        *
        * Runs on every load rather than only into an empty workspace, because
        * there is no migration step in a browser and the workspace exists
-       * already. Everything here is keyed by id and only ever adds, so a
-       * skill that has been edited or deleted stays that way.
+       * already. The rules are in `skillReconciliation`, which is where they
+       * can be tested.
        */
       {
-        const ops: MutationOp[] = [];
-        const owned = new Set(snapshot.skills.map((s) => s.id));
-        const newHandbook = handbookSkills().filter((s) => !owned.has(s.id));
-        if (newHandbook.length) {
-          ops.push({ table: "skills", action: "upsert", rows: newHandbook });
-        }
-
+        const ops = skillReconciliation(
+          snapshot.skills,
+          [...seedSkills(), ...handbookSkills()],
+          handbookSkills(),
+        );
         if (ops.length) {
           await fetch("/api/workspace", {
             method: "POST",

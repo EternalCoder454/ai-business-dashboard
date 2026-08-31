@@ -183,7 +183,7 @@ console.log("\na write immediately after a create can see it");
   {
     const hb = handbookSkills();
     const departments = new Set(seedDepartments().map((d) => d.id));
-    check("there are skills", hb.length >= 20, String(hb.length));
+    check("there are skills", hb.length >= 10, String(hb.length));
     check("ids are unique", new Set(hb.map((s) => s.id)).size === hb.length);
     check("ids are stable across runs",
       handbookSkills().map((s) => s.id).join() === hb.map((s) => s.id).join());
@@ -195,9 +195,15 @@ console.log("\na write immediately after a create can see it");
     check("none collides with a seeded skill id",
       !seedSkills().some((s) => hb.some((h) => h.id === s.id)));
 
-    const byDept = new Map<string, number>();
-    for (const s of hb) byDept.set(s.departmentId, (byDept.get(s.departmentId) ?? 0) + 1);
-    check("every department gained at least one", byDept.size >= 8, String(byDept.size));
+    // Coverage is a property of the whole library rather than of this file.
+    // Consolidation folded fourteen handbook skills into the seeded ones they
+    // duplicated, so a department can be fully covered and have nothing left
+    // here. What must stay true is that no head is left with no playbook.
+    const covered = new Set(
+      [...seedSkills(), ...hb].map((s) => s.departmentId),
+    );
+    const bare = [...departments].filter((id) => !covered.has(id));
+    check("every department has at least one skill", bare.length === 0, bare.join(","));
   }
 
 

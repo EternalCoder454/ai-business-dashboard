@@ -13,6 +13,8 @@
     "db:studio": "drizzle-kit studio",
     "smoke": "tsx --env-file=.env.local scripts/smoke.ts",
     "guard-test": "tsx scripts/guard-test.ts",
+    "skills-test": "tsx scripts/skills-test.ts",
+    "skills-fingerprint": "tsx scripts/shipped-skills.ts",
     "lint": "eslint .",
     "payload-check": "tsx --env-file=.env.local scripts/payload-check.ts",
     "messages-test": "tsx --env-file=.env.local scripts/messages-test.ts",
