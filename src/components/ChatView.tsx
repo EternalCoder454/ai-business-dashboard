@@ -335,7 +335,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="safe-top safe-x flex flex-none items-center gap-3 border-b border-outline-variant px-2 py-2 medium:gap-4 medium:px-6 medium:py-4 expanded:px-8">
+      <header className="safe-top safe-pt-3 medium:safe-pt-4 safe-x flex flex-none items-center gap-3 border-b border-outline-variant px-2 pb-3 medium:gap-4 medium:px-6 medium:pb-4 expanded:px-8">
         <button
           onClick={() => {
             if (window.history.length > 1) router.back();
@@ -387,7 +387,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             href={`/library/skills?dept=${encodeURIComponent(departmentId)}`}
             className="hidden medium:block"
           >
-            <Chip tone="primary" title="SKILL.md playbooks this head follows">
+            <Chip tone="primary" title="SKILL.md playbooks followed here">
               <SparkIcon className="h-3.5 w-3.5" />
               {skillsFor(departmentId).length} skills
             </Chip>

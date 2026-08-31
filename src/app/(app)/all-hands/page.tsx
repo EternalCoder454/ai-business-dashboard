@@ -154,7 +154,7 @@ export default function AllHandsPage() {
             ) : null}
           </div>
           <p className="md-label-sm truncate text-on-variant">
-            <span className="hidden medium:inline">{departments.length} heads · </span>
+            <span className="hidden medium:inline">{departments.length} departments · </span>
             {thread ? ` · ${thread.rounds.length} question${thread.rounds.length === 1 ? "" : "s"}` : ""}
             {usage && usage.output > 0
               ? ` · ${usage.output.toLocaleString()} tokens out${
@@ -430,7 +430,7 @@ export default function AllHandsPage() {
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <Chip
               selected={settings.roomBrevity !== "standard"}
-              title="Word budget each head gets. Tight is the point of a room: breadth here, depth in a one to one chat."
+              title="Words each reply gets. Tight is the point of a room: breadth here, depth in a one to one."
               onClick={() =>
                 void updateSettings({
                   roomBrevity: settings.roomBrevity === "standard" ? "tight" : "standard",

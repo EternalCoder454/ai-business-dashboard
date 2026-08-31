@@ -411,12 +411,23 @@ p.md-label-sm {
   height: calc(100dvh - var(--keyboard-inset, 0px));
 }
 
+/*
+ * Safe-area insets, added to whatever padding an element already has.
+ *
+ * These used to set padding outright, which meant a header written as
+ * `safe-top py-3` resolved to zero top padding on any device without a notch,
+ * and every header that sits at the top of the window sat flush against it.
+ * The variable defaults to zero, so an element that only wants the inset still
+ * gets exactly that.
+ */
 .safe-top {
-  padding-top: env(safe-area-inset-top, 0px);
+  --safe-pad-top: 0px;
+  padding-top: calc(var(--safe-pad-top) + env(safe-area-inset-top, 0px));
 }
 
 .safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-pad-bottom: 0px;
+  padding-bottom: calc(var(--safe-pad-bottom) + env(safe-area-inset-bottom, 0px));
 }
 
 .safe-left {
@@ -749,4 +760,13 @@ p.md-label-sm {
 .prose-md3 th {
   background: var(--md-container-high);
   font-weight: 600;
+}
+
+/* The padding a safe-area element wants before the inset is added. */
+.safe-pt-3 { --safe-pad-top: 0.75rem; }
+.safe-pb-3 { --safe-pad-bottom: 0.75rem; }
+
+@media (min-width: 600px) {
+  .medium\:safe-pt-4 { --safe-pad-top: 1rem; }
+  .medium\:safe-pb-4 { --safe-pad-bottom: 1rem; }
 }

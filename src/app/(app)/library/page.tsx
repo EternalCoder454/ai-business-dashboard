@@ -100,7 +100,6 @@ export default function LibraryPage() {
       <PageHeader
         eyebrow="Library"
         title="Files"
-        description="Anything a head can read: images, PDFs, Word documents, and plain text. Kept once here and attached to any conversation, rather than re-uploaded every time."
         actions={
           <Button
             icon={<PlusIcon className="h-4 w-4" />}
@@ -160,7 +159,7 @@ export default function LibraryPage() {
             <EmptyState
               icon={<span className="text-3xl">📁</span>}
               title={files.length === 0 ? "Nothing in the Library" : "Nothing of that kind"}
-              description="Drop files anywhere on this page. Images and PDFs are read directly by the heads; Word and text files are converted to text on the way in, because the API cannot read .docx itself."
+              description="Drop files anywhere on this page. Images and PDFs are read directly; Word and text files are converted on the way in."
               action={
                 <Button onClick={() => inputRef.current?.click()}>Add files</Button>
               }
@@ -271,7 +270,7 @@ export default function LibraryPage() {
       >
         {preview ? (
           <div className="space-y-4">
-            <Field label="Note" hint="Only for you. It is not sent to the heads.">
+            <Field label="Note" hint="Only for you. Never sent.">
               <TextInput
                 value={preview.note ?? ""}
                 placeholder="What this is, or which client it belongs to"

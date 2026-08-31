@@ -92,7 +92,6 @@ export default function InformationPage() {
       <PageHeader
         eyebrow="Information"
         title="Current systems"
-        description="What each head actually receives on every request, what it costs, and where the data lives. Nothing here is editable; it is the state of the machine."
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 medium:px-6 expanded:px-8">
@@ -157,7 +156,7 @@ export default function InformationPage() {
 
           {/* ------------------------------------------------ anatomy */}
           <Card>
-            <h2 className="md-title-lg mb-1">What each head receives</h2>
+            <h2 className="md-title-lg mb-1">What each department receives</h2>
             <p className="md-body mb-4 text-on-variant">
               The system prompt is assembled in the same order every time, so the whole
               thing sits inside the cached prefix. Writing rules go last, which is why they
@@ -212,7 +211,7 @@ export default function InformationPage() {
 
           {/* ------------------------------------------------ shared context */}
           <Card>
-            <h2 className="md-title-lg mb-1">Shared across every head</h2>
+            <h2 className="md-title-lg mb-1">Shared across every department</h2>
             <dl className="mt-3 grid gap-3 medium:grid-cols-2">
               <Fact
                 label="Company Profile"

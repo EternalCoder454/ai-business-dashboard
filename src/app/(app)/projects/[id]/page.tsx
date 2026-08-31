@@ -83,7 +83,7 @@ export default function ProjectPage() {
           <EmptyState
             icon={PROJECT_DEFAULT_ICON}
             title="This project is gone"
-            description="It was deleted, or the link points at something that never existed here. Any work it held is untouched and still sits with its department."
+            description="Anything it held is untouched and still sits with its department."
             action={<Button onClick={() => router.push("/projects")}>Back to projects</Button>}
           />
         </div>
@@ -143,7 +143,7 @@ export default function ProjectPage() {
             <EmptyState
               icon={PROJECT_DEFAULT_ICON}
               title="Nothing filed here yet"
-              description="Open any conversation and use the project chip above the composer to file it here. Deliverables and Library files can be filed the same way."
+              description="Use the project chip in a conversation header to file it here."
             />
           ) : null}
 

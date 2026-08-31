@@ -97,6 +97,12 @@ export interface Department {
   name: string;
   /** A data URL when one has been uploaded; initials stand in until then. */
   avatarUrl?: string;
+  /**
+   * Yours rather than the company's. A personal workspace sits outside the org
+   * chart and stays out of All Hands, since asking a coach for a campaign plan
+   * is not a question anyone means to ask.
+   */
+  personal?: boolean;
   /** The head's first name, how the user addresses them. */
   personaName: string;
   roleTitle: string;

@@ -72,7 +72,7 @@ function SkillsView() {
   const departmentOf = (id: string) => allDepartments.find((d) => d.id === id);
   const ownerLabel = (id: string) =>
     id === COMPANY_ID
-      ? "Every head"
+      ? "Every department"
       : departmentOf(id)?.personaName || departmentOf(id)?.name || "Unassigned";
   const countFor = (id: string) => skills.filter((s) => s.departmentId === id).length;
 
@@ -138,7 +138,6 @@ function SkillsView() {
       <PageHeader
         eyebrow="Library"
         title="Skills"
-        description="Each skill is a SKILL.md file: a name, a line saying when to use it, and a markdown body. Enabled skills are injected into that head's system prompt, so they change how the work gets done rather than just what the head knows."
         actions={
           <>
             <Button variant="outlined" onClick={() => fileRef.current?.click()}>
@@ -171,7 +170,7 @@ function SkillsView() {
         </Chip>
         <Chip
           selected={filter === COMPANY_ID}
-          title="Injected into every head's prompt"
+          title="Injected into every prompt"
           onClick={() => setFilter(COMPANY_ID)}
         >
           🏢 Company · {countFor(COMPANY_ID)}
@@ -210,7 +209,7 @@ function SkillsView() {
             <EmptyState
               icon={<SparkIcon className="h-8 w-8" />}
               title="No skills here yet"
-              description="A skill is worth writing when you have corrected the same head the same way twice. Put the correction in a skill and it stops happening."
+              description="Worth writing when you have corrected the same department the same way twice."
               action={
                 <Button
                   onClick={() =>
@@ -251,7 +250,7 @@ function SkillsView() {
                             )}
                             <h2 className="md-title truncate">{skill.name}</h2>
                             {skill.departmentId === COMPANY_ID ? (
-                              <Chip tone="primary">Every head</Chip>
+                              <Chip tone="primary">Every department</Chip>
                             ) : null}
                             {!skill.enabled ? <Chip>Disabled</Chip> : null}
                           </div>
@@ -331,7 +330,7 @@ function SkillsView() {
         {draft ? (
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Name" hint="How the head refers to it when they use it.">
+              <Field label="Name" hint="How it is referred to when used.">
                 <TextInput
                   value={draft.name ?? ""}
                   autoFocus
@@ -363,7 +362,7 @@ function SkillsView() {
 
             <Field
               label="When to use"
-              hint="This is the line the head matches a request against, so write it as a trigger, not a summary."
+              hint="The line a request is matched against, so write a trigger rather than a summary."
             >
               <TextInput
                 value={draft.description ?? ""}

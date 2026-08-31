@@ -111,7 +111,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                 onClose();
               }
             }}
-            placeholder="Search heads, conversations, skills, deliverables…"
+            placeholder="Search departments, conversations, skills, deliverables…"
             aria-label="Search"
             className="md-body h-14 w-full bg-transparent text-on-surface placeholder:text-on-variant/70 focus:outline-none"
           />

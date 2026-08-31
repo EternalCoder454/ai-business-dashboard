@@ -148,6 +148,7 @@ export function SidebarContent({
     updateSettings,
     createConversation,
     isAdmin,
+    personalDepartments,
   } = useStore();
   const { unread } = useMessages();
 
@@ -289,6 +290,29 @@ export function SidebarContent({
             </li>
           ))}
         </ul>
+
+        {personalDepartments.length ? (
+          <>
+            <SectionLabel>Yours</SectionLabel>
+            <ul className="mb-5 space-y-0.5">
+              {personalDepartments.map((department) => (
+                <li key={department.id}>
+                  <NavRow
+                    href={departmentHref(department)}
+                    active={activeDepartmentId === department.id}
+                    onNavigate={onNavigate}
+                  >
+                    <DepartmentAvatar department={department} size={20} />
+                    <span className="md-body min-w-0 flex-1 truncate">
+                      {department.personaName || department.name}
+                    </span>
+                    <StatusDot status={department.status} />
+                  </NavRow>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
 
         <SectionLabel>Recent Conversations</SectionLabel>
         {recent.length === 0 ? (

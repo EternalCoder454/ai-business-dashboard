@@ -30,6 +30,7 @@ export const departments = pgTable(
     userEmail: owner(),
     name: text("name").notNull(),
     avatarUrl: text("avatar_url"),
+    personal: boolean("personal").notNull().default(false),
     personaName: text("persona_name").notNull().default(""),
     roleTitle: text("role_title").notNull(),
     persona: text("persona").notNull().default(""),

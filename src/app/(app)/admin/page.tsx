@@ -169,7 +169,7 @@ export default function AdminPage() {
           <EmptyState
             icon={<PersonIcon className="h-8 w-8" />}
             title="Not available on this account"
-            description="The admin panel needs the hosted workspace and an administrator address, set as ADMIN_EMAILS on the server."
+            description="Needs the hosted workspace and an address listed in ADMIN_EMAILS."
           />
         </div>
       </div>
@@ -181,10 +181,9 @@ export default function AdminPage() {
       <PageHeader
         eyebrow="Oversight"
         title="Admin"
-        description="Everyone on this workspace, what they have produced, and what it cost. Direct messages between people are not included."
       />
 
-      <div className="flex flex-none gap-2 border-b border-outline-variant page-x pb-3">
+      <div className="flex flex-none items-center gap-2 border-b border-outline-variant page-x py-3">
         {(["overview", "people", "access"] as Tab[]).map((key) => (
           <Chip
             key={key}
@@ -350,7 +349,7 @@ function PeopleTable({
       <EmptyState
         icon={<PersonIcon className="h-8 w-8" />}
         title="Nobody else yet"
-        description="Add an address to ALLOWED_EMAILS and they appear here once they sign in."
+        description="Add an address to ALLOWED_EMAILS and they appear once they sign in."
       />
     );
   }
@@ -449,7 +448,10 @@ function PersonDetail({
           {thread.messages.map((message) => (
             <Card key={message.id} elevated={false}>
               <p className="md-label-sm mb-1.5 text-on-variant">
-                {message.role === "user" ? person.displayName || "Them" : "The head"} ·{" "}
+                {message.role === "user"
+                  ? person.displayName || "Them"
+                  : departments[thread.departmentId] ?? "Reply"}{" "}
+                ·{" "}
                 {formatRelativeTime(message.timestamp)}
                 {message.usage ? ` · ${compact(message.usage.output)} out` : ""}
                 {message.attachments?.length ? ` · ${message.attachments[0].name}` : ""}

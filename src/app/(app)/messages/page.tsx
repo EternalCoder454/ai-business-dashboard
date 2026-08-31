@@ -71,7 +71,7 @@ export default function MessagesPage() {
           <EmptyState
             icon="✉️"
             title="The inbox needs the hosted workspace"
-            description="Unlike everything else here, a message belongs to two people, so it cannot live in one browser. Sign in on a deployment with a database and this fills in."
+            description="A message belongs to two people, so it cannot live in one browser."
           />
         </div>
       </div>
@@ -84,7 +84,6 @@ export default function MessagesPage() {
         <PageHeader
           eyebrow="People"
           title="Inbox"
-          description="Person to person, separate from the department heads. Everyone on this workspace's allowlist is reachable here."
         />
       </div>
 
@@ -104,7 +103,7 @@ export default function MessagesPage() {
               <EmptyState
                 icon="👤"
                 title="Nobody else yet"
-                description="Only addresses on the allowlist can be written to. Add one to ALLOWED_EMAILS and they appear here as soon as it deploys."
+                description="Add an address to ALLOWED_EMAILS and they appear here."
               />
             </div>
           ) : (
@@ -249,7 +248,7 @@ function Thread({
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
-      <header className="safe-top flex flex-none items-center gap-3 border-b border-outline-variant px-2 py-2 medium:px-6 medium:py-4 expanded:px-6">
+      <header className="safe-top safe-pt-3 medium:safe-pt-4 flex flex-none items-center gap-3 border-b border-outline-variant px-2 pb-3 medium:px-6 medium:pb-4 expanded:px-6">
         <button
           type="button"
           onClick={onBack}

@@ -84,7 +84,6 @@ export default function AccountPage() {
       <PageHeader
         eyebrow="You"
         title="Account"
-        description="Who the heads are talking to. This is separate from the Company Profile, which describes the business rather than the person running it."
         actions={saved ? <Chip tone="success">Saved</Chip> : null}
       />
 
@@ -136,7 +135,7 @@ export default function AccountPage() {
 
           {/* ------------------------------------------------ how you are addressed */}
           <Card>
-            <h2 className="md-title-lg mb-1">How the heads address you</h2>
+            <h2 className="md-title-lg mb-1">How you are addressed</h2>
             <p className="md-body mb-5 text-on-variant">
               This goes into every head&apos;s prompt. Without it they have nothing to call
               you and default to writing about &ldquo;the user&rdquo;.
@@ -151,7 +150,7 @@ export default function AccountPage() {
                 />
               </Field>
 
-              <Field label="Your role" hint="So a head knows who is asking.">
+              <Field label="Your role" hint="So they know who is asking.">
                 <TextInput
                   value={local.roleTitle}
                   placeholder="Founder"
@@ -161,7 +160,7 @@ export default function AccountPage() {
 
               <Field
                 label="Pronouns"
-                hint="Optional, and used exactly as written. Left blank, the heads avoid pronouns rather than guessing."
+                hint="Optional, used exactly as written. Left blank, pronouns are avoided rather than guessed."
               >
                 <TextInput
                   value={local.pronouns}
@@ -172,7 +171,7 @@ export default function AccountPage() {
 
               <Field
                 label="Timezone"
-                hint="Gives the heads today's date, so a deadline means something."
+                hint="Supplies today's date, so a deadline means something."
               >
                 <Select
                   value={local.timezone}
@@ -206,9 +205,8 @@ export default function AccountPage() {
             <Card elevated={false}>
               <h2 className="md-label-sm mb-2 text-on-variant">Who can see this</h2>
               <p className="md-body text-on-variant">
-                Conversations with department heads are company records on a
-                company tool, and an administrator can review them. Direct
-                messages between people are not included.
+                These conversations are company records, and an administrator can review
+                them. Direct messages between people are not.
               </p>
             </Card>
           ) : null}

@@ -50,6 +50,13 @@
       "when": 1788186802050,
       "tag": "0006_wise_micromax",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788195936355,
+      "tag": "0007_puzzling_black_queen",
+      "breakpoints": true
     }
   ]
 }

@@ -30,7 +30,9 @@ import {
   COMPANY_ID,
   DEFAULT_ACCOUNT,
   DEFAULT_PROFILE,
+  COACH_ID,
   DEFAULT_SETTINGS,
+  leadershipCoach,
   PROJECT_ACCENTS,
   seedDepartments,
 } from "./seed";
@@ -67,6 +69,8 @@ interface StoreValue {
   uploadLocalWorkspace: () => Promise<{ pushed: number }>;
   /** Department heads only. The CEO is excluded. */
   departments: Department[];
+  /** Yours alone: outside the org chart and out of All Hands. */
+  personalDepartments: Department[];
   /** Every department including the CEO, for lookups. */
   allDepartments: Department[];
   ceo: Department | undefined;
@@ -155,6 +159,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // for one that would be ignored anyway.
   const [serverKey, setServerKey] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const [remote, setRemote] = useState<Workspace | null>(null);
 
   /**
@@ -203,6 +208,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
         setServerKey(Boolean(status?.serverKey));
         setIsAdmin(Boolean(status?.isAdmin));
+        setIsOwner(Boolean(status?.isOwner));
         setMode(status?.hosted && status.signedIn ? "hosted" : "local");
       })
       .catch(() => {
@@ -248,6 +254,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         );
       }
 
+      /**
+       * The coach arrives even in a workspace that was seeded before it
+       * existed, and only in the owner's. Checked on every load rather than
+       * once, because there is no migration step that runs in a browser.
+       */
+      if (isOwner && !snapshot.departments.some((d) => d.id === COACH_ID)) {
+        const order = snapshot.departments.reduce((max, d) => Math.max(max, d.order), 0) + 1;
+        await fetch("/api/workspace", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ops: [
+              { table: "departments", action: "upsert", rows: [leadershipCoach(order)] },
+            ],
+          }),
+        });
+        return fetch("/api/workspace").then((r) =>
+          r.ok ? (r.json() as Promise<Workspace>) : snapshot,
+        );
+      }
+
       return snapshot;
     };
 
@@ -262,7 +289,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [hosted, commitRemote]);
+  }, [hosted, isOwner, commitRemote]);
 
   useEffect(() => {
     // Seeding writes to IndexedDB, which a hosted browser never reads.
@@ -490,7 +517,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       serverKey,
       isAdmin,
       allDepartments: departmentList,
-      departments: departmentList.filter((d) => !d.isCeo),
+      departments: departmentList.filter((d) => !d.isCeo && !d.personal),
+      personalDepartments: departmentList.filter((d) => d.personal),
       ceo: departmentList.find((d) => d.isCeo) ?? departmentList.find((d) => d.id === CEO_ID),
       conversations: conversationList,
       deliverables: deliverableList,

@@ -219,7 +219,7 @@ function SupportingPane() {
     const bare = departments.filter((d) => !skills.some((s) => s.departmentId === d.id));
     if (bare.length > 0) {
       items.push({
-        label: `${bare.length} ${bare.length === 1 ? "head has" : "heads have"} no skills`,
+        label: `${bare.length} ${bare.length === 1 ? "department has" : "departments have"} no skills`,
         href: "/library/skills",
       });
     }

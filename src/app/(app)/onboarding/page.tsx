@@ -27,10 +27,9 @@ export default function OnboardingPage() {
         <div className="measure-read flex flex-col gap-5">
           <Section title="What this is">
             <p>
-              A set of department heads you can talk to. Each one is an AI given a
-              single job, a memory of its own, and the company&apos;s context, so it
-              answers as a colleague who already knows where they work rather than
-              as a general assistant you have to brief from scratch.
+              One AI per department, each with a single job, its own memory, and the
+              company&apos;s context, so it answers as a colleague who already knows
+              where they work rather than an assistant you brief from scratch.
             </p>
             <p>
               {ceo?.personaName ? `${ceo.personaName} sits above them` : "A CEO sits above them"}
@@ -45,11 +44,10 @@ export default function OnboardingPage() {
           </Section>
 
           <Section title="Getting something useful out of it">
-            <Step n={1} title="Pick the head whose job it is">
-              Ask the person who owns the area. A pricing question goes to Finance, a
-              landing page to Marketing. Asking the wrong head gets you a redirect
-              rather than a bad answer, which is the system working, but it costs you
-              a round trip.
+            <Step n={1} title="Pick whose job it is">
+              Ask whoever owns the area. Pricing goes to Finance, a landing page to
+              Marketing. Asking the wrong one gets you a redirect rather than a bad
+              answer, which is the system working, but it costs a round trip.
             </Step>
             <Step n={2} title="Ask for the thing, not for advice about the thing">
               &ldquo;Write the three subject lines&rdquo; beats &ldquo;how should I
@@ -71,23 +69,23 @@ export default function OnboardingPage() {
           <Section title="The rest of the app">
             <Definition term="CEO Office">
               For decisions that cross departments, or when you do not know who to
-              ask. Answers the executive layer and sends you to the right head.
+              ask. Answers the executive layer and points you at the right department.
             </Definition>
             <Definition term="All Hands">
-              Puts one question to every head at once. Useful for a genuinely
-              company-wide question, wasteful for anything else, since it costs
-              roughly eight replies instead of one.
+              One question to every department at once. Worth it for a genuinely
+              company-wide question, wasteful otherwise, since it costs roughly
+              eight replies instead of one.
             </Definition>
             <Definition term="Projects">
               Groups conversations, deliverables, and files that belong to the same
               piece of work, wherever in the company they happened.
             </Definition>
             <Definition term="Library">
-              Files you have uploaded, deliverables worth keeping, and the skills
-              each head follows.
+              Files you have uploaded, deliverables worth keeping, and the skills each
+              department follows.
             </Definition>
-            <Definition term="Messages">
-              People, not heads. Ordinary direct messages with colleagues.
+            <Definition term="Inbox">
+              People rather than departments. Ordinary direct messages with colleagues.
             </Definition>
           </Section>
 
@@ -108,9 +106,9 @@ export default function OnboardingPage() {
               the right question. Not advice, and not a substitute for either.
             </Rule>
             <Rule title="Do not assume this is private">
-              Conversations with department heads are company records on a company
-              tool, and an administrator can review them. Direct messages between
-              people are not readable that way.
+              These conversations are company records on a company tool, and an
+              administrator can review them. Direct messages between people are
+              not.
             </Rule>
             <Rule title="Do not publish anything unread">
               Nothing here should go out under your name, or the company&apos;s,
@@ -123,16 +121,16 @@ export default function OnboardingPage() {
               Every reply is billed by length, on one shared account. Long rambling
               threads cost more than short specific ones, and All Hands costs about
               eight times a single question. Keeping a conversation to one topic is
-              cheaper and gets better answers, because the head is not sifting
-              through three unrelated ones to find yours.
+              cheaper and gets better answers, since nothing is sifting through three
+              unrelated topics to find yours.
             </p>
           </Section>
 
           <Card>
             <h2 className="md-title-lg mb-2">Ready</h2>
             <p className="md-body mb-4 text-on-variant">
-              Fill in your name on the Account page first, so the heads know who they
-              are talking to. Then pick someone and ask them something real.
+              Fill in your name on the Account page first, so they know who they are
+              talking to. Then pick someone and ask something real.
             </p>
             <div className="flex flex-wrap gap-2">
               <Link href="/account">

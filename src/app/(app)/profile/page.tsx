@@ -83,7 +83,6 @@ export default function CompanyProfilePage() {
       <PageHeader
         eyebrow="Shared context"
         title="Company Profile"
-        description="This document is injected into every department's system prompt, so Marketing, Finance, and Engineering all work from the same facts. Changes save automatically."
         actions={
           savedAt ? (
             <span className="md-label flex items-center gap-1.5 text-success">

@@ -1,0 +1,1 @@
+ALTER TABLE "departments" ADD COLUMN "personal" boolean DEFAULT false NOT NULL;

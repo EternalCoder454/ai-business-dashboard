@@ -83,7 +83,6 @@ export default function DeliverablesPage() {
       <PageHeader
         eyebrow="Library"
         title="Deliverables"
-        description="Everything the departments have produced, in one board. Save any reply straight from a chat with the bookmark button."
         actions={
           <Button icon={<PlusIcon className="h-4 w-4" />} onClick={openNew}>
             New deliverable
@@ -119,7 +118,7 @@ export default function DeliverablesPage() {
           <EmptyState
             icon={<DocIcon className="h-8 w-8" />}
             title="Nothing captured yet"
-            description="Ask a department for something concrete: a campaign brief, a pricing model, an SOP. Then hit “Save as deliverable” on the reply."
+            description="Save any reply worth keeping straight from a chat with the bookmark button."
             action={<Button onClick={openNew}>Add one manually</Button>}
           />
         ) : (

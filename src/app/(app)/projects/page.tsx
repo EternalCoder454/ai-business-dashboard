@@ -83,7 +83,6 @@ export default function ProjectsPage() {
       <PageHeader
         eyebrow="Work"
         title="Projects"
-        description="A project cuts across the org chart. Departments own the heads; a project owns the work, wherever in the company it was done."
         actions={
           <Button icon={<PlusIcon className="h-4 w-4" />} onClick={() => setDialogOpen(true)}>
             New project

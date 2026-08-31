@@ -201,6 +201,8 @@ export interface WorkspaceStatus {
   serverKey?: boolean;
   /** Whether this account may review other people's conversations. */
   isAdmin?: boolean;
+  /** The single account the workspace belongs to. */
+  isOwner?: boolean;
   email?: string;
   name?: string;
   givenName?: string;
