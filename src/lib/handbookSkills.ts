@@ -404,6 +404,41 @@ The royalty arithmetic itself is Desmond's: 5 per cent above a million lifetime,
 Terms change. Before anything material leans on these, check the live EULA rather than this skill.`,
   },
 
+  {
+    departmentId: "legal",
+    name: "Studio Licence Posture",
+    description:
+      "Use when publishing a repository, choosing a licence, answering whether someone may use studio code, or handling a contribution.",
+    content: `The studio's default for its own code is **source-available, not open source**. Published so it can be read and audited, not so it can be reused.
+
+Say "source-available" and never "open source". Open source has a definition, it requires the right to make derivative works and redistribute, and this deliberately withholds both. Calling it open source invites a correction the studio does not need.
+
+**The standard stack**
+
+- **PolyForm Strict 1.0.0** as the licence. Attorney-drafted and standardised, so it does not need defending the way a hand-written licence does. It grants everything except distributing the software or making changes and new works.
+- **A narrow contribution grant**, in a clearly separate section rather than edited into the licence text. PolyForm Strict alone would forbid contributing, because preparing a pull request means copying and editing. The grant permits copying and editing solely to prepare and submit a contribution, and ends when the contribution is merged, declined, or abandoned.
+- **Contribution terms in CONTRIBUTING.md**, granting the studio a perpetual, irrevocable, royalty-free licence to use and relicense the contribution, with the contributor keeping their copyright. Without this every accepted pull request leaves someone else holding rights inside an otherwise all-rights-reserved project.
+
+**Three things this cannot do, and say them plainly**
+
+1. **It cannot stop forking on GitHub.** GitHub's Terms of Service grant every user a licence to reproduce a public repository by forking, through GitHub's functionality, whatever the LICENSE file says. What the licence governs is what may be done with that copy: reading and contributing yes, publishing, building on, or taking parts into other software no.
+2. **PolyForm Strict permits noncommercial purposes only.** There is no clause granting commercial use. For an internal tool that is fine and probably intended. For anything a commercial user needs to run, it is the wrong licence, and PolyForm Noncommercial or a bespoke commercial grant is the conversation instead.
+3. **It is worth what enforcing it is worth.** A licence is a basis for asking someone to stop, not a technical control. Two people will not litigate. Its real value is making the position unambiguous, which is usually enough.
+
+**It is not one licence across all three lines**
+
+- **Internal tools and the panel.** Strict fits. Nobody else should be running them.
+- **Minecraft mods.** Players have to be able to run them, and some servers are commercial, so a noncommercial-only licence blocks legitimate use. Check what the mod links against before anything else: linking LGPL code means the combined work cannot be no-derivatives, and that constraint wins over any studio preference.
+- **Client websites.** A different regime entirely. The contract governs, IP transfers to the client on payment in full, and the studio's licence posture does not apply.
+- **Frontier Assembly.** Shipped as a binary. Not source-available at all, and Epic's terms govern the engine side.
+
+**When someone asks to use studio code**
+
+Ask what they actually want, because the answer is usually narrower than "the code". Reading it to check it is already permitted. Running it is a licence question. Building on it is a no under the current posture, and a conversation about a separate commercial licence rather than a change to the public one.
+
+Anything with money attached goes to a licensed attorney before it is relied on.`,
+  },
+
   /* ----------------------------------------------------- Operations */
   {
     departmentId: "operations",
