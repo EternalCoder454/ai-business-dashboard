@@ -6,16 +6,25 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { newId } from "@/lib/db";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  AttachmentError,
+  MAX_ATTACHMENTS_PER_MESSAGE,
+  attachmentSrc,
+  estimateImageTokens,
+  fileToAttachment,
+} from "@/lib/images";
 import { buildSystemPrompt, deriveConversationTitle, hasProfileContent } from "@/lib/prompts";
 import { conversationHref, departmentHrefById } from "@/lib/routes";
 import { useStore } from "@/lib/store";
-import type { Conversation, Message, TokenUsage } from "@/lib/types";
+import type { Attachment, Conversation, Message, TokenUsage, WireContent } from "@/lib/types";
 import { streamChat } from "@/lib/chatClient";
 import {
   BookmarkIcon,
   Button,
   CheckIcon,
   ChevronIcon,
+  CloseIcon,
   CopyIcon,
   Chip,
   SendIcon,
@@ -33,6 +42,21 @@ interface StreamState {
 }
 
 const EMPTY_STREAM: StreamState = { text: "", thinking: "" };
+
+/**
+ * A turn with images becomes content blocks. Images lead, because the API reads
+ * a question about an image better when the image comes first.
+ */
+function toWire(message: Message): string | WireContent[] {
+  if (!message.attachments?.length) return message.content;
+  const blocks: WireContent[] = message.attachments.map((attachment) => ({
+    type: "image",
+    mediaType: attachment.mediaType,
+    data: attachment.data,
+  }));
+  if (message.content.trim()) blocks.push({ type: "text", text: message.content });
+  return blocks;
+}
 
 const MAX_COMPOSER_HEIGHT = 220;
 
@@ -75,6 +99,10 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   const [stream, setStream] = useState<StreamState>(EMPTY_STREAM);
   const [isStreaming, setIsStreaming] = useState(false);
   const [lastUsage, setLastUsage] = useState<TokenUsage | null>(null);
+  const [pending, setPending] = useState<Attachment[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -104,9 +132,35 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     stickToBottom.current = distanceFromBottom < 120;
   };
 
+  const attach = useCallback(
+    async (files: FileList | File[]) => {
+      setAttachError(null);
+      const room = MAX_ATTACHMENTS_PER_MESSAGE - pending.length;
+      if (room <= 0) {
+        setAttachError(`${MAX_ATTACHMENTS_PER_MESSAGE} images per message is the limit.`);
+        return;
+      }
+
+      const added: Attachment[] = [];
+      for (const file of Array.from(files).slice(0, room)) {
+        try {
+          added.push(await fileToAttachment(file));
+        } catch (error) {
+          setAttachError(
+            error instanceof AttachmentError
+              ? error.message
+              : "That file could not be read as an image.",
+          );
+        }
+      }
+      if (added.length) setPending((current) => [...current, ...added]);
+    },
+    [pending.length],
+  );
+
   const send = useCallback(async () => {
     const text = draft.trim();
-    if (!text || isStreaming || !department) return;
+    if ((!text && pending.length === 0) || isStreaming || !department) return;
 
     let conversation = active;
     if (!conversation) {
@@ -119,11 +173,14 @@ export function ChatView({ departmentId }: { departmentId: string }) {
       role: "user",
       content: text,
       timestamp: Date.now(),
+      attachments: pending.length ? pending : undefined,
     };
 
     const history = [...conversation.messages, userMessage];
 
     setDraft("");
+    setPending([]);
+    setAttachError(null);
     if (inputRef.current) inputRef.current.style.height = "auto";
     stickToBottom.current = true;
     setStream(EMPTY_STREAM);
@@ -146,7 +203,10 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           skillsFor(departmentId),
           settings.writingRules,
         ),
-        messages: history.map((m) => ({ role: m.role, content: m.content })),
+        messages: history.map((m) => ({
+          role: m.role,
+          content: toWire(m),
+        })),
         model: settings.model,
         effort: settings.effort,
       },
@@ -190,6 +250,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     inputRef.current?.focus();
   }, [
     draft,
+    pending,
     isStreaming,
     department,
     active,
@@ -356,13 +417,79 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         </div>
       </div>
 
-      <div className="safe-bottom safe-x flex-none border-t border-outline-variant px-4 py-3 medium:px-6 medium:py-4 expanded:px-8">
+      <div
+        onDragOver={(event) => {
+          if (event.dataTransfer.types.includes("Files")) {
+            event.preventDefault();
+            setDragging(true);
+          }
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(event) => {
+          if (!event.dataTransfer.files.length) return;
+          event.preventDefault();
+          setDragging(false);
+          void attach(event.dataTransfer.files);
+        }}
+        className={cx(
+          "safe-bottom safe-x flex-none border-t px-4 py-3 transition-colors medium:px-6 medium:py-4 expanded:px-8",
+          dragging ? "border-primary bg-primary-container/20" : "border-outline-variant",
+        )}
+      >
         <div className="mx-auto max-w-3xl">
+          {pending.length > 0 ? (
+            <ul className="mb-2.5 flex flex-wrap items-end gap-2">
+              {pending.map((attachment) => (
+                <li key={attachment.id} className="relative">
+                  <img
+                    src={attachmentSrc(attachment)}
+                    alt={attachment.name}
+                    className="h-16 w-16 rounded-xl border border-outline-variant object-cover"
+                  />
+                  <button
+                    onClick={() =>
+                      setPending((current) =>
+                        current.filter((item) => item.id !== attachment.id),
+                      )
+                    }
+                    aria-label={`Remove ${attachment.name}`}
+                    className="md-state absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-highest text-on-surface shadow-e1"
+                  >
+                    <CloseIcon className="h-3 w-3" />
+                  </button>
+                </li>
+              ))}
+              <li className="md-label-sm pb-1 text-on-variant/75">
+                about{" "}
+                {pending
+                  .reduce((total, item) => total + estimateImageTokens(item), 0)
+                  .toLocaleString()}{" "}
+                tokens
+              </li>
+            </ul>
+          ) : null}
+
+          {attachError ? <p className="md-label mb-2 text-error">{attachError}</p> : null}
           <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-lowest py-2 pl-4 pr-2 transition-colors focus-within:border-primary">
+            <button
+              onClick={() => fileRef.current?.click()}
+              aria-label="Attach an image"
+              title="Attach an image, or paste one straight in"
+              className="md-state md-target grid h-9 w-9 flex-none place-items-center self-end rounded-full text-on-variant"
+            >
+              <PaperclipIcon className="h-5 w-5" />
+            </button>
             <textarea
               ref={inputRef}
               value={draft}
               rows={1}
+              onPaste={(event) => {
+                const files = Array.from(event.clipboardData.files);
+                if (files.length) {
+                  event.preventDefault();
+                  void attach(files);
+                }
+              }}
               placeholder={`Ask ${department.personaName || department.name} anything…`}
               onChange={(event) => {
                 setDraft(event.target.value);
@@ -392,7 +519,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
                   createRipple(event);
                   void send();
                 }}
-                disabled={!draft.trim()}
+                disabled={!draft.trim() && pending.length === 0}
                 aria-label="Send message"
                 className={cx(
                   "md-state grid h-10 w-10 flex-none place-items-center rounded-full transition-colors",
@@ -424,6 +551,19 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               </>
             ) : null}
           </p>
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept={ACCEPTED_IMAGE_TYPES.join(",")}
+            multiple
+            className="hidden"
+            onChange={(event) => {
+              const files = event.target.files;
+              event.target.value = "";
+              if (files?.length) void attach(files);
+            }}
+          />
         </div>
       </div>
     </div>
@@ -510,7 +650,34 @@ function MessageBubble({
     return (
       <div className="animate-rise flex justify-end">
         <div className="max-w-[85%] rounded-3xl rounded-br-lg bg-primary-container px-4 py-3 text-on-primary-container shadow-e1">
-          <p className="md-body whitespace-pre-wrap">{message.content}</p>
+          {message.attachments?.length ? (
+            <ul
+              className={cx(
+                "mb-2 grid gap-1.5",
+                message.attachments.length > 1 ? "grid-cols-2" : "grid-cols-1",
+              )}
+            >
+              {message.attachments.map((attachment) => (
+                <li key={attachment.id}>
+                  <a
+                    href={attachmentSrc(attachment)}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={attachment.name}
+                  >
+                    <img
+                      src={attachmentSrc(attachment)}
+                      alt={attachment.name}
+                      className="max-h-64 w-full rounded-xl object-contain"
+                    />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {message.content ? (
+            <p className="md-body whitespace-pre-wrap">{message.content}</p>
+          ) : null}
         </div>
       </div>
     );
@@ -615,6 +782,23 @@ function ThinkingBlock({ text, defaultOpen = false }: { text: string; defaultOpe
         <p className="md-body whitespace-pre-wrap px-4 pb-3 text-on-variant/80">{text}</p>
       ) : null}
     </div>
+  );
+}
+
+function PaperclipIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      <path d="M21 11.5 12.5 20a5 5 0 0 1-7-7l8-8a3.5 3.5 0 0 1 5 5l-8 8a2 2 0 0 1-3-3l7.5-7.5" />
+    </svg>
   );
 }
 

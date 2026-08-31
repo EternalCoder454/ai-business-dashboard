@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
-import type { ChatRequestBody, ChatStreamEvent } from "@/lib/types";
+import type { ChatRequestBody, ChatStreamEvent, WireContent } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -95,8 +95,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const messages = (body.messages ?? []).filter(
-    (m) => typeof m.content === "string" && m.content.trim().length > 0,
+  const messages = (body.messages ?? []).filter((m) =>
+    typeof m.content === "string" ? m.content.trim().length > 0 : m.content.length > 0,
   );
 
   if (messages.length === 0) {
@@ -120,23 +120,39 @@ export async function POST(request: NextRequest) {
    * Longer TTLs must render before shorter ones, which the order above satisfies.
    */
   const buildParams = (cached: boolean) => {
+    // Anthropic wants image bytes under source.data with an explicit media
+    // type, so a mixed turn is expanded into blocks here rather than upstream.
+    const toBlocks = (content: string | WireContent[]): Record<string, unknown>[] =>
+      typeof content === "string"
+        ? [{ type: "text", text: content }]
+        : content.map((block) =>
+            block.type === "image"
+              ? {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: block.mediaType,
+                    data: block.data,
+                  },
+                }
+              : { type: "text", text: block.text },
+          );
+
     const apiMessages: unknown[] = messages.map((m) => ({
       role: m.role,
-      content: m.content,
+      content: typeof m.content === "string" ? m.content : toBlocks(m.content),
     }));
 
     if (cached && apiMessages.length > 0) {
       const last = messages[messages.length - 1];
-      apiMessages[apiMessages.length - 1] = {
-        role: last.role,
-        content: [
-          {
-            type: "text",
-            text: last.content,
-            cache_control: { type: "ephemeral" },
-          },
-        ],
+      const blocks = toBlocks(last.content);
+      // The breakpoint goes on the final block, whatever kind it is, so a turn
+      // ending in an image still caches the whole prefix behind it.
+      blocks[blocks.length - 1] = {
+        ...blocks[blocks.length - 1],
+        cache_control: { type: "ephemeral" },
       };
+      apiMessages[apiMessages.length - 1] = { role: last.role, content: blocks };
     }
 
     return {

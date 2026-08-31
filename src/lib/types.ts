@@ -1,5 +1,23 @@
 export type Role = "user" | "assistant";
 
+/** An image the user attached to a message. Stored as base64 alongside it. */
+export interface Attachment {
+  id: string;
+  kind: "image";
+  /** image/png, image/jpeg, image/webp, or image/gif. */
+  mediaType: string;
+  name: string;
+  /** Base64 payload with no data: prefix, which is the shape the API wants. */
+  data: string;
+  width: number;
+  height: number;
+}
+
+/** One block of a message as it goes over the wire to /api/chat. */
+export type WireContent =
+  | { type: "text"; text: string }
+  | { type: "image"; mediaType: string; data: string };
+
 export type DepartmentStatus = "online" | "busy" | "offline";
 
 export interface Message {
@@ -13,6 +31,8 @@ export interface Message {
   pending?: boolean;
   /** Set when the request failed, so the bubble can render an error state. */
   error?: boolean;
+  /** Images sent with this message. User messages only. */
+  attachments?: Attachment[];
 }
 
 export interface Conversation {
@@ -136,7 +156,8 @@ export interface AllHandsRun {
 /** Wire format for POST /api/chat. */
 export interface ChatRequestBody {
   system: string;
-  messages: { role: Role; content: string }[];
+  /** Content is a plain string unless the turn carries images. */
+  messages: { role: Role; content: string | WireContent[] }[];
   model: string;
   effort: Effort;
 }
