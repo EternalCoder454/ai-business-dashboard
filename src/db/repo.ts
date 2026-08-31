@@ -191,6 +191,10 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       roleTitle: accountRow[0]?.roleTitle ?? "Founder",
       pronouns: accountRow[0]?.pronouns ?? "",
       timezone: accountRow[0]?.timezone ?? "",
+      expertise: accountRow[0]?.expertise ?? "",
+      preferences: accountRow[0]?.preferences ?? "",
+      currentFocus: accountRow[0]?.currentFocus ?? "",
+      notes: accountRow[0]?.notes ?? "",
       avatarUrl: accountRow[0]?.avatarUrl ?? undefined,
       email: userEmail,
       updatedAt: accountRow[0]?.updatedAt ? ms(accountRow[0].updatedAt) : 0,
@@ -201,6 +205,11 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       audience: profileRow[0]?.audience ?? "",
       brandVoice: profileRow[0]?.brandVoice ?? "",
       keyFacts: profileRow[0]?.keyFacts ?? "",
+      products: profileRow[0]?.products ?? "",
+      stage: profileRow[0]?.stage ?? "",
+      competitors: profileRow[0]?.competitors ?? "",
+      constraints: profileRow[0]?.constraints ?? "",
+      goals: profileRow[0]?.goals ?? "",
     },
 
     settings: {
@@ -211,6 +220,10 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       companySubtitle: settingsRow[0]?.companySubtitle ?? "",
       writingRules: settingsRow[0]?.writingRules ?? "",
       roomBrevity: (settingsRow[0]?.roomBrevity ?? "tight") as Settings["roomBrevity"],
+      companyMark: settingsRow[0]?.companyMark ?? "HQ",
+      companyLogoUrl: settingsRow[0]?.companyLogoUrl ?? undefined,
+      sidebarSide: (settingsRow[0]?.sidebarSide ?? "left") as Settings["sidebarSide"],
+      searchShortcut: (settingsRow[0]?.searchShortcut ?? "slash") as Settings["searchShortcut"],
     },
   };
 }

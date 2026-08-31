@@ -49,6 +49,11 @@ async function main() {
         audience: "Founders",
         brandVoice: "Plain",
         keyFacts: "Neon, Vercel",
+        products: "",
+        stage: "",
+        competitors: "",
+        constraints: "",
+        goals: "",
       },
     },
     {

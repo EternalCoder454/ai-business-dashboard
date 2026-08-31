@@ -8,6 +8,7 @@ import {
   Field,
   PageHeader,
   Select,
+  TextArea,
   TextInput,
   cx,
 } from "@/components/ui";
@@ -51,6 +52,10 @@ export default function AccountPage() {
         roleTitle: local.roleTitle,
         pronouns: local.pronouns,
         timezone: local.timezone,
+        expertise: local.expertise,
+        preferences: local.preferences,
+        currentFocus: local.currentFocus,
+        notes: local.notes,
       });
       setSaved(true);
     }, 600);
@@ -198,6 +203,63 @@ export default function AccountPage() {
                 Use {detectedZone}
               </Button>
             ) : null}
+          </Card>
+
+          {/* ------------------------------------------------ how you work */}
+          <Card>
+            <h2 className="md-title-lg mb-1">How you work</h2>
+            <p className="md-body mb-5 text-on-variant">
+              Optional, and the difference between a generic answer and one pitched
+              at you. Every field here goes into every conversation, so keep them
+              short.
+            </p>
+
+            <div className="flex flex-col gap-4">
+              <Field
+                label="What you know"
+                hint="What you are strong on, and what you would rather have explained rather than assumed."
+              >
+                <TextArea
+                  rows={2}
+                  value={local.expertise}
+                  placeholder="Strong on Minecraft modding and UE5. Newer to accounting, contracts, and hiring."
+                  onChange={(event) => set({ expertise: event.target.value })}
+                />
+              </Field>
+
+              <Field
+                label="How you like answers"
+                hint="Length, directness, format. They are already told to explain their reasoning."
+              >
+                <TextArea
+                  rows={2}
+                  value={local.preferences}
+                  placeholder="Short. Give me the call first. Show numbers as a table. Do not pad."
+                  onChange={(event) => set({ preferences: event.target.value })}
+                />
+              </Field>
+
+              <Field
+                label="What you are working on"
+                hint="The current thing, so answers land on it. Worth updating when it changes."
+              >
+                <TextArea
+                  rows={2}
+                  value={local.currentFocus}
+                  placeholder="Shipping Vandrix 1.21.1 and two client sites before the end of the month."
+                  onChange={(event) => set({ currentFocus: event.target.value })}
+                />
+              </Field>
+
+              <Field label="Anything else" hint="Whatever does not fit above.">
+                <TextArea
+                  rows={2}
+                  value={local.notes}
+                  placeholder="Two people, no employees. Everything has to be maintainable by one person."
+                  onChange={(event) => set({ notes: event.target.value })}
+                />
+              </Field>
+            </div>
           </Card>
 
           {/* ------------------------------------------------ oversight */}

@@ -314,6 +314,10 @@ export const DEFAULT_ACCOUNT: UserAccount = {
   roleTitle: "Founder",
   pronouns: "",
   timezone: "",
+  expertise: "",
+  preferences: "",
+  currentFocus: "",
+  notes: "",
   updatedAt: 0,
 };
 
@@ -326,6 +330,11 @@ It exists for the customers, but also for our efficiency using AI tools so we ca
     "Casually Professional, Friendly, no buzzwords or anything. Able to understand easily.",
   keyFacts:
     "We use Google Workspace for the Business Email, Hostinger for the Domain host, Cloudflare for the Domain stuff, Vercel for current website hosting. Aseprite for Art (pixel art), Blender/Blockbench for modelling depending on difficulty,",
+  products: "",
+  stage: "",
+  competitors: "",
+  constraints: "",
+  goals: "",
 };
 
 export const DEFAULT_MODEL = "claude-sonnet-5";
@@ -341,6 +350,9 @@ export const DEFAULT_SETTINGS: Settings = {
   companySubtitle: "Your AI operating system",
   writingRules: WRITING_RULES,
   roomBrevity: "tight",
+  companyMark: "HQ",
+  sidebarSide: "left",
+  searchShortcut: "slash",
 };
 
 export const MODEL_OPTIONS = [

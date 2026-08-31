@@ -258,6 +258,10 @@ export const accounts = pgTable("accounts", {
   roleTitle: text("role_title").notNull().default("Founder"),
   pronouns: text("pronouns").notNull().default(""),
   timezone: text("timezone").notNull().default(""),
+  expertise: text("expertise").notNull().default(""),
+  preferences: text("preferences").notNull().default(""),
+  currentFocus: text("current_focus").notNull().default(""),
+  notes: text("notes").notNull().default(""),
   avatarUrl: text("avatar_url"),
   updatedAt: updated(),
 });
@@ -268,6 +272,11 @@ export const profiles = pgTable("profiles", {
   audience: text("audience").notNull().default(""),
   brandVoice: text("brand_voice").notNull().default(""),
   keyFacts: text("key_facts").notNull().default(""),
+  products: text("products").notNull().default(""),
+  stage: text("stage").notNull().default(""),
+  competitors: text("competitors").notNull().default(""),
+  constraints: text("constraints").notNull().default(""),
+  goals: text("goals").notNull().default(""),
   updatedAt: updated(),
 });
 
@@ -285,6 +294,10 @@ export const settings = pgTable("settings", {
   companySubtitle: text("company_subtitle").notNull().default(""),
   writingRules: text("writing_rules").notNull().default(""),
   roomBrevity: text("room_brevity").notNull().default("tight"),
+  companyMark: text("company_mark").notNull().default("HQ"),
+  companyLogoUrl: text("company_logo_url"),
+  sidebarSide: text("sidebar_side").notNull().default("left"),
+  searchShortcut: text("search_shortcut").notNull().default("slash"),
   updatedAt: updated(),
 });
 

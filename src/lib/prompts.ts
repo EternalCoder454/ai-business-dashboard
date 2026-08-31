@@ -2,15 +2,26 @@ import { SHARED_OPERATING_RULES, WRITING_RULES } from "./seed";
 import { buildSkillsBlock } from "./skills";
 import type { CompanyProfile, Department, Skill, UserAccount } from "./types";
 
+/**
+ * The order the profile is written into a prompt, and the label each field
+ * gets. Empty fields are skipped entirely, so an unused field costs nothing.
+ */
+const PROFILE_FIELDS: [keyof CompanyProfile, string][] = [
+  ["mission", "Mission"],
+  ["products", "What we make"],
+  ["audience", "Audience"],
+  ["stage", "Where the business is"],
+  ["goals", "What we are aiming at"],
+  ["competitors", "Competition"],
+  ["constraints", "Constraints"],
+  ["brandVoice", "Brand voice"],
+  ["keyFacts", "Key facts"],
+];
+
 /** True when the profile has at least one field worth injecting. */
 export function hasProfileContent(profile: CompanyProfile | undefined): boolean {
   if (!profile) return false;
-  return Boolean(
-    profile.mission.trim() ||
-      profile.audience.trim() ||
-      profile.brandVoice.trim() ||
-      profile.keyFacts.trim(),
-  );
+  return PROFILE_FIELDS.some(([key]) => profile[key].trim());
 }
 
 /**
@@ -28,10 +39,10 @@ export function buildCompanyContext(
     `Company: ${companyName}`,
   ];
 
-  if (profile.mission.trim()) lines.push("", "Mission:", profile.mission.trim());
-  if (profile.audience.trim()) lines.push("", "Audience:", profile.audience.trim());
-  if (profile.brandVoice.trim()) lines.push("", "Brand voice:", profile.brandVoice.trim());
-  if (profile.keyFacts.trim()) lines.push("", "Key facts:", profile.keyFacts.trim());
+  for (const [key, label] of PROFILE_FIELDS) {
+    const value = profile[key].trim();
+    if (value) lines.push("", `${label}:`, value);
+  }
 
   lines.push(
     "",
@@ -52,7 +63,14 @@ export function buildCompanyContext(
  */
 export function buildUserContext(account: UserAccount, companyName: string): string {
   const name = account.displayName.trim();
-  if (!name && !account.timezone) return "";
+  const extras = [
+    ["What they know", account.expertise],
+    ["How they like answers", account.preferences],
+    ["What they are working on", account.currentFocus],
+    ["Also worth knowing", account.notes],
+  ] as const;
+  const hasExtras = extras.some(([, value]) => value.trim());
+  if (!name && !account.timezone && !hasExtras) return "";
 
   const lines = ["=== WHO YOU ARE TALKING TO ==="];
 
@@ -82,6 +100,10 @@ export function buildUserContext(account: UserAccount, companyName: string): str
     } catch {
       // An unrecognised zone is not worth failing a whole prompt over.
     }
+  }
+
+  for (const [label, value] of extras) {
+    if (value.trim()) lines.push("", `${label}: ${value.trim()}`);
   }
 
   lines.push("=== END ===");

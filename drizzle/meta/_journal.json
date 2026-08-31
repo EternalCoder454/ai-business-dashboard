@@ -57,6 +57,13 @@
       "when": 1788195936355,
       "tag": "0007_puzzling_black_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788201796437,
+      "tag": "0008_fast_supreme_intelligence",
+      "breakpoints": true
     }
   ]
 }

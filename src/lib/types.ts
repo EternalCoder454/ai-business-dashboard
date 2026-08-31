@@ -154,6 +154,14 @@ export interface UserAccount {
   pronouns: string;
   /** IANA zone, so "this week" and "by Friday" mean something. */
   timezone: string;
+  /** What you know well and what you would rather have explained. */
+  expertise: string;
+  /** How you like answers: length, directness, format. */
+  preferences: string;
+  /** What you are working on now, so answers land on the current thing. */
+  currentFocus: string;
+  /** Anything else worth knowing. */
+  notes: string;
   /** From Google, cached for display. Never editable here. */
   email?: string;
   avatarUrl?: string;
@@ -165,6 +173,16 @@ export interface CompanyProfile {
   audience: string;
   brandVoice: string;
   keyFacts: string;
+  /** What the company actually sells or makes. */
+  products: string;
+  /** Size, age, revenue, headcount: how established this is. */
+  stage: string;
+  /** Who else is in the space, and how this differs. */
+  competitors: string;
+  /** Budget, headcount, time, anything off the table. */
+  constraints: string;
+  /** What is being aimed at, and by when. */
+  goals: string;
 }
 
 export type DeliverableStatus = "backlog" | "in-progress" | "done";
@@ -206,7 +224,21 @@ export interface Settings {
   writingRules: string;
   /** Word budget applied to every head in an All Hands room. */
   roomBrevity: RoomBrevity;
+  /** Up to two letters shown on the mark when there is no logo. */
+  companyMark: string;
+  /** A data URL, which replaces the letters when set. */
+  companyLogoUrl?: string;
+  /** Which edge the navigation sits on. */
+  sidebarSide: SidebarSide;
+  /** The single key that opens search. "none" turns the bare key off. */
+  searchShortcut: SearchShortcut;
 }
+
+/** Which edge the drawer and rail sit on. */
+export type SidebarSide = "left" | "right";
+
+/** The bare key that opens search. Cmd and Ctrl K always work regardless. */
+export type SearchShortcut = "slash" | "k" | "none";
 
 export interface AllHandsResponse {
   departmentId: string;

@@ -29,6 +29,14 @@ const FIELDS: {
     rows: 3,
   },
   {
+    key: "products",
+    label: "What you make",
+    placeholder:
+      "The actual things you sell. Name them, say what each one is, and roughly what it costs.",
+    hint: "Stops every department guessing at the product from the mission alone.",
+    rows: 4,
+  },
+  {
     key: "audience",
     label: "Audience",
     placeholder:
@@ -43,6 +51,37 @@ const FIELDS: {
       "How the company sounds, and what it never sounds like. Include a phrase you would and would not say.",
     hint: "Marketing, Social, and Design lean on this hardest.",
     rows: 4,
+  },
+  {
+    key: "stage",
+    label: "Where the business is",
+    placeholder:
+      "How long it has run, how many people, roughly what it turns over, and whether it is your main income.",
+    hint: "Advice for a two-person studio and a thirty-person company is not the same advice.",
+    rows: 3,
+  },
+  {
+    key: "goals",
+    label: "What you are aiming at",
+    placeholder: "What has to be true in six months, and what would count as it going well.",
+    hint: "The CEO uses this to say which of five things matters this month.",
+    rows: 3,
+  },
+  {
+    key: "competitors",
+    label: "Competition",
+    placeholder:
+      "Who else does this, and the honest reason someone picks you instead. Include who you lose to.",
+    hint: "Marketing cannot position anything without it.",
+    rows: 3,
+  },
+  {
+    key: "constraints",
+    label: "Constraints",
+    placeholder:
+      "Budget, hours, skills you do not have, anything off the table. Say what you will not do.",
+    hint: "Stops plans arriving that were never affordable.",
+    rows: 3,
   },
   {
     key: "keyFacts",
