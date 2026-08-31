@@ -5,13 +5,13 @@ import { DepartmentAvatar } from "./DepartmentAvatar";
 import { useMemo, type ReactNode } from "react";
 import { hasProfileContent } from "@/lib/prompts";
 import { conversationHref, departmentHref, formatRelativeTime } from "@/lib/routes";
+import { STATUS_MEANING, useDepartmentStatus } from "@/lib/presence";
 import { useStore } from "@/lib/store";
 import type { Department } from "@/lib/types";
 import {
   ChevronIcon,
   DocIcon,
   SparkIcon,
-  STATUS_LABEL,
   StatusDot,
   UsersIcon,
   cx,
@@ -95,6 +95,12 @@ function Hierarchy() {
   );
 }
 
+/** Whether asking this department would actually work right now. */
+function useLiveStatus(departmentId: string) {
+  const { settings, serverKey } = useStore();
+  return useDepartmentStatus(Boolean(serverKey || settings.apiKey))(departmentId);
+}
+
 function CeoRow({
   ceo,
   skillCount,
@@ -104,6 +110,7 @@ function CeoRow({
   skillCount: number;
   threadCount: number;
 }) {
+  const status = useLiveStatus(ceo.id);
   return (
     <Link
       href="/ceo"
@@ -114,7 +121,7 @@ function CeoRow({
         "transition-shadow duration-200 hover:shadow-e3",
       )}
     >
-      <DepartmentAvatar department={ceo} size={48} status={ceo.status} />
+      <DepartmentAvatar department={ceo} size={48} status={status} />
 
       <span className="min-w-0 flex-1">
         <span className="md-title-lg block truncate">{ceo.personaName || ceo.name}</span>
@@ -143,6 +150,7 @@ function DepartmentRow({
   threadCount: number;
   lastActive?: number;
 }) {
+  const status = useLiveStatus(department.id);
   return (
     <li
       className={cx(
@@ -163,7 +171,7 @@ function DepartmentRow({
           "transition-shadow duration-200 hover:shadow-e2 medium:gap-4 medium:px-4",
         )}
       >
-        <DepartmentAvatar department={department} size={44} status={department.status} />
+        <DepartmentAvatar department={department} size={44} status={status} />
 
         <span className="min-w-0 flex-1">
           <span className="md-title block truncate">{department.name}</span>
@@ -174,7 +182,7 @@ function DepartmentRow({
           </span>
           <span
             className="md-label-sm mt-0.5 block truncate text-on-variant/75"
-            title={`${STATUS_LABEL[department.status]}, ${skillCount} skills`}
+            title={`${STATUS_MEANING[status]}, ${skillCount} skills`}
           >
             {skillCount} {skillCount === 1 ? "skill" : "skills"}
             {threadCount > 0

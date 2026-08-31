@@ -19,6 +19,7 @@ import { AttachmentError, MAX_ATTACHMENTS_PER_MESSAGE, attachmentSrc } from "@/l
 import { COMPANY_ID } from "@/lib/seed";
 import { buildSystemPrompt, deriveConversationTitle, hasProfileContent } from "@/lib/prompts";
 import { conversationHref, departmentHrefById } from "@/lib/routes";
+import { STATUS_MEANING, setDepartmentActivity, useDepartmentStatus } from "@/lib/presence";
 import { useStore } from "@/lib/store";
 import { ProjectPicker } from "./ProjectBits";
 import type { Attachment, Conversation, Message, TokenUsage, WireContent } from "@/lib/types";
@@ -36,7 +37,6 @@ import {
   SendIcon,
   SparkIcon,
   StatusDot,
-  STATUS_LABEL,
   TrashIcon,
   cx,
 } from "./ui";
@@ -107,6 +107,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     createDeliverable,
     files,
     projects,
+    serverKey,
     pullShared,
     skillsFor,
     profile,
@@ -115,6 +116,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   } = useStore();
 
   const department = getDepartment(departmentId);
+  const liveStatus = useDepartmentStatus(Boolean(serverKey || settings.apiKey))(departmentId);
 
   /** Library files scoped to this department, or shared with every one. */
   const shared = useMemo(
@@ -273,6 +275,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     stickToBottom.current = true;
     setStream(EMPTY_STREAM);
     setIsStreaming(true);
+    setDepartmentActivity(departmentId, "busy");
 
     await setMessages(conversation.id, history);
     if (conversation.messages.length === 0) {
@@ -340,6 +343,12 @@ export function ChatView({ departmentId }: { departmentId: string }) {
 
     abortRef.current = null;
     setIsStreaming(false);
+    // A failed reply leaves the dot showing the department cannot be reached,
+    // which is the state someone needs to see rather than a green light.
+    setDepartmentActivity(
+      departmentId,
+      !collectedText && failure ? "error" : "idle",
+    );
     setStream(EMPTY_STREAM);
     inputRef.current?.focus();
   }, [
@@ -365,7 +374,9 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         <div>
           <p className="md-title-lg">Department not found</p>
           <p className="md-body mt-2 text-on-variant">
-            It may have been removed in Settings.
+            It may have been removed in Settings. A conversation shared with you
+            can also land here, when it belongs to a department the person who
+            shared it has and you do not.
           </p>
           <Link href="/" className="md-label mt-5 inline-block text-primary underline">
             Back to the org chart
@@ -408,9 +419,9 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h1 className="md-title-lg truncate">{department.name}</h1>
-            <StatusDot status={department.status} />
+            <StatusDot status={liveStatus} />
             <span className="md-label-sm text-on-variant">
-              {STATUS_LABEL[department.status]}
+              {STATUS_MEANING[liveStatus]}
             </span>
           </div>
           <p className="md-label truncate text-on-variant">
@@ -437,7 +448,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               {skillsFor(departmentId).length} skills
             </Chip>
           </Link>
-          {active && messages.length > 0 ? (
+          {active && messages.length > 0 && !active.ownerEmail ? (
             <button
               onClick={async (event) => {
                 createRipple(event);

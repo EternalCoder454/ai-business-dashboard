@@ -160,6 +160,20 @@ async function main() {
   check("the private one is not shared", shares.proj_private === undefined);
   const people = await participantsOf(OWNER, "proj_shared");
   check("participants are owner and member", people.length === 2 && people.includes(MEMBER));
+  console.log("\na member cannot delete the owner's conversation");
+  await applyMutations(MEMBER, [
+    { table: "conversations", action: "delete", ids: ["conv_shared"] },
+  ]);
+  check(
+    "it survives",
+    (await loadWorkspace(OWNER)).conversations.some((c) => c.id === "conv_shared"),
+  );
+  check(
+    "with its messages intact",
+    ((await loadWorkspace(OWNER)).conversations.find((c) => c.id === "conv_shared")?.messages
+      .length ?? 0) >= 2,
+  );
+
 
   console.log("\\nunsharing takes it back");
   await unshareProject(OWNER, "proj_shared", MEMBER);

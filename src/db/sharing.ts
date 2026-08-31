@@ -175,19 +175,27 @@ export async function resolveConversationOwner(
   const memberships = await membershipsFor(me);
   if (memberships.length === 0) return null;
 
-  for (const { ownerEmail, projectId } of memberships) {
-    const [row] = await db
-      .select({ id: t.conversations.id })
-      .from(t.conversations)
-      .where(
-        and(
-          eq(t.conversations.userEmail, ownerEmail),
-          eq(t.conversations.id, conversationId),
-          eq(t.conversations.projectId, projectId),
+  // One query rather than one per membership. This runs on every message
+  // anyone sends, and each round trip to a serverless database is real
+  // latency, so the loop that was here cost more than the work it did.
+  const rows = await db
+    .select({ owner: t.conversations.userEmail, projectId: t.conversations.projectId })
+    .from(t.conversations)
+    .where(
+      and(
+        eq(t.conversations.id, conversationId),
+        inArray(
+          t.conversations.projectId,
+          memberships.map((m) => m.projectId),
         ),
-      )
-      .limit(1);
-    if (row) return ownerEmail;
+      ),
+    );
+
+  // A project id alone is not proof: the row has to belong to the owner this
+  // account was actually added by, or a shared id would open someone else's.
+  const allowed = new Set(memberships.map((m) => `${m.ownerEmail}::${m.projectId}`));
+  for (const row of rows) {
+    if (row.projectId && allowed.has(`${row.owner}::${row.projectId}`)) return row.owner;
   }
 
   // Not theirs and not in anything shared with them. A new conversation they

@@ -8,6 +8,7 @@ import { CompanyMark } from "./CompanyMark";
 import { CEO_ID } from "@/lib/seed";
 import { conversationHref, departmentHref, formatRelativeTime } from "@/lib/routes";
 import { useMessages } from "@/lib/messages";
+import { useDepartmentStatus } from "@/lib/presence";
 import { useStore } from "@/lib/store";
 import {
   BriefcaseIcon,
@@ -167,8 +168,13 @@ export function SidebarContent({
     createConversation,
     isAdmin,
     personalDepartments,
+    serverKey,
   } = useStore();
   const { unread } = useMessages();
+
+  // A dot that always says Online is worse than no dot. This one reflects
+  // whether a request could actually succeed, and whether one is in flight.
+  const statusOf = useDepartmentStatus(Boolean(serverKey || settings.apiKey));
 
   const setupLinks = isAdmin ? [...SETUP_LINKS, ADMIN_LINK] : SETUP_LINKS;
 
@@ -333,7 +339,7 @@ export function SidebarContent({
                 >
                   {ownSkillsFor(department.id).length}
                 </span>
-                <StatusDot status={department.status} />
+                <StatusDot status={statusOf(department.id)} />
               </NavRow>
             </li>
           ))}
@@ -355,7 +361,7 @@ export function SidebarContent({
                     <span className="md-body min-w-0 flex-1 truncate">
                       {department.personaName || department.name}
                     </span>
-                    <StatusDot status={department.status} />
+                    <StatusDot status={statusOf(department.id)} />
                   </NavRow>
                 </li>
               ))}
