@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { CommandPalette, SearchIcon } from "./CommandPalette";
 import { useMessages } from "@/lib/messages";
+import { useStore } from "@/lib/store";
 import { useKeyboardInset } from "@/lib/viewport";
 import { PRIMARY_LINKS, Sidebar, SidebarContent, isActive } from "./Sidebar";
 import { CloseIcon, NavBadge, cx } from "./ui";
@@ -25,6 +26,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
+  const { settings } = useStore();
+
+  /** Cmd and Ctrl K always work. This is the bare key, which can be turned off. */
+  const bareKey =
+    settings.searchShortcut === "slash" ? "/" : settings.searchShortcut === "k" ? "k" : null;
+
+  /**
+   * Which edge the navigation sits on. Reversing the row moves the drawer, the
+   * rail, and the modal drawer together, so nothing has to know about the other.
+   */
+  const navRight = settings.sidebarSide === "right";
+
   useEffect(() => {
     setDrawerOpen(false);
   }, [pathname]);
@@ -39,14 +52,20 @@ export function AppShell({ children }: { children: ReactNode }) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setSearchOpen(true);
-      } else if (event.key === "/" && !typing && !event.metaKey && !event.ctrlKey) {
+      } else if (
+        bareKey &&
+        event.key === bareKey &&
+        !typing &&
+        !event.metaKey &&
+        !event.ctrlKey
+      ) {
         event.preventDefault();
         setSearchOpen(true);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [bareKey]);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -80,12 +99,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const edgeSwipe = useEdgeSwipe(() => setDrawerOpen(true));
   useKeyboardInset();
 
+
   // Sign in is not part of the app: no nav, no drawer, nothing to navigate to.
   if (pathname === "/signin") return <>{children}</>;
 
   return (
     <div
-      className="app-viewport flex w-full overflow-hidden bg-surface"
+      className={cx(
+        "app-viewport flex w-full overflow-hidden bg-surface",
+        navRight && "flex-row-reverse",
+      )}
       onTouchStart={edgeSwipe.onTouchStart}
       onTouchMove={edgeSwipe.onTouchMove}
       onTouchEnd={edgeSwipe.onTouchEnd}

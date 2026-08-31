@@ -4,6 +4,7 @@ import Link from "next/link";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { CompanyMark } from "./CompanyMark";
 import { CEO_ID } from "@/lib/seed";
 import { conversationHref, departmentHref, formatRelativeTime } from "@/lib/routes";
 import { useMessages } from "@/lib/messages";
@@ -11,6 +12,7 @@ import { useStore } from "@/lib/store";
 import {
   BriefcaseIcon,
   BuildingIcon,
+  ChevronIcon,
   BookIcon,
   DocIcon,
   FolderIcon,
@@ -180,9 +182,7 @@ export function SidebarContent({
   return (
     <>
       <div className="flex items-start gap-3 px-5 pb-4 pt-5">
-        <div className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-primary-container text-on-primary-container shadow-e1">
-          <span className="text-base font-semibold tracking-tight">HQ</span>
-        </div>
+        <CompanyMark size={40} />
         <div className="min-w-0 flex-1">
           <p className="md-title truncate">{settings.companyName}</p>
           <input
@@ -239,7 +239,7 @@ export function SidebarContent({
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pb-6">
-        <SectionLabel>Company</SectionLabel>
+        <Section id="company" label="Company">
         <ul className="mb-5 space-y-0.5">
           {links.map((link) => (
             <li key={link.href}>
@@ -259,13 +259,9 @@ export function SidebarContent({
             </li>
           ))}
         </ul>
+        </Section>
 
-        <SectionLabel>
-          Departments
-          <span className="ml-auto font-normal normal-case tracking-normal opacity-60">
-            {departments.length}
-          </span>
-        </SectionLabel>
+        <Section id="departments" label="Departments" count={departments.length}>
         <ul className="mb-5 space-y-0.5">
           {!ready && departments.length === 0 ? (
             <li className="md-body px-3 py-2 text-on-variant/75">Loading…</li>
@@ -290,10 +286,11 @@ export function SidebarContent({
             </li>
           ))}
         </ul>
+        </Section>
 
         {personalDepartments.length ? (
           <>
-            <SectionLabel>Yours</SectionLabel>
+            <Section id="personal" label="Yours">
             <ul className="mb-5 space-y-0.5">
               {personalDepartments.map((department) => (
                 <li key={department.id}>
@@ -311,10 +308,11 @@ export function SidebarContent({
                 </li>
               ))}
             </ul>
+            </Section>
           </>
         ) : null}
 
-        <SectionLabel>Recent Conversations</SectionLabel>
+        <Section id="recent" label="Recent">
         {recent.length === 0 ? (
           <p className="md-body px-3 py-2 text-on-variant/75">
             Conversations you start will show up here.
@@ -350,16 +348,81 @@ export function SidebarContent({
             })}
           </ul>
         )}
+        </Section>
       </nav>
     </>
   );
 }
 
-function SectionLabel({ children }: { children: ReactNode }) {
+const COLLAPSE_KEY = "eterneon.nav.collapsed";
+
+function readCollapsed(): Record<string, boolean> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(COLLAPSE_KEY) ?? "{}") as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * A section that remembers whether it is open.
+ *
+ * Per browser rather than per account: which parts of the navigation someone
+ * keeps shut is a property of how they work on that screen, not something worth
+ * syncing to another device.
+ */
+function Section({
+  id,
+  label,
+  count,
+  children,
+}: {
+  id: string;
+  label: string;
+  count?: number;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+
+  useEffect(() => {
+    setOpen(readCollapsed()[id] !== true);
+  }, [id]);
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    try {
+      window.localStorage.setItem(
+        COLLAPSE_KEY,
+        JSON.stringify({ ...readCollapsed(), [id]: !next }),
+      );
+    } catch {
+      // Private browsing. The section still toggles for this session.
+    }
+  };
+
   return (
-    <p className="md-label-sm flex items-center px-3 pb-1.5 pt-2 text-on-variant/75">
-      {children}
-    </p>
+    <>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="md-state md-label-sm flex w-full items-center gap-1.5 rounded-lg px-3 pb-1.5 pt-2 text-left text-on-variant/75 transition-colors"
+      >
+        <ChevronIcon
+          className={cx(
+            "h-3 w-3 flex-none transition-transform duration-150",
+            open ? "rotate-90" : "rotate-0",
+          )}
+        />
+        <span className="flex-1">{label}</span>
+        {count === undefined ? null : (
+          <span className="font-normal normal-case tracking-normal opacity-60">{count}</span>
+        )}
+      </button>
+      {open ? children : null}
+    </>
   );
 }
 

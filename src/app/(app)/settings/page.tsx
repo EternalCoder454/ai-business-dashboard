@@ -1,6 +1,7 @@
 "use client";
 
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
+import { CompanyMark } from "@/components/CompanyMark";
 import { ACCEPTED_IMAGE_TYPES, fileToAvatar } from "@/lib/images";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -26,7 +27,7 @@ import { WorkspacePicker } from "@/components/WorkspacePicker";
 import { exportAll, importAll, resetAll, restoreDefaultDepartments } from "@/lib/db";
 import { EFFORT_OPTIONS, MODEL_OPTIONS, WRITING_RULES } from "@/lib/seed";
 import { useStore } from "@/lib/store";
-import type { Department, DepartmentStatus, Effort, ThemeMode } from "@/lib/types";
+import type { Department, DepartmentStatus, Effort, SearchShortcut, SidebarSide, ThemeMode } from "@/lib/types";
 
 type DeptDraft = Partial<Department> & { isNew?: boolean };
 
@@ -54,6 +55,8 @@ export default function SettingsPage() {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const avatarInput = useRef<HTMLInputElement | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const markInput = useRef<HTMLInputElement | null>(null);
+  const [markError, setMarkError] = useState<string | null>(null);
 
   // The credentials are read from this browser a moment after mount, so the
   // first render sees an empty key. Adopt the real one when it lands, but
@@ -218,6 +221,96 @@ export default function SettingsPage() {
                       {option.label} ({option.hint})
                     </option>
                   ))}
+                </Select>
+              </Field>
+            </div>
+          </Card>
+
+          {/* ------------------------------------------------ appearance */}
+          <Card>
+            <h2 className="md-title-lg mb-1">Appearance</h2>
+            <p className="md-body mb-5 text-on-variant">
+              Yours alone. Nobody else signing in sees these choices.
+            </p>
+
+            <div className="flex items-center gap-4">
+              <CompanyMark size={56} />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outlined" onClick={() => markInput.current?.click()}>
+                  {settings.companyLogoUrl ? "Replace logo" : "Upload logo"}
+                </Button>
+                {settings.companyLogoUrl ? (
+                  <Button
+                    size="sm"
+                    variant="text"
+                    onClick={() => void updateSettings({ companyLogoUrl: undefined })}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+                <input
+                  ref={markInput}
+                  type="file"
+                  accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                  hidden
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    if (!file) return;
+                    try {
+                      await updateSettings({ companyLogoUrl: await fileToAvatar(file) });
+                      setMarkError(null);
+                    } catch (error) {
+                      setMarkError(
+                        error instanceof Error ? error.message : "That image could not be read.",
+                      );
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            {markError ? <p className="md-label mt-2 text-error">{markError}</p> : null}
+
+            <div className="mt-5 grid gap-4 medium:grid-cols-3">
+              <Field label="Letters" hint="Shown when there is no logo. Two is the most that fits.">
+                <TextInput
+                  value={settings.companyMark}
+                  maxLength={2}
+                  className="text-center uppercase"
+                  onChange={(event) =>
+                    void updateSettings({ companyMark: event.target.value.toUpperCase() })
+                  }
+                />
+              </Field>
+
+              <Field label="Navigation side" hint="Which edge the menu sits on.">
+                <Select
+                  value={settings.sidebarSide}
+                  onChange={(event) =>
+                    void updateSettings({ sidebarSide: event.target.value as SidebarSide })
+                  }
+                >
+                  <option value="left">Left</option>
+                  <option value="right">Right</option>
+                </Select>
+              </Field>
+
+              <Field
+                label="Search key"
+                hint="Ctrl or Cmd with K always works. This is the single key."
+              >
+                <Select
+                  value={settings.searchShortcut}
+                  onChange={(event) =>
+                    void updateSettings({
+                      searchShortcut: event.target.value as SearchShortcut,
+                    })
+                  }
+                >
+                  <option value="slash">Slash</option>
+                  <option value="k">K</option>
+                  <option value="none">Off</option>
                 </Select>
               </Field>
             </div>

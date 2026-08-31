@@ -52,6 +52,8 @@ export default function InformationPage() {
     profile,
     settings,
     skillsFor,
+    serverKey,
+    storage: storageMode,
   } = useStore();
 
   const minimum = CACHE_MINIMUM[settings.model] ?? 1024;
@@ -98,42 +100,39 @@ export default function InformationPage() {
         <div className="measure flex flex-col gap-5">
           {/* ------------------------------------------------ the model */}
           <Card>
-            <h2 className="md-title-lg mb-1">The call being made</h2>
+            <h2 className="md-title-lg mb-1">The model</h2>
             <p className="md-body mb-4 text-on-variant">
-              Every message goes to this app&apos;s own{" "}
-              <code className="font-mono text-[0.85em]">/api/chat</code> route, which calls
-              Anthropic server-side and streams the reply back as newline-delimited JSON.
-              The key never leaves this browser except on that request.
+              Which model answers, and how hard it is told to think before it does. A
+              more capable model costs more per reply, and higher effort makes it
+              slower and dearer. Both are changed in Settings.
             </p>
             <dl className="grid gap-3 medium:grid-cols-2">
               <Fact label="Model" value={settings.model} />
-              <Fact label="Reasoning effort" value={settings.effort} />
+              <Fact label="Effort" value={settings.effort} />
               <Fact
-                label="Thinking"
-                value={
-                  settings.model === "claude-haiku-4-5"
-                    ? "off (unsupported on this model)"
-                    : "adaptive, summarized"
-                }
+                label="Thinks first"
+                value={settings.model === "claude-haiku-4-5" ? "no" : "yes"}
               />
               <Fact
-                label="API key"
-                value={settings.apiKey ? "stored in this browser" : "not set"}
-                tone={settings.apiKey ? undefined : "error"}
+                label="Billing key"
+                value={
+                  serverKey ? "on the server" : settings.apiKey ? "in this browser" : "not set"
+                }
+                tone={serverKey || settings.apiKey ? undefined : "error"}
               />
             </dl>
           </Card>
 
           {/* ------------------------------------------------ caching */}
           <Card>
-            <h2 className="md-title-lg mb-1">Prompt caching</h2>
+            <h2 className="md-title-lg mb-1">Caching</h2>
             <p className="md-body mb-4 text-on-variant">
-              Two breakpoints per request. The whole system block is cached for one hour,
-              because the gap between your questions is usually longer than five minutes.
-              The final message is cached for five, so each turn reads everything before it
-              and writes only what the last turn added. A prefix shorter than{" "}
-              <strong>{minimum.toLocaleString()} tokens</strong> is silently not cached on{" "}
-              {settings.model}.
+              Every message re-sends the same background: who the department is, the
+              company profile, its skills. Paying full price for that each time would be
+              the biggest cost here, so it is held for an hour and re-read at roughly a
+              tenth of the price. It only kicks in above{" "}
+              <strong>{minimum.toLocaleString()} words of background</strong>, which is
+              why each department is listed below with its own total.
             </p>
             <div className="flex flex-wrap gap-2">
               {anatomy.map(({ department, total }) => (
@@ -142,8 +141,8 @@ export default function InformationPage() {
                   tone={total >= minimum ? "success" : "warning"}
                   title={
                     total >= minimum
-                      ? "Clears the minimum, so the system block caches"
-                      : "Below the minimum, so the system block will not cache"
+                      ? "Enough background to be cached, so repeat questions are cheap"
+                      : "Not enough background to cache, so every message pays full price"
                   }
                 >
                   <DepartmentAvatar department={department} size={18} />
@@ -156,11 +155,10 @@ export default function InformationPage() {
 
           {/* ------------------------------------------------ anatomy */}
           <Card>
-            <h2 className="md-title-lg mb-1">What each department receives</h2>
+            <h2 className="md-title-lg mb-1">Each department</h2>
             <p className="md-body mb-4 text-on-variant">
-              The system prompt is assembled in the same order every time, so the whole
-              thing sits inside the cached prefix. Writing rules go last, which is why they
-              win any conflict with a department prompt or a skill.
+              What each one is told before it sees your question. The house writing rules
+              come last, so where they disagree with anything else, they win.
             </p>
 
             <ul className="flex flex-col gap-4">
@@ -211,7 +209,10 @@ export default function InformationPage() {
 
           {/* ------------------------------------------------ shared context */}
           <Card>
-            <h2 className="md-title-lg mb-1">Shared across every department</h2>
+            <h2 className="md-title-lg mb-1">Shared context</h2>
+            <p className="md-body text-on-variant">
+              Given to all of them, so nothing has to be explained twice.
+            </p>
             <dl className="mt-3 grid gap-3 medium:grid-cols-2">
               <Fact
                 label="Company Profile"
@@ -220,18 +221,18 @@ export default function InformationPage() {
                 href="/profile"
               />
               <Fact
-                label="Company wide skills"
-                value={`${companySkills.length}, injected into all ${allDepartments.length} prompts`}
+                label="Skills everyone gets"
+                value={`${companySkills.length}, given to all ${allDepartments.length}`}
                 href="/library/skills"
               />
               <Fact
                 label="House writing rules"
-                value={`${tok(settings.writingRules).toLocaleString()} tokens`}
+                value={settings.writingRules.trim() ? "on" : "off"}
                 href="/settings"
               />
               <Fact
-                label="Room protocol"
-                value={`All Hands, ${settings.roomBrevity === "standard" ? "140" : "60"} words per head`}
+                label="All Hands reply length"
+                value={`${settings.roomBrevity === "standard" ? "140" : "60"} words each`}
                 href="/all-hands"
               />
             </dl>
@@ -239,14 +240,11 @@ export default function InformationPage() {
 
           {/* ------------------------------------------------ storage */}
           <Card>
-            <h2 className="md-title-lg mb-1">Where this lives</h2>
+            <h2 className="md-title-lg mb-1">Storage</h2>
             <p className="md-body mb-4 text-on-variant">
-              Everything is in IndexedDB in this browser, schema version 9. Nothing is
-              stored on a server. Clearing site data deletes all of it, so use{" "}
-              <Link href="/settings" className="text-primary underline">
-                Export
-              </Link>{" "}
-              if it matters.
+              {storageMode === "hosted"
+                ? "Saved to your account, so it follows you to any device you sign in on. Your API key is the exception and stays in this browser."
+                : "Saved in this browser only, and it does not follow you to another device. Clearing site data deletes all of it, so export from Settings if it matters."}
             </p>
             <dl className="grid grid-cols-2 gap-3 medium:grid-cols-4">
               {storage.map((item) => (
@@ -267,7 +265,7 @@ export default function InformationPage() {
 
           {/* ------------------------------------------------ heads */}
           <Card>
-            <h2 className="md-title-lg mb-3">The room</h2>
+            <h2 className="md-title-lg mb-3">Who you can ask</h2>
             <ul className="divide-y divide-[var(--md-outline-variant)]">
               {departments.map((department) => (
                 <li key={department.id} className="flex items-center gap-3 py-2.5">
