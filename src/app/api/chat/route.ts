@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
+import { readJsonWithin, requireSession, withinRate } from "@/lib/guard";
 import type { ChatRequestBody, ChatStreamEvent, WireContent } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -82,13 +83,37 @@ function describeError(error: unknown): string {
   return "Something went wrong while contacting the model.";
 }
 
+/**
+ * Attachments are inlined as base64, so a conversation carrying a few
+ * screenshots is legitimately large. Twenty megabytes is well past anything the
+ * composer will send and far short of what would hurt the instance.
+ */
+const MAX_BODY_BYTES = 20_000_000;
+
+/** Generous enough never to be met by hand, tight enough to stop a stuck loop. */
+const RATE_LIMIT = 60;
+const RATE_WINDOW_MS = 60_000;
+
 export async function POST(request: NextRequest) {
-  let body: ChatRequestBody;
-  try {
-    body = (await request.json()) as ChatRequestBody;
-  } catch {
-    return Response.json({ error: "Malformed request body." }, { status: 400 });
+  // This route spends money. It checks for itself rather than trusting that the
+  // proxy matcher still covers it.
+  const session = await requireSession();
+  if (!session.ok) {
+    return Response.json({ error: session.error }, { status: session.status });
   }
+
+  if (!withinRate(`chat:${session.email ?? "local"}`, RATE_LIMIT, RATE_WINDOW_MS)) {
+    return Response.json(
+      { error: "Too many requests in a row. Wait a moment and try again." },
+      { status: 429 },
+    );
+  }
+
+  const parsed = await readJsonWithin<ChatRequestBody>(request, MAX_BODY_BYTES);
+  if (!parsed.ok) {
+    return Response.json({ error: parsed.error }, { status: parsed.status });
+  }
+  const body = parsed.body;
 
   /**
    * The server key wins outright when it is set, and the client header is

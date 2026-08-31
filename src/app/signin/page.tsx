@@ -7,18 +7,36 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/**
+ * Only a path within this app is an acceptable destination after sign in.
+ *
+ * `from` arrives in the query string, so it is whatever the link said. Without
+ * this check, /signin?from=https://example.com would hand someone a real
+ * Eterneon sign-in page that lands them somewhere else afterwards, which is the
+ * shape every credential phishing page wants. A protocol-relative //host is
+ * rejected for the same reason: the browser reads it as absolute.
+ */
+function safeDestination(from: string | undefined): string {
+  if (!from) return "/";
+  if (!from.startsWith("/") || from.startsWith("//")) return "/";
+  // A backslash is treated as a slash by some browsers when resolving a URL.
+  if (from.includes("\\")) return "/";
+  return from;
+}
+
 export default async function SignInPage({
   searchParams,
 }: {
   searchParams: Promise<{ from?: string; error?: string }>;
 }) {
-  const { from, error } = await searchParams;
+  const { from: requested, error } = await searchParams;
+  const from = safeDestination(requested);
 
   // Nothing to sign in to when auth is not configured.
   if (!authEnabled) redirect("/");
 
   const session = await auth();
-  if (session?.user) redirect(from || "/");
+  if (session?.user) redirect(from);
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-surface px-4 py-10">
@@ -43,7 +61,7 @@ export default async function SignInPage({
         <form
           action={async () => {
             "use server";
-            await signIn("google", { redirectTo: from || "/" });
+            await signIn("google", { redirectTo: from });
           }}
         >
           <button

@@ -1,6 +1,28 @@
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { applyMutations, loadWorkspace, type MutationOp } from "@/db/repo";
+import { readJsonWithin } from "@/lib/guard";
+
+/** Conversations carry base64 attachments, so an upload is legitimately large. */
+const MAX_BODY_BYTES = 20_000_000;
+
+/**
+ * The tables applyMutations knows how to write. An op naming anything else
+ * falls through its switch silently, which would make a typo look like a
+ * successful save.
+ */
+const KNOWN_TABLES = new Set([
+  "departments",
+  "projects",
+  "conversations",
+  "skills",
+  "deliverables",
+  "files",
+  "allHands",
+  "profile",
+  "settings",
+  "account",
+]);
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,15 +71,23 @@ export async function POST(request: Request) {
     return Response.json({ error: owner.error }, { status: owner.status });
   }
 
-  let ops: MutationOp[];
-  try {
-    const body = (await request.json()) as { ops?: MutationOp[] };
-    ops = Array.isArray(body.ops) ? body.ops : [];
-  } catch {
-    return Response.json({ error: "Malformed request body." }, { status: 400 });
+  const parsed = await readJsonWithin<{ ops?: MutationOp[] }>(request, MAX_BODY_BYTES);
+  if (!parsed.ok) {
+    return Response.json({ error: parsed.error }, { status: parsed.status });
   }
 
+  const ops = Array.isArray(parsed.body.ops) ? parsed.body.ops : [];
   if (ops.length === 0) return Response.json({ applied: 0 });
+
+  // Each op becomes its own branch of a single transaction, so an unbounded
+  // array is an unbounded transaction. The upload path sends fewer than ten.
+  if (ops.length > 200) {
+    return Response.json({ error: "Too many operations in one request." }, { status: 400 });
+  }
+
+  if (!ops.every((op) => op && typeof op === "object" && KNOWN_TABLES.has(op.table))) {
+    return Response.json({ error: "Unrecognised operation." }, { status: 400 });
+  }
 
   try {
     // One transaction for the batch, so a failure halfway cannot leave a

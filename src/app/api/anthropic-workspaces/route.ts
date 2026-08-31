@@ -1,3 +1,5 @@
+import { requireSession } from "@/lib/guard";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,13 @@ export const dynamic = "force-dynamic";
  * documented REST endpoint called directly.
  */
 export async function POST(request: Request) {
+  // Without this the deployment is an open relay to the Anthropic Admin API for
+  // anyone who sends a key, and a way to probe which keys are valid.
+  const session = await requireSession();
+  if (!session.ok) {
+    return Response.json({ error: session.error }, { status: session.status });
+  }
+
   const serverKey = process.env.ANTHROPIC_API_KEY?.trim();
   const apiKey = serverKey || request.headers.get("x-anthropic-key")?.trim();
 
