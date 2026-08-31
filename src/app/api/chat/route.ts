@@ -81,9 +81,14 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Malformed request body." }, { status: 400 });
   }
 
-  const apiKey =
-    request.headers.get("x-anthropic-key")?.trim() ||
-    process.env.ANTHROPIC_API_KEY?.trim();
+  /**
+   * The server key wins outright when it is set, and the client header is
+   * ignored rather than used as a fallback. On a deployed instance that keeps
+   * spending tied to one key held on the server; the browser field stays
+   * available only for a local checkout that has no env var.
+   */
+  const serverKey = process.env.ANTHROPIC_API_KEY?.trim();
+  const apiKey = serverKey || request.headers.get("x-anthropic-key")?.trim();
 
   if (!apiKey) {
     return Response.json(

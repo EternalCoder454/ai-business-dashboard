@@ -77,6 +77,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const edgeSwipe = useEdgeSwipe(() => setDrawerOpen(true));
 
+  // Sign in is not part of the app: no nav, no drawer, nothing to navigate to.
+  if (pathname === "/signin") return <>{children}</>;
+
   return (
     <div
       className="flex h-dvh w-full overflow-hidden bg-surface"

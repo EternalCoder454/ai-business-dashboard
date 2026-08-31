@@ -19,6 +19,7 @@ import {
   TrashIcon,
   cx,
 } from "@/components/ui";
+import { AccountCard } from "@/components/AccountCard";
 import { exportAll, importAll, resetAll, restoreDefaultDepartments } from "@/lib/db";
 import { EFFORT_OPTIONS, MODEL_OPTIONS, WRITING_RULES } from "@/lib/seed";
 import { useStore } from "@/lib/store";
@@ -321,6 +322,8 @@ export default function SettingsPage() {
               className="font-mono text-[0.8125rem]"
             />
           </Card>
+
+          <AccountCard />
 
           <Card>
             <h2 className="md-title-lg mb-1">Data</h2>
