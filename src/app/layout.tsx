@@ -27,6 +27,26 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   formatDetection: { telephone: false, address: false, email: false },
+
+  /**
+   * What a pasted link shows in Discord, Slack, or Messages.
+   *
+   * A crawler is never signed in, so it follows the redirect to the sign-in
+   * page and reads this. It names the site and stops there: the description of
+   * a private workspace should not be a description of what is in it.
+   */
+  openGraph: {
+    type: "website",
+    siteName: "Eterneon",
+    title: "Eterneon",
+    description: "Internal operations workspace. Sign in required.",
+    url: siteUrl(),
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Eterneon",
+    description: "Internal operations workspace. Sign in required.",
+  },
 };
 
 export const viewport: Viewport = {

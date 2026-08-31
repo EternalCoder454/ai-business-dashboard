@@ -127,6 +127,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 const ROUTE_TITLES: [string, string][] = [
   ["/ceo", "CEO Office"],
   ["/all-hands", "All Hands"],
+  ["/messages", "Inbox"],
+  ["/onboarding", "Start here"],
+  ["/projects", "Projects"],
+  ["/admin", "Admin"],
   ["/library/skills", "Skills"],
   ["/library/deliverables", "Deliverables"],
   ["/library", "Library"],

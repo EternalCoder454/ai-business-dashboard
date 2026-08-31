@@ -53,8 +53,8 @@ export const COMPANY_LINKS: NavLink[] = [
   },
   {
     href: "/messages",
-    label: "Messages",
-    short: "Messages",
+    label: "Inbox",
+    short: "Inbox",
     icon: <MailIcon className="h-5 w-5" />,
   },
   {

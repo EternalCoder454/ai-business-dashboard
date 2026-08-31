@@ -34,6 +34,6 @@ export const config = {
      * sign-in page as JSON, failed, and fell back by accident rather than by
      * being told. It checks auth itself and reveals nothing else.
      */
-    "/((?!api/auth|api/workspace/status|signin|_next/static|_next/image|icon|apple-icon|manifest.webmanifest|robots.txt|favicon.ico).*)",
+    "/((?!api/auth|api/workspace/status|signin|_next/static|_next/image|icon|apple-icon|manifest.webmanifest|opengraph-image|twitter-image|robots.txt|favicon.ico).*)",
   ],
 };

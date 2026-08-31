@@ -66,11 +66,11 @@ export default function MessagesPage() {
   if (!enabled) {
     return (
       <div className="flex h-full min-h-0 flex-col">
-        <PageHeader eyebrow="People" title="Messages" />
+        <PageHeader eyebrow="People" title="Inbox" />
         <div className="px-4 py-6 medium:px-6 expanded:px-8">
           <EmptyState
             icon="✉️"
-            title="Messages need the hosted workspace"
+            title="The inbox needs the hosted workspace"
             description="Unlike everything else here, a message belongs to two people, so it cannot live in one browser. Sign in on a deployment with a database and this fills in."
           />
         </div>
@@ -83,7 +83,7 @@ export default function MessagesPage() {
       <div className={cx(open && "hidden expanded:block")}>
         <PageHeader
           eyebrow="People"
-          title="Messages"
+          title="Inbox"
           description="Person to person, separate from the department heads. Everyone on this workspace's allowlist is reachable here."
         />
       </div>
