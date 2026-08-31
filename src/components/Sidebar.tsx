@@ -43,12 +43,17 @@ export const COMPANY_LINKS: NavLink[] = [
     short: "Room",
     icon: <UsersIcon className="h-5 w-5" />,
   },
-  { href: "/skills", label: "Skills", short: "Skills", icon: <SparkIcon className="h-5 w-5" /> },
   {
-    href: "/deliverables",
-    label: "Deliverables",
-    short: "Output",
+    href: "/library",
+    label: "Library",
+    short: "Library",
     icon: <DocIcon className="h-5 w-5" />,
+  },
+  {
+    href: "/information",
+    label: "Information",
+    short: "Info",
+    icon: <SparkIcon className="h-5 w-5" />,
   },
   {
     href: "/profile",

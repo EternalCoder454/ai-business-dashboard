@@ -19,6 +19,7 @@ import type {
   Deliverable,
   DeliverableStatus,
   Department,
+  LibraryFile,
   Message,
   Settings,
   Skill,
@@ -35,6 +36,7 @@ interface StoreValue {
   deliverables: Deliverable[];
   allHandsRuns: AllHandsRun[];
   skills: Skill[];
+  files: LibraryFile[];
   profile: CompanyProfile;
   settings: Settings;
 
@@ -46,6 +48,10 @@ interface StoreValue {
   skillsFor: (departmentId: string) => Skill[];
   /** Only the skills owned by that department, for counts and the Skills page. */
   ownSkillsFor: (departmentId: string) => Skill[];
+
+  addFile: (file: LibraryFile) => Promise<void>;
+  updateFile: (id: string, patch: Partial<LibraryFile>) => Promise<void>;
+  deleteFile: (id: string) => Promise<void>;
 
   createSkill: (input: Partial<Skill> & { departmentId: string }) => Promise<Skill>;
   updateSkill: (id: string, patch: Partial<Skill>) => Promise<void>;
@@ -118,6 +124,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     undefined,
   );
 
+  const files = useLiveQuery(
+    async () => (db ? db.files.orderBy("updatedAt").reverse().toArray() : []),
+    [seeded],
+    undefined,
+  );
+
   const allHandsRuns = useLiveQuery(
     async () => (db ? db.allHands.orderBy("updatedAt").reverse().toArray() : []),
     [seeded],
@@ -181,6 +193,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deliverables: deliverables ?? [],
       allHandsRuns: allHandsRuns ?? [],
       skills: skills ?? [],
+      files: files ?? [],
       profile,
       settings,
 
@@ -196,6 +209,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       ownSkillsFor: (departmentId: string) =>
         (skills ?? []).filter((skill) => skill.departmentId === departmentId),
+
+      addFile: async (file) => {
+        await requireDb().files.put(file);
+      },
+
+      updateFile: async (id, patch) => {
+        await requireDb().files.update(id, { ...patch, updatedAt: Date.now() });
+      },
+
+      deleteFile: async (id) => {
+        await requireDb().files.delete(id);
+      },
 
       createSkill: async (input) => {
         const now = Date.now();
@@ -343,6 +368,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     deliverables,
     allHandsRuns,
     skills,
+    files,
     profile,
     settings,
   ]);

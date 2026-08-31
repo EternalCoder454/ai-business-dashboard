@@ -7,13 +7,13 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { newId } from "@/lib/db";
 import {
-  ACCEPTED_IMAGE_TYPES,
-  AttachmentError,
-  MAX_ATTACHMENTS_PER_MESSAGE,
-  attachmentSrc,
-  estimateImageTokens,
-  fileToAttachment,
-} from "@/lib/images";
+  ACCEPTED_FILE_TYPES,
+  FILE_ICON,
+  estimateAttachmentTokens,
+  fileToAttachmentAny,
+  formatBytes,
+} from "@/lib/files";
+import { AttachmentError, MAX_ATTACHMENTS_PER_MESSAGE, attachmentSrc } from "@/lib/images";
 import { buildSystemPrompt, deriveConversationTitle, hasProfileContent } from "@/lib/prompts";
 import { conversationHref, departmentHrefById } from "@/lib/routes";
 import { useStore } from "@/lib/store";
@@ -44,16 +44,37 @@ interface StreamState {
 const EMPTY_STREAM: StreamState = { text: "", thinking: "" };
 
 /**
- * A turn with images becomes content blocks. Images lead, because the API reads
- * a question about an image better when the image comes first.
+ * A turn with attachments becomes content blocks. Files lead, because the API
+ * answers a question about a document better when the document comes first.
  */
 function toWire(message: Message): string | WireContent[] {
   if (!message.attachments?.length) return message.content;
-  const blocks: WireContent[] = message.attachments.map((attachment) => ({
-    type: "image",
-    mediaType: attachment.mediaType,
-    data: attachment.data,
-  }));
+
+  const blocks: WireContent[] = [];
+  for (const attachment of message.attachments) {
+    if (attachment.kind === "image") {
+      blocks.push({
+        type: "image",
+        mediaType: attachment.mediaType,
+        data: attachment.data,
+      });
+    } else if (attachment.kind === "pdf") {
+      blocks.push({
+        type: "document",
+        mediaType: attachment.mediaType,
+        data: attachment.data,
+        name: attachment.name,
+      });
+    } else if (attachment.text) {
+      // Converted on the way in, so it travels as plain text with a header
+      // naming the file, which is what makes it quotable in a reply.
+      blocks.push({
+        type: "text",
+        text: `<file name="${attachment.name}">\n${attachment.text}\n</file>`,
+      });
+    }
+  }
+
   if (message.content.trim()) blocks.push({ type: "text", text: message.content });
   return blocks;
 }
@@ -113,6 +134,25 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     setStream(EMPTY_STREAM);
   }, [active?.id]);
 
+  /**
+   * "Send to" in the Library opens a fresh conversation with a file already
+   * attached. It is handed over in sessionStorage rather than the URL, because
+   * a base64 PDF does not belong in a query string.
+   */
+  useEffect(() => {
+    if (!active?.id) return;
+    const key = `prefill:${active.id}`;
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return;
+    sessionStorage.removeItem(key);
+    try {
+      const incoming = JSON.parse(raw) as Attachment[];
+      if (Array.isArray(incoming) && incoming.length) setPending(incoming);
+    } catch {
+      // Malformed handover, nothing worth recovering.
+    }
+  }, [active?.id]);
+
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
@@ -137,19 +177,19 @@ export function ChatView({ departmentId }: { departmentId: string }) {
       setAttachError(null);
       const room = MAX_ATTACHMENTS_PER_MESSAGE - pending.length;
       if (room <= 0) {
-        setAttachError(`${MAX_ATTACHMENTS_PER_MESSAGE} images per message is the limit.`);
+        setAttachError(`${MAX_ATTACHMENTS_PER_MESSAGE} files per message is the limit.`);
         return;
       }
 
       const added: Attachment[] = [];
       for (const file of Array.from(files).slice(0, room)) {
         try {
-          added.push(await fileToAttachment(file));
+          added.push(await fileToAttachmentAny(file));
         } catch (error) {
           setAttachError(
             error instanceof AttachmentError
               ? error.message
-              : "That file could not be read as an image.",
+              : "That file could not be read.",
           );
         }
       }
@@ -327,7 +367,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href={`/skills?dept=${encodeURIComponent(departmentId)}`}
+            href={`/library/skills?dept=${encodeURIComponent(departmentId)}`}
             className="hidden medium:block"
           >
             <Chip tone="primary" title="SKILL.md playbooks this head follows">
@@ -441,11 +481,27 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             <ul className="mb-2.5 flex flex-wrap items-end gap-2">
               {pending.map((attachment) => (
                 <li key={attachment.id} className="relative">
-                  <img
-                    src={attachmentSrc(attachment)}
-                    alt={attachment.name}
-                    className="h-16 w-16 rounded-xl border border-outline-variant object-cover"
-                  />
+                  {attachment.kind === "image" ? (
+                    <img
+                      src={attachmentSrc(attachment)}
+                      alt={attachment.name}
+                      className="h-16 w-16 rounded-xl border border-outline-variant object-cover"
+                    />
+                  ) : (
+                    <div
+                      title={attachment.name}
+                      className="flex h-16 w-40 flex-col justify-center gap-0.5 rounded-xl border border-outline-variant bg-low px-3"
+                    >
+                      <span className="md-label truncate">
+                        {FILE_ICON[attachment.kind]} {attachment.name}
+                      </span>
+                      <span className="md-label-sm text-on-variant/75">
+                        {attachment.kind === "pdf"
+                          ? formatBytes(attachment.size ?? 0)
+                          : `${(attachment.text?.length ?? 0).toLocaleString()} chars`}
+                      </span>
+                    </div>
+                  )}
                   <button
                     onClick={() =>
                       setPending((current) =>
@@ -462,7 +518,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               <li className="md-label-sm pb-1 text-on-variant/75">
                 about{" "}
                 {pending
-                  .reduce((total, item) => total + estimateImageTokens(item), 0)
+                  .reduce((total, item) => total + estimateAttachmentTokens(item), 0)
                   .toLocaleString()}{" "}
                 tokens
               </li>
@@ -473,8 +529,8 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-lowest py-2 pl-4 pr-2 transition-colors focus-within:border-primary">
             <button
               onClick={() => fileRef.current?.click()}
-              aria-label="Attach an image"
-              title="Attach an image, or paste one straight in"
+              aria-label="Attach a file"
+              title="Attach an image, PDF, Word document, or text file. Images can be pasted straight in."
               className="md-state md-target grid h-9 w-9 flex-none place-items-center self-end rounded-full text-on-variant"
             >
               <PaperclipIcon className="h-5 w-5" />
@@ -555,7 +611,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           <input
             ref={fileRef}
             type="file"
-            accept={ACCEPTED_IMAGE_TYPES.join(",")}
+            accept={ACCEPTED_FILE_TYPES.join(",")}
             multiple
             className="hidden"
             onChange={(event) => {
@@ -657,22 +713,32 @@ function MessageBubble({
                 message.attachments.length > 1 ? "grid-cols-2" : "grid-cols-1",
               )}
             >
-              {message.attachments.map((attachment) => (
-                <li key={attachment.id}>
-                  <a
-                    href={attachmentSrc(attachment)}
-                    target="_blank"
-                    rel="noreferrer"
-                    title={attachment.name}
+              {message.attachments.map((attachment) =>
+                attachment.kind === "image" ? (
+                  <li key={attachment.id}>
+                    <a
+                      href={attachmentSrc(attachment)}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={attachment.name}
+                    >
+                      <img
+                        src={attachmentSrc(attachment)}
+                        alt={attachment.name}
+                        className="max-h-64 w-full rounded-xl object-contain"
+                      />
+                    </a>
+                  </li>
+                ) : (
+                  <li
+                    key={attachment.id}
+                    className="md-label flex items-center gap-2 rounded-xl bg-black/15 px-3 py-2"
                   >
-                    <img
-                      src={attachmentSrc(attachment)}
-                      alt={attachment.name}
-                      className="max-h-64 w-full rounded-xl object-contain"
-                    />
-                  </a>
-                </li>
-              ))}
+                    <span aria-hidden>{FILE_ICON[attachment.kind]}</span>
+                    <span className="truncate">{attachment.name}</span>
+                  </li>
+                ),
+              )}
             </ul>
           ) : null}
           {message.content ? (

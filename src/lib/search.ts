@@ -41,8 +41,10 @@ const PAGES: { title: string; subtitle: string; href: string; icon: string }[] =
   { title: "Org Chart", subtitle: "Every head and how they report", href: "/", icon: "🏛" },
   { title: "CEO Office", subtitle: "Talk to Ruth", href: "/ceo", icon: "🧠" },
   { title: "All Hands", subtitle: "Ask the whole room at once", href: "/all-hands", icon: "👥" },
-  { title: "Skills", subtitle: "SKILL.md playbooks", href: "/skills", icon: "✨" },
-  { title: "Deliverables", subtitle: "Everything produced", href: "/deliverables", icon: "📄" },
+  { title: "Library", subtitle: "Files, deliverables, and skills", href: "/library", icon: "📁" },
+  { title: "Skills", subtitle: "SKILL.md playbooks", href: "/library/skills", icon: "✨" },
+  { title: "Deliverables", subtitle: "Everything produced", href: "/library/deliverables", icon: "📄" },
+  { title: "Information", subtitle: "What the heads actually receive", href: "/information", icon: "🧩" },
   { title: "Company Profile", subtitle: "Shared context for every head", href: "/profile", icon: "🏢" },
   { title: "Settings", subtitle: "API key, model, departments, data", href: "/settings", icon: "⚙️" },
 ];
@@ -125,7 +127,7 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
         title: skill.name,
         subtitle: `Skill · ${nameOf(skill.departmentId)}`,
         snippet: snippetAround(skill.content, needle),
-        href: `/skills?dept=${encodeURIComponent(skill.departmentId)}`,
+        href: `/library/skills?dept=${encodeURIComponent(skill.departmentId)}`,
         icon: emojiOf(skill.departmentId),
         score,
       });
@@ -142,7 +144,7 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
         title: deliverable.title,
         subtitle: `Deliverable · ${nameOf(deliverable.departmentId)}`,
         snippet: snippetAround(deliverable.body, needle),
-        href: "/deliverables",
+        href: "/library/deliverables",
         icon: emojiOf(deliverable.departmentId),
         score,
       });

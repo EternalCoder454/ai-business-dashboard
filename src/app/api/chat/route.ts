@@ -125,18 +125,32 @@ export async function POST(request: NextRequest) {
     const toBlocks = (content: string | WireContent[]): Record<string, unknown>[] =>
       typeof content === "string"
         ? [{ type: "text", text: content }]
-        : content.map((block) =>
-            block.type === "image"
-              ? {
-                  type: "image",
-                  source: {
-                    type: "base64",
-                    media_type: block.mediaType,
-                    data: block.data,
-                  },
-                }
-              : { type: "text", text: block.text },
-          );
+        : content.map((block) => {
+            if (block.type === "image") {
+              return {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: block.mediaType,
+                  data: block.data,
+                },
+              };
+            }
+            if (block.type === "document") {
+              // PDFs are read natively. Word and text files are converted to
+              // text on the client, so they never reach this branch.
+              return {
+                type: "document",
+                title: block.name,
+                source: {
+                  type: "base64",
+                  media_type: block.mediaType,
+                  data: block.data,
+                },
+              };
+            }
+            return { type: "text", text: block.text };
+          });
 
     const apiMessages: unknown[] = messages.map((m) => ({
       role: m.role,

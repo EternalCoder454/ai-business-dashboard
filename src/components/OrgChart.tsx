@@ -252,7 +252,7 @@ function SupportingPane() {
     if (bare.length > 0) {
       items.push({
         label: `${bare.length} ${bare.length === 1 ? "head has" : "heads have"} no skills`,
-        href: "/skills",
+        href: "/library/skills",
       });
     }
     return items;
@@ -296,11 +296,11 @@ function SupportingPane() {
       <PaneList
         title="Recent output"
         icon={<DocIcon className="h-3.5 w-3.5" />}
-        href="/deliverables"
+        href="/library/deliverables"
         empty="Nothing saved yet. Hit Save on any reply."
         items={deliverables.slice(0, 4).map((item) => ({
           key: item.id,
-          href: "/deliverables",
+          href: "/library/deliverables",
           primary: item.title,
           secondary: `${nameOf(item.departmentId)} · ${formatRelativeTime(item.updatedAt)}`,
         }))}

@@ -20,6 +20,7 @@ import {
   cx,
 } from "@/components/ui";
 import { Markdown } from "@/components/ChatView";
+import { LibraryTabs } from "@/components/LibraryTabs";
 import { conversationHref, formatRelativeTime } from "@/lib/routes";
 import { DELIVERABLE_COLUMNS, useStore } from "@/lib/store";
 import type { Deliverable, DeliverableStatus } from "@/lib/types";
@@ -79,7 +80,7 @@ export default function DeliverablesPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader
-        eyebrow="Output"
+        eyebrow="Library"
         title="Deliverables"
         description="Everything the departments have produced, in one board. Save any reply straight from a chat with the bookmark button."
         actions={
@@ -88,6 +89,8 @@ export default function DeliverablesPage() {
           </Button>
         }
       />
+
+      <LibraryTabs />
 
       <div className="flex flex-none flex-wrap items-center gap-2 border-b border-outline-variant px-4 medium:px-6 expanded:px-8 py-3">
         <Chip selected={filter === "all"} onClick={() => setFilter("all")}>

@@ -10,6 +10,7 @@ import { COMPANY_ID } from "./seed";
 import { seedSkills } from "./seedSkills";
 import type {
   AllHandsRun,
+  LibraryFile,
   CompanyProfile,
   Conversation,
   Deliverable,
@@ -41,6 +42,7 @@ class CeoHqDatabase extends Dexie {
   deliverables!: Table<Deliverable, string>;
   allHands!: Table<AllHandsRun, string>;
   skills!: Table<Skill, string>;
+  files!: Table<LibraryFile, string>;
   profile!: Table<StoredProfile, string>;
   settings!: Table<Settings, string>;
 
@@ -218,6 +220,19 @@ class CeoHqDatabase extends Dexie {
         if (additions.length) await table.bulkPut(additions);
       });
 
+    // v9 adds the Library: images, PDFs, and documents kept once and attached
+    // to any conversation, rather than re-uploaded each time.
+    this.version(9).stores({
+      departments: "id, order, isCeo",
+      conversations: "id, departmentId, updatedAt",
+      deliverables: "id, departmentId, status, updatedAt",
+      allHands: "id, createdAt, updatedAt",
+      skills: "id, departmentId, updatedAt",
+      files: "id, kind, departmentId, updatedAt",
+      profile: "id",
+      settings: "id",
+    });
+
     // v8 adds the company wide skills, which every head inherits.
     this.version(8)
       .stores({
@@ -299,6 +314,7 @@ export interface ExportPayload {
   deliverables: Deliverable[];
   allHands?: AllHandsRun[];
   skills?: Skill[];
+  files?: LibraryFile[];
   profile?: StoredProfile;
   settings?: Settings;
 }
@@ -306,13 +322,23 @@ export interface ExportPayload {
 /** Everything in one object, for Settings, Export data. */
 export async function exportAll(): Promise<ExportPayload> {
   if (!db) throw new Error("Database is only available in the browser.");
-  const [departments, conversations, deliverables, allHands, skills, profile, settings] =
+  const [
+    departments,
+    conversations,
+    deliverables,
+    allHands,
+    skills,
+    files,
+    profile,
+    settings,
+  ] =
     await Promise.all([
       db.departments.toArray(),
       db.conversations.toArray(),
       db.deliverables.toArray(),
       db.allHands.toArray(),
       db.skills.toArray(),
+      db.files.toArray(),
       db.profile.get("profile"),
       db.settings.get("app"),
     ]);
@@ -329,6 +355,7 @@ export async function exportAll(): Promise<ExportPayload> {
     deliverables,
     allHands,
     skills,
+    files,
     profile,
     settings: safeSettings,
   };
@@ -355,6 +382,7 @@ export async function importAll(raw: unknown): Promise<{
   const deliverables = Array.isArray(payload.deliverables) ? payload.deliverables : [];
   const allHands = Array.isArray(payload.allHands) ? payload.allHands : [];
   const skills = Array.isArray(payload.skills) ? payload.skills : [];
+  const files = Array.isArray(payload.files) ? payload.files : [];
 
   if (departments.length === 0) {
     throw new Error("That export has no departments in it.");
@@ -371,6 +399,7 @@ export async function importAll(raw: unknown): Promise<{
       db.deliverables,
       db.allHands,
       db.skills,
+      db.files,
       db.profile,
       db.settings,
     ],
@@ -381,12 +410,14 @@ export async function importAll(raw: unknown): Promise<{
         db.deliverables.clear(),
         db.allHands.clear(),
         db.skills.clear(),
+        db.files.clear(),
       ]);
       await db.departments.bulkPut(departments);
       if (conversations.length) await db.conversations.bulkPut(conversations);
       if (deliverables.length) await db.deliverables.bulkPut(deliverables);
       if (allHands.length) await db.allHands.bulkPut(allHands);
       if (skills.length) await db.skills.bulkPut(skills);
+      if (files.length) await db.files.bulkPut(files);
 
       if (payload.profile) {
         const { id: _id, ...fields } = payload.profile;
@@ -431,6 +462,7 @@ export async function resetAll(): Promise<void> {
       db.deliverables,
       db.allHands,
       db.skills,
+      db.files,
       db.profile,
       db.settings,
     ],
@@ -441,6 +473,7 @@ export async function resetAll(): Promise<void> {
         db.deliverables.clear(),
         db.allHands.clear(),
         db.skills.clear(),
+        db.files.clear(),
         db.profile.clear(),
         db.settings.clear(),
       ]);

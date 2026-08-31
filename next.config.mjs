@@ -7,6 +7,14 @@ const nextConfig = {
   // two servers never share (and corrupt) the same .next directory.
   distDir: process.env.NEXT_DIST_DIR || ".next",
 
+  // The Library absorbed these two, and old links should not 404.
+  async redirects() {
+    return [
+      { source: "/skills", destination: "/library/skills", permanent: false },
+      { source: "/deliverables", destination: "/library/deliverables", permanent: false },
+    ];
+  },
+
   async headers() {
     const headers = [
       { key: "X-Content-Type-Options", value: "nosniff" },

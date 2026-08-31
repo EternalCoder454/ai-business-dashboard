@@ -1,22 +1,42 @@
 export type Role = "user" | "assistant";
 
-/** An image the user attached to a message. Stored as base64 alongside it. */
+export type AttachmentKind = "image" | "pdf" | "document";
+
+/**
+ * Something attached to a message, or held in the Library.
+ *
+ * Images and PDFs travel to the API as bytes. Word and text files are converted
+ * to text on the way in, because the API reads PDFs natively but not .docx.
+ */
 export interface Attachment {
   id: string;
-  kind: "image";
-  /** image/png, image/jpeg, image/webp, or image/gif. */
+  kind: AttachmentKind;
   mediaType: string;
   name: string;
-  /** Base64 payload with no data: prefix, which is the shape the API wants. */
+  /** Base64 with no data: prefix, which is the shape the API wants. Empty for documents. */
   data: string;
+  /** Extracted text, for documents the API cannot read directly. */
+  text?: string;
   width: number;
   height: number;
+  /** Original byte size, before base64. */
+  size?: number;
+}
+
+/** A file kept in the Library, reusable across conversations. */
+export interface LibraryFile extends Attachment {
+  /** Optional owning head, purely for filtering. */
+  departmentId?: string;
+  note?: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 /** One block of a message as it goes over the wire to /api/chat. */
 export type WireContent =
   | { type: "text"; text: string }
-  | { type: "image"; mediaType: string; data: string };
+  | { type: "image"; mediaType: string; data: string }
+  | { type: "document"; mediaType: string; data: string; name: string };
 
 export type DepartmentStatus = "online" | "busy" | "offline";
 

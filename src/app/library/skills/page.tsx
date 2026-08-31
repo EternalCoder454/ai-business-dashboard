@@ -20,6 +20,7 @@ import {
   TrashIcon,
   cx,
 } from "@/components/ui";
+import { LibraryTabs } from "@/components/LibraryTabs";
 import { createRipple } from "@/components/ui/ripple";
 import { CEO_ID, COMPANY_ID } from "@/lib/seed";
 import { buildSkillsBlock, parseSkillMarkdown, skillFileName, skillToMarkdown } from "@/lib/skills";
@@ -135,7 +136,7 @@ function SkillsView() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader
-        eyebrow="Playbooks"
+        eyebrow="Library"
         title="Skills"
         description="Each skill is a SKILL.md file: a name, a line saying when to use it, and a markdown body. Enabled skills are injected into that head's system prompt, so they change how the work gets done rather than just what the head knows."
         actions={
@@ -161,6 +162,8 @@ function SkillsView() {
           </>
         }
       />
+
+      <LibraryTabs />
 
       <div className="flex flex-none flex-wrap items-center gap-2 border-b border-outline-variant px-4 medium:px-6 expanded:px-8 py-3">
         <Chip selected={filter === "all"} onClick={() => setFilter("all")}>
