@@ -135,11 +135,31 @@ export function isActive(pathname: string, href: string): boolean {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-/** The permanent drawer, shown from the large window size class up. */
-export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
+/**
+ * The permanent drawer, shown from the large window size class up.
+ *
+ * Collapsing hides it and lets the rail, which medium and expanded windows
+ * already use, take over at large too. So the collapsed state is the rail
+ * rather than a narrower drawer, and there is only one narrow navigation to
+ * maintain.
+ */
+export function Sidebar({
+  onOpenSearch,
+  collapsed,
+  onCollapse,
+}: {
+  onOpenSearch?: () => void;
+  collapsed?: boolean;
+  onCollapse?: () => void;
+}) {
   return (
-    <aside className="hidden h-full w-[17.5rem] flex-none flex-col border-r border-outline-variant bg-low large:flex">
-      <SidebarContent onOpenSearch={onOpenSearch} />
+    <aside
+      className={cx(
+        "hidden h-full w-[17.5rem] flex-none flex-col border-r border-outline-variant bg-low",
+        !collapsed && "large:flex",
+      )}
+    >
+      <SidebarContent onOpenSearch={onOpenSearch} onCollapse={onCollapse} />
     </aside>
   );
 }
@@ -151,9 +171,12 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
 export function SidebarContent({
   onNavigate,
   onOpenSearch,
+  onCollapse,
 }: {
   onNavigate?: () => void;
   onOpenSearch?: () => void;
+  /** Only passed by the permanent drawer. The modal one has nothing to collapse to. */
+  onCollapse?: () => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -202,7 +225,37 @@ export function SidebarContent({
   return (
     <>
       <div className="flex items-start gap-3 px-5 pb-4 pt-5">
-        <CompanyMark size={40} />
+        {onCollapse ? (
+          <button
+            onClick={(event) => {
+              createRipple(event);
+              onCollapse();
+            }}
+            aria-label="Collapse the sidebar"
+            title="Collapse the sidebar"
+            className={cx(
+              "md-state group relative grid flex-none place-items-center rounded-xl",
+              "transition-transform active:scale-95",
+            )}
+          >
+            <CompanyMark size={40} />
+            {/* Shown on hover only. The mark is the workspace's identity first
+                and a control second, so the affordance should not compete with
+                it at rest. */}
+            <span
+              aria-hidden
+              className={cx(
+                "pointer-events-none absolute inset-0 grid place-items-center rounded-xl",
+                "bg-highest/85 text-on-surface opacity-0 transition-opacity",
+                "group-hover:opacity-100 group-focus-visible:opacity-100",
+              )}
+            >
+              <ChevronIcon className="h-4 w-4 rotate-180" />
+            </span>
+          </button>
+        ) : (
+          <CompanyMark size={40} />
+        )}
         <div className="min-w-0 flex-1">
           <p className="md-title truncate">{settings.companyName}</p>
           <input

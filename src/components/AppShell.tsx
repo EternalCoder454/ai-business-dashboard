@@ -8,7 +8,9 @@ import { useMessages } from "@/lib/messages";
 import { useStore } from "@/lib/store";
 import { useKeyboardInset } from "@/lib/viewport";
 import { PRIMARY_LINKS, Sidebar, SidebarContent, isActive } from "./Sidebar";
-import { CloseIcon, NavBadge, cx } from "./ui";
+import { CompanyMark } from "./CompanyMark";
+import { setNavCollapsed, useNavCollapsed } from "@/lib/navCollapsed";
+import { ChevronIcon, CloseIcon, NavBadge, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
 
 /**
@@ -27,6 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
 
   const { settings } = useStore();
+  const navCollapsed = useNavCollapsed();
 
   /** Cmd and Ctrl K always work. This is the bare key, which can be turned off. */
   const bareKey =
@@ -113,11 +116,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       onTouchMove={edgeSwipe.onTouchMove}
       onTouchEnd={edgeSwipe.onTouchEnd}
     >
-      <Sidebar onOpenSearch={() => setSearchOpen(true)} />
+      <Sidebar
+        onOpenSearch={() => setSearchOpen(true)}
+        collapsed={navCollapsed}
+        onCollapse={() => setNavCollapsed(true)}
+      />
       <NavigationRail
         pathname={pathname}
         onOpenDrawer={() => setDrawerOpen(true)}
         onOpenSearch={() => setSearchOpen(true)}
+        collapsed={navCollapsed}
+        onExpand={() => setNavCollapsed(false)}
       />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -243,27 +252,69 @@ function TopAppBar({
   );
 }
 
-/** Medium and expanded windows get a rail. Icons over a short label, 80px wide. */
+/**
+ * Medium and expanded windows get a rail. Icons over a short label, 80px wide.
+ *
+ * It also stands in for the permanent drawer at large once that is collapsed,
+ * so the two states of the sidebar are the drawer and this, rather than a
+ * third narrow layout nobody maintains.
+ */
 function NavigationRail({
   pathname,
   onOpenDrawer,
   onOpenSearch,
+  collapsed,
+  onExpand,
 }: {
   pathname: string;
   onOpenDrawer: () => void;
   onOpenSearch: () => void;
+  collapsed: boolean;
+  onExpand: () => void;
 }) {
   return (
-    <nav className="safe-left hidden w-20 flex-none flex-col items-center gap-1 border-r border-outline-variant bg-low py-3 medium:flex large:hidden">
+    <nav
+      className={cx(
+        "safe-left hidden w-20 flex-none flex-col items-center gap-1",
+        "border-r border-outline-variant bg-low py-3 medium:flex",
+        collapsed ? "large:flex" : "large:hidden",
+      )}
+    >
+      {/* Two controls in one slot, because what the top of the rail does
+          depends on the window: below large there is a drawer to open, and at
+          large the drawer is this, collapsed, so it expands instead. Which one
+          shows is left to CSS, in keeping with the rest of the shell. */}
       <button
         onClick={(event) => {
           createRipple(event);
           onOpenDrawer();
         }}
         aria-label="Open navigation drawer"
-        className="md-state mb-2 grid h-12 w-12 place-items-center rounded-2xl bg-primary-container text-on-primary-container shadow-e1"
+        className="md-state mb-2 grid h-12 w-12 place-items-center rounded-2xl bg-primary-container text-on-primary-container shadow-e1 large:hidden"
       >
         <MenuIcon />
+      </button>
+
+      <button
+        onClick={(event) => {
+          createRipple(event);
+          onExpand();
+        }}
+        aria-label="Expand the sidebar"
+        title="Expand the sidebar"
+        className="md-state group relative mb-2 hidden place-items-center rounded-xl transition-transform active:scale-95 large:grid"
+      >
+        <CompanyMark size={48} />
+        <span
+          aria-hidden
+          className={cx(
+            "pointer-events-none absolute inset-0 grid place-items-center rounded-xl",
+            "bg-highest/85 text-on-surface opacity-0 transition-opacity",
+            "group-hover:opacity-100 group-focus-visible:opacity-100",
+          )}
+        >
+          <ChevronIcon className="h-4 w-4" />
+        </span>
       </button>
 
       <button

@@ -241,6 +241,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const hosted = mode === "hosted";
+  /**
+   * True only once the answer is in. While the mode is still resolving,
+   * `hosted` is false but this is false too, which is the distinction the
+   * live queries below need: not-hosted-yet is not the same as local.
+   */
+  const local = mode === "local";
 
   // The hosted snapshot is read once; every later change is applied to it
   // locally and sent to the server, so no request is needed to re-render.
@@ -416,64 +422,64 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [mode, hosted]);
 
   const allDepartments = useLiveQuery(
-    async () => (!db || hosted ? [] : db.departments.orderBy("order").toArray()),
-    [seeded, hosted],
+    async () => (!db || !local ? [] : db.departments.orderBy("order").toArray()),
+    [seeded, local],
     undefined,
   );
 
   const conversations = useLiveQuery(
     async () =>
-      !db || hosted ? [] : db.conversations.orderBy("updatedAt").reverse().toArray(),
-    [seeded, hosted],
+      !db || !local ? [] : db.conversations.orderBy("updatedAt").reverse().toArray(),
+    [seeded, local],
     undefined,
   );
 
   const projects = useLiveQuery(
-    async () => (!db || hosted ? [] : db.projects.orderBy("updatedAt").reverse().toArray()),
-    [seeded, hosted],
+    async () => (!db || !local ? [] : db.projects.orderBy("updatedAt").reverse().toArray()),
+    [seeded, local],
     undefined,
   );
 
   const deliverables = useLiveQuery(
     async () =>
-      !db || hosted ? [] : db.deliverables.orderBy("updatedAt").reverse().toArray(),
-    [seeded, hosted],
+      !db || !local ? [] : db.deliverables.orderBy("updatedAt").reverse().toArray(),
+    [seeded, local],
     undefined,
   );
 
   const skills = useLiveQuery(
-    async () => (!db || hosted ? [] : db.skills.orderBy("updatedAt").reverse().toArray()),
-    [seeded, hosted],
+    async () => (!db || !local ? [] : db.skills.orderBy("updatedAt").reverse().toArray()),
+    [seeded, local],
     undefined,
   );
 
   const files = useLiveQuery(
-    async () => (!db || hosted ? [] : db.files.orderBy("updatedAt").reverse().toArray()),
-    [seeded, hosted],
+    async () => (!db || !local ? [] : db.files.orderBy("updatedAt").reverse().toArray()),
+    [seeded, local],
     undefined,
   );
 
   const allHandsRuns = useLiveQuery(
-    async () => (!db || hosted ? [] : db.allHands.orderBy("updatedAt").reverse().toArray()),
-    [seeded, hosted],
+    async () => (!db || !local ? [] : db.allHands.orderBy("updatedAt").reverse().toArray()),
+    [seeded, local],
     undefined,
   );
 
   const storedAccount = useLiveQuery(
-    async () => (!db || hosted ? undefined : db.account.get("me")),
-    [seeded, hosted],
+    async () => (!db || !local ? undefined : db.account.get("me")),
+    [seeded, local],
     undefined,
   );
 
   const storedProfile = useLiveQuery(
-    async () => (!db || hosted ? undefined : db.profile.get("profile")),
-    [seeded, hosted],
+    async () => (!db || !local ? undefined : db.profile.get("profile")),
+    [seeded, local],
     undefined,
   );
 
   const storedSettings = useLiveQuery(
-    async () => (!db || hosted ? undefined : db.settings.get("app")),
-    [seeded, hosted],
+    async () => (!db || !local ? undefined : db.settings.get("app")),
+    [seeded, local],
     undefined,
   );
 
