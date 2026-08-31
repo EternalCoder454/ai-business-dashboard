@@ -437,3 +437,19 @@ Be careful with numbers. Most research on management is directional at best, and
 Never flatter. "Good question" and "that is a great instinct" are noise. If something they did was genuinely well handled, say what specifically worked, or say nothing.`,
   };
 }
+
+/**
+ * A stable colour per department, for telling eight replies apart at a glance.
+ *
+ * Derived from the id rather than stored, so a department never needs a colour
+ * chosen for it and two people looking at the same workspace see the same
+ * mapping. The palette is the project accents, which are already tuned to sit
+ * on both themes.
+ */
+export function departmentAccent(departmentId: string) {
+  let hash = 0;
+  for (let i = 0; i < departmentId.length; i += 1) {
+    hash = (hash * 31 + departmentId.charCodeAt(i)) | 0;
+  }
+  return PROJECT_ACCENTS[Math.abs(hash) % PROJECT_ACCENTS.length];
+}

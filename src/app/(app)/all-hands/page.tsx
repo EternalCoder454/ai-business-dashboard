@@ -22,6 +22,7 @@ import { createRipple } from "@/components/ui/ripple";
 import { ROOM_BUDGET, runAllHandsRound, runUsage } from "@/lib/allHands";
 import { deriveConversationTitle } from "@/lib/prompts";
 import { formatRelativeTime } from "@/lib/routes";
+import { departmentAccent } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import type { AllHandsResponse, AllHandsRun, Department } from "@/lib/types";
 
@@ -513,7 +514,8 @@ function Opening({
             department={department}
             size={40}
             title={`${department.personaName}, ${department.roleTitle}`}
-            className="shadow-e1"
+            className="shadow-e1 ring-2"
+            ringColor={departmentAccent(department.id).dot}
           />
         ))}
       </div>
@@ -549,6 +551,7 @@ function HeadMessage({
   }, [response.content]);
 
   const collapsed = overflowing && !expanded;
+  const accent = departmentAccent(response.departmentId);
 
   return (
     <div id={`msg-${response.departmentId}`} className="animate-rise group flex gap-3">
@@ -565,17 +568,23 @@ function HeadMessage({
 
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-baseline gap-2">
-          <span className="md-title">
+          <span className="md-title" style={{ color: accent.dot }}>
             {department?.personaName || department?.name || response.departmentId}
           </span>
           <span className="md-label-sm truncate text-on-variant/75">
             {department?.roleTitle}
           </span>
-          {response.pending && !response.content ? (
-            <span className="flex items-center gap-1">
-              <span className="typing-dot" />
-              <span className="typing-dot" style={{ animationDelay: "0.15s" }} />
-              <span className="typing-dot" style={{ animationDelay: "0.3s" }} />
+          {response.pending ? (
+            <span className="flex items-center gap-1" title="Still replying">
+              <span className="typing-dot" style={{ background: accent.dot }} />
+              <span
+                className="typing-dot"
+                style={{ background: accent.dot, animationDelay: "0.15s" }}
+              />
+              <span
+                className="typing-dot"
+                style={{ background: accent.dot, animationDelay: "0.3s" }}
+              />
             </span>
           ) : null}
         </div>
@@ -583,8 +592,17 @@ function HeadMessage({
         <div
           className={cx(
             "relative rounded-3xl rounded-tl-lg px-4 py-3 shadow-e1",
+            // A left edge in the department's own colour, so eight replies
+            // arriving at once are told apart without reading the names.
+            "border-l-4",
             response.error ? "bg-error-container text-on-error-container" : "bg-container",
+            response.pending && "animate-pulse-edge",
           )}
+          style={
+            response.error
+              ? undefined
+              : { borderLeftColor: accent.dot, background: accent.soft }
+          }
         >
           <div
             ref={bodyRef}

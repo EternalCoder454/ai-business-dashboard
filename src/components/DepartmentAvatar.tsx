@@ -19,6 +19,7 @@ export function DepartmentAvatar({
   size = 40,
   status,
   title,
+  ringColor,
   className,
 }: {
   department: Pick<Department, "name" | "personaName" | "avatarUrl">;
@@ -26,12 +27,18 @@ export function DepartmentAvatar({
   /** Draws a presence dot on the corner, which saves a line of text per row. */
   status?: DepartmentStatus;
   title?: string;
+  /** A coloured ring, used where several avatars need telling apart at a glance. */
+  ringColor?: string;
   className?: string;
 }) {
   const initial = (department.personaName || department.name || "?").trim().charAt(0).toUpperCase();
 
   const shared = cx("flex-none rounded-full object-cover", className);
-  const style = { width: size, height: size };
+  const style = {
+    width: size,
+    height: size,
+    ...(ringColor ? { boxShadow: `0 0 0 2px ${ringColor}` } : {}),
+  };
 
   const face = department.avatarUrl ? (
     // A stored data URL, so next/image would have nothing to optimise.

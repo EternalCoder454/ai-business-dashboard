@@ -606,6 +606,17 @@
   transform: scale(0.985);
 }
 
+/* A reply still being written breathes at its edge. Subtle on purpose: eight
+   of these animating at once should read as activity, not as an alarm. */
+@keyframes pulse-edge {
+  0%, 100% { border-left-color: currentColor; opacity: 1; }
+  50% { opacity: 0.72; }
+}
+
+.animate-pulse-edge {
+  animation: pulse-edge 1.8s var(--md-motion-standard) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
