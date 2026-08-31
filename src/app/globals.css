@@ -1,0 +1,651 @@
+@import "tailwindcss";
+
+/*
+ * Material 3 tonal palette. Dark is the default; [data-theme="light"]
+ * swaps the same token names so every component stays theme-agnostic.
+ */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --md-surface: #1a1c1e;
+  --md-surface-dim: #121416;
+  --md-container-lowest: #0d0f11;
+  --md-container-low: #1e2022;
+  --md-container: #212426;
+  --md-container-high: #2b2e31;
+  --md-container-highest: #35383b;
+
+  --md-on-surface: #e3e2e6;
+  --md-on-surface-variant: #bfc6cb;
+  --md-outline: #89929a;
+  --md-outline-variant: #3f474d;
+
+  --md-primary: #4fd8eb;
+  --md-on-primary: #00363d;
+  --md-primary-container: #004f58;
+  --md-on-primary-container: #97f0ff;
+
+  --md-secondary-container: #33484d;
+  --md-on-secondary-container: #cce7ed;
+
+  --md-success: #6fdd8b;
+  --md-warning: #f2c45a;
+  --md-error: #ffb4ab;
+  --md-error-container: #93000a;
+  --md-on-error-container: #ffdad6;
+
+  --md-state-hover: rgb(227 226 230 / 0.07);
+  --md-state-pressed: rgb(227 226 230 / 0.12);
+  --md-ripple: rgb(227 226 230 / 0.18);
+
+  --md-motion-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-motion-emph-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-motion-emph-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --md-motion-short3: 150ms;
+  --md-motion-medium2: 300ms;
+  --md-motion-long1: 450ms;
+
+  --md-elev-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px 1px rgb(0 0 0 / 0.22);
+  --md-elev-2: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 6px 2px rgb(0 0 0 / 0.22);
+  --md-elev-3: 0 1px 3px rgb(0 0 0 / 0.4), 0 4px 10px 3px rgb(0 0 0 / 0.24);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --md-surface: #f7fafb;
+  --md-surface-dim: #d8dbdd;
+  --md-container-lowest: #ffffff;
+  --md-container-low: #f1f4f6;
+  --md-container: #ebeef0;
+  --md-container-high: #e5e8ea;
+  --md-container-highest: #dfe2e4;
+
+  --md-on-surface: #191c1e;
+  --md-on-surface-variant: #40484c;
+  --md-outline: #6f797d;
+  --md-outline-variant: #bfc8cc;
+
+  --md-primary: #00687a;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #a7eeff;
+  --md-on-primary-container: #001f26;
+
+  --md-secondary-container: #cde7ed;
+  --md-on-secondary-container: #051f24;
+
+  --md-success: #146c2e;
+  --md-warning: #8a6100;
+  --md-error: #ba1a1a;
+  --md-error-container: #ffdad6;
+  --md-on-error-container: #410002;
+
+  --md-state-hover: rgb(25 28 30 / 0.06);
+  --md-state-pressed: rgb(25 28 30 / 0.11);
+  --md-ripple: rgb(25 28 30 / 0.14);
+
+  --md-elev-1: 0 1px 2px rgb(0 0 0 / 0.12), 0 1px 3px 1px rgb(0 0 0 / 0.08);
+  --md-elev-2: 0 1px 2px rgb(0 0 0 / 0.14), 0 2px 6px 2px rgb(0 0 0 / 0.08);
+  --md-elev-3: 0 1px 3px rgb(0 0 0 / 0.14), 0 4px 10px 3px rgb(0 0 0 / 0.1);
+}
+
+/* Material 3 window size classes, replacing Tailwind's device-flavoured
+   defaults. Compact gets a bottom bar, medium and expanded a navigation rail,
+   large and above a permanent drawer. */
+@theme {
+  --breakpoint-medium: 600px;
+  --breakpoint-expanded: 840px;
+  --breakpoint-large: 1200px;
+  --breakpoint-xlarge: 1600px;
+}
+
+@theme inline {
+  --color-surface: var(--md-surface);
+  --color-surface-dim: var(--md-surface-dim);
+  --color-lowest: var(--md-container-lowest);
+  --color-low: var(--md-container-low);
+  --color-container: var(--md-container);
+  --color-high: var(--md-container-high);
+  --color-highest: var(--md-container-highest);
+
+  --color-on-surface: var(--md-on-surface);
+  --color-on-variant: var(--md-on-surface-variant);
+  --color-outline: var(--md-outline);
+  --color-outline-variant: var(--md-outline-variant);
+
+  --color-primary: var(--md-primary);
+  --color-on-primary: var(--md-on-primary);
+  --color-primary-container: var(--md-primary-container);
+  --color-on-primary-container: var(--md-on-primary-container);
+
+  --color-secondary-container: var(--md-secondary-container);
+  --color-on-secondary-container: var(--md-on-secondary-container);
+
+  --color-success: var(--md-success);
+  --color-warning: var(--md-warning);
+  --color-error: var(--md-error);
+  --color-error-container: var(--md-error-container);
+  --color-on-error-container: var(--md-on-error-container);
+
+  --shadow-e1: var(--md-elev-1);
+  --shadow-e2: var(--md-elev-2);
+  --shadow-e3: var(--md-elev-3);
+
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+
+  --radius-md3: 12px;
+  --radius-md3-lg: 16px;
+  --radius-md3-xl: 28px;
+}
+
+/*
+ * Base
+ */
+
+/* Layered so Tailwind's utilities (also layered) still win over these. */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--md-outline-variant);
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  html {
+    font-size: 16px;
+    /* Stops iOS resizing text when the phone rotates. */
+    -webkit-text-size-adjust: 100%;
+    /* Kills the rubber-band bounce and pull-to-refresh, which read as "web
+       page" rather than "app" the moment you overscroll a list. */
+    overscroll-behavior: none;
+  }
+
+  body {
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
+  /* Scroll containers keep their own momentum without chaining to the page. */
+  [class*="overflow-y-auto"],
+  [class*="overflow-x-auto"] {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body {
+    background-color: var(--md-surface);
+    color: var(--md-on-surface);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--md-primary-container);
+    color: var(--md-on-primary-container);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--md-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* Material type scale, used via utility classes. */
+.md-headline {
+  font-size: 1.75rem;
+  line-height: 2.25rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.md-title-lg {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 500;
+}
+.md-title {
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.md-body {
+  font-size: 0.9375rem;
+  line-height: 1.5rem;
+  letter-spacing: 0.01em;
+}
+.md-label {
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.md-label-sm {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/*
+ * Interaction: state layers + ripple
+ */
+
+.md-state {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.md-state::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--md-on-surface);
+  opacity: 0;
+  transition: opacity var(--md-motion-short3) var(--md-motion-standard);
+  pointer-events: none;
+}
+
+.md-state:hover::before {
+  opacity: 0.08;
+}
+
+.md-state:focus-visible::before {
+  opacity: 0.1;
+}
+
+.md-state:active::before {
+  opacity: 0.1;
+}
+
+.md-state[data-dragging="true"]::before {
+  opacity: 0.16;
+}
+
+/* Material 3 disabled: 12% container, 38% content. */
+.md-state:disabled,
+.md-state[aria-disabled="true"] {
+  opacity: 0.38;
+}
+
+/* Expands a small control's hit area to the 44px pointer minimum without
+   changing how big it looks. */
+.md-target::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+/* ------------------------------------------------------------------
+   Touch and installed-app behaviour
+   ------------------------------------------------------------------ */
+
+@media (pointer: coarse) {
+  /* Material asks for 48dp touch targets, above the 44px pointer minimum. */
+  .md-target::after {
+    width: 48px;
+    height: 48px;
+  }
+
+  /* Any input under 16px makes iOS Safari zoom the whole page on focus, which
+     then leaves the layout scrolled sideways. 16px is the threshold. */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  /* Hover states stick on touch, so a tapped element would stay highlighted. */
+  .md-state:hover::before {
+    opacity: 0;
+  }
+
+  .md-state:active::before {
+    opacity: 0.1;
+  }
+}
+
+/* Material's window size classes stop at Expanded. These two steps keep the
+   interface proportionate on large and very large displays. Sizes are in rem
+   throughout, so this is the single multiplier rather than a dozen per-rule
+   bumps that would drift apart. */
+@media (min-width: 1600px) {
+  html {
+    font-size: 17px;
+  }
+}
+
+@media (min-width: 2600px) {
+  html {
+    font-size: 19px;
+  }
+}
+
+/* Notch, home indicator, and rounded display corners. */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-left {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.safe-x {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* A bottom sheet is the mobile form of a dialog: it comes up from the edge the
+   thumb is already near, rather than landing in the middle of the screen. */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.animate-sheet {
+  animation: sheet-up var(--md-motion-medium2) var(--md-motion-emph-decel) both;
+}
+
+@media (min-width: 600px) {
+  .animate-sheet {
+    animation: rise-in var(--md-motion-medium2) var(--md-motion-emph-decel) both;
+  }
+}
+
+.sheet-handle {
+  width: 32px;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--md-outline-variant);
+}
+
+.md-ripple-dot {
+  position: absolute;
+  z-index: -1;
+  border-radius: 9999px;
+  background: var(--md-ripple);
+  transform: scale(0);
+  opacity: 0.7;
+  pointer-events: none;
+  animation: md-ripple var(--md-motion-long1) var(--md-motion-standard) forwards;
+}
+
+@keyframes md-ripple {
+  to {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/*
+ * Status dot
+ */
+
+.status-dot {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  flex: none;
+}
+
+.status-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: inherit;
+  animation: status-pulse 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes status-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/*
+ * Motion
+ */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in var(--md-motion-medium2) var(--md-motion-emph-decel) both;
+}
+
+.animate-rise {
+  animation: rise-in var(--md-motion-medium2) var(--md-motion-emph-decel) both;
+}
+
+@keyframes typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--md-on-surface-variant);
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * Scrollbars
+ */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--md-outline-variant) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--md-outline-variant);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--md-outline);
+  background-clip: content-box;
+}
+
+/*
+ * Markdown rendered inside chat bubbles and deliverables
+ */
+
+.prose-md3 {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.prose-md3 > * + * {
+  margin-top: 0.85em;
+}
+
+.prose-md3 h1,
+.prose-md3 h2,
+.prose-md3 h3,
+.prose-md3 h4 {
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 1.4em;
+}
+
+.prose-md3 h1 {
+  font-size: 1.3rem;
+}
+.prose-md3 h2 {
+  font-size: 1.15rem;
+}
+.prose-md3 h3 {
+  font-size: 1rem;
+}
+.prose-md3 h4 {
+  font-size: 0.9375rem;
+  color: var(--md-on-surface-variant);
+}
+
+.prose-md3 ul,
+.prose-md3 ol {
+  padding-left: 1.35em;
+}
+
+.prose-md3 ul {
+  list-style: disc;
+}
+.prose-md3 ol {
+  list-style: decimal;
+}
+
+.prose-md3 li + li {
+  margin-top: 0.3em;
+}
+
+.prose-md3 li::marker {
+  color: var(--md-outline);
+}
+
+.prose-md3 a {
+  color: var(--md-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose-md3 strong {
+  font-weight: 600;
+  color: var(--md-on-surface);
+}
+
+.prose-md3 blockquote {
+  border-left: 3px solid var(--md-outline-variant);
+  padding-left: 0.9em;
+  color: var(--md-on-surface-variant);
+}
+
+.prose-md3 code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--md-container-highest);
+  padding: 0.15em 0.35em;
+  border-radius: 5px;
+}
+
+.prose-md3 pre {
+  background: var(--md-container-lowest);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+}
+
+.prose-md3 pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.prose-md3 hr {
+  border: none;
+  border-top: 1px solid var(--md-outline-variant);
+}
+
+.prose-md3 table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  display: block;
+  overflow-x: auto;
+}
+
+.prose-md3 th,
+.prose-md3 td {
+  border: 1px solid var(--md-outline-variant);
+  padding: 0.45rem 0.65rem;
+  text-align: left;
+}
+
+.prose-md3 th {
+  background: var(--md-container-high);
+  font-weight: 600;
+}

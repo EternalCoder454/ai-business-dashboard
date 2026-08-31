@@ -1,0 +1,159 @@
+export type Role = "user" | "assistant";
+
+export type DepartmentStatus = "online" | "busy" | "offline";
+
+export interface Message {
+  id: string;
+  role: Role;
+  content: string;
+  timestamp: number;
+  /** Summarized reasoning, when the model returned any. Not sent back to the API. */
+  thinking?: string;
+  /** Set while a response is still streaming in. */
+  pending?: boolean;
+  /** Set when the request failed, so the bubble can render an error state. */
+  error?: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  departmentId: string;
+  title: string;
+  messages: Message[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  emoji: string;
+  /** The head's first name, how the user addresses them. */
+  personaName: string;
+  roleTitle: string;
+  /** Temperament and voice, injected ahead of the scoped system prompt. */
+  persona: string;
+  systemPrompt: string;
+  /** Legacy seed value. The real count is derived from the skills table. */
+  skillCount?: number;
+  status: DepartmentStatus;
+  /** Sort order in the sidebar and org chart. */
+  order: number;
+  /** True only for the CEO orchestrator, which sits above the department row. */
+  isCeo?: boolean;
+  /** Populated on read by `listDepartmentsWithConversations`; not stored inline. */
+  conversations?: Conversation[];
+}
+
+/** A SKILL.md document belonging to one department. */
+export interface Skill {
+  id: string;
+  departmentId: string;
+  /** Short human name, shown in the list and quoted by the head when used. */
+  name: string;
+  /** The "when to use" trigger line. This is what the model matches against. */
+  description: string;
+  /** The markdown body: the actual playbook. */
+  content: string;
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CompanyProfile {
+  mission: string;
+  audience: string;
+  brandVoice: string;
+  keyFacts: string;
+}
+
+export type DeliverableStatus = "backlog" | "in-progress" | "done";
+
+export interface Deliverable {
+  id: string;
+  title: string;
+  body: string;
+  departmentId: string;
+  status: DeliverableStatus;
+  createdAt: number;
+  updatedAt: number;
+  /** Conversation this was captured from, when it came out of a chat. */
+  sourceConversationId?: string;
+}
+
+export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
+
+export type ThemeMode = "dark" | "light";
+
+/** How long a head may answer for in an All Hands room. */
+export type RoomBrevity = "tight" | "standard";
+
+export interface Settings {
+  id: "app";
+  apiKey: string;
+  model: string;
+  effort: Effort;
+  theme: ThemeMode;
+  companyName: string;
+  companySubtitle: string;
+  /** House writing rules injected last into every department prompt. */
+  writingRules: string;
+  /** Word budget applied to every head in an All Hands room. */
+  roomBrevity: RoomBrevity;
+}
+
+export interface AllHandsResponse {
+  departmentId: string;
+  content: string;
+  thinking?: string;
+  usage?: TokenUsage;
+  error?: boolean;
+  /** True while this department is still answering. */
+  pending?: boolean;
+}
+
+/** One question put to the room, and everything that came back. */
+export interface AllHandsRound {
+  id: string;
+  question: string;
+  responses: AllHandsResponse[];
+  /** The CEO's read across the round, once every head has answered. */
+  synthesis?: string;
+  synthesisError?: boolean;
+  createdAt: number;
+}
+
+/** A group thread: the whole room, across as many rounds as you ask. */
+export interface AllHandsRun {
+  id: string;
+  title: string;
+  rounds: AllHandsRound[];
+  status: "running" | "done" | "cancelled";
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** Wire format for POST /api/chat. */
+export interface ChatRequestBody {
+  system: string;
+  messages: { role: Role; content: string }[];
+  model: string;
+  effort: Effort;
+}
+
+export interface TokenUsage {
+  input: number;
+  output: number;
+  /** Prefix tokens served from cache at roughly a tenth of the input price. */
+  cacheRead: number;
+  /** Prefix tokens written to cache this request, billed at 1.25x or 2x. */
+  cacheWrite: number;
+}
+
+/** One newline-delimited JSON frame streamed back from POST /api/chat. */
+export type ChatStreamEvent =
+  | { type: "thinking"; text: string }
+  | { type: "text"; text: string }
+  | { type: "usage"; usage: TokenUsage }
+  | { type: "error"; message: string }
+  | { type: "done" };

@@ -1,0 +1,339 @@
+import Anthropic from "@anthropic-ai/sdk";
+import type { NextRequest } from "next/server";
+import type { ChatRequestBody, ChatStreamEvent } from "@/lib/types";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
+
+/**
+ * Models that accept adaptive thinking and `output_config.effort`. Older models
+ * (Haiku 4.5 and anything before it) reject both with a 400.
+ */
+const MODERN_MODELS = new Set([
+  "claude-opus-5",
+  "claude-opus-4-8",
+  "claude-opus-4-7",
+  "claude-opus-4-6",
+  "claude-sonnet-5",
+  "claude-sonnet-4-6",
+  "claude-fable-5",
+]);
+
+/** Server-side refusal fallbacks are an Opus 5 / Fable 5 feature. */
+const FALLBACK_MODELS = new Set(["claude-opus-5", "claude-fable-5"]);
+
+/**
+ * Smallest prefix each model will actually cache. A breakpoint on a shorter
+ * prefix is silently ignored, so this is only used to report honestly in logs.
+ */
+const CACHE_MINIMUM_TOKENS: Record<string, number> = {
+  "claude-opus-5": 512,
+  "claude-fable-5": 512,
+  "claude-sonnet-5": 1024,
+  "claude-opus-4-8": 1024,
+  "claude-sonnet-4-6": 1024,
+  "claude-haiku-4-5": 4096,
+};
+
+const MAX_TOKENS: Record<string, number> = {
+  "claude-haiku-4-5": 16000,
+};
+const DEFAULT_MAX_TOKENS = 64000;
+
+const encoder = new TextEncoder();
+
+function frame(event: ChatStreamEvent): Uint8Array {
+  return encoder.encode(`${JSON.stringify(event)}\n`);
+}
+
+function describeError(error: unknown): string {
+  if (error instanceof Anthropic.AuthenticationError) {
+    return "That API key was rejected. Check it in Settings. It should start with “sk-ant-”.";
+  }
+  if (error instanceof Anthropic.PermissionDeniedError) {
+    return "This API key does not have access to that model. Pick a different model in Settings.";
+  }
+  if (error instanceof Anthropic.NotFoundError) {
+    return "That model ID was not found. Pick a different model in Settings.";
+  }
+  if (error instanceof Anthropic.RateLimitError) {
+    return "Rate limited by the Anthropic API. Wait a moment and send it again.";
+  }
+  if (error instanceof Anthropic.BadRequestError) {
+    return `The request was rejected: ${error.message}`;
+  }
+  if (error instanceof Anthropic.APIConnectionError) {
+    return "Could not reach the Anthropic API. Check your network connection.";
+  }
+  if (error instanceof Anthropic.APIError) {
+    return `Anthropic API error${error.status ? ` (${error.status})` : ""}: ${error.message}`;
+  }
+  if (error instanceof Error) return error.message;
+  return "Something went wrong while contacting the model.";
+}
+
+export async function POST(request: NextRequest) {
+  let body: ChatRequestBody;
+  try {
+    body = (await request.json()) as ChatRequestBody;
+  } catch {
+    return Response.json({ error: "Malformed request body." }, { status: 400 });
+  }
+
+  const apiKey =
+    request.headers.get("x-anthropic-key")?.trim() ||
+    process.env.ANTHROPIC_API_KEY?.trim();
+
+  if (!apiKey) {
+    return Response.json(
+      {
+        error:
+          "No Anthropic API key. Add one in Settings, or set ANTHROPIC_API_KEY in .env.local and restart the dev server.",
+      },
+      { status: 401 },
+    );
+  }
+
+  const messages = (body.messages ?? []).filter(
+    (m) => typeof m.content === "string" && m.content.trim().length > 0,
+  );
+
+  if (messages.length === 0) {
+    return Response.json({ error: "No messages to send." }, { status: 400 });
+  }
+
+  const model = body.model || "claude-sonnet-5";
+  const client = new Anthropic({ apiKey, maxRetries: 2 });
+
+  /**
+   * Two cache breakpoints, in render order (tools, then system, then messages).
+   *
+   * 1. The whole system block. Identity, persona, department prompt, company
+   *    profile, and house rules are byte-identical for every message in a
+   *    department, and across conversations, so this is the expensive part
+   *    worth holding. It gets the 1 hour TTL because the gap between one
+   *    question and the next is usually longer than five minutes.
+   * 2. The final message. Today's tail is tomorrow's prefix, so each turn reads
+   *    everything before it and writes only what the last turn added.
+   *
+   * Longer TTLs must render before shorter ones, which the order above satisfies.
+   */
+  const buildParams = (cached: boolean) => {
+    const apiMessages: unknown[] = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    if (cached && apiMessages.length > 0) {
+      const last = messages[messages.length - 1];
+      apiMessages[apiMessages.length - 1] = {
+        role: last.role,
+        content: [
+          {
+            type: "text",
+            text: last.content,
+            cache_control: { type: "ephemeral" },
+          },
+        ],
+      };
+    }
+
+    return {
+      model,
+      max_tokens: MAX_TOKENS[model] ?? DEFAULT_MAX_TOKENS,
+      system: cached
+        ? [
+            {
+              type: "text",
+              text: body.system,
+              cache_control: { type: "ephemeral", ttl: "1h" },
+            },
+          ]
+        : body.system,
+      messages: apiMessages,
+      ...(MODERN_MODELS.has(model)
+        ? {
+            // display: "summarized" is opt-in, and the default returns empty
+            // thinking text, which reads as a long pause in a chat UI.
+            thinking: { type: "adaptive" as const, display: "summarized" as const },
+            output_config: { effort: body.effort || "medium" },
+          }
+        : {}),
+    };
+  };
+
+  // Holds whichever upstream stream is currently open, so a client that hangs
+  // up can tear it down. Without this the browser fetch aborts, the model keeps
+  // generating on Anthropic's side, and the full response is still billed.
+  let upstream: { abort: () => void } | null = null;
+  let clientGone = false;
+
+  const stopUpstream = () => {
+    clientGone = true;
+    try {
+      upstream?.abort();
+    } catch {
+      // Already finished or already torn down.
+    }
+    upstream = null;
+  };
+
+  // Fires when the browser disconnects: Stop, a closed tab, or a navigation.
+  request.signal.addEventListener("abort", stopUpstream, { once: true });
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let wroteContent = false;
+
+      const runStream = async (useFallbacks: boolean, cached: boolean) => {
+        const params = buildParams(cached);
+
+        const messageStream = useFallbacks
+          ? client.beta.messages.stream({
+              ...params,
+              betas: ["server-side-fallback-2026-07-01"],
+              // Routes a refused request to a suitable model automatically.
+              fallbacks: "default",
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any)
+          : // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            client.messages.stream(params as any);
+
+        upstream = messageStream;
+        if (clientGone) {
+          stopUpstream();
+          return;
+        }
+
+        for await (const event of messageStream) {
+          if (clientGone) break;
+          if (event.type !== "content_block_delta") continue;
+
+          if (event.delta.type === "thinking_delta") {
+            controller.enqueue(frame({ type: "thinking", text: event.delta.thinking }));
+          } else if (event.delta.type === "text_delta") {
+            wroteContent = true;
+            controller.enqueue(frame({ type: "text", text: event.delta.text }));
+          }
+        }
+
+        if (clientGone) return;
+
+        const final = await messageStream.finalMessage();
+        const usage = final.usage as Anthropic.Usage & {
+          cache_creation_input_tokens?: number | null;
+          cache_read_input_tokens?: number | null;
+        };
+
+        const cacheRead = usage.cache_read_input_tokens ?? 0;
+        const cacheWrite = usage.cache_creation_input_tokens ?? 0;
+
+        // The usage fields are the only ground truth that caching still works,
+        // so log them on every request rather than trusting it stays fixed.
+        console.log(
+          `[api/chat] ${model} in=${usage.input_tokens} cacheRead=${cacheRead} ` +
+            `cacheWrite=${cacheWrite} out=${usage.output_tokens}` +
+            (cached && cacheRead === 0 && cacheWrite === 0
+              ? ` (nothing cached: prefix is likely under this model's ${
+                  CACHE_MINIMUM_TOKENS[model] ?? 1024
+                } token minimum)`
+              : ""),
+        );
+
+        controller.enqueue(
+          frame({
+            type: "usage",
+            usage: {
+              input: usage.input_tokens,
+              output: usage.output_tokens,
+              cacheRead,
+              cacheWrite,
+            },
+          }),
+        );
+
+        if (final.stop_reason === "refusal") {
+          controller.enqueue(
+            frame({
+              type: "error",
+              message:
+                "The model declined to answer this one. Try rephrasing, or move it to a different department.",
+            }),
+          );
+        } else if (final.stop_reason === "max_tokens") {
+          controller.enqueue(
+            frame({
+              type: "error",
+              message: "The response hit the length limit and stopped early.",
+            }),
+          );
+        }
+      };
+
+      // Best request first, then degrade. Each fallback drops one optional
+      // feature, so an account without a given beta still gets an answer
+      // instead of an error. Only retried while nothing has been streamed yet.
+      const attempts: { fallbacks: boolean; cached: boolean }[] = FALLBACK_MODELS.has(model)
+        ? [
+            { fallbacks: true, cached: true },
+            { fallbacks: false, cached: true },
+            { fallbacks: false, cached: false },
+          ]
+        : [
+            { fallbacks: false, cached: true },
+            { fallbacks: false, cached: false },
+          ];
+
+      try {
+        let lastError: unknown;
+        for (const attempt of attempts) {
+          try {
+            await runStream(attempt.fallbacks, attempt.cached);
+            lastError = undefined;
+            break;
+          } catch (error) {
+            lastError = error;
+            if (clientGone) {
+              lastError = undefined;
+              break;
+            }
+            if (wroteContent) break;
+            console.warn(
+              `[api/chat] attempt failed (fallbacks=${attempt.fallbacks} cached=${attempt.cached}):`,
+              error instanceof Error ? error.message : error,
+            );
+          }
+        }
+        if (lastError) throw lastError;
+        if (!clientGone) controller.enqueue(frame({ type: "done" }));
+      } catch (error) {
+        if (!clientGone) {
+          console.error("[api/chat]", error);
+          controller.enqueue(frame({ type: "error", message: describeError(error) }));
+        }
+      } finally {
+        request.signal.removeEventListener("abort", stopUpstream);
+        upstream = null;
+        try {
+          controller.close();
+        } catch {
+          // Already closed by the cancel handler below.
+        }
+      }
+    },
+
+    // Called when the consumer tears the stream down rather than reading it out.
+    cancel() {
+      stopUpstream();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store, no-transform",
+      Connection: "keep-alive",
+    },
+  });
+}
