@@ -441,17 +441,58 @@ Never flatter. "Good question" and "that is a great instinct" are noise. If some
 }
 
 /**
- * A stable colour per department, for telling eight replies apart at a glance.
+ * Department accents, for telling replies apart at a glance in All Hands.
  *
- * Derived from the id rather than stored, so a department never needs a colour
- * chosen for it and two people looking at the same workspace see the same
- * mapping. The palette is the project accents, which are already tuned to sit
- * on both themes.
+ * A superset of the project accents: nine seeded departments cannot be given
+ * distinct colours from a palette of six, so this adds three more hues rather
+ * than leaving heads to share. Kept separate because six is a deliberate
+ * ceiling for projects, where a long list is chosen from by hand.
+ */
+export const DEPARTMENT_ACCENTS = [
+  ...PROJECT_ACCENTS,
+  { key: "blue", label: "Blue", dot: "#5B9BF8", soft: "rgba(91,155,248,0.16)" },
+  { key: "teal", label: "Teal", dot: "#2FB8A0", soft: "rgba(47,184,160,0.16)" },
+  { key: "orchid", label: "Orchid", dot: "#C879D0", soft: "rgba(200,121,208,0.16)" },
+] as const;
+
+/**
+ * Which accent each seeded department gets.
+ *
+ * Assigned rather than derived. Hashing an id into the palette looked stable
+ * but put Priya, Jun and Imani on the same colour, Noor and Desmond on
+ * another, and left one unused, which defeats the point of colouring them.
+ * Neighbouring hues are kept apart in the org order so two heads answering in
+ * sequence never look alike.
+ */
+const SEEDED_ACCENTS: Record<string, string> = {
+  [CEO_ID]: "amber",
+  marketing: "rose",
+  social: "cyan",
+  design: "violet",
+  finance: "lime",
+  legal: "slate",
+  operations: "teal",
+  engineering: "blue",
+  [COACH_ID]: "orchid",
+};
+
+/**
+ * A stable colour for one department.
+ *
+ * Seeded departments are looked up. Anything added later has no assignment, so
+ * it falls back to hashing the id: still stable, and still the same for
+ * everyone looking at the workspace, but it can collide with a seeded head.
  */
 export function departmentAccent(departmentId: string) {
+  const assigned = SEEDED_ACCENTS[departmentId];
+  if (assigned) {
+    const match = DEPARTMENT_ACCENTS.find((accent) => accent.key === assigned);
+    if (match) return match;
+  }
+
   let hash = 0;
   for (let i = 0; i < departmentId.length; i += 1) {
     hash = (hash * 31 + departmentId.charCodeAt(i)) | 0;
   }
-  return PROJECT_ACCENTS[Math.abs(hash) % PROJECT_ACCENTS.length];
+  return DEPARTMENT_ACCENTS[Math.abs(hash) % DEPARTMENT_ACCENTS.length];
 }

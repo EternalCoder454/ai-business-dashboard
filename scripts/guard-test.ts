@@ -11,7 +11,14 @@ import { readJsonWithin, withinRate } from "../src/lib/guard";
 import { safeDestination } from "../src/app/signin/page";
 import { applyOp, emptyWorkspace } from "../src/lib/workspace";
 import { filesForDepartment } from "../src/lib/files";
-import { COACH_ID, COMPANY_ID, leadershipCoach, seedDepartments } from "../src/lib/seed";
+import {
+  COACH_ID,
+  COMPANY_ID,
+  DEPARTMENT_ACCENTS,
+  departmentAccent,
+  leadershipCoach,
+  seedDepartments,
+} from "../src/lib/seed";
 import { handbookSkills } from "../src/lib/handbookSkills";
 import { seedSkills } from "../src/lib/seedSkills";
 import {
@@ -206,6 +213,37 @@ console.log("\na write immediately after a create can see it");
     check("every department has at least one skill", bare.length === 0, bare.join(","));
   }
 
+  console.log("\nevery head is a different colour in All Hands");
+  {
+    // The whole point of the accent is telling replies apart, so two heads
+    // sharing one is a bug rather than a cosmetic detail. Adding a department
+    // without assigning it an accent is the way this regresses.
+    const heads = [...seedDepartments(), leadershipCoach(99)];
+    const used = new Map<string, string[]>();
+    for (const head of heads) {
+      const { label } = departmentAccent(head.id);
+      used.set(label, [...(used.get(label) ?? []), head.personaName]);
+    }
+    const shared = [...used].filter(([, who]) => who.length > 1);
+    check(
+      "no two share an accent",
+      shared.length === 0,
+      shared.map(([colour, who]) => `${colour}: ${who.join(" + ")}`).join("; "),
+    );
+    check(
+      "there are enough accents to go round",
+      DEPARTMENT_ACCENTS.length >= heads.length,
+      `${DEPARTMENT_ACCENTS.length} accents for ${heads.length} heads`,
+    );
+    check(
+      "accent keys are unique",
+      new Set(DEPARTMENT_ACCENTS.map((a) => a.key)).size === DEPARTMENT_ACCENTS.length,
+    );
+    check(
+      "every accent has a visible dot colour",
+      DEPARTMENT_ACCENTS.every((a) => /^#[0-9A-Fa-f]{6}$/.test(a.dot)),
+    );
+  }
 
   console.log(failures ? "\nFAILURES ABOVE" : "\nall checks passed");
   process.exit(failures ? 1 : 0);
