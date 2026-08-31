@@ -34,10 +34,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     jwt({ token, profile }) {
       if (profile?.email) token.email = profile.email;
+      // Kept so the account page can show a name and avatar without a second
+      // call to Google on every load.
+      if (profile?.name) token.name = profile.name;
+      if (typeof profile?.picture === "string") token.picture = profile.picture;
+      if (typeof profile?.given_name === "string") {
+        token.givenName = profile.given_name;
+      }
       return token;
     },
     session({ session, token }) {
-      if (session.user && token.email) session.user.email = token.email;
+      if (session.user) {
+        if (token.email) session.user.email = token.email;
+        if (token.name) session.user.name = token.name;
+        if (token.picture) session.user.image = token.picture as string;
+      }
       return session;
     },
   },

@@ -203,6 +203,20 @@ export const allHandsRounds = pgTable(
   ],
 );
 
+/**
+ * Identity, as opposed to the company profile below. Name and avatar come from
+ * Google on each sign in; the rest is the person's own.
+ */
+export const accounts = pgTable("accounts", {
+  userEmail: text("user_email").primaryKey(),
+  displayName: text("display_name").notNull().default(""),
+  roleTitle: text("role_title").notNull().default("Founder"),
+  pronouns: text("pronouns").notNull().default(""),
+  timezone: text("timezone").notNull().default(""),
+  avatarUrl: text("avatar_url"),
+  updatedAt: updated(),
+});
+
 export const profiles = pgTable("profiles", {
   userEmail: text("user_email").primaryKey(),
   mission: text("mission").notNull().default(""),

@@ -21,6 +21,7 @@ import {
 import {
   CEO_ID,
   COMPANY_ID,
+  DEFAULT_ACCOUNT,
   DEFAULT_PROFILE,
   DEFAULT_SETTINGS,
   seedDepartments,
@@ -37,6 +38,7 @@ import type {
   Message,
   Settings,
   Skill,
+  UserAccount,
 } from "./types";
 
 interface StoreValue {
@@ -59,6 +61,7 @@ interface StoreValue {
   files: LibraryFile[];
   profile: CompanyProfile;
   settings: Settings;
+  account: UserAccount;
 
   getDepartment: (id: string) => Department | undefined;
   /**
@@ -80,6 +83,7 @@ interface StoreValue {
 
   updateSettings: (patch: Partial<Omit<Settings, "id">>) => Promise<void>;
   updateProfile: (patch: Partial<CompanyProfile>) => Promise<void>;
+  updateAccount: (patch: Partial<UserAccount>) => Promise<void>;
 
   createDepartment: (input: Partial<Department>) => Promise<Department>;
   updateDepartment: (id: string, patch: Partial<Department>) => Promise<void>;
@@ -103,8 +107,14 @@ const StoreContext = createContext<StoreValue | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [seeded, setSeeded] = useState(false);
   const [mode, setMode] = useState<StorageMode>("resolving");
-  const [account, setAccount] = useState<string | undefined>();
+  const [signedInEmail, setSignedInEmail] = useState<string | undefined>();
   const [remote, setRemote] = useState<Workspace | null>(null);
+  const [googleIdentity, setGoogleIdentity] = useState<{
+    email?: string;
+    name?: string;
+    givenName?: string;
+    image?: string;
+  } | null>(null);
 
   /**
    * Ask the server which storage this browser is on before touching either.
@@ -118,7 +128,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .then((status) => {
         if (cancelled) return;
         if (status?.hosted && status.signedIn) {
-          setAccount(status.email);
+          setSignedInEmail(status.email);
+          setGoogleIdentity({
+            email: status.email,
+            name: status.name,
+            givenName: status.givenName,
+            image: status.image,
+          });
           setMode("hosted");
         } else {
           setMode("local");
@@ -238,6 +254,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     undefined,
   );
 
+  const storedAccount = useLiveQuery(
+    async () => (!db || hosted ? undefined : db.account.get("me")),
+    [seeded, hosted],
+    undefined,
+  );
+
   const storedProfile = useLiveQuery(
     async () => (!db || hosted ? undefined : db.profile.get("profile")),
     [seeded, hosted],
@@ -262,6 +284,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         : { ...DEFAULT_SETTINGS, ...(storedSettings ?? {}) },
     [hosted, remote?.settings, storedSettings],
   );
+
+  /**
+   * Google supplies the name, avatar, and address on every sign in, so those
+   * always win. Everything the person set themselves survives underneath.
+   */
+  const account: UserAccount = useMemo(() => {
+    const stored = hosted
+      ? (remote?.account ?? DEFAULT_ACCOUNT)
+      : storedAccount
+        ? { ...DEFAULT_ACCOUNT, ...storedAccount }
+        : DEFAULT_ACCOUNT;
+    return {
+      ...stored,
+      email: googleIdentity?.email ?? stored.email,
+      avatarUrl: googleIdentity?.image ?? stored.avatarUrl,
+      displayName: stored.displayName || googleIdentity?.givenName || "",
+    };
+  }, [hosted, remote?.account, storedAccount, googleIdentity]);
 
   const profile: CompanyProfile = useMemo(() => {
     if (hosted) return remote?.profile ?? DEFAULT_PROFILE;
@@ -327,7 +367,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return {
       ready: hosted ? remote !== null : seeded && allDepartments !== undefined,
       storage: mode,
-      accountEmail: account,
+      accountEmail: signedInEmail,
       allDepartments: departmentList,
       departments: departmentList.filter((d) => !d.isCeo),
       ceo: departmentList.find((d) => d.isCeo) ?? departmentList.find((d) => d.id === CEO_ID),
@@ -338,6 +378,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       files: fileList,
       profile,
       settings,
+      account,
 
       getDepartment: (id: string) => departmentList.find((d) => d.id === id),
 
@@ -376,6 +417,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return;
         }
         await requireDb().profile.put({ id: "profile", ...next });
+      },
+
+      updateAccount: async (patch) => {
+        const next = { ...account, ...patch, updatedAt: Date.now() };
+        if (hosted) {
+          await push({ table: "account", action: "upsert", row: patch });
+          return;
+        }
+        await requireDb().account.put({ id: "me", ...next });
       },
 
       createDepartment: async (input) => {
@@ -631,7 +681,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [
     hosted,
     mode,
-    account,
+    signedInEmail,
     remote,
     push,
     seeded,
@@ -644,6 +694,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     runList,
     profile,
     settings,
+    account,
   ]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

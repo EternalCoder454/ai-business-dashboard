@@ -26,6 +26,7 @@ export interface StreamResult {
 export async function streamChat(
   body: ChatRequestBody,
   apiKey: string,
+  workspaceId: string,
   handlers: StreamHandlers = {},
   signal?: AbortSignal,
 ): Promise<StreamResult> {
@@ -41,6 +42,9 @@ export async function streamChat(
       headers: {
         "Content-Type": "application/json",
         ...(apiKey ? { "x-anthropic-key": apiKey } : {}),
+        // Only meaningful alongside a browser-held key. A server key brings its
+        // own workspace from the environment.
+        ...(workspaceId ? { "x-anthropic-workspace": workspaceId } : {}),
       },
       body: JSON.stringify(body),
     });

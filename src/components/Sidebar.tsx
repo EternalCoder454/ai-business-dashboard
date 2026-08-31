@@ -12,6 +12,7 @@ import {
   DocIcon,
   GearIcon,
   OrgIcon,
+  PersonIcon,
   PlusIcon,
   SparkIcon,
   StatusDot,
@@ -58,8 +59,14 @@ export const COMPANY_LINKS: NavLink[] = [
   {
     href: "/profile",
     label: "Company Profile",
-    short: "Profile",
+    short: "Company",
     icon: <BuildingIcon className="h-5 w-5" />,
+  },
+  {
+    href: "/account",
+    label: "Account",
+    short: "You",
+    icon: <PersonIcon className="h-5 w-5" />,
   },
   {
     href: "/settings",

@@ -148,6 +148,22 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            <Field
+              label="Workspace ID"
+              className="mt-4"
+              hint="Only needed for an identity-linked key, which refuses any request that does not name its workspace. Anthropic Console, Settings, Workspaces. Starts with wrkspc_."
+            >
+              <TextInput
+                value={settings.workspaceId}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="wrkspc_… (leave blank for an ordinary key)"
+                onChange={(event) =>
+                  void updateSettings({ workspaceId: event.target.value.trim() })
+                }
+              />
+            </Field>
+
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <Field label="Model" hint="Applies to every department.">
                 <Select

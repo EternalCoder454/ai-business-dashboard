@@ -46,6 +46,7 @@ const PAGES: { title: string; subtitle: string; href: string; icon: string }[] =
   { title: "Deliverables", subtitle: "Everything produced", href: "/library/deliverables", icon: "📄" },
   { title: "Information", subtitle: "What the heads actually receive", href: "/information", icon: "🧩" },
   { title: "Company Profile", subtitle: "Shared context for every head", href: "/profile", icon: "🏢" },
+  { title: "Account", subtitle: "Your name, role, and timezone", href: "/account", icon: "👤" },
   { title: "Settings", subtitle: "API key, model, departments, data", href: "/settings", icon: "⚙️" },
 ];
 

@@ -11,6 +11,7 @@ import { seedSkills } from "./seedSkills";
 import type {
   AllHandsRun,
   LibraryFile,
+  UserAccount,
   CompanyProfile,
   Conversation,
   Deliverable,
@@ -18,6 +19,11 @@ import type {
   Settings,
   Skill,
 } from "./types";
+
+/** Singleton rows still need a key in Dexie. */
+export interface StoredAccount extends UserAccount {
+  id: "me";
+}
 
 /** The profile is a singleton row; Dexie still needs a keyed record. */
 export interface StoredProfile extends CompanyProfile {
@@ -43,6 +49,7 @@ class CeoHqDatabase extends Dexie {
   allHands!: Table<AllHandsRun, string>;
   skills!: Table<Skill, string>;
   files!: Table<LibraryFile, string>;
+  account!: Table<StoredAccount, string>;
   profile!: Table<StoredProfile, string>;
   settings!: Table<Settings, string>;
 
@@ -219,6 +226,20 @@ class CeoHqDatabase extends Dexie {
         );
         if (additions.length) await table.bulkPut(additions);
       });
+
+    // v10 adds the account: who is using the app, as opposed to the company
+    // the app is about.
+    this.version(10).stores({
+      departments: "id, order, isCeo",
+      conversations: "id, departmentId, updatedAt",
+      deliverables: "id, departmentId, status, updatedAt",
+      allHands: "id, createdAt, updatedAt",
+      skills: "id, departmentId, updatedAt",
+      files: "id, kind, departmentId, updatedAt",
+      account: "id",
+      profile: "id",
+      settings: "id",
+    });
 
     // v9 adds the Library: images, PDFs, and documents kept once and attached
     // to any conversation, rather than re-uploaded each time.

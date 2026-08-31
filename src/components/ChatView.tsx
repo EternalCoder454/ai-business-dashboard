@@ -102,6 +102,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     skillsFor,
     profile,
     settings,
+    account,
   } = useStore();
 
   const department = getDepartment(departmentId);
@@ -242,6 +243,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           settings.companyName,
           skillsFor(departmentId),
           settings.writingRules,
+          account,
         ),
         messages: history.map((m) => ({
           role: m.role,
@@ -251,6 +253,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         effort: settings.effort,
       },
       settings.apiKey,
+      settings.workspaceId,
       {
         onText: (_delta, full) => setStream((current) => ({ ...current, text: full })),
         onThinking: (_delta, full) =>
@@ -302,6 +305,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     settings,
     profile,
     skillsFor,
+    account,
   ]);
 
   if (!department) {

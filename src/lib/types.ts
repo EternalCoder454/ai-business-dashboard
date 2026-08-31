@@ -100,6 +100,27 @@ export interface Skill {
   updatedAt: number;
 }
 
+/**
+ * The person using the app, as distinct from the company they run.
+ *
+ * CompanyProfile is business context every head shares. This is identity: who
+ * is asking, what to call them, and where in the world they are.
+ */
+export interface UserAccount {
+  /** What the heads call you. Defaults to the Google given name. */
+  displayName: string;
+  /** Your role at the company, so a head knows who is asking. */
+  roleTitle: string;
+  /** Optional, and used verbatim so nobody has to guess from a name. */
+  pronouns: string;
+  /** IANA zone, so "this week" and "by Friday" mean something. */
+  timezone: string;
+  /** From Google, cached for display. Never editable here. */
+  email?: string;
+  avatarUrl?: string;
+  updatedAt: number;
+}
+
 export interface CompanyProfile {
   mission: string;
   audience: string;
@@ -131,6 +152,11 @@ export type RoomBrevity = "tight" | "standard";
 export interface Settings {
   id: "app";
   apiKey: string;
+  /**
+   * Required only for an identity-linked API key, which refuses any request
+   * that does not name the workspace it acts in. Ordinary keys ignore it.
+   */
+  workspaceId: string;
   model: string;
   effort: Effort;
   theme: ThemeMode;

@@ -506,6 +506,12 @@ export const SparkIcon = icon(
   <path d="m12 3 2.2 5.4L20 10.5l-5.8 2.1L12 18l-2.2-5.4L4 10.5l5.8-2.1Z" />,
 );
 export const ChevronIcon = icon(<path d="m9 6 6 6-6 6" />);
+export const PersonIcon = icon(
+  <>
+    <circle cx="12" cy="8" r="3.6" />
+    <path d="M5 20v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1" />
+  </>,
+);
 export const UsersIcon = icon(
   <>
     <path d="M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20" />

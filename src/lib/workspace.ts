@@ -7,10 +7,11 @@ import type {
   LibraryFile,
   Settings,
   Skill,
+  UserAccount,
 } from "./types";
 
 /** Settings as they are stored per account. The API key is server side only. */
-export type StoredSettings = Omit<Settings, "id" | "apiKey">;
+export type StoredSettings = Omit<Settings, "id" | "apiKey" | "workspaceId">;
 
 /**
  * One account's entire workspace.
@@ -27,6 +28,7 @@ export interface Workspace {
   allHandsRuns: AllHandsRun[];
   profile: CompanyProfile;
   settings: StoredSettings;
+  account: UserAccount;
 }
 
 export type MutationOp =
@@ -43,9 +45,14 @@ export type MutationOp =
   | { table: "allHands"; action: "upsert"; rows: AllHandsRun[] }
   | { table: "allHands"; action: "delete"; ids: string[] }
   | { table: "profile"; action: "upsert"; row: CompanyProfile }
-  | { table: "settings"; action: "upsert"; row: Partial<StoredSettings> };
+  | { table: "settings"; action: "upsert"; row: Partial<StoredSettings> }
+  | { table: "account"; action: "upsert"; row: Partial<UserAccount> };
 
-export function emptyWorkspace(settings: StoredSettings, profile: CompanyProfile): Workspace {
+export function emptyWorkspace(
+  settings: StoredSettings,
+  profile: CompanyProfile,
+  account: UserAccount,
+): Workspace {
   return {
     departments: [],
     conversations: [],
@@ -55,6 +62,7 @@ export function emptyWorkspace(settings: StoredSettings, profile: CompanyProfile
     allHandsRuns: [],
     profile,
     settings,
+    account,
   };
 }
 
@@ -145,6 +153,9 @@ export function applyOp(workspace: Workspace, op: MutationOp): Workspace {
 
     case "settings":
       return { ...workspace, settings: { ...workspace.settings, ...op.row } };
+
+    case "account":
+      return { ...workspace, account: { ...workspace.account, ...op.row } };
   }
 }
 
@@ -155,6 +166,9 @@ export interface WorkspaceStatus {
   hosted: boolean;
   signedIn: boolean;
   email?: string;
+  name?: string;
+  givenName?: string;
+  image?: string;
   /** Null when unknown, true when the account has never been written to. */
   empty: boolean | null;
 }

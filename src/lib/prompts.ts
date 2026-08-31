@@ -1,6 +1,6 @@
 import { SHARED_OPERATING_RULES, WRITING_RULES } from "./seed";
 import { buildSkillsBlock } from "./skills";
-import type { CompanyProfile, Department, Skill } from "./types";
+import type { CompanyProfile, Department, Skill, UserAccount } from "./types";
 
 /** True when the profile has at least one field worth injecting. */
 export function hasProfileContent(profile: CompanyProfile | undefined): boolean {
@@ -43,6 +43,52 @@ export function buildCompanyContext(
 }
 
 /**
+ * Who the head is speaking to, and when.
+ *
+ * Without this a head has no idea whose question it is answering, and no idea
+ * what "this week" means. The date is deliberately a date and not a timestamp:
+ * it changes once a day, which a one hour cache would have expired through
+ * anyway, whereas a clock time would invalidate the prefix on every message.
+ */
+export function buildUserContext(account: UserAccount, companyName: string): string {
+  const name = account.displayName.trim();
+  if (!name && !account.timezone) return "";
+
+  const lines = ["=== WHO YOU ARE TALKING TO ==="];
+
+  if (name) {
+    const role = account.roleTitle.trim();
+    lines.push(
+      `You are talking to ${name}${role ? `, the ${role} at ${companyName}` : ""}.`,
+    );
+    lines.push(`Address them as ${name} where it is natural. Never call them "the user".`);
+  }
+
+  if (account.pronouns.trim()) {
+    lines.push(`Their pronouns are ${account.pronouns.trim()}. Use them, and never guess.`);
+  }
+
+  if (account.timezone) {
+    try {
+      const today = new Intl.DateTimeFormat("en-GB", {
+        timeZone: account.timezone,
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }).format(new Date());
+      lines.push(`Today is ${today}. They are in ${account.timezone}.`);
+      lines.push("Work out dates and deadlines from that, and never invent today's date.");
+    } catch {
+      // An unrecognised zone is not worth failing a whole prompt over.
+    }
+  }
+
+  lines.push("=== END ===");
+  return lines.join("\n");
+}
+
+/**
  * Composes the full system prompt sent to the API: department identity, shared
  * company context, and the house rules every department follows.
  */
@@ -52,6 +98,7 @@ export function buildSystemPrompt(
   companyName: string,
   skills: Skill[] = [],
   writingRules: string = WRITING_RULES,
+  account?: UserAccount,
 ): string {
   const context = buildCompanyContext(profile, companyName);
 
@@ -68,6 +115,7 @@ export function buildSystemPrompt(
     department.systemPrompt.trim(),
     buildSkillsBlock(skills),
     context,
+    account ? buildUserContext(account, companyName) : "",
     SHARED_OPERATING_RULES,
     writingRules.trim(),
   ].filter(Boolean);

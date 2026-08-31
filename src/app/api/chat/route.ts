@@ -61,6 +61,15 @@ function describeError(error: unknown): string {
     return "Rate limited by the Anthropic API. Wait a moment and send it again.";
   }
   if (error instanceof Anthropic.BadRequestError) {
+    // The single most likely 400 on a first run, and the raw message does not
+    // say where to put the id.
+    if (error.message.includes("anthropic-workspace-id")) {
+      return (
+        "This API key is identity-linked, so it needs a workspace ID. Find it in the " +
+        "Anthropic Console under Settings, Workspaces (it starts with wrkspc_) and put " +
+        "it in Settings here, or set ANTHROPIC_WORKSPACE_ID on the server."
+      );
+    }
     return `The request was rejected: ${error.message}`;
   }
   if (error instanceof Anthropic.APIConnectionError) {
@@ -90,6 +99,15 @@ export async function POST(request: NextRequest) {
   const serverKey = process.env.ANTHROPIC_API_KEY?.trim();
   const apiKey = serverKey || request.headers.get("x-anthropic-key")?.trim();
 
+  /**
+   * An identity-linked key refuses any request that does not say which
+   * workspace it is acting in. The workspace follows whichever key is in use,
+   * so a server key never picks up a workspace typed into a browser.
+   */
+  const workspaceId = serverKey
+    ? process.env.ANTHROPIC_WORKSPACE_ID?.trim()
+    : request.headers.get("x-anthropic-workspace")?.trim();
+
   if (!apiKey) {
     return Response.json(
       {
@@ -109,7 +127,13 @@ export async function POST(request: NextRequest) {
   }
 
   const model = body.model || "claude-sonnet-5";
-  const client = new Anthropic({ apiKey, maxRetries: 2 });
+  const client = new Anthropic({
+    apiKey,
+    maxRetries: 2,
+    // The SDK has no first-class option for this, and the header is the
+    // documented way to name the workspace.
+    ...(workspaceId ? { defaultHeaders: { "anthropic-workspace-id": workspaceId } } : {}),
+  });
 
   /**
    * Two cache breakpoints, in render order (tools, then system, then messages).

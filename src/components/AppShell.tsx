@@ -129,6 +129,7 @@ const ROUTE_TITLES: [string, string][] = [
   ["/library", "Library"],
   ["/information", "Information"],
   ["/profile", "Company Profile"],
+  ["/account", "Account"],
   ["/settings", "Settings"],
   ["/", "Org Chart"],
 ];

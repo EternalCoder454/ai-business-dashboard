@@ -18,10 +18,22 @@ export async function GET() {
   const email = session?.user?.email;
   if (!email) return Response.json({ hosted: true, signedIn: false, empty: null });
 
+  const identity = {
+    name: session.user?.name ?? undefined,
+    givenName: session.user?.name?.split(" ")[0] ?? undefined,
+    image: session.user?.image ?? undefined,
+  };
+
   try {
-    return Response.json({ hosted: true, signedIn: true, email, empty: await isEmpty(email) });
+    return Response.json({
+      hosted: true,
+      signedIn: true,
+      email,
+      ...identity,
+      empty: await isEmpty(email),
+    });
   } catch (error) {
     console.error("[api/workspace/status]", error);
-    return Response.json({ hosted: true, signedIn: true, email, empty: null });
+    return Response.json({ hosted: true, signedIn: true, email, ...identity, empty: null });
   }
 }

@@ -10,6 +10,7 @@ import type {
   RoomBrevity,
   Settings,
   Skill,
+  UserAccount,
 } from "./types";
 
 /**
@@ -28,6 +29,8 @@ export interface AllHandsOptions {
   profile: CompanyProfile;
   settings: Settings;
   skillsFor: (departmentId: string) => Skill[];
+  /** Who is asking, so the heads address them by name in the room too. */
+  account?: UserAccount;
   /** Whether the CEO reads across the round once every head has answered. */
   synthesize: boolean;
   onProgress: (run: AllHandsRun) => void;
@@ -123,6 +126,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
     profile,
     settings,
     skillsFor,
+    account,
     synthesize,
     onProgress,
     signal,
@@ -179,12 +183,14 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
           settings.companyName,
           skillsFor(department.id),
           settings.writingRules,
+          account,
         ),
         messages: buildHeadHistory(priorRounds, department.id, question, budget),
         model: settings.model,
         effort: settings.effort,
       },
       settings.apiKey,
+      settings.workspaceId,
       {
         onText: (_delta, full) => {
           round.responses[index] = { ...round.responses[index], content: full };
@@ -234,6 +240,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
           settings.companyName,
           skillsFor(ceo.id),
           settings.writingRules,
+          account,
         ),
         messages: [
           {
@@ -245,6 +252,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
         effort: settings.effort,
       },
       settings.apiKey,
+      settings.workspaceId,
       {
         onText: (_delta, full) => {
           round.synthesis = full;

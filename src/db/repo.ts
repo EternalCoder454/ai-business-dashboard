@@ -9,6 +9,7 @@ import type {
   Deliverable,
   Message,
   Settings,
+  UserAccount,
 } from "@/lib/types";
 
 export type { MutationOp, Workspace };
@@ -41,6 +42,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
     fileRows,
     runRows,
     roundRows,
+    accountRow,
     profileRow,
     settingsRow,
   ] = await Promise.all([
@@ -52,6 +54,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
     db.select().from(t.files).where(eq(t.files.userEmail, userEmail)).orderBy(desc(t.files.updatedAt)),
     db.select().from(t.allHandsRuns).where(eq(t.allHandsRuns.userEmail, userEmail)).orderBy(desc(t.allHandsRuns.updatedAt)),
     db.select().from(t.allHandsRounds).where(eq(t.allHandsRounds.userEmail, userEmail)).orderBy(asc(t.allHandsRounds.sortOrder)),
+    db.select().from(t.accounts).where(eq(t.accounts.userEmail, userEmail)).limit(1),
     db.select().from(t.profiles).where(eq(t.profiles.userEmail, userEmail)).limit(1),
     db.select().from(t.settings).where(eq(t.settings.userEmail, userEmail)).limit(1),
   ]);
@@ -154,6 +157,16 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       createdAt: ms(row.createdAt),
       updatedAt: ms(row.updatedAt),
     })),
+
+    account: {
+      displayName: accountRow[0]?.displayName ?? "",
+      roleTitle: accountRow[0]?.roleTitle ?? "Founder",
+      pronouns: accountRow[0]?.pronouns ?? "",
+      timezone: accountRow[0]?.timezone ?? "",
+      avatarUrl: accountRow[0]?.avatarUrl ?? undefined,
+      email: userEmail,
+      updatedAt: accountRow[0]?.updatedAt ? ms(accountRow[0].updatedAt) : 0,
+    },
 
     profile: {
       mission: profileRow[0]?.mission ?? "",
@@ -492,6 +505,17 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
             .insert(t.settings)
             .values(values)
             .onConflictDoUpdate({ target: t.settings.userEmail, set: values });
+          break;
+        }
+
+        case "account": {
+          // email and updatedAt are derived, never taken from the client.
+          const { email: _email, updatedAt: _updated, ...editable } = op.row;
+          const values = { userEmail, ...editable, updatedAt: now };
+          await tx
+            .insert(t.accounts)
+            .values(values)
+            .onConflictDoUpdate({ target: t.accounts.userEmail, set: values });
           break;
         }
       }

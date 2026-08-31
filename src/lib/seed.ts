@@ -1,4 +1,4 @@
-import type { CompanyProfile, Department, Settings } from "./types";
+import type { CompanyProfile, Department, Settings, UserAccount } from "./types";
 
 export const CEO_ID = "ceo";
 
@@ -309,6 +309,14 @@ export function seedDepartments(): Department[] {
   return [ceo, ...departments];
 }
 
+export const DEFAULT_ACCOUNT: UserAccount = {
+  displayName: "",
+  roleTitle: "Founder",
+  pronouns: "",
+  timezone: "",
+  updatedAt: 0,
+};
+
 export const DEFAULT_PROFILE: CompanyProfile = {
   mission: `Eterneon Studio is a business developing a range from Minecraft Mods, to Websites, to Standalone Video Games.
 It exists for the customers, but also for our efficiency using AI tools so we can profit easily while giving the best to our customers.`,
@@ -325,6 +333,7 @@ export const DEFAULT_MODEL = "claude-sonnet-5";
 export const DEFAULT_SETTINGS: Settings = {
   id: "app",
   apiKey: "",
+  workspaceId: "",
   model: DEFAULT_MODEL,
   effort: "medium",
   theme: "dark",
