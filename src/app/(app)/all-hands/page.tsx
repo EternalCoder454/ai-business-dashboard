@@ -37,12 +37,14 @@ const COLLAPSE_AT = 260;
 
 export default function AllHandsPage() {
   const {
+    ready,
     departments,
     ceo,
     allDepartments,
     allHandsRuns,
     profile,
     settings,
+    serverKey,
     skillsFor,
     account,
     saveAllHandsRun,
@@ -445,7 +447,7 @@ export default function AllHandsPage() {
               {synthesize ? <CheckIcon className="h-3.5 w-3.5" /> : null}
               {ceo?.personaName ?? "CEO"} reads across the room
             </Chip>
-            {!settings.apiKey ? (
+            {ready && !serverKey && !settings.apiKey ? (
               <span className="md-label text-warning">
                 No API key yet. Add one in{" "}
                 <Link href="/settings" className="underline">

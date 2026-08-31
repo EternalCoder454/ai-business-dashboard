@@ -368,6 +368,14 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     account,
   ]);
 
+  /**
+   * Until the workspace has loaded there is no list for a department to be
+   * missing from, so "not found" would be a lie for the length of one fetch,
+   * which is exactly long enough to read on every refresh. Same placeholder
+   * the route's Suspense boundary uses, so nothing moves when it resolves.
+   */
+  if (!ready) return <div className="flex-1" />;
+
   if (!department) {
     return (
       <div className="flex flex-1 items-center justify-center p-10 text-center">
@@ -386,7 +394,9 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     );
   }
 
-  const needsKey = !settings.apiKey;
+  // A key on the server answers just as well as one typed into Settings,
+  // so testing only the local one told a hosted workspace it had none.
+  const needsKey = !serverKey && !settings.apiKey;
   const profileMissing = !hasProfileContent(profile);
 
   return (

@@ -204,6 +204,7 @@ function DepartmentRow({
  */
 function SupportingPane() {
   const {
+    ready,
     departments,
     conversations,
     deliverables,
@@ -211,6 +212,7 @@ function SupportingPane() {
     skills,
     profile,
     settings,
+    serverKey,
     allDepartments,
   } = useStore();
 
@@ -218,7 +220,11 @@ function SupportingPane() {
 
   const gaps = useMemo(() => {
     const items: { label: string; href: string }[] = [];
-    if (!settings.apiKey) {
+    // Everything below reads as missing before the workspace has loaded, so
+    // announcing it then means claiming the key and the profile are empty on
+    // every refresh of a workspace that has both.
+    if (!ready) return items;
+    if (!serverKey && !settings.apiKey) {
       items.push({ label: "No API key yet, nothing can reply", href: "/settings" });
     }
     if (!hasProfileContent(profile)) {
@@ -232,7 +238,7 @@ function SupportingPane() {
       });
     }
     return items;
-  }, [settings.apiKey, profile, departments, skills]);
+  }, [ready, serverKey, settings.apiKey, profile, departments, skills]);
 
   const nameOf = (id: string) =>
     allDepartments.find((d) => d.id === id)?.personaName ??
@@ -244,10 +250,10 @@ function SupportingPane() {
       <section className="rounded-2xl bg-container p-4 shadow-e1">
         <h2 className="md-label-sm mb-3 text-on-variant">At a glance</h2>
         <div className="grid grid-cols-4 gap-2 expanded:grid-cols-2">
-          <Stat value={departments.length} label="Heads" />
-          <Stat value={skills.length} label="Skills" />
-          <Stat value={threads} label="Threads" />
-          <Stat value={deliverables.length} label="Output" />
+          <Stat value={ready ? departments.length : null} label="Heads" />
+          <Stat value={ready ? skills.length : null} label="Skills" />
+          <Stat value={ready ? threads : null} label="Threads" />
+          <Stat value={ready ? deliverables.length : null} label="Output" />
         </div>
       </section>
 
@@ -318,10 +324,13 @@ function SupportingPane() {
   );
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
+/** A null value is "not counted yet", which beats counting to zero and back. */
+function Stat({ value, label }: { value: number | null; label: string }) {
   return (
     <div className="rounded-xl bg-high px-3 py-2.5">
-      <p className="text-xl font-medium leading-tight">{value}</p>
+      <p className="text-xl font-medium leading-tight">
+        {value === null ? <span className="text-on-variant">&mdash;</span> : value}
+      </p>
       <p className="md-label-sm text-on-variant">{label}</p>
     </div>
   );

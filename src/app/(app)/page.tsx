@@ -9,16 +9,22 @@ import { useStore } from "@/lib/store";
 
 export default function OrgChartPage() {
   const router = useRouter();
-  const { createConversation, departments, settings } = useStore();
+  const { ready, createConversation, departments, settings } = useStore();
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader
         eyebrow="Org chart"
         title={settings.companyName}
-        description={`One CEO orchestrator over ${departments.length} department${
-          departments.length === 1 ? "" : "s"
-        }. Tap a head to open a workspace that already knows its domain.`}
+        description={
+          // Counting before the workspace has loaded says "over 0 departments"
+          // for the length of one fetch, on the page most refreshes land on.
+          ready
+            ? `One CEO orchestrator over ${departments.length} department${
+                departments.length === 1 ? "" : "s"
+              }. Tap a head to open a workspace that already knows its domain.`
+            : "Tap a head to open a workspace that already knows its domain."
+        }
         actions={
           <>
             <Button
