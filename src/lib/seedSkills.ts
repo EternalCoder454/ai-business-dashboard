@@ -1,4 +1,4 @@
-import { CEO_ID } from "./seed";
+import { CEO_ID, COMPANY_ID } from "./seed";
 import type { Skill } from "./types";
 
 interface SeedSkill {
@@ -19,6 +19,49 @@ interface SeedSkill {
  * adding capability.
  */
 const SEED_SKILLS: SeedSkill[] = [
+  // ------------------------------------------------------ Company wide
+  // These are injected into every head's prompt, so they cost their tokens
+  // eight times over. Keep this list very short.
+  {
+    departmentId: COMPANY_ID,
+    name: "Handoff Note",
+    description:
+      "Use when work has to move to another department head, or when the user asks how to brief someone else on it.",
+    content: `Write the note the receiving head actually needs, and nothing else.
+
+1. What is being handed over, in one sentence.
+2. Why it is moving now, and what is already decided so it does not get reopened.
+3. What the receiver has to produce, stated as a finished thing rather than an activity.
+4. Constraints they cannot change: budget, deadline, platform, anything already promised.
+5. The open questions, marked as theirs to answer.
+6. Everything they need to start, named and located.
+
+Rules:
+- Address it to the head by name.
+- Never hand over a decision you should have made. If you are handing over the choice, say that is what you are doing.
+- Keep it under 150 words. A handoff longer than the work is a sign the work is not scoped.`,
+  },
+  {
+    departmentId: COMPANY_ID,
+    name: "Decision Record",
+    description:
+      "Use when a real decision gets made, or when the user asks to write one down so it is not relitigated later.",
+    content: `Capture it so the same argument does not happen again in three weeks.
+
+Write exactly these parts:
+- Decision: what was decided, in one sentence, in the past tense.
+- Date and who decided.
+- Context: the situation that forced a choice. Two or three sentences.
+- Options considered: each with the one reason it lost. An option with no reason was not really considered.
+- Consequences: what this now commits the studio to, including the bad parts.
+- Revisit when: the specific signal that would justify reopening it. Not a date, a condition.
+
+Rules:
+- Record the decision that was actually made, not the one that should have been.
+- If no decision was reached, say so and record what is blocking it instead.
+- Never editorialise. This is a record, and it will be read by someone who has forgotten the argument.`,
+  },
+
   // ---------------------------------------------------------------- CEO
   {
     departmentId: CEO_ID,

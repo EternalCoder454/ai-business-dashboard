@@ -3,6 +3,13 @@ import type { CompanyProfile, Department, Settings } from "./types";
 export const CEO_ID = "ceo";
 
 /**
+ * Sentinel owner for a skill that belongs to the whole company rather than one
+ * department. Stored in the same `departmentId` column so the existing index
+ * keeps working, and injected into every head's prompt.
+ */
+export const COMPANY_ID = "company";
+
+/**
  * Non-negotiable style rules, appended last so they win any conflict with a
  * department prompt or a skill.
  *

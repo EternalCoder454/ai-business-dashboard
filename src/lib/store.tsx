@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { db, ensureSeeded, newId } from "./db";
-import { CEO_ID, DEFAULT_PROFILE, DEFAULT_SETTINGS } from "./seed";
+import { CEO_ID, COMPANY_ID, DEFAULT_PROFILE, DEFAULT_SETTINGS } from "./seed";
 import type {
   AllHandsRun,
   CompanyProfile,
@@ -39,8 +39,13 @@ interface StoreValue {
   settings: Settings;
 
   getDepartment: (id: string) => Department | undefined;
-  /** Real skill count, derived from the skills table rather than typed in. */
+  /**
+   * Every skill a head follows: their own, plus the company wide ones. Sorted
+   * so company skills come first, since they set the ground rules.
+   */
   skillsFor: (departmentId: string) => Skill[];
+  /** Only the skills owned by that department, for counts and the Skills page. */
+  ownSkillsFor: (departmentId: string) => Skill[];
 
   createSkill: (input: Partial<Skill> & { departmentId: string }) => Promise<Skill>;
   updateSkill: (id: string, patch: Partial<Skill>) => Promise<void>;
@@ -181,7 +186,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       getDepartment: (id: string) => departmentList.find((d) => d.id === id),
 
-      skillsFor: (departmentId: string) =>
+      skillsFor: (departmentId: string) => {
+        const all = skills ?? [];
+        return [
+          ...all.filter((skill) => skill.departmentId === COMPANY_ID),
+          ...all.filter((skill) => skill.departmentId === departmentId),
+        ];
+      },
+
+      ownSkillsFor: (departmentId: string) =>
         (skills ?? []).filter((skill) => skill.departmentId === departmentId),
 
       createSkill: async (input) => {

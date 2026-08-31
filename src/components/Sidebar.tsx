@@ -18,6 +18,7 @@ import {
   UsersIcon,
   cx,
 } from "./ui";
+import { SearchIcon } from "./CommandPalette";
 import { createRipple } from "./ui/ripple";
 
 export interface NavLink {
@@ -71,10 +72,10 @@ export function isActive(pathname: string, href: string): boolean {
 }
 
 /** The permanent drawer, shown from the large window size class up. */
-export function Sidebar() {
+export function Sidebar({ onOpenSearch }: { onOpenSearch?: () => void }) {
   return (
     <aside className="hidden h-full w-[17.5rem] flex-none flex-col border-r border-outline-variant bg-low large:flex">
-      <SidebarContent />
+      <SidebarContent onOpenSearch={onOpenSearch} />
     </aside>
   );
 }
@@ -83,7 +84,13 @@ export function Sidebar() {
  * Drawer contents, shared by the permanent drawer and by the modal drawer that
  * compact, medium, and expanded windows open from the top app bar.
  */
-export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+export function SidebarContent({
+  onNavigate,
+  onOpenSearch,
+}: {
+  onNavigate?: () => void;
+  onOpenSearch?: () => void;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const {
@@ -92,7 +99,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     settings,
     conversations,
     allDepartments,
-    skillsFor,
+    ownSkillsFor,
     updateSettings,
     createConversation,
   } = useStore();
@@ -148,6 +155,24 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
 
+      {onOpenSearch ? (
+        <div className="px-4 pb-3">
+          <button
+            onClick={(event) => {
+              createRipple(event);
+              onOpenSearch();
+            }}
+            className="md-state flex h-10 w-full items-center gap-2.5 rounded-xl border border-outline-variant px-3 text-on-variant"
+          >
+            <SearchIcon className="h-4 w-4 flex-none" />
+            <span className="md-body flex-1 text-left">Search</span>
+            <kbd className="md-label-sm rounded border border-outline-variant px-1.5 py-0.5">
+              /
+            </kbd>
+          </button>
+        </div>
+      ) : null}
+
       <div className="px-4 pb-4">
         <button
           onClick={(event) => {
@@ -200,10 +225,10 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                 </span>
                 <span className="md-body min-w-0 flex-1 truncate">{department.name}</span>
                 <span
-                  title={`${skillsFor(department.id).length} skills`}
+                  title={`${ownSkillsFor(department.id).length} skills`}
                   className="md-label-sm rounded-md bg-highest px-1.5 py-0.5 text-on-variant"
                 >
-                  {skillsFor(department.id).length}
+                  {ownSkillsFor(department.id).length}
                 </span>
                 <StatusDot status={department.status} />
               </NavRow>

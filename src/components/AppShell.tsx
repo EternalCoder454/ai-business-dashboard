@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { CommandPalette, SearchIcon } from "./CommandPalette";
 import { PRIMARY_LINKS, Sidebar, SidebarContent, isActive } from "./Sidebar";
 import { CloseIcon, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
@@ -20,10 +21,30 @@ import { createRipple } from "./ui/ripple";
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     setDrawerOpen(false);
   }, [pathname]);
+
+  // Cmd+K and Ctrl+K anywhere, plus a plain slash when nothing is focused,
+  // which is the shortcut people try first in a list-heavy app.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(
+        (event.target as HTMLElement | null)?.tagName ?? "",
+      );
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen(true);
+      } else if (event.key === "/" && !typing && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -63,12 +84,20 @@ export function AppShell({ children }: { children: ReactNode }) {
       onTouchMove={edgeSwipe.onTouchMove}
       onTouchEnd={edgeSwipe.onTouchEnd}
     >
-      <Sidebar />
-      <NavigationRail pathname={pathname} onOpenDrawer={() => setDrawerOpen(true)} />
+      <Sidebar onOpenSearch={() => setSearchOpen(true)} />
+      <NavigationRail
+        pathname={pathname}
+        onOpenDrawer={() => setDrawerOpen(true)}
+        onOpenSearch={() => setSearchOpen(true)}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {isConversation ? null : (
-          <TopAppBar title={title} onOpenDrawer={() => setDrawerOpen(true)} />
+          <TopAppBar
+            title={title}
+            onOpenDrawer={() => setDrawerOpen(true)}
+            onOpenSearch={() => setSearchOpen(true)}
+          />
         )}
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</main>
         {isConversation ? null : (
@@ -76,7 +105,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       </div>
 
-      <ModalDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <ModalDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onOpenSearch={() => {
+          setDrawerOpen(false);
+          setSearchOpen(true);
+        }}
+      />
+      <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }
@@ -137,9 +174,11 @@ function useEdgeSwipe(onOpen: () => void) {
 function TopAppBar({
   title,
   onOpenDrawer,
+  onOpenSearch,
 }: {
   title: string;
   onOpenDrawer: () => void;
+  onOpenSearch: () => void;
 }) {
   return (
     <header className="safe-top safe-x flex flex-none items-center gap-1 border-b border-outline-variant bg-low px-1 medium:hidden">
@@ -154,6 +193,16 @@ function TopAppBar({
         <MenuIcon />
       </button>
       <span className="md-title truncate">{title}</span>
+      <button
+        onClick={(event) => {
+          createRipple(event);
+          onOpenSearch();
+        }}
+        aria-label="Search"
+        className="md-state ml-auto mr-1 grid h-12 w-12 flex-none place-items-center rounded-full text-on-variant"
+      >
+        <SearchIcon className="h-5 w-5" />
+      </button>
     </header>
   );
 }
@@ -162,9 +211,11 @@ function TopAppBar({
 function NavigationRail({
   pathname,
   onOpenDrawer,
+  onOpenSearch,
 }: {
   pathname: string;
   onOpenDrawer: () => void;
+  onOpenSearch: () => void;
 }) {
   return (
     <nav className="safe-left hidden w-20 flex-none flex-col items-center gap-1 border-r border-outline-variant bg-low py-3 medium:flex large:hidden">
@@ -177,6 +228,17 @@ function NavigationRail({
         className="md-state mb-2 grid h-12 w-12 place-items-center rounded-2xl bg-primary-container text-on-primary-container shadow-e1"
       >
         <MenuIcon />
+      </button>
+
+      <button
+        onClick={(event) => {
+          createRipple(event);
+          onOpenSearch();
+        }}
+        aria-label="Search"
+        className="md-state mb-1 grid h-8 w-14 place-items-center rounded-full text-on-variant"
+      >
+        <SearchIcon className="h-5 w-5" />
       </button>
 
       {PRIMARY_LINKS.map((link) => (
@@ -269,7 +331,15 @@ function BottomBar({
 }
 
 /** The full drawer, opened on demand below the large window size class. */
-function ModalDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+function ModalDrawer({
+  open,
+  onClose,
+  onOpenSearch,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onOpenSearch: () => void;
+}) {
   if (!open) return null;
 
   return (
@@ -290,7 +360,7 @@ function ModalDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
-        <SidebarContent onNavigate={onClose} />
+        <SidebarContent onNavigate={onClose} onOpenSearch={onOpenSearch} />
       </div>
     </div>
   );

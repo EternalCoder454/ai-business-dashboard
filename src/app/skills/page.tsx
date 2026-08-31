@@ -21,7 +21,7 @@ import {
   cx,
 } from "@/components/ui";
 import { createRipple } from "@/components/ui/ripple";
-import { CEO_ID } from "@/lib/seed";
+import { CEO_ID, COMPANY_ID } from "@/lib/seed";
 import { buildSkillsBlock, parseSkillMarkdown, skillFileName, skillToMarkdown } from "@/lib/skills";
 import { useStore } from "@/lib/store";
 import type { Skill } from "@/lib/types";
@@ -68,6 +68,11 @@ function SkillsView() {
   );
 
   const departmentOf = (id: string) => allDepartments.find((d) => d.id === id);
+  const ownerLabel = (id: string) =>
+    id === COMPANY_ID
+      ? "Every head"
+      : departmentOf(id)?.personaName || departmentOf(id)?.name || "Unassigned";
+  const ownerEmoji = (id: string) => (id === COMPANY_ID ? "🏢" : departmentOf(id)?.emoji ?? "📄");
   const countFor = (id: string) => skills.filter((s) => s.departmentId === id).length;
 
   const save = async () => {
@@ -161,6 +166,13 @@ function SkillsView() {
         <Chip selected={filter === "all"} onClick={() => setFilter("all")}>
           All · {skills.length}
         </Chip>
+        <Chip
+          selected={filter === COMPANY_ID}
+          title="Injected into every head's prompt"
+          onClick={() => setFilter(COMPANY_ID)}
+        >
+          🏢 Company · {countFor(COMPANY_ID)}
+        </Chip>
         {allDepartments.map((department) => (
           <Chip
             key={department.id}
@@ -221,20 +233,25 @@ function SkillsView() {
                 return (
                   <li key={skill.id}>
                     <Card className={cx("group", !skill.enabled && "opacity-60")}>
-                      <div className="flex flex-wrap items-start justify-between gap-3">
+                      {/* Stacked until there is room, or the owner chip and the
+                          action buttons collide with the name on a narrow card. */}
+                      <div className="flex flex-col gap-2 medium:flex-row medium:items-start medium:justify-between medium:gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span aria-hidden>{department?.emoji ?? "📄"}</span>
+                            <span aria-hidden>{ownerEmoji(skill.departmentId)}</span>
                             <h2 className="md-title truncate">{skill.name}</h2>
+                            {skill.departmentId === COMPANY_ID ? (
+                              <Chip tone="primary">Every head</Chip>
+                            ) : null}
                             {!skill.enabled ? <Chip>Disabled</Chip> : null}
                           </div>
                           <p className="md-label mt-1 text-on-variant">
-                            {department?.personaName || department?.name || "Unassigned"} ·{" "}
+                            {ownerLabel(skill.departmentId)} ·{" "}
                             {skill.description || "No trigger described"}
                           </p>
                         </div>
 
-                        <div className="flex flex-none items-center gap-1">
+                        <div className="flex flex-none flex-wrap items-center gap-1">
                           <Chip
                             selected={skill.enabled}
                             onClick={() =>
@@ -312,13 +329,19 @@ function SkillsView() {
                   onChange={(event) => setDraft({ ...draft, name: event.target.value })}
                 />
               </Field>
-              <Field label="Department">
+              <Field
+                label="Owner"
+                hint="A company wide skill is injected into all eight prompts, so it costs its tokens eight times."
+              >
                 <Select
                   value={draft.departmentId}
                   onChange={(event) =>
                     setDraft({ ...draft, departmentId: event.target.value })
                   }
                 >
+                  <option value={COMPANY_ID}>
+                    🏢 Company wide (every head)
+                  </option>
                   {allDepartments.map((department) => (
                     <option key={department.id} value={department.id}>
                       {department.emoji} {department.personaName || department.name}

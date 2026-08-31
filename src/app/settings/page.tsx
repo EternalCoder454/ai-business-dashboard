@@ -32,7 +32,7 @@ export default function SettingsPage() {
     updateSettings,
     departments,
     ceo,
-    skillsFor,
+    ownSkillsFor,
     createDepartment,
     updateDepartment,
     deleteDepartment,
@@ -261,7 +261,7 @@ export default function SettingsPage() {
                     </p>
                     <p className="md-label truncate text-on-variant">
                       {department.personaName ? `${department.personaName}, ` : ""}
-                      {department.roleTitle} · {skillsFor(department.id).length} skills
+                      {department.roleTitle} · {ownSkillsFor(department.id).length} skills
                     </p>
                   </div>
                   <span className="md-label-sm flex items-center gap-1.5 text-on-variant">

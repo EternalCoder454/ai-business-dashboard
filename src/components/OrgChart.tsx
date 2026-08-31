@@ -48,7 +48,7 @@ export function OrgChart() {
 }
 
 function Hierarchy() {
-  const { ready, departments, ceo, conversations, skillsFor } = useStore();
+  const { ready, departments, ceo, conversations, ownSkillsFor } = useStore();
 
   const threadsFor = (id: string) =>
     conversations.filter((c) => c.departmentId === id && c.messages.length > 0).length;
@@ -58,7 +58,7 @@ function Hierarchy() {
       {ceo ? (
         <CeoRow
           ceo={ceo}
-          skillCount={skillsFor(ceo.id).length}
+          skillCount={ownSkillsFor(ceo.id).length}
           threadCount={threadsFor(ceo.id)}
         />
       ) : (
@@ -70,7 +70,7 @@ function Hierarchy() {
           <DepartmentRow
             key={department.id}
             department={department}
-            skillCount={skillsFor(department.id).length}
+            skillCount={ownSkillsFor(department.id).length}
             threadCount={threadsFor(department.id)}
             lastActive={
               conversations.find(

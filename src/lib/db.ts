@@ -6,6 +6,7 @@ import {
   PERSONA_BACKFILL,
   seedDepartments,
 } from "./seed";
+import { COMPANY_ID } from "./seed";
 import { seedSkills } from "./seedSkills";
 import type {
   AllHandsRun,
@@ -213,6 +214,26 @@ class CeoHqDatabase extends Dexie {
 
         const additions = seedSkills().filter(
           (skill) => !taken.has(`${skill.departmentId}::${skill.name}`),
+        );
+        if (additions.length) await table.bulkPut(additions);
+      });
+
+    // v8 adds the company wide skills, which every head inherits.
+    this.version(8)
+      .stores({
+        departments: "id, order, isCeo",
+        conversations: "id, departmentId, updatedAt",
+        deliverables: "id, departmentId, status, updatedAt",
+        allHands: "id, createdAt, updatedAt",
+        skills: "id, departmentId, updatedAt",
+        profile: "id",
+        settings: "id",
+      })
+      .upgrade(async (tx) => {
+        const table = tx.table<Skill>("skills");
+        const have = new Set((await table.toArray()).map((skill) => skill.id));
+        const additions = seedSkills().filter(
+          (skill) => skill.departmentId === COMPANY_ID && !have.has(skill.id),
         );
         if (additions.length) await table.bulkPut(additions);
       });
