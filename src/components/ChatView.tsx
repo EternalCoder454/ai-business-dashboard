@@ -347,7 +347,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="safe-top safe-pt-3 medium:safe-pt-4 safe-x flex flex-none items-center gap-3 border-b border-outline-variant px-2 pb-3 medium:gap-4 medium:px-6 medium:pb-4 expanded:px-8">
+      <header className="safe-top safe-pt-3 medium:safe-pt-4 safe-x safe-px-3 medium:safe-px-6 flex flex-none items-center gap-3 border-b border-outline-variant pb-3 medium:gap-4 medium:pb-4">
         <button
           onClick={() => {
             if (window.history.length > 1) router.back();

@@ -36,6 +36,7 @@ import {
   PROJECT_ACCENTS,
   seedDepartments,
 } from "./seed";
+import { handbookSkills } from "./handbookSkills";
 import {
   SHIPPED_COACH_PROMPTS,
   promptFingerprint,
@@ -233,10 +234,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     const load = async () => {
-      const snapshot = await fetch("/api/workspace").then((r) =>
+      const initial = await fetch("/api/workspace").then((r) =>
         r.ok ? (r.json() as Promise<Workspace>) : null,
       );
-      if (cancelled || !snapshot) return snapshot;
+      if (cancelled || !initial) return initial;
+
+      // Reassigned by the reconciliation steps below, which refetch after
+      // writing, so it is narrowed once here rather than at every use.
+      let snapshot: Workspace = initial;
 
       // A brand new account has no departments at all. Seed it with the same
       // eight heads and shipped skills a fresh browser would get, so signing in
@@ -264,6 +269,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
        * existed, and only in the owner's. Checked on every load rather than
        * once, because there is no migration step that runs in a browser.
        */
+      /**
+       * Reconcile what this app ships against what the workspace already has.
+       *
+       * Runs on every load rather than only into an empty workspace, because
+       * there is no migration step in a browser and the workspace exists
+       * already. Everything here is keyed by id and only ever adds, so a
+       * skill that has been edited or deleted stays that way.
+       */
+      {
+        const ops: MutationOp[] = [];
+        const owned = new Set(snapshot.skills.map((s) => s.id));
+        const newHandbook = handbookSkills().filter((s) => !owned.has(s.id));
+        if (newHandbook.length) {
+          ops.push({ table: "skills", action: "upsert", rows: newHandbook });
+        }
+
+        if (ops.length) {
+          await fetch("/api/workspace", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ops }),
+          });
+          snapshot = await fetch("/api/workspace").then((r) =>
+            r.ok ? (r.json() as Promise<Workspace>) : snapshot,
+          );
+        }
+      }
+
       if (isOwner) {
         const existing = snapshot.departments.find((d) => d.id === COACH_ID);
         const order = snapshot.departments.reduce((max, d) => Math.max(max, d.order), 0) + 1;

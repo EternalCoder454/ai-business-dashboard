@@ -438,12 +438,14 @@
 }
 
 .safe-left {
-  padding-left: env(safe-area-inset-left, 0px);
+  --safe-pad-left: 0px;
+  padding-left: calc(var(--safe-pad-left) + env(safe-area-inset-left, 0px));
 }
 
 .safe-x {
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
+  --safe-pad-x: 0px;
+  padding-left: calc(var(--safe-pad-x) + env(safe-area-inset-left, 0px));
+  padding-right: calc(var(--safe-pad-x) + env(safe-area-inset-right, 0px));
 }
 
 /* A bottom sheet is the mobile form of a dialog: it comes up from the edge the
@@ -772,8 +774,10 @@
 /* The padding a safe-area element wants before the inset is added. */
 .safe-pt-3 { --safe-pad-top: 0.75rem; }
 .safe-pb-3 { --safe-pad-bottom: 0.75rem; }
+.safe-px-3 { --safe-pad-x: 0.75rem; }
 
 @media (min-width: 600px) {
   .medium\:safe-pt-4 { --safe-pad-top: 1rem; }
   .medium\:safe-pb-4 { --safe-pad-bottom: 1rem; }
+  .medium\:safe-px-6 { --safe-pad-x: 1.5rem; }
 }

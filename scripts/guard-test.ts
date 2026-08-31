@@ -11,7 +11,9 @@ import { readJsonWithin, withinRate } from "../src/lib/guard";
 import { safeDestination } from "../src/app/signin/page";
 import { applyOp, emptyWorkspace } from "../src/lib/workspace";
 import { filesForDepartment } from "../src/lib/files";
-import { COACH_ID, COMPANY_ID, leadershipCoach } from "../src/lib/seed";
+import { COACH_ID, COMPANY_ID, leadershipCoach, seedDepartments } from "../src/lib/seed";
+import { handbookSkills } from "../src/lib/handbookSkills";
+import { seedSkills } from "../src/lib/seedSkills";
 import {
   SHIPPED_COACH_PROMPTS,
   promptFingerprint,
@@ -175,6 +177,27 @@ console.log("\na write immediately after a create can see it");
     check("every one has a trigger line", skills.every((s) => s.description.length > 20));
     check("none quotes a vendor statistic",
       !skills.some((s) => /[0-9]+ ?(%|per cent of cases)/.test(s.content)));
+  }
+
+  console.log("\nthe handbook skills are well formed and land on real departments");
+  {
+    const hb = handbookSkills();
+    const departments = new Set(seedDepartments().map((d) => d.id));
+    check("there are skills", hb.length >= 20, String(hb.length));
+    check("ids are unique", new Set(hb.map((s) => s.id)).size === hb.length);
+    check("ids are stable across runs",
+      handbookSkills().map((s) => s.id).join() === hb.map((s) => s.id).join());
+    check("every one targets a seeded department",
+      hb.every((s) => departments.has(s.departmentId)),
+      hb.filter((s) => !departments.has(s.departmentId)).map((s) => s.departmentId).join(","));
+    check("every one has a trigger line", hb.every((s) => s.description.length > 25));
+    check("every one has a body", hb.every((s) => s.content.length > 300));
+    check("none collides with a seeded skill id",
+      !seedSkills().some((s) => hb.some((h) => h.id === s.id)));
+
+    const byDept = new Map<string, number>();
+    for (const s of hb) byDept.set(s.departmentId, (byDept.get(s.departmentId) ?? 0) + 1);
+    check("every department gained at least one", byDept.size >= 8, String(byDept.size));
   }
 
 
