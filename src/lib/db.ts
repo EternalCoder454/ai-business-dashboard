@@ -18,6 +18,7 @@ import type {
   Department,
   MemoryEntry,
   Project,
+  Task,
   Settings,
   Skill,
 } from "./types";
@@ -52,6 +53,7 @@ class CeoHqDatabase extends Dexie {
   allHands!: Table<AllHandsRun, string>;
   skills!: Table<Skill, string>;
   memory!: Table<MemoryEntry, string>;
+  tasks!: Table<Task, string>;
   files!: Table<LibraryFile, string>;
   account!: Table<StoredAccount, string>;
   profile!: Table<StoredProfile, string>;
@@ -230,6 +232,26 @@ class CeoHqDatabase extends Dexie {
         );
         if (additions.length) await table.bulkPut(additions);
       });
+
+    /**
+     * v13 adds tasks: things to do, as opposed to deliverables, which are
+     * things produced. Indexed by status and by hand ordering, which is how
+     * the board reads them.
+     */
+    this.version(13).stores({
+      departments: "id, order, isCeo",
+      projects: "id, status, updatedAt",
+      conversations: "id, departmentId, projectId, updatedAt",
+      deliverables: "id, departmentId, projectId, status, updatedAt",
+      allHands: "id, createdAt, updatedAt",
+      skills: "id, departmentId, updatedAt",
+      memory: "id, kind, departmentId, projectId, archived, occurredAt",
+      tasks: "id, status, departmentId, projectId, order, dueAt",
+      files: "id, kind, departmentId, projectId, updatedAt",
+      account: "id",
+      profile: "id",
+      settings: "id",
+    });
 
     /**
      * v12 adds the studio's own record: decisions that stand, and figures that

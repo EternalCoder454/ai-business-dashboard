@@ -242,6 +242,43 @@ export interface MemoryEntry {
   updatedAt: number;
 }
 
+/**
+ * Something to do, as opposed to something produced.
+ *
+ * Deliverables are output: a reply worth keeping. A task is the other half,
+ * the thing that has not happened yet. Keeping them apart matters because they
+ * are answered by different questions: "what have we made" and "what is
+ * outstanding" are not the same list, and merging them makes both useless.
+ *
+ * Open tasks for a department are injected into its prompt, so asking a head
+ * what to focus on is answered against what is actually outstanding rather
+ * than against nothing.
+ */
+export type TaskStatus = "todo" | "doing" | "done";
+
+/** Ordered, because a plan with everything at the same priority is not a plan. */
+export const TASK_STATUSES: TaskStatus[] = ["todo", "doing", "done"];
+
+export interface Task {
+  id: string;
+  title: string;
+  /** Anything the title cannot carry: links, constraints, what done looks like. */
+  notes: string;
+  status: TaskStatus;
+  /** The head whose area this sits in, or the company id for unassigned. */
+  departmentId: string;
+  projectId?: string;
+  /** Midnight-agnostic day stamp, or undefined for no date. */
+  dueAt?: number;
+  /** Ordering within a status column, so a list can be prioritised by hand. */
+  order: number;
+  /** The conversation it came out of, when it was captured from a reply. */
+  sourceConversationId?: string;
+  createdAt: number;
+  updatedAt: number;
+  completedAt?: number;
+}
+
 export interface Deliverable {
   id: string;
   title: string;

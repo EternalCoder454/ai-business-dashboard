@@ -1,11 +1,12 @@
 import { buildMemoryBlock } from "./memory";
-import { SHARED_OPERATING_RULES, WRITING_RULES } from "./seed";
+import { COMPANY_ID, SHARED_OPERATING_RULES, WRITING_RULES } from "./seed";
 import { buildSkillsBlock } from "./skills";
 import type {
   CompanyProfile,
   Department,
   MemoryEntry,
   Skill,
+  Task,
   UserAccount,
 } from "./types";
 
@@ -28,7 +29,9 @@ const PROFILE_FIELDS: [keyof CompanyProfile, string][] = [
 /** True when the profile has at least one field worth injecting. */
 export function hasProfileContent(profile: CompanyProfile | undefined): boolean {
   if (!profile) return false;
-  return PROFILE_FIELDS.some(([key]) => profile[key].trim());
+  // A field can be missing on a profile written before it existed, and a
+  // crash here would take out every message rather than one screen.
+  return PROFILE_FIELDS.some(([key]) => (profile[key] ?? "").trim());
 }
 
 /**
@@ -47,7 +50,7 @@ export function buildCompanyContext(
   ];
 
   for (const [key, label] of PROFILE_FIELDS) {
-    const value = profile[key].trim();
+    const value = (profile[key] ?? "").trim();
     if (value) lines.push("", `${label}:`, value);
   }
 
@@ -117,6 +120,53 @@ export function buildUserContext(account: UserAccount, companyName: string): str
   return lines.join("\n");
 }
 
+/** How many open tasks reach a prompt. Past this it is a backlog, not context. */
+const MAX_TASKS = 15;
+
+/**
+ * The open work in this head's area.
+ *
+ * Without it, asking Ruth what to focus on is answered from nothing, and every
+ * answer restates the question back as a plan. Done tasks are left out: they
+ * are history, and history belongs in the record rather than in front of every
+ * reply.
+ */
+export function buildTasksBlock(tasks: Task[], departmentId: string): string {
+  const mine = tasks
+    .filter(
+      (task) =>
+        task.status !== "done" &&
+        (task.departmentId === departmentId || task.departmentId === COMPANY_ID),
+    )
+    .sort((a, b) => {
+      // Dated work first, soonest first, then whatever has been ordered by hand.
+      if (a.dueAt && b.dueAt) return a.dueAt - b.dueAt;
+      if (a.dueAt) return -1;
+      if (b.dueAt) return 1;
+      return a.order - b.order;
+    });
+
+  if (!mine.length) return "";
+
+  const lines = ["=== OPEN WORK IN YOUR AREA ==="];
+  for (const task of mine.slice(0, MAX_TASKS)) {
+    const bits = [task.status === "doing" ? "in progress" : "not started"];
+    if (task.dueAt) bits.push(`due ${new Date(task.dueAt).toISOString().slice(0, 10)}`);
+    lines.push(`- ${task.title.trim()} (${bits.join(", ")})`);
+    if (task.notes.trim()) lines.push(`  ${task.notes.trim().slice(0, 200)}`);
+  }
+  if (mine.length > MAX_TASKS) {
+    lines.push(`- and ${mine.length - MAX_TASKS} more not listed here.`);
+  }
+
+  lines.push(
+    "",
+    "This is what is already outstanding. Weigh it before proposing anything new, say plainly when a new idea should wait behind it, and never propose something already on the list as though it were fresh.",
+    "=== END OPEN WORK ===",
+  );
+  return lines.join("\n");
+}
+
 /**
  * Composes the full system prompt sent to the API: department identity, shared
  * company context, and the house rules every department follows.
@@ -129,6 +179,7 @@ export function buildSystemPrompt(
   writingRules: string = WRITING_RULES,
   account?: UserAccount,
   memory: MemoryEntry[] = [],
+  tasks: Task[] = [],
 ): string {
   const context = buildCompanyContext(profile, companyName);
 
@@ -149,6 +200,7 @@ export function buildSystemPrompt(
     // Late on purpose. The prompt is one cached prefix, so a change here
     // leaves everything above it cached, and the record is what changes most.
     buildMemoryBlock(memory, department.id),
+    buildTasksBlock(tasks, department.id),
     SHARED_OPERATING_RULES,
     writingRules.trim(),
   ].filter(Boolean);

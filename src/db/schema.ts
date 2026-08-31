@@ -339,6 +339,33 @@ export const memory = pgTable(
   ],
 );
 
+/**
+ * Things to do. Separate from deliverables, which are things produced: "what
+ * have we made" and "what is outstanding" are different questions.
+ */
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: text("id").notNull(),
+    userEmail: owner(),
+    title: text("title").notNull(),
+    notes: text("notes").notNull().default(""),
+    status: text("status").notNull().default("todo"),
+    departmentId: text("department_id").notNull(),
+    projectId: text("project_id"),
+    dueAt: bigint("due_at", { mode: "number" }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    sourceConversationId: text("source_conversation_id"),
+    completedAt: bigint("completed_at", { mode: "number" }),
+    createdAt: created(),
+    updatedAt: updated(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userEmail, table.id] }),
+    index("tasks_owner_idx").on(table.userEmail, table.status, table.sortOrder),
+  ],
+);
+
 export const conversationRelations = relations(conversations, ({ many }) => ({
   messages: many(messages),
 }));

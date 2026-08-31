@@ -8,6 +8,7 @@ import type {
   Department,
   MemoryEntry,
   Role,
+  Task,
   RoomBrevity,
   Settings,
   Skill,
@@ -34,6 +35,8 @@ export interface AllHandsOptions {
   account?: UserAccount;
   /** The studio's record, so the room argues from the same facts as a 1:1. */
   memory?: MemoryEntry[];
+  /** Open work, so the room weighs new ideas against what is outstanding. */
+  tasks?: Task[];
   /** Whether the CEO reads across the round once every head has answered. */
   synthesize: boolean;
   onProgress: (run: AllHandsRun) => void;
@@ -131,6 +134,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
     skillsFor,
     account,
     memory = [],
+    tasks = [],
     synthesize,
     onProgress,
     signal,
@@ -189,6 +193,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
           settings.writingRules,
           account,
           memory,
+          tasks,
         ),
         messages: buildHeadHistory(priorRounds, department.id, question, budget),
         model: settings.model,
@@ -247,6 +252,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
           settings.writingRules,
           account,
           memory,
+          tasks,
         ),
         messages: [
           {

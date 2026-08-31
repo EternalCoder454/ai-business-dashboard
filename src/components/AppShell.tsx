@@ -161,6 +161,7 @@ const ROUTE_TITLES: [string, string][] = [
   ["/all-hands", "Ask Everyone"],
   ["/messages", "Inbox"],
   ["/onboarding", "Internal Wiki"],
+  ["/tasks", "Tasks"],
   ["/projects", "Projects"],
   ["/admin", "Admin"],
   ["/library/skills", "Skills"],

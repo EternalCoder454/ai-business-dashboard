@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import {
+  CheckIcon,
   ChevronIcon,
   DocIcon,
   FolderIcon,
@@ -42,6 +43,7 @@ export function Dashboard() {
     allHandsRuns,
     projects,
     memory,
+    tasks,
     skills,
     profile,
     settings,
@@ -78,6 +80,13 @@ export function Dashboard() {
     [memory],
   );
 
+  const openTasks = tasks.filter((task) => task.status !== "done");
+  // Read once when the page mounts rather than on every render, which is not a
+  // pure thing to do and makes the render output depend on the clock. A tab
+  // left open past midnight shows yesterday's reckoning until it is reloaded,
+  // which is the right trade for a dashboard.
+  const [now] = useState(() => Date.now());
+
   const gaps = useMemo(() => {
     const items: { label: string; href: string }[] = [];
     // Before the workspace has loaded every one of these reads as missing, so
@@ -95,6 +104,18 @@ export function Dashboard() {
         href: "/library/memory",
       });
     }
+    // Counted here rather than outside, so the memo's inputs are values it can
+    // actually track. A dependency on something derived above it is a
+    // memoization the compiler has to throw away.
+    const overdue = tasks.filter(
+      (task) => task.status !== "done" && task.dueAt && task.dueAt < now,
+    ).length;
+    if (overdue > 0) {
+      items.push({
+        label: `${overdue} task${overdue === 1 ? "" : "s"} past ${overdue === 1 ? "its" : "their"} date`,
+        href: "/tasks",
+      });
+    }
     const bare = departments.filter((d) => !skills.some((s) => s.departmentId === d.id));
     if (bare.length > 0) {
       items.push({
@@ -103,9 +124,8 @@ export function Dashboard() {
       });
     }
     return items;
-  }, [ready, serverKey, settings.apiKey, profile, memory, departments, skills]);
+  }, [ready, serverKey, settings.apiKey, profile, memory, tasks, now, departments, skills]);
 
-  const openWork = deliverables.filter((item) => item.status !== "done").length;
   const activeProjects = projects.filter((p) => p.status === "active").length;
   const threads = conversations.filter((c) => c.messages.length > 0).length;
 
@@ -170,7 +190,8 @@ export function Dashboard() {
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="md-label-sm text-on-variant">Who you can ask</h2>
             <span className="md-label-sm text-on-variant/75">
-              {threads} thread{threads === 1 ? "" : "s"} · {openWork} open · {activeProjects} project
+              {threads} thread{threads === 1 ? "" : "s"} · {openTasks.length} open ·{" "}
+              {activeProjects} project
               {activeProjects === 1 ? "" : "s"}
             </span>
           </div>
@@ -189,6 +210,23 @@ export function Dashboard() {
         </section>
 
         <div className="space-y-4">
+          <PaneList
+            title="Open tasks"
+            icon={<CheckIcon className="h-3.5 w-3.5" />}
+            href="/tasks"
+            empty="Nothing outstanding."
+            items={openTasks.slice(0, 5).map((task) => ({
+              key: task.id,
+              href: "/tasks",
+              primary: task.title,
+              secondary: `${nameOf(task.departmentId)}${
+                task.dueAt
+                  ? ` · due ${new Date(task.dueAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`
+                  : ""
+              }`,
+            }))}
+          />
+
           <PaneList
             title="Standing decisions"
             icon={<SparkIcon className="h-3.5 w-3.5" />}

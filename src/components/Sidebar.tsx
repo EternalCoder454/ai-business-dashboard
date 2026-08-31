@@ -20,6 +20,7 @@ import { useStore } from "@/lib/store";
 import {
   BriefcaseIcon,
   BuildingIcon,
+  CheckIcon,
   ChevronIcon,
   BookIcon,
   DashboardIcon,
@@ -71,6 +72,12 @@ export const WORK_LINKS: NavLink[] = [
     label: "Inbox",
     short: "Inbox",
     icon: <MailIcon className="h-5 w-5" />,
+  },
+  {
+    href: "/tasks",
+    label: "Tasks",
+    short: "Tasks",
+    icon: <CheckIcon className="h-5 w-5" />,
   },
   {
     href: "/projects",

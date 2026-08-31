@@ -378,6 +378,44 @@ async function main() {
     check("and they delete", (await loadWorkspace(USER)).memory.length === 0);
   }
 
+  console.log("\ntasks survive a round trip");
+  {
+    const now = Date.now();
+    await applyMutations(USER, [
+      {
+        table: "tasks",
+        action: "upsert",
+        rows: [
+          {
+            id: "task_smoke_1",
+            title: "Smoke task",
+            notes: "With notes.",
+            status: "doing",
+            departmentId: "marketing",
+            dueAt: now + 86_400_000,
+            order: -3,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+      },
+    ]);
+
+    const back = await loadWorkspace(USER);
+    const task = back.tasks.find((row) => row.id === "task_smoke_1");
+    check("it came back", Boolean(task));
+    check("the status survived", task?.status === "doing");
+    check("the notes survived", task?.notes === "With notes.");
+    // bigint columns read back as strings would break every date on screen.
+    check("dueAt is still a number", typeof task?.dueAt === "number");
+    check("and still the same instant", task?.dueAt === now + 86_400_000);
+    check("hand ordering survived, negatives included", task?.order === -3);
+    check("nothing invented a completedAt", task?.completedAt === undefined);
+
+    await applyMutations(USER, [{ table: "tasks", action: "delete", ids: ["task_smoke_1"] }]);
+    check("and it deletes", (await loadWorkspace(USER)).tasks.length === 0);
+  }
+
   console.log("\ndeleting a head takes its conversations with it");
   await applyMutations(USER, [{ table: "departments", action: "delete", ids: ["design"] }]);
   const afterDelete = await loadWorkspace(USER);

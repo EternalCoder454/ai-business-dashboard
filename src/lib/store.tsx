@@ -59,6 +59,8 @@ import type {
   LibraryFile,
   MemoryEntry,
   MemoryKind,
+  Task,
+  TaskStatus,
   Message,
   Project,
   Settings,
@@ -96,6 +98,11 @@ interface StoreValue {
   files: LibraryFile[];
   /** The studio's own record: decisions that stand, and figures. */
   memory: MemoryEntry[];
+  /** Things to do, as opposed to deliverables, which are things produced. */
+  tasks: Task[];
+  createTask: (input: Partial<Task> & { title: string }) => Promise<Task>;
+  updateTask: (id: string, patch: Partial<Task>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
   /** One head's slice of it, plus everything company-wide. Live entries only. */
   memoryFor: (departmentId: string) => MemoryEntry[];
   saveMemory: (input: Partial<MemoryEntry> & { kind: MemoryKind; label: string }) => Promise<MemoryEntry>;
@@ -494,6 +501,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     undefined,
   );
 
+  const tasks = useLiveQuery(
+    async () => (!db || !local ? [] : db.tasks.orderBy("order").toArray()),
+    [seeded, local],
+    undefined,
+  );
+
   const files = useLiveQuery(
     async () => (!db || !local ? [] : db.files.orderBy("updatedAt").reverse().toArray()),
     [seeded, local],
@@ -626,6 +639,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const conversationList = hosted ? (remote?.conversations ?? NONE) : (conversations ?? NONE);
   const deliverableList = hosted ? (remote?.deliverables ?? NONE) : (deliverables ?? NONE);
   const memoryList = hosted ? (remote?.memory ?? NONE) : (memory ?? NONE);
+  const taskList = hosted ? (remote?.tasks ?? NONE) : (tasks ?? NONE);
   const projectList = hosted ? (remote?.projects ?? NONE) : (projects ?? NONE);
   const skillList = hosted ? (remote?.skills ?? NONE) : (skills ?? NONE);
   const fileList = hosted ? (remote?.files ?? NONE) : (files ?? NONE);
@@ -678,6 +692,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       conversations: conversationList,
       deliverables: deliverableList,
       memory: memoryList,
+      tasks: taskList,
       projects: projectList,
       allHandsRuns: runList,
       skills: skillList,
@@ -1125,6 +1140,58 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       memoryFor: (departmentId) => liveMemoryFor(memoryList, departmentId),
 
       /**
+       * New tasks go to the top of their column.
+       *
+       * Something just written down is the thing most on your mind, and
+       * appending it under forty older ones is how a list stops being read.
+       */
+      createTask: async (input) => {
+        const now = Date.now();
+        const lowest = taskList.reduce((min, t) => Math.min(min, t.order), 0);
+        const task: Task = {
+          id: input.id ?? newId("task"),
+          title: input.title.trim(),
+          notes: input.notes ?? "",
+          status: input.status ?? "todo",
+          departmentId: input.departmentId ?? COMPANY_ID,
+          projectId: input.projectId,
+          dueAt: input.dueAt,
+          order: input.order ?? lowest - 1,
+          sourceConversationId: input.sourceConversationId,
+          createdAt: input.createdAt ?? now,
+          updatedAt: now,
+          completedAt: input.completedAt,
+        };
+        if (hosted) await push({ table: "tasks", action: "upsert", rows: [task] });
+        else await requireDb().tasks.put(task);
+        return task;
+      },
+
+      updateTask: async (id, patch) => {
+        // Stamped here rather than at each call site, so "when did that get
+        // done" is answerable however the task was closed.
+        const stamped: Partial<Task> = { ...patch, updatedAt: Date.now() };
+        if (patch.status !== undefined) {
+          stamped.completedAt = patch.status === "done" ? Date.now() : undefined;
+        }
+        if (hosted) {
+          const current = remoteRef.current?.tasks.find((task) => task.id === id);
+          if (!current) {
+            console.error("[workspace] nothing to update with id", id, "- write dropped");
+            return;
+          }
+          await push({ table: "tasks", action: "upsert", rows: [{ ...current, ...stamped }] });
+          return;
+        }
+        await requireDb().tasks.update(id, stamped);
+      },
+
+      deleteTask: async (id) => {
+        if (hosted) await push({ table: "tasks", action: "delete", ids: [id] });
+        else await requireDb().tasks.delete(id);
+      },
+
+      /**
        * Writes a decision or a figure.
        *
        * `occurredAt` defaults to now but is meant to be overridden: a reading
@@ -1183,12 +1250,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       uploadLocalWorkspace: async () => {
         if (!hosted || !db) return { pushed: 0 };
 
-        const [depts, convs, skls, dels, mems, projs, fls, runs, prof, sets] = await Promise.all([
+        const [depts, convs, skls, dels, mems, tsks, projs, fls, runs, prof, sets] = await Promise.all([
           db.departments.toArray(),
           db.conversations.toArray(),
           db.skills.toArray(),
           db.deliverables.toArray(),
           db.memory.toArray(),
+          db.tasks.toArray(),
           db.projects.toArray(),
           db.files.toArray(),
           db.allHands.toArray(),
@@ -1205,6 +1273,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (skls.length) ops.push({ table: "skills", action: "upsert", rows: skls });
         if (dels.length) ops.push({ table: "deliverables", action: "upsert", rows: dels });
         if (mems.length) ops.push({ table: "memory", action: "upsert", rows: mems });
+        if (tsks.length) ops.push({ table: "tasks", action: "upsert", rows: tsks });
         if (fls.length) ops.push({ table: "files", action: "upsert", rows: fls });
         if (runs.length) ops.push({ table: "allHands", action: "upsert", rows: runs });
         // Conversations carry their messages and attachments, so they go last
@@ -1241,6 +1310,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     hosted,
     commitRemote,
     memoryList,
+    taskList,
     mode,
     signedInEmail,
     serverKey,

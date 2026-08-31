@@ -24,6 +24,7 @@ export default function manifest(): MetadataRoute.Manifest {
     shortcuts: [
       { name: "Chief of Staff", short_name: "Staff", url: "/ceo" },
       { name: "Ask Everyone", short_name: "Everyone", url: "/all-hands" },
+      { name: "Tasks", short_name: "Tasks", url: "/tasks" },
       { name: "Deliverables", short_name: "Output", url: "/deliverables" },
     ],
   };

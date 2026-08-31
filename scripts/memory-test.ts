@@ -8,10 +8,10 @@
  *   npm run memory-test
  */
 import { buildMemoryBlock, figureSeries, memoryFor } from "../src/lib/memory";
-import { buildSystemPrompt } from "../src/lib/prompts";
+import { buildSystemPrompt, buildTasksBlock } from "../src/lib/prompts";
 import { COMPANY_ID, seedDepartments } from "../src/lib/seed";
 import { applyOp, emptyWorkspace } from "../src/lib/workspace";
-import type { CompanyProfile, MemoryEntry, UserAccount } from "../src/lib/types";
+import type { CompanyProfile, MemoryEntry, Task, UserAccount } from "../src/lib/types";
 import type { StoredSettings } from "../src/lib/workspace";
 
 let failures = 0;
@@ -23,6 +23,19 @@ function check(label: string, ok: boolean, detail = ""): void {
 
 const DAY = 86_400_000;
 const T0 = 1_770_000_000_000;
+
+/** Every field present and empty, which is what an unfilled profile really is. */
+const EMPTY_PROFILE: CompanyProfile = {
+  mission: "",
+  audience: "",
+  brandVoice: "",
+  keyFacts: "",
+  products: "",
+  stage: "",
+  competitors: "",
+  constraints: "",
+  goals: "",
+};
 
 function entry(over: Partial<MemoryEntry> & Pick<MemoryEntry, "kind" | "label">): MemoryEntry {
   return {
@@ -190,6 +203,113 @@ console.log("\nthe workspace reducer");
   check("deleting a project keeps the entry", unlinked.memory.length === 1);
   check("and releases it", unlinked.memory[0]?.projectId === undefined);
 }
+
+console.log("\nopen work reaches the prompt, finished work does not");
+{
+  const task = (over: Partial<Task> & Pick<Task, "title">): Task => ({
+    id: `task_${over.title.replace(/\W+/g, "").toLowerCase()}`,
+    notes: "",
+    status: "todo",
+    departmentId: COMPANY_ID,
+    order: 0,
+    createdAt: T0,
+    updatedAt: T0,
+    ...over,
+  });
+
+  const tasks = [
+    task({ title: "Write the Steam short description", departmentId: "marketing" }),
+    task({ title: "Company wide thing" }),
+    task({ title: "Finished already", status: "done" }),
+    task({ title: "Legal only", departmentId: "legal" }),
+    task({ title: "Dated one", departmentId: "marketing", dueAt: T0 + DAY, status: "doing" }),
+  ];
+
+  const block = buildTasksBlock(tasks, "marketing");
+  check("carries its own open work", block.includes("Steam short description"));
+  check("plus company wide work", block.includes("Company wide thing"));
+  check("leaves out finished work", !block.includes("Finished already"));
+  check("leaves out another head's", !block.includes("Legal only"));
+  check("marks what is in progress", block.includes("in progress"));
+  check("dated work comes first", block.indexOf("Dated one") < block.indexOf("Steam short"));
+  check("says what to do with it", block.includes("Weigh it before proposing anything new"));
+  check(
+    "is empty when nothing is open",
+    buildTasksBlock([task({ title: "x", status: "done" })], "marketing") === "",
+  );
+
+  const finance = seedDepartments().find((d) => d.id === "finance")!;
+  const withTasks = buildSystemPrompt(
+    finance,
+    EMPTY_PROFILE,
+    "Eterneon",
+    [],
+    "house rules",
+    undefined,
+    [],
+    [task({ title: "Chase the invoice", departmentId: "finance" })],
+  );
+  check("reaches the system prompt", withTasks.includes("Chase the invoice"));
+  check(
+    "and the writing rules still come last",
+    withTasks.lastIndexOf("house rules") > withTasks.indexOf("OPEN WORK"),
+  );
+
+  // Adding a task must not re-bill everything above it in the cached prefix.
+  const without = buildSystemPrompt(
+    finance,
+    EMPTY_PROFILE,
+    "Eterneon",
+    [],
+    "house rules",
+    undefined,
+    [],
+    [],
+  );
+  const shared = withTasks.slice(0, withTasks.indexOf("=== OPEN WORK"));
+  check("everything above it is unchanged", without.startsWith(shared), `${shared.length} chars`);
+}
+
+console.log("\nthe task reducer");
+{
+  const bare = { companyName: "Eterneon" } as unknown as StoredSettings;
+  const blank = emptyWorkspace(bare, EMPTY_PROFILE, {} as UserAccount);
+  check("starts empty", blank.tasks.length === 0);
+
+  const one: Task = {
+    id: "task_1",
+    title: "First",
+    notes: "",
+    status: "todo",
+    departmentId: COMPANY_ID,
+    order: 0,
+    createdAt: T0,
+    updatedAt: T0,
+  };
+  const added = applyOp(blank, { table: "tasks", action: "upsert", rows: [one] });
+  check("holds it", added.tasks.length === 1);
+
+  const closed = applyOp(added, {
+    table: "tasks",
+    action: "upsert",
+    rows: [{ ...one, status: "done", completedAt: T0 + DAY }],
+  });
+  check("an edit replaces rather than duplicates", closed.tasks.length === 1);
+  check("with the new status", closed.tasks[0]?.status === "done");
+
+  const filed = applyOp(blank, {
+    table: "tasks",
+    action: "upsert",
+    rows: [{ ...one, projectId: "proj_1" }],
+  });
+  const unlinked = applyOp(filed, { table: "projects", action: "delete", ids: ["proj_1"] });
+  check("deleting a project keeps the task", unlinked.tasks.length === 1);
+  check("and releases it", unlinked.tasks[0]?.projectId === undefined);
+
+  const gone = applyOp(added, { table: "tasks", action: "delete", ids: ["task_1"] });
+  check("delete removes it", gone.tasks.length === 0);
+}
+
 
 console.log(failures ? "\nFAILURES ABOVE" : "\nall checks passed");
 process.exit(failures ? 1 : 0);

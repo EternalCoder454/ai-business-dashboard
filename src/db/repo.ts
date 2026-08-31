@@ -11,6 +11,7 @@ import type {
   Deliverable,
   MemoryEntry,
   Message,
+  Task,
   Project,
   Settings,
   UserAccount,
@@ -45,6 +46,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
     skillRows,
     deliverableRows,
     memoryRows,
+    taskRows,
     fileRows,
     runRows,
     roundRows,
@@ -59,6 +61,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
     db.select().from(t.skills).where(eq(t.skills.userEmail, userEmail)).orderBy(desc(t.skills.updatedAt)),
     db.select().from(t.deliverables).where(eq(t.deliverables.userEmail, userEmail)).orderBy(desc(t.deliverables.updatedAt)),
     db.select().from(t.memory).where(eq(t.memory.userEmail, userEmail)).orderBy(desc(t.memory.occurredAt)),
+    db.select().from(t.tasks).where(eq(t.tasks.userEmail, userEmail)).orderBy(asc(t.tasks.sortOrder)),
     db.select().from(t.files).where(eq(t.files.userEmail, userEmail)).orderBy(desc(t.files.updatedAt)),
     db.select().from(t.allHandsRuns).where(eq(t.allHandsRuns.userEmail, userEmail)).orderBy(desc(t.allHandsRuns.updatedAt)),
     db.select().from(t.allHandsRounds).where(eq(t.allHandsRounds.userEmail, userEmail)).orderBy(asc(t.allHandsRounds.sortOrder)),
@@ -176,6 +179,21 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       projectId: row.projectId ?? undefined,
       status: row.status as Deliverable["status"],
       sourceConversationId: row.sourceConversationId ?? undefined,
+      createdAt: ms(row.createdAt),
+      updatedAt: ms(row.updatedAt),
+    })),
+
+    tasks: taskRows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      notes: row.notes,
+      status: row.status as Task["status"],
+      departmentId: row.departmentId,
+      projectId: row.projectId ?? undefined,
+      dueAt: row.dueAt ?? undefined,
+      order: row.sortOrder,
+      sourceConversationId: row.sourceConversationId ?? undefined,
+      completedAt: row.completedAt ?? undefined,
       createdAt: ms(row.createdAt),
       updatedAt: ms(row.updatedAt),
     })),
@@ -393,6 +411,12 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
                   and(eq(t.memory.userEmail, userEmail), inArray(t.memory.projectId, op.ids)),
                 );
               await tx
+                .update(t.tasks)
+                .set({ projectId: null })
+                .where(
+                  and(eq(t.tasks.userEmail, userEmail), inArray(t.tasks.projectId, op.ids)),
+                );
+              await tx
                 .delete(t.projects)
                 .where(and(eq(t.projects.userEmail, userEmail), inArray(t.projects.id, op.ids)));
             }
@@ -575,6 +599,41 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               .values(values)
               .onConflictDoUpdate({
                 target: [t.deliverables.userEmail, t.deliverables.id],
+                set: values,
+              });
+          }
+          break;
+        }
+
+        case "tasks": {
+          if (op.action === "delete") {
+            if (op.ids.length) {
+              await tx
+                .delete(t.tasks)
+                .where(and(eq(t.tasks.userEmail, userEmail), inArray(t.tasks.id, op.ids)));
+            }
+            break;
+          }
+          for (const row of op.rows) {
+            const values = {
+              id: row.id,
+              userEmail,
+              title: row.title,
+              notes: row.notes,
+              status: row.status,
+              departmentId: row.departmentId,
+              projectId: row.projectId ?? null,
+              dueAt: row.dueAt ?? null,
+              sortOrder: row.order,
+              sourceConversationId: row.sourceConversationId ?? null,
+              completedAt: row.completedAt ?? null,
+              updatedAt: now,
+            };
+            await tx
+              .insert(t.tasks)
+              .values(values)
+              .onConflictDoUpdate({
+                target: [t.tasks.userEmail, t.tasks.id],
                 set: values,
               });
           }

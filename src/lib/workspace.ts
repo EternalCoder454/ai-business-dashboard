@@ -7,6 +7,7 @@ import type {
   LibraryFile,
   MemoryEntry,
   Project,
+  Task,
   Settings,
   Skill,
   UserAccount,
@@ -29,6 +30,7 @@ export interface Workspace {
   deliverables: Deliverable[];
   files: LibraryFile[];
   memory: MemoryEntry[];
+  tasks: Task[];
   allHandsRuns: AllHandsRun[];
   profile: CompanyProfile;
   settings: StoredSettings;
@@ -44,6 +46,8 @@ export type MutationOp =
   | { table: "conversations"; action: "delete"; ids: string[] }
   | { table: "skills"; action: "upsert"; rows: Skill[] }
   | { table: "skills"; action: "delete"; ids: string[] }
+  | { table: "tasks"; action: "upsert"; rows: Task[] }
+  | { table: "tasks"; action: "delete"; ids: string[] }
   | { table: "memory"; action: "upsert"; rows: MemoryEntry[] }
   | { table: "memory"; action: "delete"; ids: string[] }
   | { table: "deliverables"; action: "upsert"; rows: Deliverable[] }
@@ -69,6 +73,7 @@ export function emptyWorkspace(
     deliverables: [],
     files: [],
     memory: [],
+    tasks: [],
     allHandsRuns: [],
     profile,
     settings,
@@ -128,6 +133,7 @@ export function applyOp(workspace: Workspace, op: MutationOp): Workspace {
         deliverables: workspace.deliverables.map(unlink),
         files: workspace.files.map(unlink),
         memory: workspace.memory.map(unlink),
+        tasks: workspace.tasks.map(unlink),
       };
     }
 
@@ -140,6 +146,17 @@ export function applyOp(workspace: Workspace, op: MutationOp): Workspace {
                 (a, b) => b.updatedAt - a.updatedAt,
               )
             : workspace.conversations.filter((row) => !op.ids.includes(row.id)),
+      };
+
+    case "tasks":
+      return {
+        ...workspace,
+        tasks:
+          op.action === "upsert"
+            ? upsertBy(workspace.tasks, op.rows).sort(
+                (a, b) => a.order - b.order || b.updatedAt - a.updatedAt,
+              )
+            : workspace.tasks.filter((row) => !op.ids.includes(row.id)),
       };
 
     case "memory":
