@@ -6,10 +6,24 @@ import Google from "next-auth/providers/google";
  * decides whether that person is allowed in at all, which is what makes a
  * public deployment safe to leave on the internet.
  */
-export const ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS ?? "eternalhell@eterneon.net")
-  .split(",")
-  .map((entry) => entry.trim().toLowerCase())
-  .filter(Boolean);
+/**
+ * Splits an address list on commas, newlines, semicolons, or spaces.
+ *
+ * A dashboard's environment field is a textarea, so writing one address a line
+ * is the obvious guess. Accepting only commas would turn that guess into a
+ * lockout, or worse, into an allowlist that silently matches nobody.
+ */
+export function parseEmailList(value: string | undefined, fallback = ""): string[] {
+  return (value ?? fallback)
+    .split(/[\s,;]+/)
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export const ALLOWED_EMAILS = parseEmailList(
+  process.env.ALLOWED_EMAILS,
+  "eternalhell@eterneon.net",
+);
 
 /**
  * Auth turns itself on only once it is configured. Without the Google

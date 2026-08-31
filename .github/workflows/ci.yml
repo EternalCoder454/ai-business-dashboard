@@ -39,6 +39,8 @@ jobs:
         run: npm run lint
 
       # Pure functions, no database and no network, so this can gate every push.
+      # The database suites (smoke, messages-test, admin-test) need a real
+      # DATABASE_URL and are run locally after any schema or repository change.
       - name: Guard tests
         run: npm run guard-test
 

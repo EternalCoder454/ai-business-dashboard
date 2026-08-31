@@ -61,6 +61,8 @@ interface StoreValue {
    * is ignored while this is true, so the field is pointless rather than empty.
    */
   serverKey: boolean;
+  /** Whether this account may review other people's conversations. */
+  isAdmin: boolean;
   /** Pushes everything in this browser into the signed-in account. */
   uploadLocalWorkspace: () => Promise<{ pushed: number }>;
   /** Department heads only. The CEO is excluded. */
@@ -152,6 +154,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Whether the server has its own Anthropic key, so Settings can stop asking
   // for one that would be ignored anyway.
   const [serverKey, setServerKey] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [remote, setRemote] = useState<Workspace | null>(null);
 
   /**
@@ -199,6 +202,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           });
         }
         setServerKey(Boolean(status?.serverKey));
+        setIsAdmin(Boolean(status?.isAdmin));
         setMode(status?.hosted && status.signedIn ? "hosted" : "local");
       })
       .catch(() => {
@@ -484,6 +488,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       storage: mode,
       accountEmail: signedInEmail,
       serverKey,
+      isAdmin,
       allDepartments: departmentList,
       departments: departmentList.filter((d) => !d.isCeo),
       ceo: departmentList.find((d) => d.isCeo) ?? departmentList.find((d) => d.id === CEO_ID),
@@ -946,6 +951,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     mode,
     signedInEmail,
     serverKey,
+    isAdmin,
     remote,
     push,
     seeded,

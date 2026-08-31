@@ -17,6 +17,7 @@ import {
   MailIcon,
   NavBadge,
   OrgIcon,
+  ShieldIcon,
   PersonIcon,
   PlusIcon,
   SparkIcon,
@@ -94,6 +95,14 @@ export const COMPANY_LINKS: NavLink[] = [
 ];
 
 /** The five destinations that fit a navigation rail or a bottom bar. */
+/** Only shown to an administrator, and never in the bottom bar. */
+const ADMIN_LINK: NavLink = {
+  href: "/admin",
+  label: "Admin",
+  short: "Admin",
+  icon: <ShieldIcon className="h-5 w-5" />,
+};
+
 export const PRIMARY_LINKS = COMPANY_LINKS.slice(0, 5);
 
 export function isActive(pathname: string, href: string): boolean {
@@ -131,8 +140,13 @@ export function SidebarContent({
     ownSkillsFor,
     updateSettings,
     createConversation,
+    isAdmin,
   } = useStore();
   const { unread } = useMessages();
+
+  const links = isAdmin
+    ? [...COMPANY_LINKS, ADMIN_LINK]
+    : COMPANY_LINKS;
 
   const [subtitle, setSubtitle] = useState(settings.companySubtitle);
 
@@ -219,7 +233,7 @@ export function SidebarContent({
       <nav className="flex-1 overflow-y-auto px-3 pb-6">
         <SectionLabel>Company</SectionLabel>
         <ul className="mb-5 space-y-0.5">
-          {COMPANY_LINKS.map((link) => (
+          {links.map((link) => (
             <li key={link.href}>
               <NavRow
                 href={link.href}

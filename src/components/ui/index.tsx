@@ -535,6 +535,9 @@ export function NavBadge({ count, label }: { count: number; label: string }) {
   );
 }
 
+export const ShieldIcon = icon(
+  <path d="M12 3.5 5 6v5.5c0 4 2.9 7.4 7 8.5 4.1-1.1 7-4.5 7-8.5V6z" />,
+);
 export const MailIcon = icon(
   <>
     <rect x="3" y="5" width="18" height="14" rx="2" />

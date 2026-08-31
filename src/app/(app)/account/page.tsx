@@ -201,6 +201,18 @@ export default function AccountPage() {
             ) : null}
           </Card>
 
+          {/* ------------------------------------------------ oversight */}
+          {storage === "hosted" ? (
+            <Card elevated={false}>
+              <h2 className="md-label-sm mb-2 text-on-variant">Who can see this</h2>
+              <p className="md-body text-on-variant">
+                Conversations with department heads are company records on a
+                company tool, and an administrator can review them. Direct
+                messages between people are not included.
+              </p>
+            </Card>
+          ) : null}
+
           {/* ------------------------------------------------ what gets sent */}
           <Card elevated={false}>
             <h2 className="md-label-sm mb-2 text-on-variant">

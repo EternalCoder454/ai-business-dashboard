@@ -199,6 +199,8 @@ export interface WorkspaceStatus {
    * typed into a browser is ignored and asking for one is misleading.
    */
   serverKey?: boolean;
+  /** Whether this account may review other people's conversations. */
+  isAdmin?: boolean;
   email?: string;
   name?: string;
   givenName?: string;

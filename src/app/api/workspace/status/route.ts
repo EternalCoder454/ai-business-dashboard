@@ -1,6 +1,7 @@
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { isEmpty } from "@/db/repo";
+import { isAdminEmail } from "@/lib/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,6 +54,7 @@ export async function GET() {
   }
 
   const serverKey = serverKeyConfigured();
+  const isAdmin = isAdminEmail(email);
 
   const identity = {
     name: session.user?.name ?? undefined,
@@ -65,6 +67,7 @@ export async function GET() {
       hosted: true,
       signedIn: true,
       serverKey,
+      isAdmin,
       email,
       ...identity,
       empty: await isEmpty(email),
@@ -75,6 +78,7 @@ export async function GET() {
       hosted: true,
       signedIn: true,
       serverKey,
+      isAdmin,
       email,
       ...identity,
       empty: null,
