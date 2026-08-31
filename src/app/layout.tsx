@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
@@ -73,6 +74,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* Vercel's own beacon, served from this origin in production, so the
             content policy's script-src and connect-src of 'self' cover it. */}
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
