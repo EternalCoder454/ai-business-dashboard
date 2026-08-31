@@ -134,10 +134,15 @@ export async function POST(request: NextRequest) {
     : request.headers.get("x-anthropic-workspace")?.trim();
 
   if (!apiKey) {
+    // Which server is answering matters here. The deployment holds the key in
+    // its environment and a local checkout usually does not, so the same
+    // message on both reads as a bug on whichever one is configured.
+    const local = process.env.NODE_ENV !== "production";
     return Response.json(
       {
-        error:
-          "No Anthropic API key. Add one in Settings, or set ANTHROPIC_API_KEY in .env.local and restart the dev server.",
+        error: local
+          ? "No API key on this development server. ANTHROPIC_API_KEY is not in .env.local, and the key set on the deployment does not reach localhost. Either add it to .env.local and restart, or paste one into Settings for this browser."
+          : "No API key on the server. Set ANTHROPIC_API_KEY in the deployment's environment variables and redeploy.",
       },
       { status: 401 },
     );
