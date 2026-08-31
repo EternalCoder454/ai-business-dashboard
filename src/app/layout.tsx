@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppShell } from "@/components/AppShell";
 import { siteUrl } from "@/lib/site";
 import { StoreProvider } from "@/lib/store";
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <StoreProvider>
           <AppShell>{children}</AppShell>
         </StoreProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
