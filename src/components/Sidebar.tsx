@@ -10,6 +10,7 @@ import {
   BriefcaseIcon,
   BuildingIcon,
   DocIcon,
+  FolderIcon,
   GearIcon,
   OrgIcon,
   PersonIcon,
@@ -43,6 +44,12 @@ export const COMPANY_LINKS: NavLink[] = [
     label: "All Hands",
     short: "Room",
     icon: <UsersIcon className="h-5 w-5" />,
+  },
+  {
+    href: "/projects",
+    label: "Projects",
+    short: "Projects",
+    icon: <FolderIcon className="h-5 w-5" />,
   },
   {
     href: "/library",

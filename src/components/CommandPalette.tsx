@@ -16,7 +16,8 @@ import { CloseIcon, cx } from "./ui";
  */
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
-  const { departments, conversations, skills, deliverables, allHandsRuns } = useStore();
+  const { departments, conversations, skills, deliverables, projects, allHandsRuns } =
+    useStore();
 
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -25,8 +26,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const results = useMemo(
     () =>
-      search(query, { departments, conversations, skills, deliverables, allHandsRuns }),
-    [query, departments, conversations, skills, deliverables, allHandsRuns],
+      search(query, { departments, conversations, skills, deliverables, projects, allHandsRuns }),
+    [query, departments, conversations, skills, deliverables, projects, allHandsRuns],
   );
 
   const grouped = useMemo(() => groupResults(results), [results]);

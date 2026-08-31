@@ -8,6 +8,7 @@ import type {
   Department,
   Deliverable,
   Message,
+  Project,
   Settings,
   UserAccount,
 } from "@/lib/types";
@@ -35,6 +36,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
 
   const [
     departmentRows,
+    projectRows,
     conversationRows,
     messageRows,
     skillRows,
@@ -47,6 +49,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
     settingsRow,
   ] = await Promise.all([
     db.select().from(t.departments).where(eq(t.departments.userEmail, userEmail)).orderBy(asc(t.departments.sortOrder)),
+    db.select().from(t.projects).where(eq(t.projects.userEmail, userEmail)).orderBy(desc(t.projects.updatedAt)),
     db.select().from(t.conversations).where(eq(t.conversations.userEmail, userEmail)).orderBy(desc(t.conversations.updatedAt)),
     db.select().from(t.messages).where(eq(t.messages.userEmail, userEmail)).orderBy(asc(t.messages.sentAt)),
     db.select().from(t.skills).where(eq(t.skills.userEmail, userEmail)).orderBy(desc(t.skills.updatedAt)),
@@ -108,9 +111,21 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       isCeo: row.isCeo || undefined,
     })),
 
+    projects: projectRows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      summary: row.summary,
+      status: row.status as Project["status"],
+      accent: row.accent,
+      dueOn: row.dueOn,
+      createdAt: ms(row.createdAt),
+      updatedAt: ms(row.updatedAt),
+    })),
+
     conversations: conversationRows.map((row) => ({
       id: row.id,
       departmentId: row.departmentId,
+      projectId: row.projectId ?? undefined,
       title: row.title,
       messages: messagesByConversation.get(row.id) ?? [],
       createdAt: ms(row.createdAt),
@@ -133,6 +148,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       title: row.title,
       body: row.body,
       departmentId: row.departmentId,
+      projectId: row.projectId ?? undefined,
       status: row.status as Deliverable["status"],
       sourceConversationId: row.sourceConversationId ?? undefined,
       createdAt: ms(row.createdAt),
@@ -144,6 +160,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       .map((row) => ({
         ...toAttachment(row),
         departmentId: row.departmentId ?? undefined,
+        projectId: row.projectId ?? undefined,
         note: row.note ?? undefined,
         createdAt: ms(row.createdAt),
         updatedAt: ms(row.updatedAt),
@@ -270,6 +287,61 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
           break;
         }
 
+        case "projects": {
+          if (op.action === "delete") {
+            if (op.ids.length) {
+              // Unlink before deleting, in the same transaction. The client
+              // reducer does exactly this, and a project vanishing must never
+              // take a conversation with it.
+              const owned = and(
+                eq(t.conversations.userEmail, userEmail),
+                inArray(t.conversations.projectId, op.ids),
+              );
+              await tx.update(t.conversations).set({ projectId: null }).where(owned);
+              await tx
+                .update(t.deliverables)
+                .set({ projectId: null })
+                .where(
+                  and(
+                    eq(t.deliverables.userEmail, userEmail),
+                    inArray(t.deliverables.projectId, op.ids),
+                  ),
+                );
+              await tx
+                .update(t.files)
+                .set({ projectId: null })
+                .where(
+                  and(eq(t.files.userEmail, userEmail), inArray(t.files.projectId, op.ids)),
+                );
+              await tx
+                .delete(t.projects)
+                .where(and(eq(t.projects.userEmail, userEmail), inArray(t.projects.id, op.ids)));
+            }
+            break;
+          }
+
+          for (const row of op.rows) {
+            const values = {
+              id: row.id,
+              userEmail,
+              name: row.name,
+              summary: row.summary,
+              status: row.status,
+              accent: row.accent,
+              dueOn: row.dueOn,
+              updatedAt: now,
+            };
+            await tx
+              .insert(t.projects)
+              .values(values)
+              .onConflictDoUpdate({
+                target: [t.projects.userEmail, t.projects.id],
+                set: values,
+              });
+          }
+          break;
+        }
+
         case "conversations": {
           if (op.action === "delete") {
             if (op.ids.length) {
@@ -288,6 +360,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               id: row.id,
               userEmail,
               departmentId: row.departmentId,
+              projectId: row.projectId ?? null,
               title: row.title,
               updatedAt: now,
             };
@@ -390,6 +463,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               title: row.title,
               body: row.body,
               departmentId: row.departmentId,
+              projectId: row.projectId ?? null,
               status: row.status,
               sourceConversationId: row.sourceConversationId ?? null,
               updatedAt: now,
@@ -427,6 +501,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               height: row.height,
               size: row.size ?? 0,
               departmentId: row.departmentId ?? null,
+              projectId: row.projectId ?? null,
               note: row.note ?? null,
               origin: "upload",
               updatedAt: now,

@@ -5,6 +5,7 @@ import type {
   Deliverable,
   Department,
   LibraryFile,
+  Project,
   Settings,
   Skill,
   UserAccount,
@@ -21,6 +22,7 @@ export type StoredSettings = Omit<Settings, "id" | "apiKey" | "workspaceId">;
  */
 export interface Workspace {
   departments: Department[];
+  projects: Project[];
   conversations: Conversation[];
   skills: Skill[];
   deliverables: Deliverable[];
@@ -34,6 +36,8 @@ export interface Workspace {
 export type MutationOp =
   | { table: "departments"; action: "upsert"; rows: Department[] }
   | { table: "departments"; action: "delete"; ids: string[] }
+  | { table: "projects"; action: "upsert"; rows: Project[] }
+  | { table: "projects"; action: "delete"; ids: string[] }
   | { table: "conversations"; action: "upsert"; rows: Conversation[] }
   | { table: "conversations"; action: "delete"; ids: string[] }
   | { table: "skills"; action: "upsert"; rows: Skill[] }
@@ -55,6 +59,7 @@ export function emptyWorkspace(
 ): Workspace {
   return {
     departments: [],
+    projects: [],
     conversations: [],
     skills: [],
     deliverables: [],
@@ -96,6 +101,29 @@ export function applyOp(workspace: Workspace, op: MutationOp): Workspace {
             ? workspace.conversations.filter((row) => !op.ids.includes(row.departmentId))
             : workspace.conversations,
       };
+
+    case "projects": {
+      if (op.action === "upsert") {
+        return {
+          ...workspace,
+          projects: upsertBy(workspace.projects, op.rows).sort(
+            (a, b) => b.updatedAt - a.updatedAt,
+          ),
+        };
+      }
+      // Deleting a project releases its work rather than destroying it. A
+      // conversation is worth more than the folder it was filed in.
+      const gone = new Set(op.ids);
+      const unlink = <T extends { projectId?: string }>(row: T): T =>
+        row.projectId && gone.has(row.projectId) ? { ...row, projectId: undefined } : row;
+      return {
+        ...workspace,
+        projects: workspace.projects.filter((row) => !gone.has(row.id)),
+        conversations: workspace.conversations.map(unlink),
+        deliverables: workspace.deliverables.map(unlink),
+        files: workspace.files.map(unlink),
+      };
+    }
 
     case "conversations":
       return {

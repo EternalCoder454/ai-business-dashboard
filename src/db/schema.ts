@@ -46,12 +46,41 @@ export const departments = pgTable(
   ],
 );
 
+/**
+ * Projects cut across departments, so they are their own table rather than a
+ * column on anything. Membership is a nullable project_id on the rows that can
+ * belong to one, which keeps a conversation perfectly usable with no project.
+ *
+ * There is no foreign key to projects on purpose. Deleting a project unlinks
+ * its work rather than cascading, and a nullable column expresses that without
+ * needing ON DELETE SET NULL to agree with the client reducer.
+ */
+export const projects = pgTable(
+  "projects",
+  {
+    id: text("id").notNull(),
+    userEmail: owner(),
+    name: text("name").notNull(),
+    summary: text("summary").notNull().default(""),
+    status: text("status").notNull().default("active"),
+    accent: text("accent").notNull().default("violet"),
+    dueOn: text("due_on").notNull().default(""),
+    createdAt: created(),
+    updatedAt: updated(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userEmail, table.id] }),
+    index("projects_owner_idx").on(table.userEmail, table.updatedAt),
+  ],
+);
+
 export const conversations = pgTable(
   "conversations",
   {
     id: text("id").notNull(),
     userEmail: owner(),
     departmentId: text("department_id").notNull(),
+    projectId: text("project_id"),
     title: text("title").notNull(),
     createdAt: created(),
     updatedAt: updated(),
@@ -59,6 +88,7 @@ export const conversations = pgTable(
   (table) => [
     primaryKey({ columns: [table.userEmail, table.id] }),
     index("conversations_owner_idx").on(table.userEmail, table.updatedAt),
+    index("conversations_project_idx").on(table.userEmail, table.projectId),
   ],
 );
 
@@ -118,6 +148,7 @@ export const deliverables = pgTable(
     title: text("title").notNull(),
     body: text("body").notNull().default(""),
     departmentId: text("department_id").notNull(),
+    projectId: text("project_id"),
     status: text("status").notNull().default("backlog"),
     sourceConversationId: text("source_conversation_id"),
     createdAt: created(),
@@ -151,6 +182,7 @@ export const files = pgTable(
     height: integer("height").notNull().default(0),
     size: integer("size").notNull().default(0),
     departmentId: text("department_id"),
+    projectId: text("project_id"),
     note: text("note"),
     /** upload for the Library, chat for something attached in a conversation. */
     origin: text("origin").notNull().default("upload"),

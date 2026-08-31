@@ -356,3 +356,21 @@ export const EFFORT_OPTIONS = [
   { id: "xhigh", label: "Extra high", hint: "hard problems" },
   { id: "max", label: "Max", hint: "correctness over cost" },
 ] as const;
+
+/**
+ * Project accents. Six is enough to tell a handful of projects apart at a
+ * glance without turning the list into a colour chart, and each maps to a
+ * token pair already in the theme rather than a raw hex value.
+ */
+export const PROJECT_ACCENTS = [
+  { key: "violet", label: "Violet", dot: "#8B7CF6", soft: "rgba(139,124,246,0.16)" },
+  { key: "cyan", label: "Cyan", dot: "#4DD0E1", soft: "rgba(77,208,225,0.16)" },
+  { key: "amber", label: "Amber", dot: "#F0B429", soft: "rgba(240,180,41,0.16)" },
+  { key: "rose", label: "Rose", dot: "#F26D85", soft: "rgba(242,109,133,0.16)" },
+  { key: "lime", label: "Lime", dot: "#9CCC65", soft: "rgba(156,204,101,0.16)" },
+  { key: "slate", label: "Slate", dot: "#94A3B8", soft: "rgba(148,163,184,0.16)" },
+] as const;
+
+export function projectAccent(key: string) {
+  return PROJECT_ACCENTS.find((accent) => accent.key === key) ?? PROJECT_ACCENTS[0];
+}

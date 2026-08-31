@@ -505,6 +505,9 @@ export const CopyIcon = icon(
 export const SparkIcon = icon(
   <path d="m12 3 2.2 5.4L20 10.5l-5.8 2.1L12 18l-2.2-5.4L4 10.5l5.8-2.1Z" />,
 );
+export const FolderIcon = icon(
+  <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
+);
 export const ChevronIcon = icon(<path d="m9 6 6 6-6 6" />);
 export const PersonIcon = icon(
   <>

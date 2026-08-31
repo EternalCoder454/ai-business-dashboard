@@ -30,6 +30,7 @@ import {
   DEFAULT_ACCOUNT,
   DEFAULT_PROFILE,
   DEFAULT_SETTINGS,
+  PROJECT_ACCENTS,
   seedDepartments,
 } from "./seed";
 import { seedSkills } from "./seedSkills";
@@ -42,6 +43,7 @@ import type {
   Department,
   LibraryFile,
   Message,
+  Project,
   Settings,
   Skill,
   UserAccount,
@@ -62,6 +64,7 @@ interface StoreValue {
   ceo: Department | undefined;
   conversations: Conversation[];
   deliverables: Deliverable[];
+  projects: Project[];
   allHandsRuns: AllHandsRun[];
   skills: Skill[];
   files: LibraryFile[];
@@ -102,6 +105,20 @@ interface StoreValue {
 
   saveAllHandsRun: (run: AllHandsRun) => Promise<void>;
   deleteAllHandsRun: (id: string) => Promise<void>;
+
+  createProject: (input: Partial<Project>) => Promise<Project>;
+  updateProject: (id: string, patch: Partial<Project>) => Promise<void>;
+  /** Deletes the project and releases its work rather than deleting it too. */
+  deleteProject: (id: string) => Promise<void>;
+  getProject: (id: string) => Project | undefined;
+  /** Everything filed under a project, gathered from across the org chart. */
+  projectContents: (id: string) => {
+    conversations: Conversation[];
+    deliverables: Deliverable[];
+    files: LibraryFile[];
+  };
+  /** Files a conversation under a project, or clears it when given undefined. */
+  setConversationProject: (conversationId: string, projectId?: string) => Promise<void>;
 
   createDeliverable: (input: Partial<Deliverable>) => Promise<Deliverable>;
   updateDeliverable: (id: string, patch: Partial<Deliverable>) => Promise<void>;
@@ -235,6 +252,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const conversations = useLiveQuery(
     async () =>
       !db || hosted ? [] : db.conversations.orderBy("updatedAt").reverse().toArray(),
+    [seeded, hosted],
+    undefined,
+  );
+
+  const projects = useLiveQuery(
+    async () => (!db || hosted ? [] : db.projects.orderBy("updatedAt").reverse().toArray()),
     [seeded, hosted],
     undefined,
   );
@@ -373,6 +396,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const departmentList = hosted ? (remote?.departments ?? []) : (allDepartments ?? []);
   const conversationList = hosted ? (remote?.conversations ?? []) : (conversations ?? []);
   const deliverableList = hosted ? (remote?.deliverables ?? []) : (deliverables ?? []);
+  const projectList = hosted ? (remote?.projects ?? []) : (projects ?? []);
   const skillList = hosted ? (remote?.skills ?? []) : (skills ?? []);
   const fileList = hosted ? (remote?.files ?? []) : (files ?? []);
   const runList = hosted ? (remote?.allHandsRuns ?? []) : (allHandsRuns ?? []);
@@ -418,6 +442,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ceo: departmentList.find((d) => d.isCeo) ?? departmentList.find((d) => d.id === CEO_ID),
       conversations: conversationList,
       deliverables: deliverableList,
+      projects: projectList,
       allHandsRuns: runList,
       skills: skillList,
       files: fileList,
@@ -647,6 +672,105 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         else await requireDb().skills.delete(id);
       },
 
+      createProject: async (input) => {
+        const now = Date.now();
+        const project: Project = {
+          id: newId("proj"),
+          name: input.name?.trim() || "Untitled project",
+          summary: input.summary ?? "",
+          status: input.status ?? "active",
+          accent: input.accent ?? PROJECT_ACCENTS[0].key,
+          dueOn: input.dueOn ?? "",
+          createdAt: now,
+          updatedAt: now,
+        };
+        if (hosted) await push({ table: "projects", action: "upsert", rows: [project] });
+        else await requireDb().projects.put(project);
+        return project;
+      },
+
+      updateProject: async (id, patch) => {
+        if (hosted) {
+          const current = projectList.find((row) => row.id === id);
+          if (!current) return;
+          await push({
+            table: "projects",
+            action: "upsert",
+            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+          });
+          return;
+        }
+        await requireDb().projects.update(id, { ...patch, updatedAt: Date.now() });
+      },
+
+      deleteProject: async (id) => {
+        if (hosted) {
+          await push({ table: "projects", action: "delete", ids: [id] });
+          return;
+        }
+        // Local mode has no server to mirror, so the unlinking that applyOp
+        // does for a hosted workspace has to be written out by hand here.
+        const database = requireDb();
+        await database.transaction(
+          "rw",
+          database.projects,
+          database.conversations,
+          database.deliverables,
+          database.files,
+          async () => {
+            await database.projects.delete(id);
+
+            // Written out per table rather than looped: Dexie types each table
+            // separately, and a loop over all three collapses bulkPut into a
+            // union with no callable signature.
+            const release = async <T extends { projectId?: string }>(
+              rows: T[],
+              put: (next: T[]) => Promise<unknown>,
+            ) => {
+              if (rows.length) await put(rows.map((row) => ({ ...row, projectId: undefined })));
+            };
+
+            await release(
+              await database.conversations.where("projectId").equals(id).toArray(),
+              (rows) => database.conversations.bulkPut(rows),
+            );
+            await release(
+              await database.deliverables.where("projectId").equals(id).toArray(),
+              (rows) => database.deliverables.bulkPut(rows),
+            );
+            await release(
+              await database.files.where("projectId").equals(id).toArray(),
+              (rows) => database.files.bulkPut(rows),
+            );
+          },
+        );
+      },
+
+      getProject: (id) => projectList.find((row) => row.id === id),
+
+      projectContents: (id) => ({
+        conversations: conversationList.filter((row) => row.projectId === id),
+        deliverables: deliverableList.filter((row) => row.projectId === id),
+        files: fileList.filter((row) => row.projectId === id),
+      }),
+
+      setConversationProject: async (conversationId, projectId) => {
+        if (hosted) {
+          const current = conversationList.find((row) => row.id === conversationId);
+          if (!current) return;
+          await push({
+            table: "conversations",
+            action: "upsert",
+            rows: [{ ...current, projectId, updatedAt: Date.now() }],
+          });
+          return;
+        }
+        await requireDb().conversations.update(conversationId, {
+          projectId,
+          updatedAt: Date.now(),
+        });
+      },
+
       createDeliverable: async (input) => {
         const now = Date.now();
         const deliverable: Deliverable = {
@@ -691,11 +815,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       uploadLocalWorkspace: async () => {
         if (!hosted || !db) return { pushed: 0 };
 
-        const [depts, convs, skls, dels, fls, runs, prof, sets] = await Promise.all([
+        const [depts, convs, skls, dels, projs, fls, runs, prof, sets] = await Promise.all([
           db.departments.toArray(),
           db.conversations.toArray(),
           db.skills.toArray(),
           db.deliverables.toArray(),
+          db.projects.toArray(),
           db.files.toArray(),
           db.allHands.toArray(),
           db.profile.get("profile"),
@@ -704,6 +829,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
         const ops: MutationOp[] = [];
         if (depts.length) ops.push({ table: "departments", action: "upsert", rows: depts });
+        // Projects go before the work that references them, so a half applied
+        // batch never leaves a conversation pointing at a project that is not
+        // there yet.
+        if (projs.length) ops.push({ table: "projects", action: "upsert", rows: projs });
         if (skls.length) ops.push({ table: "skills", action: "upsert", rows: skls });
         if (dels.length) ops.push({ table: "deliverables", action: "upsert", rows: dels });
         if (fls.length) ops.push({ table: "files", action: "upsert", rows: fls });

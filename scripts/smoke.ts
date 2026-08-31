@@ -28,6 +28,7 @@ async function wipe() {
     { table: "deliverables", action: "delete", ids: current.deliverables.map((d) => d.id) },
     { table: "files", action: "delete", ids: current.files.map((f) => f.id) },
     { table: "allHands", action: "delete", ids: current.allHandsRuns.map((r) => r.id) },
+    { table: "projects", action: "delete", ids: current.projects.map((p) => p.id) },
   ]);
 }
 
@@ -210,6 +211,105 @@ async function main() {
   check("library file stored", Boolean(file));
   check("extracted text survives", file?.text === "Payment terms are net 30.");
   check("note survives", file?.note === "client A");
+
+  console.log("\nprojects group work across departments");
+  await applyMutations(USER, [
+    {
+      table: "projects",
+      action: "upsert",
+      rows: [
+        {
+          id: "proj_smoke",
+          name: "Ravenmoor launch",
+          summary: "Modpack and client site together.",
+          status: "active",
+          accent: "cyan",
+          dueOn: "2026-09-30",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+    },
+  ]);
+
+  // The fixture has no deliverable of its own, and a check that passes because
+  // there was nothing to check is worse than no check at all.
+  await applyMutations(USER, [
+    {
+      table: "deliverables",
+      action: "upsert",
+      rows: [
+        {
+          id: "del_smoke",
+          title: "Launch checklist",
+          body: "Pack, site, announcement.",
+          departmentId: "ops",
+          status: "backlog",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+    },
+  ]);
+
+  // File work from more than one department under the one project, which is
+  // the whole reason projects exist.
+  const beforeFiling = await loadWorkspace(USER);
+  await applyMutations(USER, [
+    {
+      table: "conversations",
+      action: "upsert",
+      rows: beforeFiling.conversations.map((row) => ({ ...row, projectId: "proj_smoke" })),
+    },
+    {
+      table: "deliverables",
+      action: "upsert",
+      rows: beforeFiling.deliverables.map((row) => ({ ...row, projectId: "proj_smoke" })),
+    },
+    {
+      table: "files",
+      action: "upsert",
+      rows: beforeFiling.files.map((row) => ({ ...row, projectId: "proj_smoke" })),
+    },
+  ]);
+
+  const filed = await loadWorkspace(USER);
+  const project = filed.projects.find((p) => p.id === "proj_smoke");
+  check("project stored", Boolean(project));
+  check("project summary survives", project?.summary === "Modpack and client site together.");
+  check("accent survives", project?.accent === "cyan");
+  check("due date survives", project?.dueOn === "2026-09-30");
+  check(
+    "conversations filed",
+    filed.conversations.filter((c) => c.projectId === "proj_smoke").length > 0,
+  );
+  check("deliverables filed", filed.deliverables.some((d) => d.projectId === "proj_smoke"));
+  check("files filed", filed.files.some((f) => f.projectId === "proj_smoke"));
+
+  console.log("\ndeleting a project releases its work rather than deleting it");
+  const conversationCount = filed.conversations.length;
+  const deliverableCount = filed.deliverables.length;
+  const fileCount = filed.files.length;
+  await applyMutations(USER, [{ table: "projects", action: "delete", ids: ["proj_smoke"] }]);
+  const released = await loadWorkspace(USER);
+  check("project gone", !released.projects.some((p) => p.id === "proj_smoke"));
+  check(
+    "conversations survived",
+    released.conversations.length === conversationCount,
+    `${released.conversations.length} of ${conversationCount}`,
+  );
+  check(
+    "deliverables survived",
+    released.deliverables.length === deliverableCount,
+    `${released.deliverables.length} of ${deliverableCount}`,
+  );
+  check("files survived", released.files.length === fileCount, `${released.files.length}`);
+  check(
+    "every link cleared",
+    released.conversations.every((c) => !c.projectId) &&
+      released.deliverables.every((d) => !d.projectId) &&
+      released.files.every((f) => !f.projectId),
+  );
 
   console.log("\ndeleting a head takes its conversations with it");
   await applyMutations(USER, [{ table: "departments", action: "delete", ids: ["design"] }]);

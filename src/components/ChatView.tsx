@@ -17,6 +17,7 @@ import { AttachmentError, MAX_ATTACHMENTS_PER_MESSAGE, attachmentSrc } from "@/l
 import { buildSystemPrompt, deriveConversationTitle, hasProfileContent } from "@/lib/prompts";
 import { conversationHref, departmentHrefById } from "@/lib/routes";
 import { useStore } from "@/lib/store";
+import { ProjectPicker } from "./ProjectBits";
 import type { Attachment, Conversation, Message, TokenUsage, WireContent } from "@/lib/types";
 import { streamChat } from "@/lib/chatClient";
 import {
@@ -370,6 +371,13 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Filing a thread is a chat-level decision, so it sits with the
+              thread rather than on a separate page. */}
+          {active ? (
+            <div className="hidden medium:block">
+              <ProjectPicker conversationId={active.id} currentProjectId={active.projectId} />
+            </div>
+          ) : null}
           <Link
             href={`/library/skills?dept=${encodeURIComponent(departmentId)}`}
             className="hidden medium:block"

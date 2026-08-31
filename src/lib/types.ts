@@ -27,6 +27,7 @@ export interface Attachment {
 export interface LibraryFile extends Attachment {
   /** Optional owning head, purely for filtering. */
   departmentId?: string;
+  projectId?: string;
   note?: string;
   createdAt: number;
   updatedAt: number;
@@ -55,9 +56,32 @@ export interface Message {
   attachments?: Attachment[];
 }
 
+/**
+  * A project cuts across the org chart. A department owns a head and their
+  * conversations; a project owns whatever work belongs to it, wherever in the
+  * company that work happened to be done.
+  */
+export type ProjectStatus = "active" | "paused" | "shipped" | "archived";
+
+export interface Project {
+  id: string;
+  name: string;
+  /** What it is and what finishing looks like. Shown on the project page. */
+  summary: string;
+  status: ProjectStatus;
+  /** One of the accent keys in PROJECT_ACCENTS, so a project is recognisable at a glance. */
+  accent: string;
+  /** Optional target date as an ISO day, no time. Empty when there is no date. */
+  dueOn: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Conversation {
   id: string;
   departmentId: string;
+  /** The project this belongs to, when it belongs to one. */
+  projectId?: string;
   title: string;
   messages: Message[];
   createdAt: number;
@@ -135,6 +159,7 @@ export interface Deliverable {
   title: string;
   body: string;
   departmentId: string;
+  projectId?: string;
   status: DeliverableStatus;
   createdAt: number;
   updatedAt: number;

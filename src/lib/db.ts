@@ -16,6 +16,7 @@ import type {
   Conversation,
   Deliverable,
   Department,
+  Project,
   Settings,
   Skill,
 } from "./types";
@@ -44,6 +45,7 @@ function profileIsEmpty(profile: Partial<CompanyProfile> | undefined): boolean {
 
 class CeoHqDatabase extends Dexie {
   departments!: Table<Department, string>;
+  projects!: Table<Project, string>;
   conversations!: Table<Conversation, string>;
   deliverables!: Table<Deliverable, string>;
   allHands!: Table<AllHandsRun, string>;
@@ -226,6 +228,22 @@ class CeoHqDatabase extends Dexie {
         );
         if (additions.length) await table.bulkPut(additions);
       });
+
+    // v11 adds projects, which group work across departments. Conversations,
+    // deliverables, and files gain a projectId index so a project page can be
+    // assembled without walking every row.
+    this.version(11).stores({
+      departments: "id, order, isCeo",
+      projects: "id, status, updatedAt",
+      conversations: "id, departmentId, projectId, updatedAt",
+      deliverables: "id, departmentId, projectId, status, updatedAt",
+      allHands: "id, createdAt, updatedAt",
+      skills: "id, departmentId, updatedAt",
+      files: "id, kind, departmentId, projectId, updatedAt",
+      account: "id",
+      profile: "id",
+      settings: "id",
+    });
 
     // v10 adds the account: who is using the app, as opposed to the company
     // the app is about.

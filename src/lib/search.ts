@@ -5,6 +5,7 @@ import type {
   Conversation,
   Deliverable,
   Department,
+  Project,
   Skill,
 } from "./types";
 
@@ -14,6 +15,7 @@ export type ResultKind =
   | "message"
   | "skill"
   | "deliverable"
+  | "project"
   | "room"
   | "page";
 
@@ -34,6 +36,7 @@ export interface SearchCorpus {
   conversations: Conversation[];
   skills: Skill[];
   deliverables: Deliverable[];
+  projects: Project[];
   allHandsRuns: AllHandsRun[];
 }
 
@@ -41,6 +44,7 @@ const PAGES: { title: string; subtitle: string; href: string; icon: string }[] =
   { title: "Org Chart", subtitle: "Every head and how they report", href: "/", icon: "🏛" },
   { title: "CEO Office", subtitle: "Talk to Ruth", href: "/ceo", icon: "🧠" },
   { title: "All Hands", subtitle: "Ask the whole room at once", href: "/all-hands", icon: "👥" },
+  { title: "Projects", subtitle: "Work grouped across departments", href: "/projects", icon: "🗂" },
   { title: "Library", subtitle: "Files, deliverables, and skills", href: "/library", icon: "📁" },
   { title: "Skills", subtitle: "SKILL.md playbooks", href: "/library/skills", icon: "✨" },
   { title: "Deliverables", subtitle: "Everything produced", href: "/library/deliverables", icon: "📄" },
@@ -152,6 +156,22 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
     }
   }
 
+  for (const project of corpus.projects) {
+    const score = scoreField(project.name, needle, 9) + scoreField(project.summary, needle, 3);
+    if (score) {
+      results.push({
+        id: `proj:${project.id}`,
+        kind: "project",
+        title: project.name,
+        subtitle: `Project · ${project.status}`,
+        snippet: snippetAround(project.summary, needle),
+        href: `/projects/${project.id}`,
+        icon: "🗂",
+        score,
+      });
+    }
+  }
+
   for (const conversation of corpus.conversations) {
     if (conversation.messages.length === 0) continue;
 
@@ -229,6 +249,7 @@ export const KIND_LABEL: Record<ResultKind, string> = {
   message: "Messages",
   skill: "Skills",
   deliverable: "Deliverables",
+  project: "Projects",
   room: "All Hands",
 };
 
@@ -237,6 +258,7 @@ export function groupResults(results: SearchResult[]): [ResultKind, SearchResult
   const order: ResultKind[] = [
     "page",
     "department",
+    "project",
     "conversation",
     "skill",
     "deliverable",
