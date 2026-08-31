@@ -193,6 +193,12 @@ export type StorageMode = "resolving" | "local" | "hosted";
 export interface WorkspaceStatus {
   hosted: boolean;
   signedIn: boolean;
+  /**
+   * True when the server holds its own Anthropic key. Never the key itself.
+   * The chat route prefers the server key outright, so when this is true a key
+   * typed into a browser is ignored and asking for one is misleading.
+   */
+  serverKey?: boolean;
   email?: string;
   name?: string;
   givenName?: string;

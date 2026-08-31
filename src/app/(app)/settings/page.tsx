@@ -35,6 +35,7 @@ export default function SettingsPage() {
     departments,
     ceo,
     storage,
+    serverKey,
     ownSkillsFor,
     createDepartment,
     updateDepartment,
@@ -120,13 +121,33 @@ export default function SettingsPage() {
         <div className="mx-auto flex max-w-4xl flex-col gap-5">
           <Card>
             <h2 className="md-title-lg mb-1">Anthropic API</h2>
-            <p className="md-body mb-5 text-on-variant">
-              Your key is kept in this browser and sent with each request to this app&apos;s
-              own <code className="font-mono text-[0.85em]">/api/chat</code> route, which
-              calls Anthropic server-side. It is never written to disk by the server. A key
-              in <code className="font-mono text-[0.85em]">.env.local</code> is used as a
-              fallback when this field is empty.
-            </p>
+
+            {serverKey ? (
+              <>
+                <p className="md-body text-on-variant">
+                  The server holds the key, so there is nothing to enter here. Every
+                  device signed into this workspace can chat straight away, including
+                  this one, and the key never reaches a browser.
+                </p>
+                <p className="md-label-sm mt-3 text-on-variant/75">
+                  It is set as{" "}
+                  <code className="font-mono text-[0.85em]">ANTHROPIC_API_KEY</code> in
+                  the deployment&apos;s environment. A key typed into a browser is ignored
+                  while that is true, which is why this field is hidden rather than empty.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="md-body mb-5 text-on-variant">
+                  Your key is kept in this browser and sent with each request to this
+                  app&apos;s own{" "}
+                  <code className="font-mono text-[0.85em]">/api/chat</code> route, which
+                  calls Anthropic server-side. It is never written to the database, which
+                  is also why it does not follow you to another device. Setting{" "}
+                  <code className="font-mono text-[0.85em]">ANTHROPIC_API_KEY</code> on
+                  the server instead covers every device at once and takes precedence over
+                  anything entered here.
+                </p>
 
             <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
               <Field label="API key">
@@ -161,7 +182,9 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <WorkspacePicker />
+                <WorkspacePicker />
+              </>
+            )}
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <Field label="Model" hint="Applies to every department.">

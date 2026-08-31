@@ -55,6 +55,11 @@ interface StoreValue {
   storage: StorageMode;
   /** The signed-in address when the workspace is hosted. */
   accountEmail?: string;
+  /**
+   * True when the server holds the Anthropic key. A key entered in this browser
+   * is ignored while this is true, so the field is pointless rather than empty.
+   */
+  serverKey: boolean;
   /** Pushes everything in this browser into the signed-in account. */
   uploadLocalWorkspace: () => Promise<{ pushed: number }>;
   /** Department heads only. The CEO is excluded. */
@@ -143,6 +148,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [credentials, setCredentials] = useState<Credentials>(EMPTY_CREDENTIALS);
   const [credentialsReady, setCredentialsReady] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState<string | undefined>();
+  // Whether the server has its own Anthropic key, so Settings can stop asking
+  // for one that would be ignored anyway.
+  const [serverKey, setServerKey] = useState(false);
   const [remote, setRemote] = useState<Workspace | null>(null);
   const [googleIdentity, setGoogleIdentity] = useState<{
     email?: string;
@@ -171,6 +179,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             image: status.image,
           });
         }
+        setServerKey(Boolean(status?.serverKey));
         setMode(status?.hosted && status.signedIn ? "hosted" : "local");
       })
       .catch(() => {
@@ -453,6 +462,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ready: hosted ? remote !== null : seeded && allDepartments !== undefined,
       storage: mode,
       accountEmail: signedInEmail,
+      serverKey,
       allDepartments: departmentList,
       departments: departmentList.filter((d) => !d.isCeo),
       ceo: departmentList.find((d) => d.isCeo) ?? departmentList.find((d) => d.id === CEO_ID),
@@ -887,6 +897,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     hosted,
     mode,
     signedInEmail,
+    serverKey,
     remote,
     push,
     seeded,
