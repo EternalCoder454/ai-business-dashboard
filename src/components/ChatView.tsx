@@ -12,9 +12,11 @@ import {
   FILE_ICON,
   estimateAttachmentTokens,
   fileToAttachmentAny,
+  filesForDepartment,
   formatBytes,
 } from "@/lib/files";
 import { AttachmentError, MAX_ATTACHMENTS_PER_MESSAGE, attachmentSrc } from "@/lib/images";
+import { COMPANY_ID } from "@/lib/seed";
 import { buildSystemPrompt, deriveConversationTitle, hasProfileContent } from "@/lib/prompts";
 import { conversationHref, departmentHrefById } from "@/lib/routes";
 import { useStore } from "@/lib/store";
@@ -29,6 +31,8 @@ import {
   CloseIcon,
   CopyIcon,
   Chip,
+  Dialog,
+  DocIcon,
   SendIcon,
   SparkIcon,
   StatusDot,
@@ -101,6 +105,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     setMessages,
     deleteConversation,
     createDeliverable,
+    files,
     skillsFor,
     profile,
     settings,
@@ -108,6 +113,12 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   } = useStore();
 
   const department = getDepartment(departmentId);
+
+  /** Library files scoped to this department, or shared with every one. */
+  const shared = useMemo(
+    () => filesForDepartment(files, departmentId),
+    [files, departmentId],
+  );
   const conversations = conversationsFor(departmentId);
   const requestedId = searchParams.get("c");
 
@@ -125,6 +136,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   const [lastUsage, setLastUsage] = useState<TokenUsage | null>(null);
   const [pending, setPending] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -552,6 +564,16 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             >
               <PaperclipIcon className="h-5 w-5" />
             </button>
+            {shared.length ? (
+              <button
+                onClick={() => setPickerOpen(true)}
+                aria-label="Attach from the Library"
+                title={`${shared.length} file${shared.length === 1 ? "" : "s"} shared with this department`}
+                className="md-state md-target grid h-9 w-9 flex-none place-items-center self-end rounded-full text-on-variant"
+              >
+                <DocIcon className="h-5 w-5" />
+              </button>
+            ) : null}
             <textarea
               ref={inputRef}
               value={draft}
@@ -624,6 +646,53 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               </>
             ) : null}
           </p>
+
+          <Dialog
+            open={pickerOpen}
+            title="Attach from the Library"
+            width="max-w-lg"
+            onClose={() => setPickerOpen(false)}
+            footer={
+              <Button variant="text" onClick={() => setPickerOpen(false)}>
+                Done
+              </Button>
+            }
+          >
+            <ul className="flex flex-col gap-1">
+              {shared.map((file) => {
+                const already = pending.some((item) => item.id === file.id);
+                return (
+                  <li key={file.id}>
+                    <button
+                      type="button"
+                      disabled={already || pending.length >= MAX_ATTACHMENTS_PER_MESSAGE}
+                      onClick={() => {
+                        setPending((current) => [...current, file]);
+                        setPickerOpen(false);
+                      }}
+                      className={cx(
+                        "md-state flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left",
+                        "transition-colors disabled:opacity-[0.38]",
+                      )}
+                    >
+                      <span aria-hidden className="text-lg">
+                        {FILE_ICON[file.kind]}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="md-body block truncate">{file.name}</span>
+                        <span className="md-label-sm block truncate text-on-variant/75">
+                          {file.departmentId === COMPANY_ID
+                            ? "Shared with every department"
+                            : "Shared with this department"}
+                        </span>
+                      </span>
+                      {already ? <Chip>Added</Chip> : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </Dialog>
 
           <input
             ref={fileRef}

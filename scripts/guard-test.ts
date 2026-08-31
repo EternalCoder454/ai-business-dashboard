@@ -10,6 +10,8 @@
 import { readJsonWithin, withinRate } from "../src/lib/guard";
 import { safeDestination } from "../src/app/signin/page";
 import { applyOp, emptyWorkspace } from "../src/lib/workspace";
+import { filesForDepartment } from "../src/lib/files";
+import { COMPANY_ID } from "../src/lib/seed";
 
 let failures = 0;
 
@@ -124,6 +126,29 @@ console.log("\na write immediately after a create can see it");
   check("the message survived", afterSave.conversations[0]?.messages.length === 1);
   check("and the title was not lost", afterSave.conversations[0]?.title === "New conversation");
 }
+  console.log("\na library file reaches only the departments it is scoped to");
+  {
+    const base = { kind: "image" as const, mediaType: "image/png", data: "", width: 0, height: 0, createdAt: 0, updatedAt: 0 };
+    const library = [
+      { ...base, id: "f1", name: "brand.png", departmentId: "marketing" },
+      { ...base, id: "f2", name: "logo.png", departmentId: COMPANY_ID },
+      { ...base, id: "f3", name: "private.png" },
+      { ...base, id: "f4", name: "wireframe.png", departmentId: "design" },
+    ];
+
+    const marketing = filesForDepartment(library, "marketing").map((f) => f.id);
+    check("its own file", marketing.includes("f1"));
+    check("plus anything company wide", marketing.includes("f2"));
+    check("not an untagged file", !marketing.includes("f3"));
+    check("not another department's", !marketing.includes("f4"), marketing.join(","));
+
+    const design = filesForDepartment(library, "design").map((f) => f.id);
+    check("a second department sees its own plus company", design.join(",") === "f2,f4", design.join(","));
+
+    const stranger = filesForDepartment(library, "nobody");
+    check("an unknown department sees only company wide", stranger.length === 1);
+  }
+
 
   console.log(failures ? "\nFAILURES ABOVE" : "\nall checks passed");
   process.exit(failures ? 1 : 0);

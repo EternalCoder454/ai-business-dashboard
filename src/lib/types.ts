@@ -25,7 +25,11 @@ export interface Attachment {
 
 /** A file kept in the Library, reusable across conversations. */
 export interface LibraryFile extends Attachment {
-  /** Optional owning head, purely for filtering. */
+  /**
+   * Who can reach this file: a department id, COMPANY_ID for every department,
+   * or undefined for nobody but you. Same shape as a skill's owner, so the two
+   * behave the same way and there is one idea to learn rather than two.
+   */
   departmentId?: string;
   projectId?: string;
   note?: string;

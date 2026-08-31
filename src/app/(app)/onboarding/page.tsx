@@ -20,7 +20,7 @@ export default function OnboardingPage() {
       <PageHeader
         eyebrow="Start here"
         title={`Working with ${company}`}
-        description="Ten minutes, once. What this is, how to get something useful out of it, and the handful of things not to do."
+        description="10 minute read · Highly recommended"
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto page-x py-6">

@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 import { AttachmentError, fileToAttachment } from "./images";
-import type { Attachment, AttachmentKind } from "./types";
+import { COMPANY_ID } from "./seed";
+import type { Attachment, AttachmentKind, LibraryFile } from "./types";
 
 export const ACCEPTED_FILE_TYPES = [
   "image/png",
@@ -174,3 +175,17 @@ export const FILE_ICON: Record<AttachmentKind, string> = {
   pdf: "📕",
   document: "📝",
 };
+
+/**
+ * The files one department may attach: its own, plus everything shared with
+ * the whole company. Untagged files stay out, since a file nobody has scoped
+ * has not been offered to anyone yet.
+ */
+export function filesForDepartment(
+  files: LibraryFile[],
+  departmentId: string,
+): LibraryFile[] {
+  return files.filter(
+    (file) => file.departmentId === departmentId || file.departmentId === COMPANY_ID,
+  );
+}

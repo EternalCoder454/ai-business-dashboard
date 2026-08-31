@@ -29,6 +29,7 @@ import {
 } from "@/lib/files";
 import { AttachmentError, attachmentSrc } from "@/lib/images";
 import { departmentHrefById, formatRelativeTime } from "@/lib/routes";
+import { COMPANY_ID } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import type { AttachmentKind, LibraryFile } from "@/lib/types";
 
@@ -202,9 +203,30 @@ export default function LibraryPage() {
                       </span>
                     </button>
 
-                    <div className="mt-auto flex flex-wrap items-center gap-1.5">
+                    {/* Scope first: it decides who can reach the file at all,
+                        which matters more than where to send it once. */}
+                    <Select
+                      aria-label={`Who can use ${file.name}`}
+                      value={file.departmentId ?? ""}
+                      onChange={(event) =>
+                        void updateFile(file.id, {
+                          departmentId: event.target.value || undefined,
+                        })
+                      }
+                      className="mt-auto h-9 py-0 text-[0.8125rem]"
+                    >
+                      <option value="">Private to you</option>
+                      <option value={COMPANY_ID}>Every department</option>
+                      {allDepartments.map((department) => (
+                        <option key={department.id} value={department.id}>
+                          {department.name}
+                        </option>
+                      ))}
+                    </Select>
+
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       <Select
-                        aria-label={`Send ${file.name} to a head`}
+                        aria-label={`Send ${file.name} to a department`}
                         value=""
                         onChange={(event) => {
                           if (event.target.value) void sendTo(file, event.target.value);
