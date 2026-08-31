@@ -1,0 +1,234 @@
+/**
+ * Exercises the repository layer against the real database.
+ *
+ * The hosted path is otherwise only reachable through a signed-in browser, so
+ * without this the first real sign in would also be the first test. Everything
+ * is written under a throwaway address and removed again at the end.
+ *
+ *   npm run smoke
+ */
+import { applyMutations, isEmpty, loadWorkspace } from "../src/db/repo";
+import { seedDepartments } from "../src/lib/seed";
+import { seedSkills } from "../src/lib/seedSkills";
+import type { Conversation } from "../src/lib/types";
+
+const USER = "smoke-test@example.invalid";
+
+function check(label: string, condition: boolean, detail = "") {
+  console.log(`${condition ? "  ok  " : "  FAIL"} ${label}${detail ? ` (${detail})` : ""}`);
+  if (!condition) process.exitCode = 1;
+}
+
+async function wipe() {
+  const current = await loadWorkspace(USER);
+  await applyMutations(USER, [
+    { table: "conversations", action: "delete", ids: current.conversations.map((c) => c.id) },
+    { table: "departments", action: "delete", ids: current.departments.map((d) => d.id) },
+    { table: "skills", action: "delete", ids: current.skills.map((s) => s.id) },
+    { table: "deliverables", action: "delete", ids: current.deliverables.map((d) => d.id) },
+    { table: "files", action: "delete", ids: current.files.map((f) => f.id) },
+    { table: "allHands", action: "delete", ids: current.allHandsRuns.map((r) => r.id) },
+  ]);
+}
+
+async function main() {
+  console.log("clearing any previous run");
+  await wipe();
+  check("account reads as empty", await isEmpty(USER));
+
+  console.log("\nseeding");
+  await applyMutations(USER, [
+    { table: "departments", action: "upsert", rows: seedDepartments() },
+    { table: "skills", action: "upsert", rows: seedSkills() },
+    {
+      table: "profile",
+      action: "upsert",
+      row: {
+        mission: "Ship things.",
+        audience: "Founders",
+        brandVoice: "Plain",
+        keyFacts: "Neon, Vercel",
+      },
+    },
+    {
+      table: "settings",
+      action: "upsert",
+      row: { model: "claude-sonnet-5", companyName: "Eterneon" },
+    },
+  ]);
+
+  const seeded = await loadWorkspace(USER);
+  check("departments round trip", seeded.departments.length === 8, `${seeded.departments.length}`);
+  check("ceo flag survives", Boolean(seeded.departments.find((d) => d.isCeo)));
+  check("order preserved", seeded.departments[0]?.order === 0);
+  check("persona text survives", (seeded.departments[1]?.persona.length ?? 0) > 20);
+  check("skills round trip", seeded.skills.length === 35, `${seeded.skills.length}`);
+  check(
+    "company wide skills present",
+    seeded.skills.filter((s) => s.departmentId === "company").length === 2,
+  );
+  check("profile round trip", seeded.profile.mission === "Ship things.");
+  check("settings round trip", seeded.settings.companyName === "Eterneon");
+  check("no api key reaches the client", !("apiKey" in seeded.settings));
+
+  console.log("\nconversation carrying an attachment");
+  const conversation: Conversation = {
+    id: "conv_smoke",
+    departmentId: "design",
+    title: "Sprite review",
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    messages: [
+      {
+        id: "msg_smoke_1",
+        role: "user",
+        content: "What do you make of this?",
+        timestamp: Date.now(),
+        attachments: [
+          {
+            id: "att_smoke_1",
+            kind: "image",
+            mediaType: "image/png",
+            name: "sprite.png",
+            data: "iVBORw0KGgo=",
+            width: 32,
+            height: 32,
+            size: 128,
+          },
+        ],
+      },
+      {
+        id: "msg_smoke_2",
+        role: "assistant",
+        content: "The silhouette reads at one to one.",
+        thinking: "checking readability",
+        timestamp: Date.now() + 1,
+      },
+    ],
+  };
+  await applyMutations(USER, [{ table: "conversations", action: "upsert", rows: [conversation] }]);
+
+  const withConv = await loadWorkspace(USER);
+  const loaded = withConv.conversations.find((c) => c.id === "conv_smoke");
+  check("conversation stored", Boolean(loaded));
+  check(
+    "messages come back in order",
+    loaded?.messages[0]?.id === "msg_smoke_1" && loaded?.messages[1]?.id === "msg_smoke_2",
+  );
+  check("attachment rehydrated", loaded?.messages[0]?.attachments?.[0]?.name === "sprite.png");
+  check("attachment bytes intact", loaded?.messages[0]?.attachments?.[0]?.data === "iVBORw0KGgo=");
+  check("thinking survives", loaded?.messages[1]?.thinking === "checking readability");
+  check(
+    "chat attachment stays out of the Library",
+    !withConv.files.some((f) => f.id === "att_smoke_1"),
+  );
+
+  console.log("\nappending a turn does not duplicate the earlier ones");
+  await applyMutations(USER, [
+    {
+      table: "conversations",
+      action: "upsert",
+      rows: [
+        {
+          ...conversation,
+          messages: [
+            ...conversation.messages,
+            {
+              id: "msg_smoke_3",
+              role: "user",
+              content: "And at 20px?",
+              timestamp: Date.now() + 2,
+            },
+          ],
+        },
+      ],
+    },
+  ]);
+  const appended = await loadWorkspace(USER);
+  const appendedCount = appended.conversations.find((c) => c.id === "conv_smoke")?.messages.length;
+  check("three messages, not five", appendedCount === 3, String(appendedCount));
+
+  console.log("\nall hands round trip");
+  await applyMutations(USER, [
+    {
+      table: "allHands",
+      action: "upsert",
+      rows: [
+        {
+          id: "room_smoke",
+          title: "Raise prices?",
+          status: "done",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          rounds: [
+            {
+              id: "round_smoke_1",
+              question: "Should we raise mod prices?",
+              createdAt: Date.now(),
+              synthesis: "Hold for now.",
+              responses: [
+                { departmentId: "finance", content: "Margins allow it.", pending: false },
+                { departmentId: "social", content: "The community will notice.", pending: false },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ]);
+  const rooms = await loadWorkspace(USER);
+  const room = rooms.allHandsRuns.find((r) => r.id === "room_smoke");
+  check("run stored", Boolean(room));
+  check("round responses survive as json", room?.rounds[0]?.responses.length === 2);
+  check("synthesis survives", room?.rounds[0]?.synthesis === "Hold for now.");
+
+  console.log("\nlibrary file round trip");
+  await applyMutations(USER, [
+    {
+      table: "files",
+      action: "upsert",
+      rows: [
+        {
+          id: "file_smoke",
+          kind: "document",
+          mediaType: "text/plain",
+          name: "contract.txt",
+          data: "",
+          text: "Payment terms are net 30.",
+          width: 0,
+          height: 0,
+          size: 25,
+          note: "client A",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+    },
+  ]);
+  const withFile = await loadWorkspace(USER);
+  const file = withFile.files.find((f) => f.id === "file_smoke");
+  check("library file stored", Boolean(file));
+  check("extracted text survives", file?.text === "Payment terms are net 30.");
+  check("note survives", file?.note === "client A");
+
+  console.log("\ndeleting a head takes its conversations with it");
+  await applyMutations(USER, [{ table: "departments", action: "delete", ids: ["design"] }]);
+  const afterDelete = await loadWorkspace(USER);
+  check("department gone", !afterDelete.departments.some((d) => d.id === "design"));
+  check(
+    "its conversation went too",
+    !afterDelete.conversations.some((c) => c.departmentId === "design"),
+  );
+
+  console.log("\ncleaning up");
+  await wipe();
+  check("account empty again", await isEmpty(USER));
+
+  console.log(process.exitCode ? "\nFAILURES ABOVE" : "\nall checks passed");
+  process.exit(process.exitCode ?? 0);
+}
+
+main().catch((error) => {
+  console.error("smoke test threw:", error);
+  process.exit(1);
+});

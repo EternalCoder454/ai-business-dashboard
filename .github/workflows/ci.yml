@@ -34,3 +34,7 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # The database round trip is not run here: it needs a real DATABASE_URL,
+      # and CI has no business holding production credentials. Run npm run
+      # smoke locally after any change to the schema or the repository layer.

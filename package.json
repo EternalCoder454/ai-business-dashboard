@@ -10,7 +10,8 @@
     "pretypecheck": "next typegen",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "smoke": "tsx --env-file=.env.local scripts/smoke.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",
@@ -33,6 +34,7 @@
     "@types/react-dom": "^19.1.0",
     "drizzle-kit": "^0.31.10",
     "tailwindcss": "^4.1.13",
+    "tsx": "^4.23.13",
     "typescript": "^5.9.2"
   }
 }

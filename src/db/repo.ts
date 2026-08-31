@@ -192,6 +192,39 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
         case "departments": {
           if (op.action === "delete") {
             if (op.ids.length) {
+              // Removing a head takes its conversations and their messages with
+              // it. Postgres has no foreign key doing this for us, and leaving
+              // them would strand threads pointing at a head that is gone.
+              const orphans = await tx
+                .select({ id: t.conversations.id })
+                .from(t.conversations)
+                .where(
+                  and(
+                    eq(t.conversations.userEmail, userEmail),
+                    inArray(t.conversations.departmentId, op.ids),
+                  ),
+                );
+              const orphanIds = orphans.map((row) => row.id);
+
+              if (orphanIds.length) {
+                await tx
+                  .delete(t.messages)
+                  .where(
+                    and(
+                      eq(t.messages.userEmail, userEmail),
+                      inArray(t.messages.conversationId, orphanIds),
+                    ),
+                  );
+                await tx
+                  .delete(t.conversations)
+                  .where(
+                    and(
+                      eq(t.conversations.userEmail, userEmail),
+                      inArray(t.conversations.id, orphanIds),
+                    ),
+                  );
+              }
+
               await tx
                 .delete(t.departments)
                 .where(and(eq(t.departments.userEmail, userEmail), inArray(t.departments.id, op.ids)));
