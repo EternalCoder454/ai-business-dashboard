@@ -428,13 +428,17 @@ Say "source-available" and never "open source". Open source has a definition, it
 **It is not one licence across all three lines**
 
 - **Internal tools and the panel.** Strict fits. Nobody else should be running them.
-- **Minecraft mods.** Players have to be able to run them, and some servers are commercial, so a noncommercial-only licence blocks legitimate use. Check what the mod links against before anything else: linking LGPL code means the combined work cannot be no-derivatives, and that constraint wins over any studio preference.
+- **Minecraft mods. LGPL-3.0-or-later for the code, all rights reserved for the assets.** The one line where the studio deliberately gives up control, and it is a decision rather than an oversight. A mod that cannot be forked dies when the studio stops updating it; every version bump orphans mods whose authors moved on, and the ones that survive are the ones somebody was allowed to pick up. LGPL rather than MIT because a fork then has to stay open, so it can be continued but not taken closed. LGPL rather than GPL because Minecraft is effectively all rights reserved and plain GPL would require everything linked to it to be open too. Assets stay reserved, so a fork continues the code without shipping the studio's art, and the name is trademark rather than copyright so it is not licensed either.
 - **Client websites.** A different regime entirely. The contract governs, IP transfers to the client on payment in full, and the studio's licence posture does not apply.
 - **Frontier Assembly.** Shipped as a binary. Not source-available at all, and Epic's terms govern the engine side.
 
 **When someone asks to use studio code**
 
-Ask what they actually want, because the answer is usually narrower than "the code". Reading it to check it is already permitted. Running it is a licence question. Building on it is a no under the current posture, and a conversation about a separate commercial licence rather than a change to the public one.
+Ask what they actually want, because the answer is usually narrower than "the code", and the answer differs by line.
+
+For the panel and internal tools: reading it to check it is already permitted, running it is a licence question, and building on it is a no plus a conversation about a separate commercial licence rather than a change to the public one.
+
+For a mod: forking and continuing it is already permitted and needs no permission. Shipping it with the studio's art, or under the studio's name, is not. Point them at the LGPL and at ASSETS.md rather than negotiating.
 
 Anything with money attached goes to a licensed attorney before it is relied on.`,
   },
