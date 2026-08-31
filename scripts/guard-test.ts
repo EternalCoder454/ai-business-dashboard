@@ -8,6 +8,7 @@
  * Run with: npm run guard-test
  */
 import { readJsonWithin, withinRate } from "../src/lib/guard";
+import { safeDestination } from "../src/app/signin/page";
 
 let failures = 0;
 
@@ -62,6 +63,15 @@ async function main() {
   check("a different key is unaffected", withinRate(`${key}:other`, 3, 60_000));
   // A window that has already closed lets the next call through.
   check("expired window reopens", withinRate(key, 3, -1));
+
+  console.log("\nonly same-site paths survive the sign-in redirect");
+  check("a normal path passes through", safeDestination("/projects") === "/projects");
+  check("a path with a query survives", safeDestination("/dept/x?c=1") === "/dept/x?c=1");
+  check("absolute url is dropped", safeDestination("https://example.com") === "/");
+  check("protocol-relative is dropped", safeDestination("//example.com") === "/");
+  check("backslash form is dropped", safeDestination("/\\example.com") === "/");
+  check("javascript scheme is dropped", safeDestination("javascript:alert(1)") === "/");
+  check("missing value becomes root", safeDestination(undefined) === "/");
 
   console.log(failures ? "\nFAILURES ABOVE" : "\nall checks passed");
   process.exit(failures ? 1 : 0);

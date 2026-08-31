@@ -16,7 +16,7 @@ export const metadata: Metadata = {
  * shape every credential phishing page wants. A protocol-relative //host is
  * rejected for the same reason: the browser reads it as absolute.
  */
-function safeDestination(from: string | undefined): string {
+export function safeDestination(from: string | undefined): string {
   if (!from) return "/";
   if (!from.startsWith("/") || from.startsWith("//")) return "/";
   // A backslash is treated as a slash by some browsers when resolving a URL.
