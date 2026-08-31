@@ -357,16 +357,23 @@
  * .measure-wide  two-pane layouts that carry a supporting column
  */
 /*
- * Body prose caps its own line length.
+ * Body prose caps its own line length inside the wide containers.
  *
- * Cards stretch to the content column, so a description inside one was running
- * to 120 characters a line, well past the 45 to 75 that stays readable. The cap
- * only bites where the container is wider than the text wants to be, so a
- * paragraph in a narrow column is untouched.
+ * Cards stretch to the content column, so a description in one was running to
+ * 120 characters a line, well past the 45 to 75 that stays readable.
+ *
+ * Scoped rather than applied to every paragraph, because a max-width narrows
+ * the box while leaving it left-aligned: in a centred block the text then
+ * centres inside a box that is itself off to one side, which is how the
+ * department welcome ended up with its role title adrift. These two containers
+ * are the only ones wide enough to need the cap.
  */
-p.md-body,
-p.md-label,
-p.md-label-sm {
+.measure p.md-body,
+.measure p.md-label,
+.measure p.md-label-sm,
+.measure-wide p.md-body,
+.measure-wide p.md-label,
+.measure-wide p.md-label-sm {
   max-width: 68ch;
 }
 
