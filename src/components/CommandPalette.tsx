@@ -1,10 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { KIND_LABEL, groupResults, search, type SearchResult } from "@/lib/search";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  KIND_LABEL,
+  groupResults,
+  search,
+  type ResultKind,
+  type SearchResult,
+} from "@/lib/search";
 import { useStore } from "@/lib/store";
-import { CloseIcon, cx } from "./ui";
+import {
+  BriefcaseIcon,
+  BuildingIcon,
+  CloseIcon,
+  DocIcon,
+  FolderIcon,
+  GearIcon,
+  MailIcon,
+  OrgIcon,
+  PersonIcon,
+  SparkIcon,
+  UsersIcon,
+  cx,
+} from "./ui";
 
 /**
  * One search box over everything: heads, conversations, individual messages,
@@ -134,8 +153,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                             isActive ? "bg-secondary-container text-on-secondary-container" : "",
                           )}
                         >
-                          <span aria-hidden className="mt-0.5 w-5 flex-none text-center">
-                            {result.icon}
+                          <span aria-hidden className="mt-0.5 flex-none text-on-variant">
+                            <ResultIcon kind={result.kind} href={result.href} />
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="md-body block truncate">{result.title}</span>
@@ -194,4 +213,39 @@ export function SearchIcon({ className }: { className?: string }) {
       <path d="m20 20-3.5-3.5" />
     </svg>
   );
+}
+
+/**
+ * The icon for a result, derived from what the result is rather than stored on
+ * it. Pages map by destination; everything else maps by kind.
+ */
+function ResultIcon({ kind, href }: { kind: ResultKind; href: string }) {
+  const className = "h-4 w-4";
+
+  if (kind === "page") {
+    const byHref: [string, ReactNode][] = [
+      ["/ceo", <BriefcaseIcon key="ceo" className={className} />],
+      ["/all-hands", <UsersIcon key="room" className={className} />],
+      ["/messages", <MailIcon key="messages" className={className} />],
+      ["/projects", <FolderIcon key="projects" className={className} />],
+      ["/library/skills", <SparkIcon key="skills" className={className} />],
+      ["/library", <DocIcon key="library" className={className} />],
+      ["/information", <SparkIcon key="info" className={className} />],
+      ["/profile", <BuildingIcon key="profile" className={className} />],
+      ["/account", <PersonIcon key="account" className={className} />],
+      ["/settings", <GearIcon key="settings" className={className} />],
+    ];
+    return <>{byHref.find(([path]) => href.startsWith(path))?.[1] ?? <OrgIcon className={className} />}</>;
+  }
+
+  const byKind: Record<Exclude<ResultKind, "page">, ReactNode> = {
+    department: <PersonIcon className={className} />,
+    conversation: <BriefcaseIcon className={className} />,
+    message: <BriefcaseIcon className={className} />,
+    skill: <SparkIcon className={className} />,
+    deliverable: <DocIcon className={className} />,
+    project: <FolderIcon className={className} />,
+    room: <UsersIcon className={className} />,
+  };
+  return <>{byKind[kind]}</>;
 }

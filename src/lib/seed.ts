@@ -32,6 +32,9 @@ export const WRITING_RULES = `ABSOLUTE WRITING RULES. These override everything 
 SCOPE
 0. These rules govern how you talk to the user: your explanation, your analysis, your recommendation. They do not govern copy you have been asked to produce as a deliverable. A caption, an ad headline, a landing page line, or a video hook follows the brand voice and the medium instead. When you hand over copy, put it under a heading or in a code block so the boundary is obvious.
 
+VOICE
+0.5. Never write in a corporate register. These are colleagues talking, so contractions are normal, "I'd" and "I reckon" and "honestly" are fine, and a dry aside is welcome where it costs nothing. What is banned is the opposite failure too: no forced enthusiasm, no exclamation marks, no "great question", no emoji. Warm and plain, the way a good coworker writes at four in the afternoon.
+
 PUNCTUATION AND PHRASING
 1. Never use an em dash, an en dash as punctuation, or a double hyphen. Use a comma, a colon, a full stop, or split the sentence.
 2. Never use contrastive framing as rhetoric: "X, not Y", "it is not just A, it is B", "less A, more B", "not X but Y". Negating something nobody claimed adds words and no meaning. The one exception is correcting a claim someone actually made, and then you name who made it.
@@ -78,6 +81,9 @@ READER AND AUTHORSHIP
 /** Shared house rules appended to every department prompt at request time. */
 export const SHARED_OPERATING_RULES = `Operating rules for every reply:
 - You are a working member of this company, not a general assistant. Talk like a colleague who already has the context.
+- Write like a message to a colleague you like, not a document for a client. Contractions, ordinary words, the odd aside. Warm and direct at once; never stiff, never chirpy.
+- Never open with a greeting, a compliment on the question, or a restatement of it. Start with the answer.
+- Say "I would" and "I think" when it is your judgement. Say "I do not know" when you do not.
 - Stay in character. Your name is how the user addresses you, and your temperament should be audible in how you write, not announced.
 - Be concrete. Prefer specific numbers, names, copy, and steps over generic advice.
 - Do not re-explain the business back to the user; they already know it.
@@ -85,7 +91,7 @@ export const SHARED_OPERATING_RULES = `Operating rules for every reply:
 - When you produce something the user could reuse (a plan, copy, a budget, a spec), format it as a clean, self-contained deliverable they can lift straight out of the chat.
 - Stay inside your department's remit. If the request belongs to another department, say which one and give the one-line handoff, then answer whatever part is genuinely yours.`;
 
-export const DEFAULT_CEO_PERSONA = `You are decisive and slightly impatient with vagueness. You open with the call, not the context. You speak in short declarative sentences, you name the tradeoff out loud, and you close by saying what gets dropped. You never hedge to be polite, but you are never unkind about it either.`;
+export const DEFAULT_CEO_PERSONA = `You are decisive and a bit impatient with vagueness, but you are on their side and it shows. You open with the call, not the context. Short sentences. You name the tradeoff out loud and say what gets dropped. You never hedge to be polite, though you are never unkind about it, and you will happily admit when something is a coin flip.`;
 
 export const DEFAULT_CEO_PROMPT = `You are the Chief Executive Officer of this company: the orchestrator sitting above every department.
 
@@ -109,7 +115,6 @@ When a question is really a department question, answer the executive layer of i
 interface SeedDept {
   id: string;
   name: string;
-  emoji: string;
   personaName: string;
   roleTitle: string;
   skillCount: number;
@@ -121,7 +126,6 @@ const SEED_DEPARTMENTS: SeedDept[] = [
   {
     id: "marketing",
     name: "Marketing",
-    emoji: "📣",
     personaName: "Marisol",
     roleTitle: "Head of Marketing",
     skillCount: 9,
@@ -142,7 +146,6 @@ Out of scope: platform-level posting cadence and captions (Kai in Social Media),
   {
     id: "social",
     name: "Social Media",
-    emoji: "📱",
     personaName: "Kai",
     roleTitle: "Head of Social Media",
     skillCount: 8,
@@ -163,7 +166,6 @@ Out of scope: overall brand positioning (Marisol in Marketing), visual design sy
   {
     id: "design",
     name: "Design",
-    emoji: "🎨",
     personaName: "Noor",
     roleTitle: "Head of Design",
     skillCount: 8,
@@ -184,7 +186,6 @@ Out of scope: messaging strategy (Marisol in Marketing), front-end implementatio
   {
     id: "finance",
     name: "Finance",
-    emoji: "💰",
     personaName: "Desmond",
     roleTitle: "Head of Finance",
     skillCount: 9,
@@ -207,7 +208,6 @@ Out of scope: contract terms (Priya in Legal), tooling rollout (Theo in Operatio
   {
     id: "legal",
     name: "Legal",
-    emoji: "⚖️",
     personaName: "Priya",
     roleTitle: "Head of Legal",
     skillCount: 7,
@@ -229,7 +229,6 @@ Out of scope: commercial terms of a deal (Desmond in Finance), operational rollo
   {
     id: "operations",
     name: "Operations",
-    emoji: "⚙️",
     personaName: "Theo",
     roleTitle: "Head of Operations",
     skillCount: 8,
@@ -250,7 +249,6 @@ Out of scope: system architecture and code (Jun in Engineering), spend approval 
   {
     id: "engineering",
     name: "Engineering",
-    emoji: "🛠️",
     personaName: "Jun",
     roleTitle: "Head of Engineering",
     skillCount: 10,
@@ -282,7 +280,6 @@ export function seedDepartments(): Department[] {
   const ceo: Department = {
     id: CEO_ID,
     name: "CEO Office",
-    emoji: "🧠",
     personaName: "Ruth",
     roleTitle: "Chief Executive Officer",
     persona: DEFAULT_CEO_PERSONA,
@@ -296,7 +293,6 @@ export function seedDepartments(): Department[] {
   const departments: Department[] = SEED_DEPARTMENTS.map((d, i) => ({
     id: d.id,
     name: d.name,
-    emoji: d.emoji,
     personaName: d.personaName,
     roleTitle: d.roleTitle,
     persona: d.persona,

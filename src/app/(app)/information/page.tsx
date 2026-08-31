@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useMemo } from "react";
 import { Card, Chip, PageHeader, cx } from "@/components/ui";
 import { estimateAttachmentTokens, formatBytes } from "@/lib/files";
@@ -146,7 +147,7 @@ export default function InformationPage() {
                       : "Below the minimum, so the system block will not cache"
                   }
                 >
-                  <span aria-hidden>{department.emoji}</span>
+                  <DepartmentAvatar department={department} size={18} />
                   {department.personaName || department.name} ·{" "}
                   {total.toLocaleString()}
                 </Chip>
@@ -167,7 +168,7 @@ export default function InformationPage() {
               {anatomy.map(({ department, segments, total, skillCount }) => (
                 <li key={department.id}>
                   <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2">
-                    <span aria-hidden>{department.emoji}</span>
+                    <DepartmentAvatar department={department} size={20} />
                     <span className="md-title">
                       {department.personaName || department.name}
                     </span>
@@ -271,9 +272,7 @@ export default function InformationPage() {
             <ul className="divide-y divide-[var(--md-outline-variant)]">
               {departments.map((department) => (
                 <li key={department.id} className="flex items-center gap-3 py-2.5">
-                  <span aria-hidden className="w-6 text-center">
-                    {department.emoji}
-                  </span>
+                  <DepartmentAvatar department={department} size={24} />
                   <span className="min-w-0 flex-1">
                     <span className="md-body block truncate">
                       {department.personaName}, {department.roleTitle}

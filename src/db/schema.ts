@@ -29,7 +29,7 @@ export const departments = pgTable(
     id: text("id").notNull(),
     userEmail: owner(),
     name: text("name").notNull(),
-    emoji: text("emoji").notNull(),
+    avatarUrl: text("avatar_url"),
     personaName: text("persona_name").notNull().default(""),
     roleTitle: text("role_title").notNull(),
     persona: text("persona").notNull().default(""),

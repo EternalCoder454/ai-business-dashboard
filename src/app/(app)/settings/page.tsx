@@ -1,5 +1,7 @@
 "use client";
 
+import { DepartmentAvatar } from "@/components/DepartmentAvatar";
+import { ACCEPTED_IMAGE_TYPES, fileToAvatar } from "@/lib/images";
 import { useEffect, useRef, useState } from "react";
 import {
   Button,
@@ -50,6 +52,8 @@ export default function SettingsPage() {
   const [pendingDelete, setPendingDelete] = useState<Department | null>(null);
   const [dataNotice, setDataNotice] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const avatarInput = useRef<HTMLInputElement | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   // The credentials are read from this browser a moment after mount, so the
   // first render sees an empty key. Adopt the real one when it lands, but
@@ -67,7 +71,7 @@ export default function SettingsPage() {
     } else if (draft.id) {
       await updateDepartment(draft.id, {
         name: draft.name?.trim() || "Untitled",
-        emoji: draft.emoji || "🏢",
+        avatarUrl: draft.avatarUrl,
         roleTitle: draft.roleTitle?.trim() || "Department Head",
         personaName: draft.personaName?.trim() ?? "",
         persona: draft.persona ?? "",
@@ -270,7 +274,6 @@ export default function SettingsPage() {
                   setDraft({
                     isNew: true,
                     name: "",
-                    emoji: "🏢",
                     personaName: "",
                     persona: "",
                     roleTitle: "",
@@ -286,9 +289,7 @@ export default function SettingsPage() {
             <ul className="divide-y divide-[var(--md-outline-variant)]">
               {editable.map((department) => (
                 <li key={department.id} className="flex items-center gap-3 py-3">
-                  <span aria-hidden className="w-7 text-center text-xl">
-                    {department.emoji}
-                  </span>
+                  <DepartmentAvatar department={department} size={36} />
                   <div className="min-w-0 flex-1">
                     <p className="md-title truncate">
                       {department.name}
@@ -428,15 +429,63 @@ export default function SettingsPage() {
       >
         {draft ? (
           <div className="space-y-4">
-            <div className="grid gap-4 medium:grid-cols-[88px_1fr_1fr]">
-              <Field label="Emoji">
-                <TextInput
-                  value={draft.emoji ?? ""}
-                  maxLength={4}
-                  className="text-center text-xl"
-                  onChange={(event) => setDraft({ ...draft, emoji: event.target.value })}
+            <div className="flex items-center gap-4">
+              <DepartmentAvatar
+                department={{
+                  name: draft.name ?? "",
+                  personaName: draft.personaName ?? "",
+                  avatarUrl: draft.avatarUrl,
+                }}
+                size={64}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outlined"
+                  onClick={() => avatarInput.current?.click()}
+                >
+                  {draft.avatarUrl ? "Replace picture" : "Upload picture"}
+                </Button>
+                {draft.avatarUrl ? (
+                  <Button
+                    size="sm"
+                    variant="text"
+                    onClick={() => setDraft({ ...draft, avatarUrl: undefined })}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+                <input
+                  ref={avatarInput}
+                  type="file"
+                  accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                  hidden
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    if (!file) return;
+                    try {
+                      setDraft((current) =>
+                        current ? { ...current, avatarUrl: undefined } : current,
+                      );
+                      const avatarUrl = await fileToAvatar(file);
+                      setDraft((current) => (current ? { ...current, avatarUrl } : current));
+                      setAvatarError(null);
+                    } catch (error) {
+                      setAvatarError(
+                        error instanceof Error ? error.message : "That image could not be read.",
+                      );
+                    }
+                  }}
                 />
-              </Field>
+              </div>
+            </div>
+
+            {avatarError ? (
+              <p className="md-label text-error">{avatarError}</p>
+            ) : null}
+
+            <div className="grid gap-4 medium:grid-cols-2">
               <Field label="Department">
                 <TextInput
                   value={draft.name ?? ""}

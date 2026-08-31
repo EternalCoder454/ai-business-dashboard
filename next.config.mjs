@@ -41,9 +41,12 @@ function contentSecurityPolicy() {
     // never needs to reach api.anthropic.com and should not be allowed to.
     isProduction ? "connect-src 'self'" : "connect-src 'self' ws: wss:",
     isProduction
-      ? "script-src 'self' 'unsafe-inline'"
-      : // Turbopack's dev client evaluates code it fetches.
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      ? // On Vercel the analytics and speed-insights beacons are served from
+        // this origin under /_vercel, so 'self' already covers them.
+        "script-src 'self' 'unsafe-inline'"
+      : // Turbopack's dev client evaluates code it fetches, and the same two
+        // beacons load their debug builds from Vercel's CDN off-platform.
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com",
   ];
 
   // No upgrade-insecure-requests. Every source above is already same-origin or

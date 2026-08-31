@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DepartmentAvatar } from "./DepartmentAvatar";
 import { useMemo, type ReactNode } from "react";
 import { hasProfileContent } from "@/lib/prompts";
 import { conversationHref, departmentHref, formatRelativeTime } from "@/lib/routes";
@@ -113,12 +114,7 @@ function CeoRow({
         "transition-shadow duration-200 hover:shadow-e3",
       )}
     >
-      <span
-        aria-hidden
-        className="grid h-12 w-12 flex-none place-items-center rounded-2xl bg-black/15 text-2xl"
-      >
-        {ceo.emoji}
-      </span>
+      <DepartmentAvatar department={ceo} size={48} />
 
       <span className="min-w-0 flex-1">
         <span className="md-title-lg block truncate">{ceo.personaName || ceo.name}</span>
@@ -175,12 +171,7 @@ function DepartmentRow({
           "transition-shadow duration-200 hover:shadow-e2 medium:gap-4 medium:px-4",
         )}
       >
-        <span
-          aria-hidden
-          className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-high text-xl"
-        >
-          {department.emoji}
-        </span>
+        <DepartmentAvatar department={department} size={44} />
 
         <span className="min-w-0 flex-1">
           <span className="md-title block truncate">{department.name}</span>

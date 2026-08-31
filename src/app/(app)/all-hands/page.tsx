@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Markdown } from "@/components/ChatView";
 import {
@@ -246,7 +247,7 @@ export default function AllHandsPage() {
                           : "border-outline-variant text-on-variant",
                     )}
                   >
-                    <span aria-hidden>{department.emoji}</span>
+                    <DepartmentAvatar department={department} size={18} />
                     <span className="md-label-sm">{department.personaName}</span>
                     {response?.pending ? <span className="typing-dot" /> : null}
                   </button>
@@ -334,9 +335,7 @@ export default function AllHandsPage() {
                     onClick={() => jumpTo(department.id)}
                     className="md-state flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left"
                   >
-                    <span aria-hidden className="w-5 flex-none text-center">
-                      {department.emoji}
-                    </span>
+                    <DepartmentAvatar department={department} size={20} />
                     <span className="min-w-0 flex-1">
                       <span className="md-body block truncate">
                         {department.personaName || department.name}
@@ -512,9 +511,9 @@ function Opening({
           <span
             key={department.id}
             title={`${department.personaName}, ${department.roleTitle}`}
-            className="grid h-10 w-10 place-items-center rounded-full bg-high text-lg shadow-e1"
+            className="rounded-full shadow-e1"
           >
-            {department.emoji}
+            <DepartmentAvatar department={department} size={40} />
           </span>
         ))}
       </div>
@@ -553,12 +552,12 @@ function HeadMessage({
 
   return (
     <div id={`msg-${response.departmentId}`} className="animate-rise group flex gap-3">
-      <span
-        aria-hidden
-        title={department?.roleTitle}
-        className="mt-1 grid h-9 w-9 flex-none place-items-center rounded-full bg-high text-lg shadow-e1"
-      >
-        {department?.emoji ?? "💬"}
+      <span aria-hidden title={department?.roleTitle} className="mt-1 flex-none shadow-e1 rounded-full">
+        {department ? (
+          <DepartmentAvatar department={department} size={36} />
+        ) : (
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-high" />
+        )}
       </span>
 
       <div className="min-w-0 flex-1">
@@ -670,11 +669,12 @@ function SynthesisMessage({
 }) {
   return (
     <div className="animate-rise flex gap-3">
-      <span
-        aria-hidden
-        className="mt-1 grid h-9 w-9 flex-none place-items-center rounded-full bg-primary text-lg shadow-e2"
-      >
-        {ceo?.emoji ?? "🧠"}
+      <span aria-hidden className="mt-1 flex-none rounded-full shadow-e2">
+        {ceo ? (
+          <DepartmentAvatar department={ceo} size={36} />
+        ) : (
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-primary" />
+        )}
       </span>
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-baseline gap-2">

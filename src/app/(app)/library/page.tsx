@@ -215,7 +215,7 @@ export default function LibraryPage() {
                         <option value="">Send to…</option>
                         {allDepartments.map((department) => (
                           <option key={department.id} value={department.id}>
-                            {department.emoji} {department.personaName || department.name}
+                            {department.personaName || department.name}
                           </option>
                         ))}
                       </Select>

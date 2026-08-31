@@ -91,7 +91,8 @@ export interface Conversation {
 export interface Department {
   id: string;
   name: string;
-  emoji: string;
+  /** A data URL when one has been uploaded; initials stand in until then. */
+  avatarUrl?: string;
   /** The head's first name, how the user addresses them. */
   personaName: string;
   roleTitle: string;

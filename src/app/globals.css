@@ -341,6 +341,14 @@
 }
 
 /* Notch, home indicator, and rounded display corners. */
+/* The app occupies the viewport minus whatever the keyboard has taken. On
+   Chrome Android the layout already shrank and the inset is zero; on iOS it is
+   the only thing keeping the composer above the keyboard. */
+.app-viewport {
+  height: 100dvh;
+  height: calc(100dvh - var(--keyboard-inset, 0px));
+}
+
 .safe-top {
   padding-top: env(safe-area-inset-top, 0px);
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DepartmentAvatar } from "./DepartmentAvatar";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { CEO_ID } from "@/lib/seed";
@@ -254,9 +255,7 @@ export function SidebarContent({
                 active={activeDepartmentId === department.id}
                 onNavigate={onNavigate}
               >
-                <span aria-hidden className="w-5 flex-none text-center text-base leading-none">
-                  {department.emoji}
-                </span>
+                <DepartmentAvatar department={department} size={20} />
                 <span className="md-body min-w-0 flex-1 truncate">{department.name}</span>
                 <span
                   title={`${ownSkillsFor(department.id).length} skills`}
@@ -288,9 +287,11 @@ export function SidebarContent({
                     active={false}
                     onNavigate={onNavigate}
                   >
-                    <span aria-hidden className="w-5 flex-none text-center text-sm leading-none">
-                      {department?.emoji ?? "💬"}
-                    </span>
+                    {department ? (
+                      <DepartmentAvatar department={department} size={18} />
+                    ) : (
+                      <span className="h-4.5 w-4.5 flex-none rounded-full bg-high" />
+                    )}
                     <span className="min-w-0 flex-1">
                       <span className="md-body block truncate">{conversation.title}</span>
                       <span className="md-label-sm block truncate text-on-variant/75">

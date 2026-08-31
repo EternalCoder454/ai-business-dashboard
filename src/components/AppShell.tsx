@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { CommandPalette, SearchIcon } from "./CommandPalette";
 import { useMessages } from "@/lib/messages";
+import { useKeyboardInset } from "@/lib/viewport";
 import { PRIMARY_LINKS, Sidebar, SidebarContent, isActive } from "./Sidebar";
 import { CloseIcon, NavBadge, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
@@ -77,13 +78,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     (pathname.startsWith("/dept/") ? "Department" : "Eterneon");
 
   const edgeSwipe = useEdgeSwipe(() => setDrawerOpen(true));
+  useKeyboardInset();
 
   // Sign in is not part of the app: no nav, no drawer, nothing to navigate to.
   if (pathname === "/signin") return <>{children}</>;
 
   return (
     <div
-      className="flex h-dvh w-full overflow-hidden bg-surface"
+      className="app-viewport flex w-full overflow-hidden bg-surface"
       onTouchStart={edgeSwipe.onTouchStart}
       onTouchMove={edgeSwipe.onTouchMove}
       onTouchEnd={edgeSwipe.onTouchEnd}

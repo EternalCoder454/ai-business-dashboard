@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DepartmentAvatar } from "./DepartmentAvatar";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -352,8 +353,8 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             <path d="M15 5l-7 7 7 7" />
           </svg>
         </button>
-        <div className="hidden h-11 w-11 flex-none place-items-center rounded-2xl bg-container text-xl shadow-e1 medium:grid">
-          <span aria-hidden>{department.emoji}</span>
+        <div className="hidden flex-none medium:block">
+          <DepartmentAvatar department={department} size={44} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -439,7 +440,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               department={department.name}
               personaName={department.personaName}
               roleTitle={department.roleTitle}
-              emoji={department.emoji}
+              avatarUrl={department.avatarUrl}
               ready={ready}
               onPick={(prompt) => {
                 setDraft(prompt);
@@ -663,14 +664,14 @@ function Welcome({
   department,
   personaName,
   roleTitle,
-  emoji,
+  avatarUrl,
   ready,
   onPick,
 }: {
   department: string;
   personaName: string;
   roleTitle: string;
-  emoji: string;
+  avatarUrl?: string;
   ready: boolean;
   onPick: (prompt: string) => void;
 }) {
@@ -683,8 +684,11 @@ function Welcome({
 
   return (
     <div className="animate-rise rounded-3xl border border-outline-variant bg-container/60 px-7 py-9 text-center">
-      <div className="mb-3 text-4xl" aria-hidden>
-        {emoji}
+      <div className="mb-3 flex justify-center">
+        <DepartmentAvatar
+          department={{ name: department, personaName, avatarUrl }}
+          size={56}
+        />
       </div>
       <h2 className="md-title-lg">{who}</h2>
       <p className="md-label mt-0.5 text-on-variant">{roleTitle}</p>

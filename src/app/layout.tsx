@@ -30,12 +30,15 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  // cover lets the app paint under the notch and the home indicator; the
-  // safe-area utilities keep content out from under them.
+  // cover paints under the notch and home indicator; the safe-area utilities
+  // keep content clear of them.
   viewportFit: "cover",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  // Without this the on-screen keyboard overlays the layout instead of
+  // resizing it, so the composer ends up underneath it.
+  interactiveWidget: "resizes-content",
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#1a1c1e" },
     { media: "(prefers-color-scheme: light)", color: "#f7fafb" },

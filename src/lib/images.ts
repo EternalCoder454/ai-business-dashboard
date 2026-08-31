@@ -131,3 +131,47 @@ export function estimateImageTokens(attachment: Attachment): number {
   if (!attachment.width || !attachment.height) return 1600;
   return Math.round((attachment.width * attachment.height) / 750);
 }
+
+/** Avatars are shown at 56px at most, so anything larger is stored for nothing. */
+const AVATAR_EDGE = 256;
+
+/**
+ * Crops a picked file to a centred square and returns it as a data URL.
+ *
+ * Cropping here rather than with CSS keeps the stored row small and means every
+ * avatar is the same shape wherever it is rendered, so callers never have to
+ * think about aspect ratio.
+ */
+export async function fileToAvatar(file: File): Promise<string> {
+  if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+    throw new AttachmentError("Pick a PNG, JPEG, WebP, or GIF.");
+  }
+  if (file.size > MAX_SOURCE_BYTES) {
+    throw new AttachmentError(`${file.name} is too large. Keep it under 20MB.`);
+  }
+
+  const image = await loadImage(await readAsDataUrl(file));
+  const edge = Math.min(image.width, image.height);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = AVATAR_EDGE;
+  canvas.height = AVATAR_EDGE;
+  const context = canvas.getContext("2d");
+  if (!context) throw new AttachmentError("This browser could not process the image.");
+
+  context.drawImage(
+    image,
+    (image.width - edge) / 2,
+    (image.height - edge) / 2,
+    edge,
+    edge,
+    0,
+    0,
+    AVATAR_EDGE,
+    AVATAR_EDGE,
+  );
+
+  // JPEG throughout: a face or a logo at 256px gains nothing from PNG and the
+  // row is a third of the size.
+  return canvas.toDataURL("image/jpeg", 0.85);
+}

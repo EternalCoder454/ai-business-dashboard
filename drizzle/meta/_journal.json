@@ -29,6 +29,20 @@
       "when": 1788160036364,
       "tag": "0003_misty_spencer_smythe",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788162153032,
+      "tag": "0004_aspiring_mimic",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788162160653,
+      "tag": "0005_keen_grandmaster",
+      "breakpoints": true
     }
   ]
 }

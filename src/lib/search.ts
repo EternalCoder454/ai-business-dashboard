@@ -27,7 +27,6 @@ export interface SearchResult {
   /** The matching line of body text, with the query left in place. */
   snippet?: string;
   href: string;
-  icon: string;
   score: number;
 }
 
@@ -40,18 +39,18 @@ export interface SearchCorpus {
   allHandsRuns: AllHandsRun[];
 }
 
-const PAGES: { title: string; subtitle: string; href: string; icon: string }[] = [
-  { title: "Org Chart", subtitle: "Every head and how they report", href: "/", icon: "🏛" },
-  { title: "CEO Office", subtitle: "Talk to Ruth", href: "/ceo", icon: "🧠" },
-  { title: "All Hands", subtitle: "Ask the whole room at once", href: "/all-hands", icon: "👥" },
-  { title: "Projects", subtitle: "Work grouped across departments", href: "/projects", icon: "🗂" },
-  { title: "Library", subtitle: "Files, deliverables, and skills", href: "/library", icon: "📁" },
-  { title: "Skills", subtitle: "SKILL.md playbooks", href: "/library/skills", icon: "✨" },
-  { title: "Deliverables", subtitle: "Everything produced", href: "/library/deliverables", icon: "📄" },
-  { title: "Information", subtitle: "What the heads actually receive", href: "/information", icon: "🧩" },
-  { title: "Company Profile", subtitle: "Shared context for every head", href: "/profile", icon: "🏢" },
-  { title: "Account", subtitle: "Your name, role, and timezone", href: "/account", icon: "👤" },
-  { title: "Settings", subtitle: "API key, model, departments, data", href: "/settings", icon: "⚙️" },
+const PAGES: { title: string; subtitle: string; href: string }[] = [
+  { title: "Org Chart", subtitle: "Every head and how they report", href: "/" },
+  { title: "CEO Office", subtitle: "Talk to Ruth", href: "/ceo" },
+  { title: "All Hands", subtitle: "Ask the whole room at once", href: "/all-hands" },
+  { title: "Projects", subtitle: "Work grouped across departments", href: "/projects" },
+  { title: "Library", subtitle: "Files, deliverables, and skills", href: "/library" },
+  { title: "Skills", subtitle: "SKILL.md playbooks", href: "/library/skills" },
+  { title: "Deliverables", subtitle: "Everything produced", href: "/library/deliverables" },
+  { title: "Information", subtitle: "What the heads actually receive", href: "/information" },
+  { title: "Company Profile", subtitle: "Shared context for every head", href: "/profile" },
+  { title: "Account", subtitle: "Your name, role, and timezone", href: "/account" },
+  { title: "Settings", subtitle: "API key, model, departments, data", href: "/settings" },
 ];
 
 /**
@@ -90,10 +89,7 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
     id === COMPANY_ID
       ? "Every head"
       : corpus.departments.find((d) => d.id === id)?.name ?? "Unassigned";
-  const emojiOf = (id: string) =>
-    id === COMPANY_ID ? "🏢" : corpus.departments.find((d) => d.id === id)?.emoji ?? "📄";
-
-  for (const page of PAGES) {
+    for (const page of PAGES) {
     const score = scoreField(page.title, needle, 8);
     if (score) {
       results.push({ ...page, id: `page:${page.href}`, kind: "page", score });
@@ -114,7 +110,6 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
           : department.name,
         subtitle: department.name,
         href: departmentHrefById(department.id),
-        icon: department.emoji,
         score,
       });
     }
@@ -133,7 +128,6 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
         subtitle: `Skill · ${nameOf(skill.departmentId)}`,
         snippet: snippetAround(skill.content, needle),
         href: `/library/skills?dept=${encodeURIComponent(skill.departmentId)}`,
-        icon: emojiOf(skill.departmentId),
         score,
       });
     }
@@ -150,7 +144,6 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
         subtitle: `Deliverable · ${nameOf(deliverable.departmentId)}`,
         snippet: snippetAround(deliverable.body, needle),
         href: "/library/deliverables",
-        icon: emojiOf(deliverable.departmentId),
         score,
       });
     }
@@ -166,7 +159,6 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
         subtitle: `Project · ${project.status}`,
         snippet: snippetAround(project.summary, needle),
         href: `/projects/${project.id}`,
-        icon: "🗂",
         score,
       });
     }
@@ -183,7 +175,6 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
         title: conversation.title,
         subtitle: `Conversation · ${nameOf(conversation.departmentId)}`,
         href: conversationHref(conversation.departmentId, conversation.id),
-        icon: emojiOf(conversation.departmentId),
         score: titleScore,
       });
     }
@@ -202,7 +193,6 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
         subtitle: `${hit.role === "user" ? "You" : nameOf(conversation.departmentId)} · in conversation`,
         snippet: snippetAround(hit.content, needle),
         href: conversationHref(conversation.departmentId, conversation.id),
-        icon: emojiOf(conversation.departmentId),
         score: 3,
       });
     }
@@ -233,7 +223,6 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
         }`,
         snippet,
         href: "/all-hands",
-        icon: "👥",
         score,
       });
     }

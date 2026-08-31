@@ -565,7 +565,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const department: Department = {
           id: input.id ?? newId("dept"),
           name: input.name?.trim() || "New Department",
-          emoji: input.emoji || "\u{1F3E2}",
+          avatarUrl: input.avatarUrl,
           personaName: input.personaName?.trim() || "",
           persona: input.persona ?? "",
           roleTitle:

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useMemo, useState } from "react";
 import { PROJECT_DEFAULT_ICON, ProjectMeter } from "@/components/ProjectBits";
 import { PROJECT_STATUS_LABEL, ProjectDialog } from "@/components/ProjectDialog";
@@ -186,13 +187,22 @@ export default function ProjectsPage() {
                               />
                               {heads.length ? (
                                 <span
-                                  className="md-label-sm text-on-variant/75"
+                                  className="flex items-center -space-x-1.5"
                                   title={heads.map((d) => d.name).join(", ")}
                                 >
-                                  {heads.map((d) => d.emoji).join(" ")}
-                                  {departmentIds.length > heads.length
-                                    ? ` +${departmentIds.length - heads.length}`
-                                    : ""}
+                                  {heads.map((d) => (
+                                    <DepartmentAvatar
+                                      key={d.id}
+                                      department={d}
+                                      size={20}
+                                      className="ring-2 ring-container"
+                                    />
+                                  ))}
+                                  {departmentIds.length > heads.length ? (
+                                    <span className="md-label-sm pl-3 text-on-variant/75">
+                                      +{departmentIds.length - heads.length}
+                                    </span>
+                                  ) : null}
                                 </span>
                               ) : null}
                               {total === 0 ? (

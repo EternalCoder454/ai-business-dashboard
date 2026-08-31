@@ -101,7 +101,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
     departments: departmentRows.map((row) => ({
       id: row.id,
       name: row.name,
-      emoji: row.emoji,
+      avatarUrl: row.avatarUrl ?? undefined,
       personaName: row.personaName,
       roleTitle: row.roleTitle,
       persona: row.persona,
@@ -266,7 +266,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               id: row.id,
               userEmail,
               name: row.name,
-              emoji: row.emoji,
+              avatarUrl: row.avatarUrl ?? null,
               personaName: row.personaName ?? "",
               roleTitle: row.roleTitle,
               persona: row.persona ?? "",

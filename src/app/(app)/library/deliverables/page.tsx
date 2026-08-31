@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useMemo, useState } from "react";
 import {
   Button,
@@ -105,7 +106,7 @@ export default function DeliverablesPage() {
               selected={filter === department.id}
               onClick={() => setFilter(department.id)}
             >
-              <span aria-hidden>{department.emoji}</span>
+              <DepartmentAvatar department={department} size={18} />
               {department.name} · {count}
             </Chip>
           );
@@ -172,7 +173,9 @@ export default function DeliverablesPage() {
 
                         <div className="mt-3 flex items-center justify-between gap-2">
                           <Chip>
-                            <span aria-hidden>{department?.emoji ?? "📄"}</span>
+                            {department ? (
+                              <DepartmentAvatar department={department} size={16} />
+                            ) : null}
                             {department?.name ?? "Unassigned"}
                           </Chip>
                           <span className="md-label-sm text-on-variant/75">
@@ -270,7 +273,7 @@ export default function DeliverablesPage() {
                 >
                   {allDepartments.map((department) => (
                     <option key={department.id} value={department.id}>
-                      {department.emoji} {department.name}
+                      {department.name}
                     </option>
                   ))}
                 </Select>

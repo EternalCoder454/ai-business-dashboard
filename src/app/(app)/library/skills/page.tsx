@@ -1,5 +1,6 @@
 "use client";
 
+import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -73,7 +74,6 @@ function SkillsView() {
     id === COMPANY_ID
       ? "Every head"
       : departmentOf(id)?.personaName || departmentOf(id)?.name || "Unassigned";
-  const ownerEmoji = (id: string) => (id === COMPANY_ID ? "🏢" : departmentOf(id)?.emoji ?? "📄");
   const countFor = (id: string) => skills.filter((s) => s.departmentId === id).length;
 
   const save = async () => {
@@ -182,7 +182,7 @@ function SkillsView() {
             selected={filter === department.id}
             onClick={() => setFilter(department.id)}
           >
-            <span aria-hidden>{department.emoji}</span>
+            <DepartmentAvatar department={department} size={18} />
             {department.personaName || department.name} · {countFor(department.id)}
           </Chip>
         ))}
@@ -241,7 +241,14 @@ function SkillsView() {
                       <div className="flex flex-col gap-2 medium:flex-row medium:items-start medium:justify-between medium:gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span aria-hidden>{ownerEmoji(skill.departmentId)}</span>
+                            {skill.departmentId === COMPANY_ID ? null : (
+                              (() => {
+                                const owner = departmentOf(skill.departmentId);
+                                return owner ? (
+                                  <DepartmentAvatar department={owner} size={20} />
+                                ) : null;
+                              })()
+                            )}
                             <h2 className="md-title truncate">{skill.name}</h2>
                             {skill.departmentId === COMPANY_ID ? (
                               <Chip tone="primary">Every head</Chip>
@@ -347,7 +354,7 @@ function SkillsView() {
                   </option>
                   {allDepartments.map((department) => (
                     <option key={department.id} value={department.id}>
-                      {department.emoji} {department.personaName || department.name}
+                      {department.personaName || department.name}
                     </option>
                   ))}
                 </Select>

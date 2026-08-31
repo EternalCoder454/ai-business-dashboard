@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { PROJECT_DEFAULT_ICON } from "@/components/ProjectBits";
@@ -149,9 +150,11 @@ export default function ProjectPage() {
           {byDepartment.map((group) => (
             <Card key={group.department?.id ?? "unknown"}>
               <div className="mb-4 flex items-center gap-2.5">
-                <span aria-hidden className="text-lg">
-                  {group.department?.emoji ?? "❓"}
-                </span>
+                {group.department ? (
+                  <DepartmentAvatar department={group.department} size={32} />
+                ) : (
+                  <span className="h-8 w-8 flex-none rounded-full bg-high" />
+                )}
                 <div className="min-w-0">
                   <p className="md-title truncate">
                     {group.department?.name ?? "Deleted department"}
