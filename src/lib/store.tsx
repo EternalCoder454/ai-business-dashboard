@@ -32,6 +32,7 @@ import {
   DEFAULT_PROFILE,
   COACH_ID,
   DEFAULT_SETTINGS,
+  WRITING_RULES,
   leadershipCoach,
   PROJECT_ACCENTS,
   seedDepartments,
@@ -39,6 +40,7 @@ import {
 import { handbookSkills } from "./handbookSkills";
 import {
   SHIPPED_COACH_PROMPTS,
+  SHIPPED_WRITING_RULES,
   promptFingerprint,
   seedCoachSkills,
 } from "./coachSkills";
@@ -157,6 +159,11 @@ const StoreContext = createContext<StoreValue | null>(null);
  * push into it by accident, and shared so its identity never changes.
  */
 const NONE: never[] = Object.freeze([]) as never[];
+
+/** The scope wording that made every head close by listing what it does not do. */
+const OLD_SCOPE_PREFIX = "Out of scope: ";
+const NEW_SCOPE_PREFIX =
+  "Route these away only if they are asked for, in one line, then drop it. Never bring them up otherwise: ";
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [seeded, setSeeded] = useState(false);
@@ -290,6 +297,48 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const newHandbook = handbookSkills().filter((s) => !owned.has(s.id));
         if (newHandbook.length) {
           ops.push({ table: "skills", action: "upsert", rows: newHandbook });
+        }
+
+        if (ops.length) {
+          await fetch("/api/workspace", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ops }),
+          });
+          snapshot = await fetch("/api/workspace").then((r) =>
+            r.ok ? (r.json() as Promise<Workspace>) : snapshot,
+          );
+        }
+      }
+
+      /**
+       * Two prompt fixes that have to reach a workspace already carrying the
+       * old wording, since neither lives in code.
+       *
+       * The scope line is rewritten in place rather than replacing the whole
+       * prompt, so anything else someone has edited survives. The writing
+       * rules are replaced only when untouched.
+       */
+      {
+        const ops: MutationOp[] = [];
+
+        const stale = snapshot.departments.filter((d) =>
+          d.systemPrompt.includes(OLD_SCOPE_PREFIX),
+        );
+        if (stale.length) {
+          ops.push({
+            table: "departments",
+            action: "upsert",
+            rows: stale.map((d) => ({
+              ...d,
+              systemPrompt: d.systemPrompt.replace(OLD_SCOPE_PREFIX, NEW_SCOPE_PREFIX),
+            })),
+          });
+        }
+
+        const rules = snapshot.settings.writingRules;
+        if (rules && rules !== WRITING_RULES && SHIPPED_WRITING_RULES.has(promptFingerprint(rules))) {
+          ops.push({ table: "settings", action: "upsert", row: { writingRules: WRITING_RULES } });
         }
 
         if (ops.length) {
