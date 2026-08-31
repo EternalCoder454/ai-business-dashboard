@@ -43,6 +43,13 @@
       "when": 1788162160653,
       "tag": "0005_keen_grandmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788186802050,
+      "tag": "0006_wise_micromax",
+      "breakpoints": true
     }
   ]
 }

@@ -111,6 +111,18 @@ export const messages = pgTable(
     isError: boolean("is_error").notNull().default(false),
     /** File ids, resolved against the files table. Kept out of the row itself. */
     attachmentIds: jsonb("attachment_ids").$type<string[]>().notNull().default([]),
+    /**
+     * What the reply cost, on assistant rows only.
+     *
+     * Recorded per message rather than summed somewhere, because the question
+     * an owner asks later is which person and which department spent it, and
+     * a running total cannot be taken apart again.
+     */
+    model: text("model"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
+    cacheWriteTokens: integer("cache_write_tokens").notNull().default(0),
     sentAt: bigint("sent_at", { mode: "number" }).notNull(),
     createdAt: created(),
   },

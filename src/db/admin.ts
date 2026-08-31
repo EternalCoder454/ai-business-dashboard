@@ -17,6 +17,13 @@ import type { Message } from "@/lib/types";
  * something that arrives with an unrelated feature.
  */
 
+export interface AdminUsage {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+}
+
 export interface AdminPerson {
   email: string;
   displayName?: string;
@@ -25,7 +32,23 @@ export interface AdminPerson {
   conversations: number;
   messages: number;
   lastActive?: number;
+  usage: AdminUsage;
 }
+
+export interface AdminOverview {
+  people: number;
+  signedIn: number;
+  conversations: number;
+  messages: number;
+  deliverables: number;
+  projects: number;
+  files: number;
+  /** Base64 attachment bytes held in the database, which is what grows. */
+  storageBytes: number;
+  usage: AdminUsage;
+}
+
+const NO_USAGE: AdminUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
 export interface AdminConversation {
   id: string;
@@ -59,15 +82,30 @@ export async function listPeople(): Promise<AdminPerson[]> {
     .from(t.messages)
     .groupBy(t.messages.userEmail);
 
+  const spend = await db
+    .select({
+      email: t.messages.userEmail,
+      input: sql<number>`coalesce(sum(${t.messages.inputTokens}), 0)::bigint`,
+      output: sql<number>`coalesce(sum(${t.messages.outputTokens}), 0)::bigint`,
+      cacheRead: sql<number>`coalesce(sum(${t.messages.cacheReadTokens}), 0)::bigint`,
+      cacheWrite: sql<number>`coalesce(sum(${t.messages.cacheWriteTokens}), 0)::bigint`,
+    })
+    .from(t.messages)
+    .groupBy(t.messages.userEmail);
+
   const byEmail = new Map<string, AdminPerson>();
-  const slot = (email: string) => {
+  const slot = (email: string): AdminPerson => {
     const key = email.toLowerCase();
-    let found = byEmail.get(key);
-    if (!found) {
-      found = { email: key, conversations: 0, messages: 0 };
-      byEmail.set(key, found);
-    }
-    return found;
+    const found = byEmail.get(key);
+    if (found) return found;
+    const created: AdminPerson = {
+      email: key,
+      conversations: 0,
+      messages: 0,
+      usage: { ...NO_USAGE },
+    };
+    byEmail.set(key, created);
+    return created;
   };
 
   for (const row of accounts) {
@@ -83,6 +121,14 @@ export async function listPeople(): Promise<AdminPerson[]> {
   }
   for (const row of messageCounts) {
     slot(row.email).messages = Number(row.messages);
+  }
+  for (const row of spend) {
+    slot(row.email).usage = {
+      input: Number(row.input),
+      output: Number(row.output),
+      cacheRead: Number(row.cacheRead),
+      cacheWrite: Number(row.cacheWrite),
+    };
   }
 
   return [...byEmail.values()].sort(
@@ -169,6 +215,16 @@ export async function readConversation(
       thinking: row.thinking ?? undefined,
       error: row.isError || undefined,
       timestamp: row.sentAt,
+      model: row.model ?? undefined,
+      usage:
+        row.outputTokens || row.inputTokens
+          ? {
+              input: row.inputTokens,
+              output: row.outputTokens,
+              cacheRead: row.cacheReadTokens,
+              cacheWrite: row.cacheWriteTokens,
+            }
+          : undefined,
       attachments: row.attachmentIds.length
         ? row.attachmentIds.map((id) => ({
             id,
@@ -197,4 +253,122 @@ export async function departmentNamesFor(
   return Object.fromEntries(
     rows.map((row) => [row.id, row.personaName ? `${row.personaName}, ${row.name}` : row.name]),
   );
+}
+
+/** One row of totals for the whole workspace. */
+export async function overview(): Promise<AdminOverview> {
+  const db = requireDb();
+  const count = sql<number>`count(*)::int`;
+
+  const [people, conversations, messages, deliverables, projects, files, usage] =
+    await Promise.all([
+      db.select({ n: sql<number>`count(distinct ${t.conversations.userEmail})::int` }).from(t.conversations),
+      db.select({ n: count }).from(t.conversations),
+      db.select({ n: count }).from(t.messages),
+      db.select({ n: count }).from(t.deliverables),
+      db.select({ n: count }).from(t.projects),
+      db
+        .select({
+          n: count,
+          bytes: sql<number>`coalesce(sum(length(${t.files.data})), 0)::bigint`,
+        })
+        .from(t.files),
+      db
+        .select({
+          input: sql<number>`coalesce(sum(${t.messages.inputTokens}), 0)::bigint`,
+          output: sql<number>`coalesce(sum(${t.messages.outputTokens}), 0)::bigint`,
+          cacheRead: sql<number>`coalesce(sum(${t.messages.cacheReadTokens}), 0)::bigint`,
+          cacheWrite: sql<number>`coalesce(sum(${t.messages.cacheWriteTokens}), 0)::bigint`,
+        })
+        .from(t.messages),
+    ]);
+
+  const accounts = await db.select({ n: count }).from(t.accounts);
+
+  return {
+    people: Number(people[0]?.n ?? 0),
+    signedIn: Number(accounts[0]?.n ?? 0),
+    conversations: Number(conversations[0]?.n ?? 0),
+    messages: Number(messages[0]?.n ?? 0),
+    deliverables: Number(deliverables[0]?.n ?? 0),
+    projects: Number(projects[0]?.n ?? 0),
+    files: Number(files[0]?.n ?? 0),
+    // Base64 is four characters for every three bytes.
+    storageBytes: Math.round(Number(files[0]?.bytes ?? 0) * 0.75),
+    usage: {
+      input: Number(usage[0]?.input ?? 0),
+      output: Number(usage[0]?.output ?? 0),
+      cacheRead: Number(usage[0]?.cacheRead ?? 0),
+      cacheWrite: Number(usage[0]?.cacheWrite ?? 0),
+    },
+  };
+}
+
+/** What one person's workspace holds, beyond their conversations. */
+export async function detailFor(email: string): Promise<{
+  deliverables: number;
+  projects: number;
+  files: number;
+  skills: number;
+  departments: number;
+  storageBytes: number;
+}> {
+  const db = requireDb();
+  const owner = email.toLowerCase();
+  const count = sql<number>`count(*)::int`;
+
+  // Written out per table: drizzle types each table's userEmail column against
+  // its own table name, so a shared helper cannot accept all of them.
+  const [deliverables, projects, files, skills, departments] = await Promise.all([
+    db.select({ n: count }).from(t.deliverables).where(eq(t.deliverables.userEmail, owner)),
+    db.select({ n: count }).from(t.projects).where(eq(t.projects.userEmail, owner)),
+    db
+      .select({ n: count, bytes: sql<number>`coalesce(sum(length(${t.files.data})), 0)::bigint` })
+      .from(t.files)
+      .where(eq(t.files.userEmail, owner)),
+    db.select({ n: count }).from(t.skills).where(eq(t.skills.userEmail, owner)),
+    db.select({ n: count }).from(t.departments).where(eq(t.departments.userEmail, owner)),
+  ]);
+
+  return {
+    deliverables: Number(deliverables[0]?.n ?? 0),
+    projects: Number(projects[0]?.n ?? 0),
+    files: Number(files[0]?.n ?? 0),
+    skills: Number(skills[0]?.n ?? 0),
+    departments: Number(departments[0]?.n ?? 0),
+    storageBytes: Math.round(Number(files[0]?.bytes ?? 0) * 0.75),
+  };
+}
+
+/**
+ * Removes everything belonging to one address.
+ *
+ * Offboarding, and the only write in this module. Direct messages are included
+ * here even though they are not readable above: leaving a departed person's
+ * messages behind would be worse than deleting them, and deletion does not
+ * require anyone to have read them.
+ */
+export async function deleteEverythingFor(email: string): Promise<void> {
+  const db = requireDb();
+  const owner = email.toLowerCase();
+
+  await db.transaction(async (tx) => {
+    await tx.delete(t.messages).where(eq(t.messages.userEmail, owner));
+    await tx.delete(t.conversations).where(eq(t.conversations.userEmail, owner));
+    await tx.delete(t.allHandsRounds).where(eq(t.allHandsRounds.userEmail, owner));
+    await tx.delete(t.allHandsRuns).where(eq(t.allHandsRuns.userEmail, owner));
+    await tx.delete(t.deliverables).where(eq(t.deliverables.userEmail, owner));
+    await tx.delete(t.projects).where(eq(t.projects.userEmail, owner));
+    await tx.delete(t.files).where(eq(t.files.userEmail, owner));
+    await tx.delete(t.skills).where(eq(t.skills.userEmail, owner));
+    await tx.delete(t.departments).where(eq(t.departments.userEmail, owner));
+    await tx.delete(t.settings).where(eq(t.settings.userEmail, owner));
+    await tx.delete(t.profiles).where(eq(t.profiles.userEmail, owner));
+    await tx.delete(t.accounts).where(eq(t.accounts.userEmail, owner));
+    await tx
+      .delete(t.directMessages)
+      .where(
+        sql`${t.directMessages.fromEmail} = ${owner} or ${t.directMessages.toEmail} = ${owner}`,
+      );
+  });
 }

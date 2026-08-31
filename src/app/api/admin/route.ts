@@ -1,22 +1,27 @@
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import {
+  deleteEverythingFor,
   departmentNamesFor,
+  detailFor,
   listConversationsFor,
   listPeople,
+  overview,
   readConversation,
 } from "@/db/admin";
-import { isAdminEmail } from "@/lib/admin";
+import { ADMIN_EMAILS, isAdminEmail } from "@/lib/admin";
+import { ALLOWED_EMAILS } from "@/auth";
+import { readJsonWithin } from "@/lib/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Read-only, administrators only.
+ * Administrators only.
  *
- * There is no POST, PATCH, or DELETE here, and there should never be one. This
- * is the only route that reads past the per-account boundary every other route
- * enforces, so the smaller its surface the easier it is to be sure of.
+ * Every read here crosses the per-account boundary that the rest of the app
+ * enforces, and the one write deletes an entire workspace, so both go through
+ * the same check and both are logged.
  */
 async function requireAdmin(): Promise<
   { ok: true; email: string } | { ok: false; status: number; error: string }
@@ -57,16 +62,73 @@ export async function GET(request: Request) {
     }
 
     if (person) {
-      const [conversations, departments] = await Promise.all([
+      const [conversations, departments, detail] = await Promise.all([
         listConversationsFor(person),
         departmentNamesFor(person),
+        detailFor(person),
       ]);
-      return Response.json({ conversations, departments });
+      return Response.json({ conversations, departments, detail });
     }
 
-    return Response.json({ people: await listPeople(), self: admin.email });
+    const [people, totals] = await Promise.all([listPeople(), overview()]);
+    return Response.json({
+      people,
+      overview: totals,
+      self: admin.email,
+      // Both lists come from the environment, so they are shown rather than
+      // edited here. Saying who is allowed beats making it guessable.
+      access: { allowed: ALLOWED_EMAILS, admins: ADMIN_EMAILS },
+    });
   } catch (error) {
     console.error("[api/admin]", error);
     return Response.json({ error: "Could not read that." }, { status: 500 });
+  }
+}
+
+/**
+ * Offboarding: removes everything belonging to one address.
+ *
+ * The address has to be sent twice, once as the target and once as a typed
+ * confirmation, because the request that deletes a colleague's entire workspace
+ * should be impossible to send by accident. An administrator cannot delete
+ * themselves; that is what the database console is for.
+ */
+export async function DELETE(request: Request) {
+  const admin = await requireAdmin();
+  if (!admin.ok) {
+    return Response.json({ error: admin.error }, { status: admin.status });
+  }
+
+  const parsed = await readJsonWithin<{ person?: string; confirm?: string }>(request, 4_000);
+  if (!parsed.ok) {
+    return Response.json({ error: parsed.error }, { status: parsed.status });
+  }
+
+  const person = parsed.body.person?.trim().toLowerCase();
+  const confirm = parsed.body.confirm?.trim().toLowerCase();
+
+  if (!person) {
+    return Response.json({ error: "No account named." }, { status: 400 });
+  }
+  if (person !== confirm) {
+    return Response.json(
+      { error: "Type the address exactly to confirm." },
+      { status: 400 },
+    );
+  }
+  if (person === admin.email) {
+    return Response.json(
+      { error: "You cannot delete your own workspace from here." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    console.warn(`[admin] ${admin.email} deleted the workspace of ${person}`);
+    await deleteEverythingFor(person);
+    return Response.json({ ok: true });
+  } catch (error) {
+    console.error("[api/admin] delete", error);
+    return Response.json({ error: "Could not delete that workspace." }, { status: 500 });
   }
 }

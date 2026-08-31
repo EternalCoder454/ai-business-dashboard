@@ -9,9 +9,12 @@
  */
 import { applyMutations, loadWorkspace } from "../src/db/repo";
 import {
+  deleteEverythingFor,
   departmentNamesFor,
+  detailFor,
   listConversationsFor,
   listPeople,
+  overview,
   readConversation,
 } from "../src/db/admin";
 import { ADMIN_EMAILS, isAdminEmail } from "../src/lib/admin";
@@ -34,7 +37,7 @@ async function wipe(email: string) {
   ]);
 }
 
-async function seed(email: string, title: string, body: string) {
+async function seed(email: string, title: string, body: string, withUsage = false) {
   await applyMutations(email, [
     {
       table: "departments",
@@ -62,6 +65,18 @@ async function seed(email: string, title: string, body: string) {
           title,
           messages: [
             { id: `m_${email}`, role: "user", content: body, timestamp: Date.now() },
+            ...(withUsage
+              ? [
+                  {
+                    id: `r_${email}`,
+                    role: "assistant" as const,
+                    content: "Understood.",
+                    timestamp: Date.now() + 1,
+                    model: "claude-sonnet-5",
+                    usage: { input: 100, output: 40, cacheRead: 300, cacheWrite: 20 },
+                  },
+                ]
+              : []),
           ],
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -91,7 +106,7 @@ async function main() {
   check("trailing separators are dropped", parseEmailList("a@x.com,\n").length === 1);
   check("lowercased", parseEmailList("A@X.com")[0] === "a@x.com");
 
-  await seed(ONE, "Server migration", "The staging box keeps falling over.");
+  await seed(ONE, "Server migration", "The staging box keeps falling over.", true);
   await seed(TWO, "Invoice run", "Client B has not paid since March.");
 
   console.log("\nthe roster covers everyone with a workspace");
@@ -115,7 +130,13 @@ async function main() {
   check("no leak across accounts", crossed === null, crossed ? "LEAKED" : "");
 
   const thread = await readConversation(ONE, listOne[0].id);
-  check("the owner's own read works", thread?.messages.length === 1);
+  check("the owner's own read works", thread?.messages.length === 2, String(thread?.messages.length));
+  check(
+    "and the reply carries what it cost",
+    thread?.messages[1]?.usage?.output === 40,
+    String(thread?.messages[1]?.usage?.output),
+  );
+  check("and which model produced it", thread?.messages[1]?.model === "claude-sonnet-5");
   check("message content survives", Boolean(thread?.messages[0]?.content.startsWith("The staging box")));
 
   console.log("\ndepartment names resolve per account");
@@ -141,6 +162,35 @@ async function main() {
   ]);
   const afterEmpty = await listConversationsFor(ONE);
   check("still one conversation", afterEmpty.length === 1, String(afterEmpty.length));
+  console.log("\nusage is recorded per message and totalled per person");
+  const withUsage = await listPeople();
+  const first = withUsage.find((p) => p.email === ONE);
+  check("usage is present", Boolean(first?.usage));
+  check("output tokens counted", first?.usage.output === 40, String(first?.usage.output));
+  check("cached input counted", first?.usage.cacheRead === 300, String(first?.usage.cacheRead));
+  check("the other account is separate", 
+    withUsage.find((p) => p.email === TWO)?.usage.output === 0);
+
+  console.log("\nthe overview totals across everyone");
+  const totals = await overview();
+  check("counts both accounts", totals.people >= 2, String(totals.people));
+  check("sums output tokens", totals.usage.output >= 40, String(totals.usage.output));
+
+  console.log("\nper person detail is scoped to that person");
+  const d = await detailFor(ONE);
+  check("one department", d.departments === 1, String(d.departments));
+  check("no projects yet", d.projects === 0);
+
+  console.log("\ndeleting a workspace leaves the other one alone");
+  await deleteEverythingFor(ONE);
+  check("their conversations are gone", (await listConversationsFor(ONE)).length === 0);
+  check("their account row is gone", !(await listPeople()).some((p) => p.email === ONE));
+  check(
+    "the other account survived",
+    (await listConversationsFor(TWO)).length === 1,
+    String((await listConversationsFor(TWO)).length),
+  );
+
 
   console.log("\ncleaning up");
   await Promise.all([wipe(ONE), wipe(TWO)]);

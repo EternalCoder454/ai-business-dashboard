@@ -276,6 +276,10 @@ export function ChatView({ departmentId }: { departmentId: string }) {
       thinking: collectedThinking || undefined,
       timestamp: Date.now(),
       error: !collectedText && Boolean(failure),
+      // Recorded on the message rather than only shown under the composer, so
+      // spend can still be attributed to a person and a head months later.
+      usage: result.usage,
+      model: result.usage ? settings.model : undefined,
     };
 
     // A trailing error after partial text is appended so it is not lost.

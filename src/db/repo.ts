@@ -74,6 +74,16 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       thinking: row.thinking ?? undefined,
       error: row.isError || undefined,
       timestamp: row.sentAt,
+      model: row.model ?? undefined,
+      usage:
+        row.inputTokens || row.outputTokens || row.cacheReadTokens || row.cacheWriteTokens
+          ? {
+              input: row.inputTokens,
+              output: row.outputTokens,
+              cacheRead: row.cacheReadTokens,
+              cacheWrite: row.cacheWriteTokens,
+            }
+          : undefined,
       attachments: row.attachmentIds.length
         ? row.attachmentIds
             .map((id) => filesById.get(id))
@@ -405,6 +415,11 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
                 thinking: message.thinking ?? null,
                 isError: Boolean(message.error),
                 attachmentIds: (message.attachments ?? []).map((a) => a.id),
+                model: message.model ?? null,
+                inputTokens: message.usage?.input ?? 0,
+                outputTokens: message.usage?.output ?? 0,
+                cacheReadTokens: message.usage?.cacheRead ?? 0,
+                cacheWriteTokens: message.usage?.cacheWrite ?? 0,
                 sentAt: message.timestamp,
               };
               await tx

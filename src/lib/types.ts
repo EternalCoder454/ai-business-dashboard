@@ -54,6 +54,10 @@ export interface Message {
   error?: boolean;
   /** Images sent with this message. User messages only. */
   attachments?: Attachment[];
+  /** What the reply cost. Assistant messages only, recorded when it arrived. */
+  usage?: TokenUsage;
+  /** The model that produced it, since the setting can change between replies. */
+  model?: string;
 }
 
 /**
