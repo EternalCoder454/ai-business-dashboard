@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Button,
   Card,
@@ -34,6 +34,7 @@ export default function SettingsPage() {
     updateSettings,
     departments,
     ceo,
+    storage,
     ownSkillsFor,
     createDepartment,
     updateDepartment,
@@ -48,6 +49,13 @@ export default function SettingsPage() {
   const [pendingDelete, setPendingDelete] = useState<Department | null>(null);
   const [dataNotice, setDataNotice] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // The credentials are read from this browser a moment after mount, so the
+  // first render sees an empty key. Adopt the real one when it lands, but
+  // never over the top of something being typed.
+  useEffect(() => {
+    if (!keyTouched) setKeyDraft(settings.apiKey);
+  }, [settings.apiKey, keyTouched]);
 
   const editable = ceo ? [ceo, ...departments] : departments;
 
@@ -101,7 +109,11 @@ export default function SettingsPage() {
       <PageHeader
         eyebrow="Configuration"
         title="Settings"
-        description="Everything here lives in this browser only. Departments, conversations, and your API key are stored in IndexedDB on this machine."
+        description={
+          storage === "hosted"
+            ? "Departments, conversations, and deliverables sync to your account. Your API key is the exception: it stays in this browser and is never written to the database."
+            : "Everything here lives in this browser only. Departments, conversations, and your API key are stored on this machine."
+        }
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 expanded:px-8 py-6">

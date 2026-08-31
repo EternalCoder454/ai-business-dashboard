@@ -10,6 +10,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  EMPTY_CREDENTIALS,
+  readCredentials,
+  writeCredentials,
+  type Credentials,
+} from "./credentials";
 import { db, ensureSeeded, newId } from "./db";
 import {
   applyOp,
@@ -107,6 +113,12 @@ const StoreContext = createContext<StoreValue | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [seeded, setSeeded] = useState(false);
   const [mode, setMode] = useState<StorageMode>("resolving");
+
+  // Read from this browser rather than from either storage. Until the read has
+  // happened, `ready` is false and the stored settings stand, so the first
+  // render never blanks a key that is actually there.
+  const [credentials, setCredentials] = useState<Credentials>(EMPTY_CREDENTIALS);
+  const [credentialsReady, setCredentialsReady] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState<string | undefined>();
   const [remote, setRemote] = useState<Workspace | null>(null);
   const [googleIdentity, setGoogleIdentity] = useState<{
@@ -271,17 +283,52 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   /**
+   * Picks the credentials up on load, and rescues one saved into Dexie before
+   * this browser had its own store, so the key does not have to be retyped.
+   * Runs once: after this, localStorage is the only home.
+   */
+  useEffect(() => {
+    if (credentialsReady) return;
+
+    const stored = readCredentials();
+    if (stored) {
+      setCredentials(stored);
+      setCredentialsReady(true);
+      return;
+    }
+
+    // Nothing saved here yet. In hosted mode there is nothing to inherit,
+    // since the server never held a key in the first place.
+    if (mode === "resolving") return;
+    if (hosted) {
+      setCredentialsReady(true);
+      return;
+    }
+    if (storedSettings === undefined) return; // Dexie has not answered yet
+
+    setCredentials(
+      writeCredentials({
+        apiKey: storedSettings.apiKey ?? "",
+        workspaceId: storedSettings.workspaceId ?? "",
+      }),
+    );
+    setCredentialsReady(true);
+  }, [credentialsReady, hosted, mode, storedSettings]);
+
+  /**
    * Reads come from whichever storage is in use. Hosted keeps its snapshot in
    * state; local keeps the live Dexie queries. Everything below this line is
    * written against these names and never has to know which one it got.
    */
-  const settings: Settings = useMemo(
-    () =>
-      hosted
-        ? { ...DEFAULT_SETTINGS, ...(remote?.settings ?? {}), apiKey: "" }
-        : { ...DEFAULT_SETTINGS, ...(storedSettings ?? {}) },
-    [hosted, remote?.settings, storedSettings],
-  );
+  const settings: Settings = useMemo(() => {
+    const base = hosted
+      ? { ...DEFAULT_SETTINGS, ...(remote?.settings ?? {}) }
+      : { ...DEFAULT_SETTINGS, ...(storedSettings ?? {}) };
+    // Neither storage holds the credentials, so they are laid over the top from
+    // this browser once read. Overlaying unconditionally is what lets an empty
+    // key mean cleared rather than merely absent.
+    return credentialsReady ? { ...base, ...credentials } : base;
+  }, [hosted, remote?.settings, storedSettings, credentials, credentialsReady]);
 
   /**
    * Google supplies the name, avatar, and address on every sign in, so those
@@ -400,12 +447,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
        * ---------------------------------------------------------------- */
 
       updateSettings: async (patch) => {
+        // The credentials branch off here in both modes. They are the only
+        // settings that belong to the browser rather than to the workspace.
+        const { apiKey, workspaceId, ...rest } = { ...patch } as Partial<Settings>;
+
+        if (apiKey !== undefined || workspaceId !== undefined) {
+          setCredentials(
+            writeCredentials({
+              ...(apiKey !== undefined ? { apiKey } : {}),
+              ...(workspaceId !== undefined ? { workspaceId } : {}),
+            }),
+          );
+          setCredentialsReady(true);
+        }
+
+        if (Object.keys(rest).length === 0) return;
+
         if (hosted) {
-          const { apiKey: _ignored, ...rest } = { ...patch } as Partial<Settings>;
           await push({ table: "settings", action: "upsert", row: rest });
           return;
         }
-        await requireDb().settings.put({ ...settings, ...patch, id: "app" });
+        await requireDb().settings.put({ ...settings, ...rest, id: "app" });
       },
 
       updateProfile: async (patch) => {
