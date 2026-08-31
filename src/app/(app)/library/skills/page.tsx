@@ -24,7 +24,13 @@ import {
 import { LibraryTabs } from "@/components/LibraryTabs";
 import { createRipple } from "@/components/ui/ripple";
 import { CEO_ID, COMPANY_ID } from "@/lib/seed";
-import { buildSkillsBlock, parseSkillMarkdown, skillFileName, skillToMarkdown } from "@/lib/skills";
+import {
+  buildSkillsBlock,
+  estimateTokens,
+  parseSkillMarkdown,
+  skillFileName,
+  skillToMarkdown,
+} from "@/lib/skills";
 import { useStore } from "@/lib/store";
 import type { Skill } from "@/lib/types";
 
@@ -257,6 +263,15 @@ function SkillsView() {
                           <p className="md-label mt-1 text-on-variant">
                             {ownerLabel(skill.departmentId)} ·{" "}
                             {skill.description || "No trigger described"}
+                          </p>
+                          <p className="md-label-sm mt-1 text-on-variant/75">
+                            {skill.enabled
+                              ? `Costs about ${estimateTokens(skill.content).toLocaleString()} tokens on every message to ${
+                                  skill.departmentId === COMPANY_ID
+                                    ? "every department"
+                                    : ownerLabel(skill.departmentId)
+                                }`
+                              : `Off, saving about ${estimateTokens(skill.content).toLocaleString()} tokens a message`}
                           </p>
                         </div>
 

@@ -77,6 +77,16 @@ export function skillFileName(skill: Skill): string {
  * department prompt and the company profile: skills change rarely, so this
  * stays inside the cached prefix.
  */
+/**
+ * Roughly how many tokens a piece of text costs.
+ *
+ * About 3.7 characters per token for English prose. Deliberately approximate:
+ * it is here to make a relative cost visible, not to bill anyone.
+ */
+export function estimateTokens(text: string): number {
+  return Math.round(text.length / 3.7);
+}
+
 export function buildSkillsBlock(skills: Skill[]): string {
   const active = skills.filter((skill) => skill.enabled && skill.content.trim());
   if (active.length === 0) return "";
