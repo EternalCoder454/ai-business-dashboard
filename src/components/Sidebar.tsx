@@ -39,7 +39,7 @@ export interface NavLink {
   icon: ReactNode;
 }
 
-export const COMPANY_LINKS: NavLink[] = [
+export const WORK_LINKS: NavLink[] = [
   {
     href: "/ceo",
     label: "CEO Office",
@@ -65,6 +65,10 @@ export const COMPANY_LINKS: NavLink[] = [
     short: "Projects",
     icon: <FolderIcon className="h-5 w-5" />,
   },
+];
+
+/** Reference: things you read rather than do. */
+export const WORKSPACE_LINKS: NavLink[] = [
   {
     href: "/library",
     label: "Library",
@@ -77,6 +81,10 @@ export const COMPANY_LINKS: NavLink[] = [
     short: "Info",
     icon: <SparkIcon className="h-5 w-5" />,
   },
+];
+
+/** Setup: opened when something needs changing, not day to day. */
+export const SETUP_LINKS: NavLink[] = [
   {
     href: "/profile",
     label: "Company Profile",
@@ -112,7 +120,15 @@ const ADMIN_LINK: NavLink = {
   icon: <ShieldIcon className="h-5 w-5" />,
 };
 
-export const PRIMARY_LINKS = COMPANY_LINKS.slice(0, 5);
+/** Everything, for search and for anything that needs the full list. */
+export const COMPANY_LINKS: NavLink[] = [
+  ...WORK_LINKS,
+  ...WORKSPACE_LINKS,
+  ...SETUP_LINKS,
+];
+
+/** The five that fit a rail or a bottom bar, which is exactly the work group. */
+export const PRIMARY_LINKS = WORK_LINKS;
 
 export function isActive(pathname: string, href: string): boolean {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -154,9 +170,7 @@ export function SidebarContent({
   } = useStore();
   const { unread } = useMessages();
 
-  const links = isAdmin
-    ? [...COMPANY_LINKS, ADMIN_LINK]
-    : COMPANY_LINKS;
+  const setupLinks = isAdmin ? [...SETUP_LINKS, ADMIN_LINK] : SETUP_LINKS;
 
   const [subtitle, setSubtitle] = useState(settings.companySubtitle);
 
@@ -239,9 +253,9 @@ export function SidebarContent({
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pb-6">
-        <Section id="company" label="Company">
+        <Section id="work" label="Work">
         <ul className="mb-5 space-y-0.5">
-          {links.map((link) => (
+          {WORK_LINKS.map((link) => (
             <li key={link.href}>
               <NavRow
                 href={link.href}
@@ -259,6 +273,44 @@ export function SidebarContent({
             </li>
           ))}
         </ul>
+        </Section>
+
+        <Section id="workspace" label="Reference">
+          <ul className="mb-5 space-y-0.5">
+            {WORKSPACE_LINKS.map((link) => (
+              <li key={link.href}>
+                <NavRow
+                  href={link.href}
+                  active={isActive(pathname, link.href)}
+                  onNavigate={onNavigate}
+                >
+                  <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
+                    {link.icon}
+                  </span>
+                  <span className="md-body truncate">{link.label}</span>
+                </NavRow>
+              </li>
+            ))}
+          </ul>
+        </Section>
+
+        <Section id="setup" label="Setup">
+          <ul className="mb-5 space-y-0.5">
+            {setupLinks.map((link) => (
+              <li key={link.href}>
+                <NavRow
+                  href={link.href}
+                  active={isActive(pathname, link.href)}
+                  onNavigate={onNavigate}
+                >
+                  <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
+                    {link.icon}
+                  </span>
+                  <span className="md-body truncate">{link.label}</span>
+                </NavRow>
+              </li>
+            ))}
+          </ul>
         </Section>
 
         <Section id="departments" label="Departments" count={departments.length}>
@@ -356,6 +408,8 @@ export function SidebarContent({
 
 const COLLAPSE_KEY = "eterneon.nav.collapsed";
 
+const CLOSED_BY_DEFAULT = new Set(["workspace", "setup"]);
+
 function readCollapsed(): Record<string, boolean> {
   if (typeof window === "undefined") return {};
   try {
@@ -386,7 +440,10 @@ function Section({
   const [open, setOpen] = useState(true);
 
   useEffect(() => {
-    setOpen(readCollapsed()[id] !== true);
+    const stored = readCollapsed()[id];
+    // Reference and Setup start shut. They are opened when something needs
+    // changing, and leaving them open is most of what made the menu long.
+    setOpen(stored === undefined ? !CLOSED_BY_DEFAULT.has(id) : stored !== true);
   }, [id]);
 
   const toggle = () => {
