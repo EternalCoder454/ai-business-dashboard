@@ -39,7 +39,9 @@
     ".next-authtest/types/**/*.ts",
     ".next-authtest/dev/types/**/*.ts",
     ".next-noauth/types/**/*.ts",
-    ".next-noauth/dev/types/**/*.ts"
+    ".next-noauth/dev/types/**/*.ts",
+    ".next-ui/types/**/*.ts",
+    ".next-ui/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

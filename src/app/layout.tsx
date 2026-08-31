@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/next";
 import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
@@ -67,7 +68,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        {/* Vercel's own beacon, served from this origin in production, so the
+            content policy's script-src and connect-src of 'self' cover it. */}
+        <Analytics />
+      </body>
     </html>
   );
 }
