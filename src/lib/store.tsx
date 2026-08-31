@@ -127,7 +127,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .then((response) => (response.ok ? (response.json() as Promise<WorkspaceStatus>) : null))
       .then((status) => {
         if (cancelled) return;
-        if (status?.hosted && status.signedIn) {
+        if (status?.signedIn) {
           setSignedInEmail(status.email);
           setGoogleIdentity({
             email: status.email,
@@ -135,10 +135,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             givenName: status.givenName,
             image: status.image,
           });
-          setMode("hosted");
-        } else {
-          setMode("local");
         }
+        setMode(status?.hosted && status.signedIn ? "hosted" : "local");
       })
       .catch(() => {
         if (!cancelled) setMode("local");

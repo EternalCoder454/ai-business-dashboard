@@ -10,13 +10,32 @@ export const dynamic = "force-dynamic";
  * decide between IndexedDB and the hosted workspace without guessing.
  */
 export async function GET() {
-  if (!databaseEnabled || !authEnabled) {
+  // Auth alone decides whether someone is signed in. The database decides
+  // whether their workspace is hosted. Treating those as one fact made a
+  // deployment with auth but no database look signed out.
+  if (!authEnabled) {
     return Response.json({ hosted: false, signedIn: false, empty: null });
   }
 
   const session = await auth();
   const email = session?.user?.email;
-  if (!email) return Response.json({ hosted: true, signedIn: false, empty: null });
+  if (!email) {
+    return Response.json({ hosted: databaseEnabled, signedIn: false, empty: null });
+  }
+
+  if (!databaseEnabled) {
+    // Signed in, but there is nowhere to keep a workspace, so this browser
+    // stays on IndexedDB while still knowing who is using it.
+    return Response.json({
+      hosted: false,
+      signedIn: true,
+      email,
+      name: session.user?.name ?? undefined,
+      givenName: session.user?.name?.split(" ")[0] ?? undefined,
+      image: session.user?.image ?? undefined,
+      empty: null,
+    });
+  }
 
   const identity = {
     name: session.user?.name ?? undefined,
