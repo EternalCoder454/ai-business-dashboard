@@ -46,7 +46,10 @@ function contentSecurityPolicy() {
         "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   ];
 
-  if (isProduction) directives.push("upgrade-insecure-requests");
+  // No upgrade-insecure-requests. Every source above is already same-origin or
+  // https, so it has nothing to upgrade, and it breaks a production build
+  // served over plain http, which is how this gets tested locally. HSTS is what
+  // actually keeps the deployment off http.
 
   return directives.join("; ");
 }

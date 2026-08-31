@@ -28,6 +28,12 @@ export const config = {
      * Everything except the auth routes, the sign-in page, and the static and
      * generated assets, which have to load before anyone is signed in.
      */
-    "/((?!api/auth|signin|_next/static|_next/image|icon|apple-icon|manifest.webmanifest|favicon.ico).*)",
+    /*
+     * api/workspace/status is excluded because answering "you are not signed
+     * in" is its entire job. Redirecting it meant the store fetched the
+     * sign-in page as JSON, failed, and fell back by accident rather than by
+     * being told. It checks auth itself and reveals nothing else.
+     */
+    "/((?!api/auth|api/workspace/status|signin|_next/static|_next/image|icon|apple-icon|manifest.webmanifest|favicon.ico).*)",
   ],
 };

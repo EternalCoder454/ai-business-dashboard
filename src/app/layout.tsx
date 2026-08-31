@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
-import { AppShell } from "@/components/AppShell";
 import { siteUrl } from "@/lib/site";
-import { StoreProvider } from "@/lib/store";
 import "./globals.css";
 
 // Self-hosted by next/font, so there is no third-party round trip on the
@@ -49,6 +47,15 @@ export const viewport: Viewport = {
  */
 const THEME_SCRIPT = `try{var t=localStorage.getItem("eterneon-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
 
+/**
+ * Deliberately bare.
+ *
+ * The store and the app shell used to live here, which meant the sign-in page
+ * downloaded the whole application, IndexedDB included, before anyone could
+ * press its one button. They now sit in the (app) route group instead, so a
+ * page rendered to someone who is not signed in carries nothing they cannot
+ * use. Route groups do not appear in the URL, so every path is unchanged.
+ */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
@@ -60,11 +67,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body className="antialiased">
-        <StoreProvider>
-          <AppShell>{children}</AppShell>
-        </StoreProvider>
-      </body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

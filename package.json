@@ -12,7 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "smoke": "tsx --env-file=.env.local scripts/smoke.ts",
-    "guard-test": "tsx scripts/guard-test.ts"
+    "guard-test": "tsx scripts/guard-test.ts",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",
@@ -34,6 +35,8 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "drizzle-kit": "^0.31.10",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.3",
     "tailwindcss": "^4.1.13",
     "tsx": "^4.23.13",
     "typescript": "^5.9.2"

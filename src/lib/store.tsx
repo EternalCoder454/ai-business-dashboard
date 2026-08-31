@@ -127,6 +127,12 @@ interface StoreValue {
 
 const StoreContext = createContext<StoreValue | null>(null);
 
+/**
+ * The empty result every storage read falls back to. Frozen so a caller cannot
+ * push into it by accident, and shared so its identity never changes.
+ */
+const NONE: never[] = Object.freeze([]) as never[];
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [seeded, setSeeded] = useState(false);
   const [mode, setMode] = useState<StorageMode>("resolving");
@@ -393,13 +399,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [settings.theme]);
 
-  const departmentList = hosted ? (remote?.departments ?? []) : (allDepartments ?? []);
-  const conversationList = hosted ? (remote?.conversations ?? []) : (conversations ?? []);
-  const deliverableList = hosted ? (remote?.deliverables ?? []) : (deliverables ?? []);
-  const projectList = hosted ? (remote?.projects ?? []) : (projects ?? []);
-  const skillList = hosted ? (remote?.skills ?? []) : (skills ?? []);
-  const fileList = hosted ? (remote?.files ?? []) : (files ?? []);
-  const runList = hosted ? (remote?.allHandsRuns ?? []) : (allHandsRuns ?? []);
+  /**
+   * One shared empty array, rather than a fresh `[]` per fallback per render.
+   *
+   * These seven values are dependencies of the context memo below. Written as
+   * `?? []`, each one produced a new array identity on every render while its
+   * source was still undefined, which changed the memo's dependencies every
+   * time and rebuilt the context value on every render. Every component reading
+   * the store then re-rendered along with it, so the memo was doing nothing but
+   * costing a comparison. A stable reference is the whole fix.
+   */
+  const departmentList = hosted ? (remote?.departments ?? NONE) : (allDepartments ?? NONE);
+  const conversationList = hosted ? (remote?.conversations ?? NONE) : (conversations ?? NONE);
+  const deliverableList = hosted ? (remote?.deliverables ?? NONE) : (deliverables ?? NONE);
+  const projectList = hosted ? (remote?.projects ?? NONE) : (projects ?? NONE);
+  const skillList = hosted ? (remote?.skills ?? NONE) : (skills ?? NONE);
+  const fileList = hosted ? (remote?.files ?? NONE) : (files ?? NONE);
+  const runList = hosted ? (remote?.allHandsRuns ?? NONE) : (allHandsRuns ?? NONE);
 
   /**
    * Sends one change to the account and applies it locally at once, so the
@@ -878,6 +894,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     departmentList,
     conversationList,
     deliverableList,
+    projectList,
     skillList,
     fileList,
     runList,

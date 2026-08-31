@@ -32,6 +32,16 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # Here for react-hooks/exhaustive-deps above all. A missing dependency in
+      # the store silently stopped the context value updating, and neither the
+      # typecheck nor the build could see it.
+      - name: Lint
+        run: npm run lint
+
+      # Pure functions, no database and no network, so this can gate every push.
+      - name: Guard tests
+        run: npm run guard-test
+
       - name: Build
         run: npm run build
 
