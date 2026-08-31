@@ -4,6 +4,13 @@ import Link from "next/link";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import {
+  moveNavSection,
+  resetNavLayout,
+  toggleNavSection,
+  useNavLayout,
+  type NavSectionId,
+} from "@/lib/navLayout";
 import { CompanyMark } from "./CompanyMark";
 import { CEO_ID } from "@/lib/seed";
 import { conversationHref, departmentHref, formatRelativeTime } from "@/lib/routes";
@@ -316,156 +323,184 @@ export function SidebarContent({
         </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-6">
-        <Section id="work" label="Work">
-        <ul className="mb-5 space-y-0.5">
-          {WORK_LINKS.map((link) => (
-            <li key={link.href}>
-              <NavRow
-                href={link.href}
-                active={isActive(pathname, link.href)}
-                onNavigate={onNavigate}
-              >
-                <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
-                  {link.icon}
-                  {link.href === "/messages" ? (
-                    <NavBadge count={unread} label={`${unread} unread messages`} />
-                  ) : null}
-                </span>
-                <span className="md-body truncate">{link.label}</span>
-              </NavRow>
-            </li>
-          ))}
-        </ul>
-        </Section>
-
-        <Section id="workspace" label="Reference">
-          <ul className="mb-5 space-y-0.5">
-            {WORKSPACE_LINKS.map((link) => (
-              <li key={link.href}>
-                <NavRow
-                  href={link.href}
-                  active={isActive(pathname, link.href)}
-                  onNavigate={onNavigate}
-                >
-                  <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
-                    {link.icon}
-                  </span>
-                  <span className="md-body truncate">{link.label}</span>
-                </NavRow>
-              </li>
-            ))}
-          </ul>
-        </Section>
-
-        <Section id="setup" label="Setup">
-          <ul className="mb-5 space-y-0.5">
-            {setupLinks.map((link) => (
-              <li key={link.href}>
-                <NavRow
-                  href={link.href}
-                  active={isActive(pathname, link.href)}
-                  onNavigate={onNavigate}
-                >
-                  <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
-                    {link.icon}
-                  </span>
-                  <span className="md-body truncate">{link.label}</span>
-                </NavRow>
-              </li>
-            ))}
-          </ul>
-        </Section>
-
-        <Section id="departments" label="Departments" count={departments.length}>
-        <ul className="mb-5 space-y-0.5">
-          {!ready && departments.length === 0 ? (
-            <li className="md-body px-3 py-2 text-on-variant/75">Loading…</li>
-          ) : null}
-          {departments.map((department) => (
-            <li key={department.id}>
-              <NavRow
-                href={departmentHref(department)}
-                active={activeDepartmentId === department.id}
-                onNavigate={onNavigate}
-              >
-                <DepartmentAvatar department={department} size={20} />
-                <span className="md-body min-w-0 flex-1 truncate">{department.name}</span>
-                <span
-                  title={`${ownSkillsFor(department.id).length} skills`}
-                  className="md-label-sm rounded-md bg-highest px-1.5 py-0.5 text-on-variant"
-                >
-                  {ownSkillsFor(department.id).length}
-                </span>
-                <StatusDot status={statusOf(department.id)} />
-              </NavRow>
-            </li>
-          ))}
-        </ul>
-        </Section>
-
-        {personalDepartments.length ? (
-          <>
-            <Section id="personal" label="Yours">
-            <ul className="mb-5 space-y-0.5">
-              {personalDepartments.map((department) => (
-                <li key={department.id}>
-                  <NavRow
-                    href={departmentHref(department)}
-                    active={activeDepartmentId === department.id}
-                    onNavigate={onNavigate}
-                  >
-                    <DepartmentAvatar department={department} size={20} />
-                    <span className="md-body min-w-0 flex-1 truncate">
-                      {department.personaName || department.name}
-                    </span>
-                    <StatusDot status={statusOf(department.id)} />
-                  </NavRow>
-                </li>
-              ))}
-            </ul>
-            </Section>
-          </>
-        ) : null}
-
-        <Section id="recent" label="Recent">
-        {recent.length === 0 ? (
-          <p className="md-body px-3 py-2 text-on-variant/75">
-            Conversations you start will show up here.
-          </p>
-        ) : (
-          <ul className="space-y-0.5">
-            {recent.map((conversation) => {
-              const department = allDepartments.find(
-                (d) => d.id === conversation.departmentId,
-              );
-              return (
-                <li key={conversation.id}>
-                  <NavRow
-                    href={conversationHref(conversation.departmentId, conversation.id)}
-                    active={false}
-                    onNavigate={onNavigate}
-                  >
-                    {department ? (
-                      <DepartmentAvatar department={department} size={18} />
-                    ) : (
-                      <span className="h-4.5 w-4.5 flex-none rounded-full bg-high" />
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <span className="md-body block truncate">{conversation.title}</span>
-                      <span className="md-label-sm block truncate text-on-variant/75">
-                        {department?.name ?? "Archived"} ·{" "}
-                        {formatRelativeTime(conversation.updatedAt)}
+      {/* Sections are data rather than markup in a fixed order, so the drawer
+          can be rearranged and pruned per browser. Hiding one only removes it
+          from here: search, the bottom bar, and the URL still reach every
+          destination, so this can never strand a page. */}
+      <SidebarSections
+        sections={{
+    work: {
+      label: "Work",
+      content: (
+        <>
+              <ul className="mb-5 space-y-0.5">
+                {WORK_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <NavRow
+                      href={link.href}
+                      active={isActive(pathname, link.href)}
+                      onNavigate={onNavigate}
+                    >
+                      <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
+                        {link.icon}
+                        {link.href === "/messages" ? (
+                          <NavBadge count={unread} label={`${unread} unread messages`} />
+                        ) : null}
                       </span>
-                    </span>
-                  </NavRow>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        </Section>
-      </nav>
+                      <span className="md-body truncate">{link.label}</span>
+                    </NavRow>
+                  </li>
+                ))}
+              </ul>
+        </>
+      ),
+    },
+    workspace: {
+      label: "Reference",
+      content: (
+        <>
+                <ul className="mb-5 space-y-0.5">
+                  {WORKSPACE_LINKS.map((link) => (
+                    <li key={link.href}>
+                      <NavRow
+                        href={link.href}
+                        active={isActive(pathname, link.href)}
+                        onNavigate={onNavigate}
+                      >
+                        <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
+                          {link.icon}
+                        </span>
+                        <span className="md-body truncate">{link.label}</span>
+                      </NavRow>
+                    </li>
+                  ))}
+                </ul>
+        </>
+      ),
+    },
+    setup: {
+      label: "Setup",
+      content: (
+        <>
+                <ul className="mb-5 space-y-0.5">
+                  {setupLinks.map((link) => (
+                    <li key={link.href}>
+                      <NavRow
+                        href={link.href}
+                        active={isActive(pathname, link.href)}
+                        onNavigate={onNavigate}
+                      >
+                        <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
+                          {link.icon}
+                        </span>
+                        <span className="md-body truncate">{link.label}</span>
+                      </NavRow>
+                    </li>
+                  ))}
+                </ul>
+        </>
+      ),
+    },
+    departments: {
+      label: "Departments",
+      count: departments.length,
+      content: (
+        <>
+              <ul className="mb-5 space-y-0.5">
+                {!ready && departments.length === 0 ? (
+                  <li className="md-body px-3 py-2 text-on-variant/75">Loading…</li>
+                ) : null}
+                {departments.map((department) => (
+                  <li key={department.id}>
+                    <NavRow
+                      href={departmentHref(department)}
+                      active={activeDepartmentId === department.id}
+                      onNavigate={onNavigate}
+                    >
+                      <DepartmentAvatar department={department} size={20} />
+                      <span className="md-body min-w-0 flex-1 truncate">{department.name}</span>
+                      <span
+                        title={`${ownSkillsFor(department.id).length} skills`}
+                        className="md-label-sm rounded-md bg-highest px-1.5 py-0.5 text-on-variant"
+                      >
+                        {ownSkillsFor(department.id).length}
+                      </span>
+                      <StatusDot status={statusOf(department.id)} />
+                    </NavRow>
+                  </li>
+                ))}
+              </ul>
+        </>
+      ),
+    },
+    personal: personalDepartments.length ? {
+      label: "Yours",
+      content: (
+        <>
+                  <ul className="mb-5 space-y-0.5">
+                    {personalDepartments.map((department) => (
+                      <li key={department.id}>
+                        <NavRow
+                          href={departmentHref(department)}
+                          active={activeDepartmentId === department.id}
+                          onNavigate={onNavigate}
+                        >
+                          <DepartmentAvatar department={department} size={20} />
+                          <span className="md-body min-w-0 flex-1 truncate">
+                            {department.personaName || department.name}
+                          </span>
+                          <StatusDot status={statusOf(department.id)} />
+                        </NavRow>
+                      </li>
+                    ))}
+                  </ul>
+        </>
+      ),
+    } : undefined,
+    recent: {
+      label: "Recent",
+      content: (
+        <>
+              {recent.length === 0 ? (
+                <p className="md-body px-3 py-2 text-on-variant/75">
+                  Conversations you start will show up here.
+                </p>
+              ) : (
+                <ul className="space-y-0.5">
+                  {recent.map((conversation) => {
+                    const department = allDepartments.find(
+                      (d) => d.id === conversation.departmentId,
+                    );
+                    return (
+                      <li key={conversation.id}>
+                        <NavRow
+                          href={conversationHref(conversation.departmentId, conversation.id)}
+                          active={false}
+                          onNavigate={onNavigate}
+                        >
+                          {department ? (
+                            <DepartmentAvatar department={department} size={18} />
+                          ) : (
+                            <span className="h-4.5 w-4.5 flex-none rounded-full bg-high" />
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="md-body block truncate">{conversation.title}</span>
+                            <span className="md-label-sm block truncate text-on-variant/75">
+                              {department?.name ?? "Archived"} ·{" "}
+                              {formatRelativeTime(conversation.updatedAt)}
+                            </span>
+                          </span>
+                        </NavRow>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+        </>
+      ),
+    },
+        }}
+      />
     </>
   );
 }
@@ -490,15 +525,115 @@ function readCollapsed(): Record<string, boolean> {
  * keeps shut is a property of how they work on that screen, not something worth
  * syncing to another device.
  */
+interface SectionSpec {
+  label: string;
+  count?: number;
+  content: ReactNode;
+}
+
+/**
+ * The drawer's sections, in whatever order this browser has put them.
+ *
+ * Reordering is HTML5 drag and drop rather than a library: there are six
+ * items, they only move vertically, and a pointer-events implementation would
+ * be more code than the feature. Editing is behind a toggle so a stray drag
+ * while navigating cannot rearrange the menu.
+ */
+function SidebarSections({
+  sections,
+}: {
+  sections: Partial<Record<NavSectionId, SectionSpec | undefined>>;
+}) {
+  const layout = useNavLayout();
+  const [editing, setEditing] = useState(false);
+  const [dragging, setDragging] = useState<NavSectionId | null>(null);
+
+  const present = layout.order.filter((id) => sections[id]);
+  const visible = editing ? present : present.filter((id) => !layout.hidden.includes(id));
+  const hiddenCount = present.filter((id) => layout.hidden.includes(id)).length;
+
+  return (
+    <nav className="flex-1 overflow-y-auto px-3 pb-6">
+      {visible.map((id, index) => {
+        const spec = sections[id];
+        if (!spec) return null;
+        const isHidden = layout.hidden.includes(id);
+        return (
+          <div
+            key={id}
+            draggable={editing}
+            onDragStart={() => setDragging(id)}
+            onDragEnd={() => setDragging(null)}
+            onDragOver={(event) => {
+              if (!editing || !dragging || dragging === id) return;
+              event.preventDefault();
+            }}
+            onDrop={(event) => {
+              if (!editing || !dragging || dragging === id) return;
+              event.preventDefault();
+              moveNavSection(dragging, layout.order.indexOf(id));
+              setDragging(null);
+            }}
+            className={cx(
+              editing && "rounded-xl border border-dashed border-outline-variant/70 mb-1",
+              dragging === id && "opacity-40",
+              isHidden && "opacity-50",
+            )}
+          >
+            <Section
+              id={id}
+              label={spec.label}
+              count={spec.count}
+              editing={editing}
+              hidden={isHidden}
+              onToggleHidden={() => toggleNavSection(id)}
+            >
+              {spec.content}
+            </Section>
+          </div>
+        );
+      })}
+
+      <div className="mt-2 flex items-center gap-2 px-3">
+        <button
+          type="button"
+          onClick={() => setEditing((value) => !value)}
+          className="md-state md-label-sm rounded-lg px-2 py-1 text-on-variant/75"
+        >
+          {editing ? "Done" : "Edit menu"}
+        </button>
+        {editing ? (
+          <button
+            type="button"
+            onClick={resetNavLayout}
+            className="md-state md-label-sm rounded-lg px-2 py-1 text-on-variant/75"
+          >
+            Reset
+          </button>
+        ) : hiddenCount > 0 ? (
+          <span className="md-label-sm text-on-variant/60">{hiddenCount} hidden</span>
+        ) : null}
+      </div>
+    </nav>
+  );
+}
+
 function Section({
   id,
   label,
   count,
+  editing,
+  hidden,
+  onToggleHidden,
   children,
 }: {
   id: string;
   label: string;
   count?: number;
+  /** While the menu is being rearranged, the header is a handle, not a toggle. */
+  editing?: boolean;
+  hidden?: boolean;
+  onToggleHidden?: () => void;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(true);
@@ -525,24 +660,41 @@ function Section({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={toggle}
-        aria-expanded={open}
-        className="md-state md-label-sm flex w-full items-center gap-1.5 rounded-lg px-3 pb-1.5 pt-2 text-left text-on-variant/75 transition-colors"
-      >
-        <ChevronIcon
-          className={cx(
-            "h-3 w-3 flex-none transition-transform duration-150",
-            open ? "rotate-90" : "rotate-0",
+      <div className="flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={editing ? onToggleHidden : toggle}
+          aria-expanded={editing ? undefined : open}
+          aria-pressed={editing ? !hidden : undefined}
+          title={editing ? (hidden ? `Show ${label}` : `Hide ${label}`) : undefined}
+          className="md-state md-label-sm flex flex-1 items-center gap-1.5 rounded-lg px-3 pb-1.5 pt-2 text-left text-on-variant/75 transition-colors"
+        >
+          {editing ? (
+            // Six dots, the ordinary sign that a thing can be dragged.
+            <span aria-hidden className="flex-none text-on-variant/60">
+              ⠿
+            </span>
+          ) : (
+            <ChevronIcon
+              className={cx(
+                "h-3 w-3 flex-none transition-transform duration-150",
+                open ? "rotate-90" : "rotate-0",
+              )}
+            />
           )}
-        />
-        <span className="flex-1">{label}</span>
-        {count === undefined ? null : (
-          <span className="font-normal normal-case tracking-normal opacity-60">{count}</span>
-        )}
-      </button>
-      {open ? children : null}
+          <span className={cx("flex-1", hidden && "line-through")}>{label}</span>
+          {editing ? (
+            <span className="font-normal normal-case tracking-normal opacity-70">
+              {hidden ? "Hidden" : "Shown"}
+            </span>
+          ) : count === undefined ? null : (
+            <span className="font-normal normal-case tracking-normal opacity-60">{count}</span>
+          )}
+        </button>
+      </div>
+      {/* Headers only while rearranging. Six rows fit on one screen and can
+          be dragged without scrolling; the expanded menu cannot. */}
+      {editing ? null : open ? children : null}
     </>
   );
 }
