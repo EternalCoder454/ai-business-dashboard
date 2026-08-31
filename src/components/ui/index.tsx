@@ -365,9 +365,13 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="flex flex-wrap items-start justify-between gap-4 border-b border-outline-variant px-4 medium:px-6 expanded:px-8 py-6">
+    <header className="flex flex-wrap items-start justify-between gap-4 border-b border-outline-variant px-4 py-4 medium:px-6 medium:py-6 expanded:px-8">
       <div className="min-w-0">
-        {eyebrow ? <p className="md-label-sm mb-1 text-primary">{eyebrow}</p> : null}
+        {/* The top app bar already names the section on compact, so repeating
+            it here is a line of screen spent saying nothing. */}
+        {eyebrow ? (
+          <p className="md-label-sm mb-1 hidden text-primary medium:block">{eyebrow}</p>
+        ) : null}
         <h1 className="md-headline">{title}</h1>
         {description ? (
           <p className="md-body mt-1.5 max-w-2xl text-on-variant">{description}</p>

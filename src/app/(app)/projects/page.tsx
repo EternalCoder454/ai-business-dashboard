@@ -135,7 +135,7 @@ export default function ProjectsPage() {
               }
             />
           ) : (
-            <ul className="flex flex-col gap-3">
+            <ul className="stagger flex flex-col gap-3">
               {visible.map((project) => {
                 const accent = projectAccent(project.accent);
                 const tally = tallies.get(project.id);

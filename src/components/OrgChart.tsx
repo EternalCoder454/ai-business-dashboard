@@ -66,7 +66,7 @@ function Hierarchy() {
         <div className="h-[104px] animate-pulse rounded-3xl bg-container" />
       )}
 
-      <ul className="mt-1">
+      <ul className="stagger mt-1">
         {departments.map((department) => (
           <DepartmentRow
             key={department.id}
@@ -109,29 +109,21 @@ function CeoRow({
       href="/ceo"
       onClick={createRipple}
       className={cx(
-        "md-state flex items-center gap-3 rounded-3xl px-4 py-4 medium:gap-4 medium:px-5",
+        "md-state md-press flex items-center gap-3 rounded-3xl px-4 py-4 medium:gap-4 medium:px-5",
         "bg-primary-container text-on-primary-container shadow-e2",
         "transition-shadow duration-200 hover:shadow-e3",
       )}
     >
-      <DepartmentAvatar department={ceo} size={48} />
+      <DepartmentAvatar department={ceo} size={48} status={ceo.status} />
 
       <span className="min-w-0 flex-1">
         <span className="md-title-lg block truncate">{ceo.personaName || ceo.name}</span>
         <span className="md-label block truncate opacity-90">{ceo.roleTitle}</span>
-        <span className="md-label-sm mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 opacity-80">
-          <span className="flex items-center gap-1.5">
-            <StatusDot status={ceo.status} />
-            On Duty
-          </span>
-          <span aria-hidden>·</span>
-          <span>
-            {skillCount} {skillCount === 1 ? "skill" : "skills"}
-          </span>
-          <span aria-hidden>·</span>
-          <span>
-            {threadCount} {threadCount === 1 ? "thread" : "threads"}
-          </span>
+        <span className="md-label-sm mt-0.5 block truncate opacity-80">
+          {skillCount} {skillCount === 1 ? "skill" : "skills"}
+          {threadCount > 0
+            ? ` · ${threadCount} ${threadCount === 1 ? "thread" : "threads"}`
+            : ""}
         </span>
       </span>
 
@@ -167,11 +159,11 @@ function DepartmentRow({
         href={departmentHref(department)}
         onClick={createRipple}
         className={cx(
-          "md-state my-1 flex items-center gap-3 rounded-2xl bg-container px-3 py-3 shadow-e1",
+          "md-state md-press my-1 flex items-center gap-3 rounded-2xl bg-container px-3 py-3 shadow-e1",
           "transition-shadow duration-200 hover:shadow-e2 medium:gap-4 medium:px-4",
         )}
       >
-        <DepartmentAvatar department={department} size={44} />
+        <DepartmentAvatar department={department} size={44} status={department.status} />
 
         <span className="min-w-0 flex-1">
           <span className="md-title block truncate">{department.name}</span>
@@ -180,30 +172,15 @@ function DepartmentRow({
               ? `${department.personaName}, ${department.roleTitle}`
               : department.roleTitle}
           </span>
-          <span className="md-label-sm mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-on-variant/75">
-            <span className="flex items-center gap-1.5">
-              <StatusDot status={department.status} />
-              {STATUS_LABEL[department.status]}
-            </span>
-            <span aria-hidden>·</span>
-            <span className="flex items-center gap-1">
-              <SparkIcon className="h-3 w-3" />
-              {skillCount}
-            </span>
-            {threadCount > 0 ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>
-                  {threadCount} {threadCount === 1 ? "thread" : "threads"}
-                </span>
-              </>
-            ) : null}
-            {lastActive ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>{formatRelativeTime(lastActive)}</span>
-              </>
-            ) : null}
+          <span
+            className="md-label-sm mt-0.5 block truncate text-on-variant/75"
+            title={`${STATUS_LABEL[department.status]}, ${skillCount} skills`}
+          >
+            {skillCount} {skillCount === 1 ? "skill" : "skills"}
+            {threadCount > 0
+              ? ` · ${threadCount} ${threadCount === 1 ? "thread" : "threads"}`
+              : ""}
+            {lastActive ? ` · ${formatRelativeTime(lastActive)}` : ""}
           </span>
         </span>
 

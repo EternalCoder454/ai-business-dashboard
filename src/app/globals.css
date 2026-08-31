@@ -499,12 +499,40 @@
   animation: typing-bounce 1.2s infinite ease-in-out;
 }
 
+/* Children settle in one after another. Capped at the tenth so a long list
+   does not spend two seconds arriving, and the delay is dropped entirely
+   under prefers-reduced-motion by the rule at the end of this file. */
+.stagger > * {
+  animation: rise-in var(--md-motion-medium2) var(--md-motion-emph-decel) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 30ms; }
+.stagger > *:nth-child(3) { animation-delay: 60ms; }
+.stagger > *:nth-child(4) { animation-delay: 90ms; }
+.stagger > *:nth-child(5) { animation-delay: 120ms; }
+.stagger > *:nth-child(6) { animation-delay: 150ms; }
+.stagger > *:nth-child(7) { animation-delay: 180ms; }
+.stagger > *:nth-child(8) { animation-delay: 210ms; }
+.stagger > *:nth-child(n + 9) { animation-delay: 240ms; }
+
+/* Anything tappable gives way slightly under a finger. Pointer devices get
+   the state layer instead, which already covers hover and focus. */
+.md-press {
+  transition: transform var(--md-motion-short3) var(--md-motion-standard);
+}
+.md-press:active {
+  transform: scale(0.985);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    /* Without this a staggered item stays invisible for its delay, which is
+       the opposite of what someone asking for less motion wants. */
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
   }
 }

@@ -108,7 +108,7 @@ export default function MessagesPage() {
               />
             </div>
           ) : (
-            <ul className="p-2">
+            <ul className="stagger p-2">
               {rows.map((row) => (
                 <li key={row.email}>
                   <button

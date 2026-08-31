@@ -1,5 +1,11 @@
-import type { Department } from "@/lib/types";
+import type { Department, DepartmentStatus } from "@/lib/types";
 import { cx } from "./ui";
+
+const PRESENCE: Record<DepartmentStatus, string> = {
+  online: "var(--md-success)",
+  busy: "var(--md-warning)",
+  offline: "var(--md-outline)",
+};
 
 /**
  * How a department head is shown, everywhere.
@@ -11,10 +17,13 @@ import { cx } from "./ui";
 export function DepartmentAvatar({
   department,
   size = 40,
+  status,
   className,
 }: {
   department: Pick<Department, "name" | "personaName" | "avatarUrl">;
   size?: number;
+  /** Draws a presence dot on the corner, which saves a line of text per row. */
+  status?: DepartmentStatus;
   className?: string;
 }) {
   const initial = (department.personaName || department.name || "?").trim().charAt(0).toUpperCase();
@@ -22,15 +31,11 @@ export function DepartmentAvatar({
   const shared = cx("flex-none rounded-full object-cover", className);
   const style = { width: size, height: size };
 
-  if (department.avatarUrl) {
-    return (
-      // A stored data URL, so next/image would have nothing to optimise.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={department.avatarUrl} alt="" style={style} className={shared} />
-    );
-  }
-
-  return (
+  const face = department.avatarUrl ? (
+    // A stored data URL, so next/image would have nothing to optimise.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={department.avatarUrl} alt="" style={style} className={shared} />
+  ) : (
     <span
       aria-hidden
       style={{ ...style, fontSize: Math.round(size * 0.4) }}
@@ -40,6 +45,23 @@ export function DepartmentAvatar({
       )}
     >
       {initial}
+    </span>
+  );
+
+  if (!status) return face;
+
+  return (
+    <span className="relative inline-flex flex-none" style={style}>
+      {face}
+      <span
+        aria-hidden
+        style={{
+          background: PRESENCE[status],
+          width: Math.max(8, Math.round(size * 0.26)),
+          height: Math.max(8, Math.round(size * 0.26)),
+        }}
+        className="absolute bottom-0 right-0 rounded-full ring-2 ring-[var(--md-surface)]"
+      />
     </span>
   );
 }
