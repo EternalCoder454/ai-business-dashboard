@@ -113,7 +113,8 @@ export default function DeliverablesPage() {
         })}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 expanded:px-8 py-6">
+      <div className="min-h-0 flex-1 overflow-y-auto page-x py-6">
+        <div className="measure">
         {deliverables.length === 0 ? (
           <EmptyState
             icon={<DocIcon className="h-8 w-8" />}
@@ -236,6 +237,7 @@ export default function DeliverablesPage() {
             })}
           </div>
         )}
+        </div>
       </div>
 
       <Dialog

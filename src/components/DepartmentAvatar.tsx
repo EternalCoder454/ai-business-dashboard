@@ -18,12 +18,14 @@ export function DepartmentAvatar({
   department,
   size = 40,
   status,
+  title,
   className,
 }: {
   department: Pick<Department, "name" | "personaName" | "avatarUrl">;
   size?: number;
   /** Draws a presence dot on the corner, which saves a line of text per row. */
   status?: DepartmentStatus;
+  title?: string;
   className?: string;
 }) {
   const initial = (department.personaName || department.name || "?").trim().charAt(0).toUpperCase();
@@ -34,10 +36,11 @@ export function DepartmentAvatar({
   const face = department.avatarUrl ? (
     // A stored data URL, so next/image would have nothing to optimise.
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={department.avatarUrl} alt="" style={style} className={shared} />
+    <img src={department.avatarUrl} alt="" title={title} style={style} className={shared} />
   ) : (
     <span
       aria-hidden
+      title={title}
       style={{ ...style, fontSize: Math.round(size * 0.4) }}
       className={cx(
         shared,
@@ -51,7 +54,7 @@ export function DepartmentAvatar({
   if (!status) return face;
 
   return (
-    <span className="relative inline-flex flex-none" style={style}>
+    <span className="relative inline-flex flex-none" style={style} title={title}>
       {face}
       <span
         aria-hidden

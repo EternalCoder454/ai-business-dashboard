@@ -33,7 +33,7 @@ export function OrgChart() {
 
   return (
     <div className="px-4 pb-10 pt-4 medium:px-6 medium:pt-6 expanded:px-8">
-      <div className="mx-auto flex w-full max-w-[73.75rem] flex-col gap-6 expanded:flex-row expanded:items-start expanded:gap-8">
+      <div className="measure-wide flex flex-col gap-6 expanded:flex-row expanded:items-start expanded:gap-8">
         <div className="min-w-0 flex-1">
           <Hierarchy />
         </div>

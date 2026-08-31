@@ -344,6 +344,68 @@
 /* The app occupies the viewport minus whatever the keyboard has taken. On
    Chrome Android the layout already shrank and the inset is zero; on iOS it is
    the only thing keeping the composer above the keyboard. */
+/*
+ * Content measure
+ *
+ * Two widths, chosen by what the content is rather than by which page it is
+ * on. Pages previously set their own, so the column jumped between 2xl, 3xl,
+ * 4xl, 5xl and a bespoke value as you moved around, which is the sort of thing
+ * that reads as unfinished long before anyone can say why.
+ *
+ * .measure       lists, cards, grids, anything scanned
+ * .measure-read  prose and forms, held near 70 characters a line
+ * .measure-wide  two-pane layouts that carry a supporting column
+ */
+/*
+ * Body prose caps its own line length.
+ *
+ * Cards stretch to the content column, so a description inside one was running
+ * to 120 characters a line, well past the 45 to 75 that stays readable. The cap
+ * only bites where the container is wider than the text wants to be, so a
+ * paragraph in a narrow column is untouched.
+ */
+p.md-body,
+p.md-label,
+p.md-label-sm {
+  max-width: 68ch;
+}
+
+.measure {
+  width: 100%;
+  max-width: 64rem;
+  margin-inline: auto;
+}
+
+.measure-read {
+  width: 100%;
+  max-width: 44rem;
+  margin-inline: auto;
+}
+
+/* Two-pane layouts, which need room for a list and its supporting column. */
+.measure-wide {
+  width: 100%;
+  max-width: 76rem;
+  margin-inline: auto;
+}
+
+/* The standard page gutter, so padding is not respecified on every screen. */
+.page-x {
+  padding-inline: 1rem;
+}
+
+@media (min-width: 600px) {
+  .page-x {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-width: 840px) {
+  .page-x {
+    padding-inline: 2rem;
+  }
+}
+
 .app-viewport {
   height: 100dvh;
   height: calc(100dvh - var(--keyboard-inset, 0px));

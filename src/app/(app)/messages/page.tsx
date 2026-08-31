@@ -292,7 +292,7 @@ function Thread({
             Nothing here yet. Say something.
           </p>
         ) : (
-          <ul className="mx-auto flex max-w-2xl flex-col gap-1.5">
+          <ul className="measure-read flex flex-col gap-1.5">
             {messages.map((message, index) => (
               <Bubble
                 key={message.id}
@@ -313,7 +313,7 @@ function Thread({
       ) : null}
 
       <div className="safe-bottom flex-none border-t border-outline-variant px-3 py-3 medium:px-6">
-        <div className="mx-auto flex max-w-2xl items-end gap-2">
+        <div className="measure-read flex items-end gap-2">
           <TextArea
             ref={box}
             value={draft}

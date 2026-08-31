@@ -267,7 +267,7 @@ export default function AllHandsPage() {
           }}
           className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 py-6"
         >
-          <div className="mx-auto flex max-w-[47.5rem] flex-col gap-5">
+          <div className="measure-read flex flex-col gap-5">
             {!thread ? (
               <Opening departments={departments} ceoName={ceo?.personaName} />
             ) : (
@@ -372,7 +372,7 @@ export default function AllHandsPage() {
 
       {/* Composer */}
       <div className="flex-none border-t border-outline-variant px-4 medium:px-6 py-4">
-        <div className="mx-auto max-w-[47.5rem]">
+        <div className="measure-read">
           {running && currentRound ? (
             <Progress
               answered={answeredCount}
@@ -508,13 +508,13 @@ function Opening({
     <div className="animate-rise rounded-3xl border border-outline-variant bg-container/60 px-7 py-9 text-center">
       <div className="mb-4 flex flex-wrap justify-center gap-1.5">
         {departments.map((department) => (
-          <span
+          <DepartmentAvatar
             key={department.id}
+            department={department}
+            size={40}
             title={`${department.personaName}, ${department.roleTitle}`}
-            className="rounded-full shadow-e1"
-          >
-            <DepartmentAvatar department={department} size={40} />
-          </span>
+            className="shadow-e1"
+          />
         ))}
       </div>
       <h2 className="md-title-lg">The whole room is here</h2>
@@ -552,13 +552,16 @@ function HeadMessage({
 
   return (
     <div id={`msg-${response.departmentId}`} className="animate-rise group flex gap-3">
-      <span aria-hidden title={department?.roleTitle} className="mt-1 flex-none shadow-e1 rounded-full">
-        {department ? (
-          <DepartmentAvatar department={department} size={36} />
-        ) : (
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-high" />
-        )}
-      </span>
+      {department ? (
+        <DepartmentAvatar
+          department={department}
+          size={36}
+          title={department.roleTitle}
+          className="mt-1 shadow-e1"
+        />
+      ) : (
+        <span aria-hidden className="mt-1 h-9 w-9 flex-none rounded-full bg-high" />
+      )}
 
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-baseline gap-2">
@@ -669,13 +672,11 @@ function SynthesisMessage({
 }) {
   return (
     <div className="animate-rise flex gap-3">
-      <span aria-hidden className="mt-1 flex-none rounded-full shadow-e2">
-        {ceo ? (
-          <DepartmentAvatar department={ceo} size={36} />
-        ) : (
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-primary" />
-        )}
-      </span>
+      {ceo ? (
+        <DepartmentAvatar department={ceo} size={36} className="mt-1 shadow-e2" />
+      ) : (
+        <span aria-hidden className="mt-1 h-9 w-9 flex-none rounded-full bg-primary" />
+      )}
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-baseline gap-2">
           <span className="md-title">{ceo?.personaName ?? "CEO"}</span>

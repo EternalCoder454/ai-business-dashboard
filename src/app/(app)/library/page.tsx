@@ -149,7 +149,7 @@ export default function LibraryPage() {
           dragging && "bg-primary-container/10",
         )}
       >
-        <div className="mx-auto max-w-4xl">
+        <div className="measure">
           {notice ? (
             <p className="md-label mb-4 rounded-xl bg-low px-4 py-2.5 text-on-variant">
               {notice}

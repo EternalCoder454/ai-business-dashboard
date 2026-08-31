@@ -122,7 +122,7 @@ export default function ProjectPage() {
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 medium:px-6 expanded:px-8">
-        <div className="mx-auto flex max-w-4xl flex-col gap-5">
+        <div className="measure flex flex-col gap-5">
           <div className="flex flex-wrap items-center gap-2">
             <Chip>
               <span

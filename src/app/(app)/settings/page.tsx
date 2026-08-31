@@ -122,7 +122,7 @@ export default function SettingsPage() {
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 expanded:px-8 py-6">
-        <div className="mx-auto flex max-w-4xl flex-col gap-5">
+        <div className="measure flex flex-col gap-5">
           <Card>
             <h2 className="md-title-lg mb-1">Anthropic API</h2>
 

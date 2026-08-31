@@ -189,7 +189,7 @@ function SkillsView() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 expanded:px-8 py-6">
-        <div className="mx-auto max-w-4xl">
+        <div className="measure">
           {notice ? (
             <p className="md-label mb-4 rounded-xl bg-low px-4 py-2.5 text-on-variant">
               {notice}

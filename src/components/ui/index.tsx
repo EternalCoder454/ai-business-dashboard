@@ -374,7 +374,7 @@ export function PageHeader({
         ) : null}
         <h1 className="md-headline">{title}</h1>
         {description ? (
-          <p className="md-body mt-1.5 max-w-2xl text-on-variant">{description}</p>
+          <p className="md-body mt-1.5 text-on-variant">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
