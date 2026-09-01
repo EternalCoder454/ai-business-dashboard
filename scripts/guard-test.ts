@@ -21,7 +21,6 @@ import {
   leadershipCoach,
   seedDepartments,
 } from "../src/lib/seed";
-import { handbookSkills } from "../src/lib/handbookSkills";
 import { seedSkills } from "../src/lib/seedSkills";
 import {
   SHIPPED_COACH_PROMPTS,
@@ -188,31 +187,45 @@ console.log("\na write immediately after a create can see it");
       !skills.some((s) => /[0-9]+ ?(%|per cent of cases)/.test(s.content)));
   }
 
-  console.log("\nthe handbook skills are well formed and land on real departments");
+  console.log("\nthe shipped library is small and covers every department");
   {
-    const hb = handbookSkills();
+    const skills = seedSkills();
     const departments = new Set(seedDepartments().map((d) => d.id));
-    check("there are skills", hb.length >= 10, String(hb.length));
-    check("ids are unique", new Set(hb.map((s) => s.id)).size === hb.length);
-    check("ids are stable across runs",
-      handbookSkills().map((s) => s.id).join() === hb.map((s) => s.id).join());
-    check("every one targets a seeded department",
-      hb.every((s) => departments.has(s.departmentId)),
-      hb.filter((s) => !departments.has(s.departmentId)).map((s) => s.departmentId).join(","));
-    check("every one has a trigger line", hb.every((s) => s.description.length > 25));
-    check("every one has a body", hb.every((s) => s.content.length > 300));
-    check("none collides with a seeded skill id",
-      !seedSkills().some((s) => hb.some((h) => h.id === s.id)));
 
-    // Coverage is a property of the whole library rather than of this file.
-    // Consolidation folded fourteen handbook skills into the seeded ones they
-    // duplicated, so a department can be fully covered and have nothing left
-    // here. What must stay true is that no head is left with no playbook.
-    const covered = new Set(
-      [...seedSkills(), ...hb].map((s) => s.departmentId),
+    // Every enabled skill is injected into that department's prompt in full on
+    // every message, so the size of this library is a running cost rather than
+    // a catalogue. Two per department plus two company-wide is the shape, and
+    // the ceiling is here so it cannot drift back to the seventy it once was.
+    check("the library stays small", skills.length <= 24, `${skills.length} skills`);
+    check(
+      "every one targets a seeded department",
+      skills.every((s) => departments.has(s.departmentId) || s.departmentId === COMPANY_ID),
+      skills
+        .filter((s) => !departments.has(s.departmentId) && s.departmentId !== COMPANY_ID)
+        .map((s) => s.departmentId)
+        .join(","),
     );
+
+    const covered = new Set(skills.map((s) => s.departmentId));
     const bare = [...departments].filter((id) => !covered.has(id));
     check("every department has at least one skill", bare.length === 0, bare.join(","));
+
+    // What ships to a stranger cannot be about the company that wrote it. This
+    // is what stops a studio-specific playbook being added back unnoticed.
+    const ownWork =
+      /Eterneon|Minecraft|NeoForge|Mojang|UE5|PaperMC|Steam|Vandrix|Ravenmoor|Frontier Assembly|Kickstarter/i;
+    const named = skills.filter((s) => ownWork.test(`${s.name} ${s.description} ${s.content}`));
+    check("none names one company's own work", named.length === 0, named.map((s) => s.name).join(", "));
+
+    // Legal and Finance produce the answers most likely to be acted on
+    // straight away, so they are the two that have to say what they are not.
+    const disclaims = /not a lawyer|not legal advice|licensed accountant|solicitor/i;
+    const regulated = skills.filter((s) => s.departmentId === "legal" || s.departmentId === "finance");
+    check(
+      "legal and finance name their limits in the skill itself",
+      regulated.length > 0 && regulated.every((s) => disclaims.test(s.content)),
+      regulated.filter((s) => !disclaims.test(s.content)).map((s) => s.name).join(", "),
+    );
   }
 
   console.log("\nevery head is a different colour in All Hands");

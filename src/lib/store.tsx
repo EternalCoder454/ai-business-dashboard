@@ -39,7 +39,6 @@ import {
   PROJECT_ACCENTS,
   seedDepartments,
 } from "./seed";
-import { handbookSkills } from "./handbookSkills";
 import { memoryFor as liveMemoryFor } from "./memory";
 import { skillReconciliation } from "./shippedSkills";
 import {
@@ -340,11 +339,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
        * can be tested.
        */
       {
-        const ops = skillReconciliation(
-          snapshot.skills,
-          [...seedSkills(), ...handbookSkills()],
-          handbookSkills(),
-        );
+        // Nothing is offered as an addition. The studio handbook that used
+        // to be pushed here was written around one company's own work and has
+        // no business appearing in anyone else's workspace; a workspace that
+        // already has it keeps it, because it is not retired, only unshipped.
+        const ops = skillReconciliation(snapshot.skills, seedSkills(), []);
 
         // A workspace from before the wiki was data has no pages, and an empty
         // wiki reads as broken rather than as unwritten. Only when there are

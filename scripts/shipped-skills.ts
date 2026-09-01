@@ -16,11 +16,13 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 
 import { promptFingerprint, seedCoachSkills } from "../src/lib/coachSkills";
-import { handbookSkills } from "../src/lib/handbookSkills";
 import { seedSkills } from "../src/lib/seedSkills";
 
 const SOURCES = [
   "src/lib/seedSkills.ts",
+  // Deleted from the working tree. The path stays so its history is still
+  // walked: workspaces out there still hold those bodies, and reconciliation
+  // has to recognise them as unedited.
   "src/lib/handbookSkills.ts",
   "src/lib/coachSkills.ts",
 ];
@@ -65,7 +67,7 @@ for (const file of SOURCES) {
 
 // The working tree is read from the modules rather than parsed, so what gets
 // fingerprinted is exactly what reconciliation writes into a workspace.
-const current = [...seedSkills(), ...handbookSkills(), ...seedCoachSkills()];
+const current = [...seedSkills(), ...seedCoachSkills()];
 for (const skill of current) seen.add(promptFingerprint(skill.content));
 
 // Only the array of fingerprints is generated. The imports above it, and the

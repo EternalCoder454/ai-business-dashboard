@@ -10,7 +10,6 @@
 import { execFileSync } from "node:child_process";
 
 import { promptFingerprint } from "../src/lib/coachSkills";
-import { handbookSkills } from "../src/lib/handbookSkills";
 import { seedSkills } from "../src/lib/seedSkills";
 import {
   RETIRED_SKILL_IDS,
@@ -31,8 +30,8 @@ function check(label: string, ok: boolean, detail = ""): void {
   console.log(`  FAIL ${label}${detail ? `\n       ${detail}` : ""}`);
 }
 
-const shipped = [...seedSkills(), ...handbookSkills()];
-const additions = handbookSkills();
+const shipped = seedSkills();
+const additions: typeof shipped = [];
 const NOW = 1_700_000_000_000;
 
 function gitShow(ref: string): string {
@@ -74,14 +73,25 @@ console.log("\nthe library is internally consistent");
     `${unknown.map((s) => s.name).join(", ")} — run: npm run skills-fingerprint`,
   );
 
-  // Each retired entry records where its content went, which is the only
-  // record of that. A second round of merging could retire the destination.
-  const live = new Set(shipped.map((s) => s.name));
-  const orphans = RETIRED_SKILL_IDS.filter(([, into]) => !live.has(into));
+  // The name beside each retired id records where its content went. It is a
+  // note, not a live reference: cutting the library to a generic set unshipped
+  // several of those destinations, and a skill that no longer ships is not a
+  // skill that was wrongly retired.
+  //
+  // What has to hold is the opposite direction. Retiring something that still
+  // ships would have reconciliation delete it and the next load add it back,
+  // for as long as both lists disagree.
+  const retired = new Set(RETIRED_SKILL_IDS.map(([id]) => id));
+  const both = shipped.filter((s) => retired.has(s.id));
   check(
-    "every retired skill was folded into one still shipped",
-    orphans.length === 0,
-    orphans.map(([id, into]) => `${id} -> ${into}`).join(", "),
+    "nothing is retired and shipped at once",
+    both.length === 0,
+    both.map((s) => s.id).join(", "),
+  );
+  check(
+    "no id is retired twice",
+    retired.size === RETIRED_SKILL_IDS.length,
+    `${RETIRED_SKILL_IDS.length} entries, ${retired.size} ids`,
   );
 }
 
@@ -119,8 +129,10 @@ console.log("\nan up-to-date workspace is left alone");
 
 console.log("\na stale skill is rewritten, an edited one is not");
 {
-  const target = shipped.find((s) => s.name === "Mod Architecture");
-  if (!target) throw new Error("Mod Architecture is missing from the library");
+  // Any shipped skill will do; naming one tied this to a library that has
+  // since been cut down, and the rule under test is not about which skill.
+  const target = shipped[0];
+  if (!target) throw new Error("the shipped library is empty");
 
   // Any other shipped body stands in for an older version of this skill: it
   // fingerprints as never edited and differs from what ships now, which is the
