@@ -128,3 +128,22 @@ export async function revokeAccess(email: string): Promise<void> {
     .set({ revokedAt: new Date() })
     .where(eq(t.access.email, clean(email)));
 }
+
+/**
+ * Whether this deployment has anybody at all.
+ *
+ * Only asked when no operator is configured, to decide whether a sign-in is
+ * the first one on a fresh install. Any error answers false, because being
+ * wrong in that direction refuses a sign-in, and being wrong in the other
+ * hands the deployment to a stranger.
+ */
+export async function nobodyHasAccess(): Promise<boolean> {
+  if (!databaseEnabled || !db) return false;
+  try {
+    const [row] = await db.select({ email: t.access.email }).from(t.access).limit(1);
+    return !row;
+  } catch (error) {
+    console.error("[access] could not check whether the install is empty", error);
+    return false;
+  }
+}

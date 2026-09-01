@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { ALLOWED_EMAILS, auth, authEnabled } from "@/auth";
+import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import {
   listColleagues,
@@ -47,14 +47,18 @@ async function resolveSender(): Promise<
 }
 
 /**
- * The allowlist is the boundary for messages exactly as it is for sign in.
+ * The workspace is the boundary for messages, as it is for everything else.
  *
- * Checked on the server on every send. A recipient picked from the directory
- * will always pass; this is here for the request that did not come from the
- * directory.
+ * You can write to the people you work with, and to nobody else. This was the
+ * sign-in allowlist, which on a single-tenant install was the same set and on
+ * a multi-tenant one would have let a customer message every other customer.
+ *
+ * Checked on the server on every send. A recipient picked out of the directory
+ * always passes; this is for the request that did not come from the directory.
  */
-function canReceive(email: string): boolean {
-  return ALLOWED_EMAILS.includes(email.trim().toLowerCase());
+async function canReceive(workspaceId: string, email: string): Promise<boolean> {
+  const theirs = await membershipFor(email.trim().toLowerCase());
+  return theirs?.workspaceId === workspaceId;
 }
 
 /**
@@ -73,7 +77,8 @@ export async function GET(request: Request) {
 
   try {
     if (other) {
-      if (!canReceive(other)) {
+      const mine = await membershipFor(sender.email);
+      if (!mine || !(await canReceive(mine.workspaceId, other))) {
         return Response.json({ error: "No such person here." }, { status: 404 });
       }
       const rawSince = Number(url.searchParams.get("since") ?? "");
@@ -82,9 +87,14 @@ export async function GET(request: Request) {
       return Response.json({ messages });
     }
 
+    const workspace = await membershipFor(sender.email);
+    if (!workspace) {
+      return Response.json({ error: "You are not in a workspace." }, { status: 403 });
+    }
+
     const [threads, people, unread] = await Promise.all([
       listThreads(sender.email),
-      listColleagues(sender.email),
+      listColleagues(workspace.workspaceId, sender.email),
       unreadTotal(sender.email),
     ]);
     return Response.json({ threads, people, unread, self: sender.email });
@@ -117,7 +127,8 @@ export async function POST(request: Request) {
   try {
     if (markRead) {
       const other = markRead.trim().toLowerCase();
-      if (!canReceive(other)) {
+      const mine = await membershipFor(sender.email);
+      if (!mine || !(await canReceive(mine.workspaceId, other))) {
         return Response.json({ error: "No such person here." }, { status: 404 });
       }
       await markThreadRead(sender.email, other);
@@ -139,7 +150,11 @@ export async function POST(request: Request) {
     if (recipient === sender.email) {
       return Response.json({ error: "You cannot message yourself." }, { status: 400 });
     }
-    if (!canReceive(recipient)) {
+    const mine = await membershipFor(sender.email);
+    if (!mine) {
+      return Response.json({ error: "You are not in a workspace." }, { status: 403 });
+    }
+    if (!(await canReceive(mine.workspaceId, recipient))) {
       return Response.json(
         { error: "That address is not on the allowlist for this workspace." },
         { status: 403 },
@@ -149,12 +164,6 @@ export async function POST(request: Request) {
       return Response.json({ error: "Slow down a moment." }, { status: 429 });
     }
 
-    // A thread belongs to the workspace both people are in, so a message can
-    // never cross from one business into another.
-    const mine = await membershipFor(sender.email);
-    if (!mine) {
-      return Response.json({ error: "You are not in a workspace." }, { status: 403 });
-    }
     const message = await sendMessage(
       mine.workspaceId,
       sender.email,

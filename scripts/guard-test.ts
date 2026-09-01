@@ -337,10 +337,17 @@ console.log("\na write immediately after a create can see it");
     // wrong: every business's first member is made an admin of their own
     // workspace, so the union handed each customer the routes that read and
     // delete every other customer's workspace.
-    check("the deployment has an operator", OPERATOR_EMAILS.length > 0, OPERATOR_EMAILS.join(","));
+    // Deliberately not "this machine has one configured": that is true of a
+    // deployment and false of a checkout, and a test that depends on the
+    // environment fails for whoever clones the repository.
     check(
-      "an operator comes from the environment, never from a database row",
-      isOperator(OPERATOR_EMAILS[0]) && !isOperator("someone@a-customer.invalid"),
+      "nobody is an operator unless the environment says so",
+      !isOperator("someone@a-customer.invalid") && !isOperator(""),
+    );
+    check(
+      "a configured address is one",
+      OPERATOR_EMAILS.length === 0 || isOperator(OPERATOR_EMAILS[0]),
+      OPERATOR_EMAILS.join(","),
     );
 
     // Everything on the admin route crosses the tenant boundary, so it gates

@@ -20,10 +20,19 @@ export function parseEmailList(value: string | undefined, fallback = ""): string
     .filter(Boolean);
 }
 
-export const ALLOWED_EMAILS = parseEmailList(
-  process.env.ALLOWED_EMAILS,
-  "eternalhell@eterneon.net",
-);
+/**
+ * The operator's own addresses, which are also the only ones that can sign in
+ * without an invitation.
+ *
+ * There used to be a second list, ALLOWED_EMAILS, from when a workspace was a
+ * person and getting in and being in charge were the same act. Everybody else
+ * now arrives through a row in the access table that names the workspace they
+ * belong to, so a separate allowlist was two answers to one question.
+ *
+ * No default. It used to fall back to one hardcoded address, which is a
+ * stranger's deployment quietly trusting the person who wrote it.
+ */
+export const OPERATOR_EMAILS = parseEmailList(process.env.OPERATOR_EMAILS);
 
 /**
  * Auth turns itself on only once it is configured. Without the Google
@@ -58,12 +67,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const email = profile?.email?.toLowerCase();
       // Google verifies the address; an unverified one is not an identity.
       if (!email || profile?.email_verified === false) return false;
-      if (ALLOWED_EMAILS.includes(email)) return true;
+      if (OPERATOR_EMAILS.includes(email)) return true;
 
-      const { isAllowed, markSignedIn } = await import("@/db/access");
-      if (!(await isAllowed(email))) return false;
-      await markSignedIn(email);
-      return true;
+      const { isAllowed, markSignedIn, nobodyHasAccess } = await import("@/db/access");
+      if (await isAllowed(email)) {
+        await markSignedIn(email);
+        return true;
+      }
+
+      /*
+       * First run: an install with no operator configured and nobody in the
+       * access table belongs to whoever signs in first, and they become its
+       * operator.
+       *
+       * Without this, a deployment with OPERATOR_EMAILS unset can be signed
+       * in to by nobody at all, which is a locked door with the key inside.
+       * The window closes the moment the first row exists.
+       */
+      if (OPERATOR_EMAILS.length === 0 && (await nobodyHasAccess())) {
+        await markSignedIn(email);
+        return true;
+      }
+
+      return false;
     },
     jwt({ token, profile }) {
       if (profile?.email) token.email = profile.email;

@@ -5,7 +5,7 @@ import { applyMutations, loadWorkspace, type MutationOp } from "@/db/repo";
 // hand-written copy of it here did.
 import { MAX_WRITE_BYTES, WRITABLE_TABLES } from "@/lib/workspace";
 import { membershipFor, provisionFor } from "@/db/tenancy";
-import { ALLOWED_EMAILS } from "@/auth";
+import { OPERATOR_EMAILS } from "@/auth";
 import { readJsonWithin } from "@/lib/guard";
 
 export const runtime = "nodejs";
@@ -38,14 +38,14 @@ async function resolveOwner(): Promise<
   /*
    * Signed in and in no workspace.
    *
-   * Only reachable by an address in ALLOWED_EMAILS, since everyone else got in
+   * Only reachable by an address in OPERATOR_EMAILS, since everyone else got in
    * through an access row that names one. That list is the environment escape
    * hatch, so it has to land somewhere rather than 403 the owner out of their
    * own deployment; anyone else is told to ask, because inventing a workspace
    * for them would quietly separate a colleague from the company they were
    * meant to join.
    */
-  if (!ALLOWED_EMAILS.includes(email)) {
+  if (!OPERATOR_EMAILS.includes(email)) {
     return { error: "This account is not in a workspace yet.", status: 403 };
   }
 

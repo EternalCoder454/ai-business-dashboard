@@ -2,6 +2,7 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { WikiEditor } from "@/components/WikiEditor";
+import { BusinessesTab, type WorkspaceRow } from "@/components/BusinessesTab";
 import { useCallback, useEffect, useState } from "react";
 import {
   Button,
@@ -72,9 +73,10 @@ interface Thread {
   messages: Message[];
 }
 
-type Tab = "overview" | "people" | "access" | "wiki";
+type Tab = "businesses" | "overview" | "people" | "access" | "wiki";
 
 const TAB_LABEL: Record<Tab, string> = {
+  businesses: "Businesses",
   overview: "Overview",
   people: "People",
   access: "Access",
@@ -90,10 +92,12 @@ const bytes = (n: number) =>
 export default function AdminPage() {
   const { isOperator, storage, accountEmail } = useStore();
 
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("businesses");
   const [people, setPeople] = useState<Person[] | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [access, setAccess] = useState<{ allowed: string[]; admins: string[] }>();
+  const [workspaces, setWorkspaces] = useState<WorkspaceRow[] | null>(null);
+  const [emailReady, setEmailReady] = useState(false);
   const [error, setError] = useState<string>();
 
   const [person, setPerson] = useState<Person>();
@@ -114,6 +118,8 @@ export default function AdminPage() {
       setPeople(body.people ?? []);
       setOverview(body.overview ?? null);
       setAccess(body.access);
+      setWorkspaces(body.workspaces ?? []);
+      setEmailReady(Boolean(body.email));
     } catch {
       setError("Could not load the workspace.");
     }
@@ -192,7 +198,7 @@ export default function AdminPage() {
       />
 
       <div className="flex flex-none items-center gap-2 border-b border-outline-variant page-x py-3">
-        {(["overview", "people", "access", "wiki"] as Tab[]).map((key) => (
+        {(["businesses", "overview", "people", "access", "wiki"] as Tab[]).map((key) => (
           <Chip
             key={key}
             selected={tab === key}
@@ -209,6 +215,14 @@ export default function AdminPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto page-x py-6">
         {error ? <p className="md-label mb-4 text-error">{error}</p> : null}
+
+        {tab === "businesses" ? (
+          <BusinessesTab
+            workspaces={workspaces}
+            emailReady={emailReady}
+            onChanged={(next) => setWorkspaces(next)}
+          />
+        ) : null}
 
         {tab === "overview" ? <OverviewTab overview={overview} /> : null}
 
@@ -270,7 +284,7 @@ export default function AdminPage() {
         <p className="md-body text-on-variant">
           Deletes their conversations, deliverables, projects, files, skills,
           departments, settings, and messages. This cannot be undone. They keep access
-          unless you also remove them from ALLOWED_EMAILS.
+          unless you also remove them from OPERATOR_EMAILS.
         </p>
         <Field label="Type the address to confirm" className="mt-4">
           <TextInput
@@ -526,7 +540,7 @@ function AccessTab({
       <Card>
         <h2 className="md-title-lg mb-1">Who can sign in</h2>
         <p className="md-body mb-4 text-on-variant">
-          Set as ALLOWED_EMAILS. Changes require a redeploy.
+          Set as OPERATOR_EMAILS. Changes require a redeploy.
         </p>
         <ul className="flex flex-col gap-1.5">
           {access.allowed.map((email) => (

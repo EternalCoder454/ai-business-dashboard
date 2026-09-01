@@ -1,5 +1,4 @@
 import { and, asc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
-import { ALLOWED_EMAILS } from "@/auth";
 import { requireDb } from "./client";
 import * as t from "./schema";
 import type { Colleague, DirectMessage, MessageThread } from "@/lib/types";
@@ -40,9 +39,18 @@ function counterpart(threadKey: string, self: string): string {
  * allowlist who has never signed in still appears, because otherwise there is
  * no way to start the conversation that would make them appear.
  */
-export async function listColleagues(self: string): Promise<Colleague[]> {
+export async function listColleagues(workspaceId: string, self: string): Promise<Colleague[]> {
   const db = requireDb();
   const me = normalise(self);
+
+  // The people in this workspace, from the access table, since that is what
+  // says who belongs where. It used to be the sign-in allowlist, which on a
+  // deployment holding several businesses would have listed all of them in
+  // everybody's directory.
+  const members = await db
+    .select({ email: t.access.email })
+    .from(t.access)
+    .where(and(eq(t.access.workspaceId, workspaceId), isNull(t.access.revokedAt)));
 
   const rows = await db
     .select({
@@ -54,7 +62,7 @@ export async function listColleagues(self: string): Promise<Colleague[]> {
     .from(t.accounts);
 
   const known = new Map(rows.map((row) => [normalise(row.userEmail), row]));
-  const everyone = new Set([...ALLOWED_EMAILS, ...known.keys()]);
+  const everyone = new Set(members.map((row) => normalise(row.email)));
   everyone.delete(me);
 
   return [...everyone]
