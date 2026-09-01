@@ -32,21 +32,13 @@ import {
   DEFAULT_PROFILE,
   COACH_ID,
   DEFAULT_SETTINGS,
-  NEW_CEO_OPENING,
-  OLD_CEO_OPENING,
-  WRITING_RULES,
   leadershipCoach,
   PROJECT_ACCENTS,
   seedDepartments,
 } from "./seed";
 import { memoryFor as liveMemoryFor } from "./memory";
 import { skillReconciliation } from "./shippedSkills";
-import {
-  SHIPPED_COACH_PROMPTS,
-  SHIPPED_WRITING_RULES,
-  promptFingerprint,
-  seedCoachSkills,
-} from "./coachSkills";
+import { SHIPPED_COACH_PROMPTS, promptFingerprint, seedCoachSkills } from "./coachSkills";
 import { seedSkills } from "./seedSkills";
 import { seedWikiPages } from "./seedWiki";
 import type {
@@ -383,70 +375,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      /**
-       * Wording fixes that have to reach a workspace already carrying the old
-       * version, since none of it lives in code once seeded.
-       *
-       * Everything here is rewritten in place or matched exactly against what
-       * was shipped, so anything the owner has edited survives untouched.
-       */
-      {
-        const ops: MutationOp[] = [];
-
-        /**
-         * Ruth was seeded as the Chief Executive Officer, which is the person
-         * using this app rather than the head answering them. Renamed to Chief
-         * of Staff: the same seniority, doing the work on the founder's
-         * behalf. Only a department still carrying both shipped strings is
-         * touched, so a renamed one is left alone.
-         */
-        const rewriteCeo = (d: Department): Department => {
-          let next = d;
-          if (d.id === CEO_ID && d.name === "CEO Office" && d.roleTitle === "Chief Executive Officer") {
-            next = { ...next, name: "Chief of Staff", roleTitle: "Chief of Staff" };
-          }
-          if (d.systemPrompt.includes(OLD_CEO_OPENING)) {
-            next = {
-              ...next,
-              systemPrompt: next.systemPrompt.replace(OLD_CEO_OPENING, NEW_CEO_OPENING),
-            };
-          }
-          return next;
-        };
-
-        const stale = snapshot.departments.filter(
-          (d) =>
-            d.systemPrompt.includes(OLD_SCOPE_PREFIX) ||
-            d.systemPrompt.includes(OLD_CEO_OPENING) ||
-            (d.id === CEO_ID && d.name === "CEO Office"),
-        );
-        if (stale.length) {
-          ops.push({
-            table: "departments",
-            action: "upsert",
-            rows: stale.map((d) => rewriteCeo({
-              ...d,
-              systemPrompt: d.systemPrompt.replace(OLD_SCOPE_PREFIX, NEW_SCOPE_PREFIX),
-            })),
-          });
-        }
-
-        const rules = snapshot.settings.writingRules;
-        if (rules && rules !== WRITING_RULES && SHIPPED_WRITING_RULES.has(promptFingerprint(rules))) {
-          ops.push({ table: "settings", action: "upsert", row: { writingRules: WRITING_RULES } });
-        }
-
-        if (ops.length) {
-          await fetch("/api/workspace", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ops }),
-          });
-          snapshot = await fetch("/api/workspace").then((r) =>
-            r.ok ? (r.json() as Promise<Workspace>) : snapshot,
-          );
-        }
-      }
 
       if (isOwner) {
         const existing = snapshot.departments.find((d) => d.id === COACH_ID);

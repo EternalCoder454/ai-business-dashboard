@@ -260,20 +260,6 @@ export function promptFingerprint(value: string): string {
  * with the current version is safe. Anything else is the owner's own writing
  * and is left alone permanently.
  */
-/**
- * Fingerprints of every set of writing rules this app has shipped.
- *
- * The rules live in settings, so improving them has to reach a workspace that
- * already has a copy, and only where that copy has not been rewritten.
- */
-export const SHIPPED_WRITING_RULES = new Set([
-  // Before the rule against volunteering a scope disclaimer.
-  "18qujx9",
-  // Thirty-three numbered prohibitions, which read as a rulebook and produced
-  // writing that sounded like one.
-  "8b7iw7",
-]);
-
 export const SHIPPED_COACH_PROMPTS = new Set([
   // The original, before the founder's field guide was folded in.
   "1q6yu07",

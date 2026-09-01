@@ -95,26 +95,23 @@ console.log("\nthe library is internally consistent");
   );
 }
 
-console.log("\nthe fingerprint set covers what earlier versions shipped");
+console.log("\nthe fingerprint set matches what ships now");
 {
-  // The whole safety argument rests on recognising an old body as unedited.
-  // Regenerating the set from the working tree alone would make every
-  // workspace still holding a previous version look edited, so it would never
-  // update again. The oldest revision on record is the strongest test of that.
-  const first = execFileSync(
-    "git",
-    ["log", "--reverse", "--format=%H", "--", "src/lib/seedSkills.ts"],
-    { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
-  )
-    .split("\n")
-    .filter(Boolean)[0];
-
-  const oldest = bodiesIn(gitShow(`${first}:src/lib/seedSkills.ts`));
-  const missed = oldest.filter((body) => !SHIPPED_SKILL_BODIES.has(promptFingerprint(body)));
+  // Reconciliation only touches a skill whose body fingerprints to something
+  // shipped. A set that has fallen behind the library means an untouched skill
+  // reads as edited and never receives an update again.
+  //
+  // This used to check the oldest revision in git as well, because a workspace
+  // could still be holding a body from any past version. Nothing out there
+  // holds one now, and carrying every body ever shipped meant somebody's edit
+  // could collide with a fingerprint from a version nobody remembers.
+  const missing = shipped.filter(
+    (skill) => !SHIPPED_SKILL_BODIES.has(promptFingerprint(skill.content)),
+  );
   check(
-    "the earliest shipped bodies are still recognised",
-    oldest.length > 0 && missed.length === 0,
-    `${missed.length} of ${oldest.length} unrecognised — run: npm run skills-fingerprint`,
+    "every shipped body is in the set",
+    missing.length === 0,
+    `${missing.map((skill) => skill.name).join(", ")} — run: npm run skills-fingerprint`,
   );
 }
 
@@ -158,7 +155,9 @@ console.log("\na stale skill is rewritten, an edited one is not");
 
 console.log("\nretired skills are removed, unless edited");
 {
-  const [[retiredId]] = RETIRED_SKILL_IDS;
+  // RETIRED_SKILL_IDS is empty in the normal case, so the rule is exercised
+  // against an id standing in for one, rather than only during a withdrawal.
+  const retiredId = RETIRED_SKILL_IDS[0]?.[0] ?? "skill_seed_ceo_withdrawn-example";
   const asShipped: Skill = {
     id: retiredId,
     departmentId: "ceo",
@@ -170,12 +169,16 @@ console.log("\nretired skills are removed, unless edited");
     createdAt: 1,
     updatedAt: 1,
   };
-  check("a retired skill is deleted", deleted(skillReconciliation([asShipped], shipped, additions, NOW)).includes(retiredId));
+  const withdrawn: [string, string][] = [[retiredId, "nothing"]];
+  check(
+    "a retired skill is deleted",
+    deleted(skillReconciliation([asShipped], shipped, additions, NOW, withdrawn)).includes(retiredId),
+  );
 
   const edited: Skill = { ...asShipped, content: "I rewrote this one and want to keep it." };
   check(
     "an edited retired skill survives",
-    !deleted(skillReconciliation([edited], shipped, additions, NOW)).includes(retiredId),
+    !deleted(skillReconciliation([edited], shipped, additions, NOW, withdrawn)).includes(retiredId),
   );
 }
 
