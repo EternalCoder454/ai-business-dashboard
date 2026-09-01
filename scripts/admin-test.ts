@@ -90,10 +90,17 @@ async function main() {
   await Promise.all([wipe(ONE), wipe(TWO)]);
 
   console.log("only the configured addresses are administrators");
-  const configured = OPERATOR_EMAILS[0] ?? "";
-  check("a configured address is", isOperator(configured), configured);
-  check("case does not matter", isOperator(configured.toUpperCase()));
-  check("surrounding space does not matter", isOperator(`  ${configured}  `));
+  // Skipped rather than failed when nothing is configured. A checkout has no
+  // OPERATOR_EMAILS and should not fail for it; a deployment has one and this
+  // is the check that matters there.
+  const configured = OPERATOR_EMAILS[0];
+  if (configured) {
+    check("a configured address is", isOperator(configured), configured);
+    check("case does not matter", isOperator(configured.toUpperCase()));
+    check("surrounding space does not matter", isOperator(`  ${configured}  `));
+  } else {
+    console.log("  --   none configured here, so there is nothing to match");
+  }
   check("a stranger is not", !isOperator("nobody@example.invalid"));
   check("an empty value is not", !isOperator(""));
   check("a null value is not", !isOperator(null));
