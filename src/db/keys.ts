@@ -11,11 +11,19 @@ import type { Provider } from "@/lib/providers";
  * snapshot the browser gets, and nothing in this file ever is.
  */
 
-const COLUMN = {
-  anthropic: t.settings.anthropicKey,
-  openai: t.settings.openaiKey,
-  google: t.settings.googleKey,
-} as const;
+/**
+ * One name per provider, and the only place the mapping lives.
+ *
+ * Typed as a full record on purpose: adding a fourth provider without giving
+ * it a column here is a compile error, rather than a provider that quietly
+ * cannot hold a workspace key. Drizzle types each column by its own name, so
+ * this holds the field and the column is looked up from it.
+ */
+const FIELD = {
+  anthropic: "anthropicKey",
+  openai: "openaiKey",
+  google: "googleKey",
+} satisfies Record<Provider, keyof typeof t.settings.$inferSelect>;
 
 /** What the interface is allowed to know: whether there is one, and its tail. */
 export interface KeySummary {
@@ -51,7 +59,7 @@ export async function workspaceKey(
   if (!databaseEnabled || !db) return "";
   try {
     const [row] = await db
-      .select({ key: COLUMN[provider] })
+      .select({ key: t.settings[FIELD[provider]] })
       .from(t.settings)
       .where(eq(t.settings.workspaceId, workspaceId))
       .limit(1);
@@ -103,8 +111,7 @@ export async function setWorkspaceKey(
 ): Promise<void> {
   const database = requireDb();
   const value = key.trim();
-  const column =
-    provider === "anthropic" ? "anthropicKey" : provider === "openai" ? "openaiKey" : "googleKey";
+  const column = FIELD[provider];
 
   await database
     .insert(t.settings)
