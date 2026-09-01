@@ -34,13 +34,13 @@ type ChapterId =
   | "licensing";
 
 const CHAPTERS: { id: ChapterId; label: string; blurb: string }[] = [
-  { id: "onboarding", label: "Onboarding", blurb: "Start here on day one" },
+  { id: "onboarding", label: "Onboarding", blurb: "Start here" },
   { id: "heads", label: "Departments", blurb: "Who owns what" },
   { id: "memory", label: "Memory", blurb: "Decisions and figures" },
-  { id: "tasks", label: "Tasks", blurb: "What is outstanding" },
-  { id: "skills", label: "Skills", blurb: "The playbooks they follow" },
+  { id: "tasks", label: "Tasks", blurb: "Outstanding work" },
+  { id: "skills", label: "Skills", blurb: "Department playbooks" },
   { id: "projects", label: "Projects and Library", blurb: "Where work is filed" },
-  { id: "cost", label: "Cost", blurb: "What a reply is billed" },
+  { id: "cost", label: "Cost", blurb: "What a reply costs" },
   { id: "licensing", label: "Licensing", blurb: "What may be reused" },
 ];
 
@@ -142,87 +142,78 @@ function Onboarding({
     <>
       <Section title="What this is">
         <p>
-          One AI per department, each with a single job, its own memory, and the
-          company&apos;s context, so it answers as a colleague who already knows where
-          they work rather than an assistant you brief from scratch.
+          One AI per department. Each has its own area, its own conversations, and
+          {company === "this company" ? " the company's" : ` ${company}'s`} context, so
+          you do not have to explain the business every time you ask something.
         </p>
         <p>
-          {ceoName ? `${ceoName} sits above them` : "A Chief of Staff sits above them"}
+          {ceoName ? `${ceoName} is the Chief of Staff` : "A Chief of Staff sits above them"}
           {departments.length
-            ? `, with ${departments.length} heads reporting in: ${departments
+            ? `, over ${departments.length} departments: ${departments
                 .map((d) => d.personaName || d.name)
                 .join(", ")}.`
             : "."}{" "}
-          They keep separate conversations, so what you tell one is not automatically
-          known to another. What they all share is {company}&apos;s profile, its
-          recorded decisions and figures, and the open work in their own area.
+          Conversations are separate, so telling one department something does not tell
+          the others. What they all share is the company profile, recorded decisions and
+          figures, and the open tasks in their own area.
         </p>
       </Section>
 
-      <Section title="Getting something useful out of it">
-        <Step n={1} title="Pick whose job it is">
-          Ask whoever owns the area. Pricing goes to Finance, a landing page to
-          Marketing. Asking the wrong one gets you a redirect rather than a bad
-          answer, which is the system working, but it costs a round trip.
+      <Section title="Getting a useful answer">
+        <Step n={1} title="Ask the right department">
+          Pricing goes to Finance, a landing page to Marketing. Ask the wrong one and
+          you get a redirect instead of the work.
         </Step>
-        <Step n={2} title="Ask for the thing, not for advice about the thing">
-          &ldquo;Write the three subject lines&rdquo; beats &ldquo;how should I think
-          about subject lines&rdquo;. They are set up to hand back work you can use,
-          and they will tell you what they assumed while writing it.
+        <Step n={2} title="Ask for the thing, not advice about the thing">
+          &ldquo;Write the three subject lines&rdquo; gets you subject lines.
+          &ldquo;How should I think about subject lines&rdquo; gets you an essay.
         </Step>
-        <Step n={3} title="Give them the specifics you already have">
-          Numbers, names, dates, constraints. Vagueness in, vagueness out. If you do
-          not have a number, say so and they will mark the assumption rather than
-          quietly inventing one. Anything you find yourself retyping belongs in
-          Memory, where every head reads it once and stops asking.
+        <Step n={3} title="Include the specifics">
+          Numbers, names, dates, constraints. If you do not have a number, say so and
+          it will be marked as an assumption rather than invented. Anything you retype
+          often belongs in Memory.
         </Step>
-        <Step n={4} title="Push back">
-          Disagreeing is useful. They will hold a position if it is sound and change
-          it if you give them a reason, and they are told to name what would change
-          their mind.
+        <Step n={4} title="Disagree when you disagree">
+          A position will be held if it is sound and changed if you give a reason.
         </Step>
       </Section>
 
       <Section title="What not to do" tone="warning">
         <Rule title="Do not paste secrets">
-          No passwords, API keys, card numbers, or customer personal data. It goes to
-          a third-party model and it is stored in the conversation afterwards. If you
-          would not put it in a shared document, do not put it here.
+          No passwords, API keys, card numbers, or customer personal data. It is sent
+          to a third-party model and stored in the conversation.
         </Rule>
         <Rule title="Do not treat an answer as checked">
-          They can be confidently wrong. They are told to flag guesses and show their
-          reasoning, which helps, but anything with money, legal, or customer
-          consequences needs a human to verify it before it goes out.
+          Answers can be wrong. Anything with money, legal, or customer consequences
+          needs a person to verify it first.
         </Rule>
-        <Rule title="Do not mistake Legal or Finance for professionals">
+        <Rule title="Legal and Finance are not professionals">
           Plain-English guidance to help you ask a real accountant or solicitor the
-          right question. Not advice, and not a substitute for either.
+          right question. Not advice.
         </Rule>
-        <Rule title="Do not assume this is private">
-          These conversations are company records on a company tool, and an
-          administrator can review them. Direct messages between people are not.
+        <Rule title="Nothing here is private">
+          All conversations and internal messaging are recorded and can be reviewed by
+          an administrator.
         </Rule>
-        <Rule title="Do not publish anything unread">
-          Nothing here should go out under your name, or the company&apos;s, without
-          you having read every line of it.
+        <Rule title="Read before you publish">
+          Nothing should go out under your name, or the company&apos;s, unread.
         </Rule>
       </Section>
 
       <Card>
-        <h2 className="md-title-lg mb-2">Ready</h2>
+        <h2 className="md-title-lg mb-2">Get started</h2>
         <p className="md-body mb-4 text-on-variant">
-          Fill in your name on the Account page first, so they know who they are
-          talking to. Then pick someone and ask something real.
+          Add your name on the Account page, then ask something real.
         </p>
         <div className="flex flex-wrap gap-2">
           <Link href="/account">
-            <Chip tone="primary">Set up your account</Chip>
+            <Chip tone="primary">Account</Chip>
           </Link>
           <Link href="/library/memory">
-            <Chip>Record a fact</Chip>
+            <Chip>Memory</Chip>
           </Link>
           <Link href="/ceo">
-            <Chip>Talk to the Chief of Staff</Chip>
+            <Chip>Chief of Staff</Chip>
           </Link>
         </div>
       </Card>
@@ -234,55 +225,43 @@ function Heads() {
   return (
     <>
       <Section title="Who owns what">
-        <p>
-          Each head has one area and is told to stay in it. Asking the wrong one is
-          not a disaster, but you get a one-line redirect instead of the work.
-        </p>
         <Definition term="Chief of Staff">
-          Decisions that cross departments, and anything where you do not know who to
-          ask. Sets priorities, forces tradeoffs, and says what gets dropped. The call
-          is always yours; the job is making it a clear one.
+          Decisions that cross departments, priorities, and tradeoffs. Use it when you
+          do not know who to ask.
         </Definition>
         <Definition term="Marketing">
-          Positioning, campaign strategy, store pages, launch messaging. The Steam
-          page and mod listings live here.
+          Positioning, campaign strategy, store pages, launch messaging. Steam pages
+          and mod listings.
         </Definition>
         <Definition term="Social Media">
-          Devlogs, short-form clips, posting cadence, community. Discovery for the
-          game runs through here rather than through Marketing.
+          Devlogs, short-form clips, posting schedules, community.
         </Definition>
         <Definition term="Design">
-          Creative direction, visual identity, and interface critique, in game and on
-          the web.
+          Creative direction, visual identity, interface critique.
         </Definition>
         <Definition term="Finance">
-          Pricing, quotes, forecasts, and what a job is actually worth taking.
+          Pricing, quotes, forecasts, and whether a job is worth taking.
         </Definition>
         <Definition term="Legal">
-          Contracts and licensing in plain English, to help you ask a real solicitor
-          the right question. Never advice.
+          Contracts and licensing in plain English. Not legal advice.
         </Definition>
         <Definition term="Operations">
-          Process, tooling, client onboarding, and keeping a job from drifting outside
-          what was quoted.
+          Process, tooling, client onboarding, scope control.
         </Definition>
         <Definition term="Engineering">
-          Architecture, code review, performance, and build questions across the mods,
-          the sites, and the game.
+          Architecture, code review, performance, build questions.
         </Definition>
       </Section>
 
-      <Section title="Asking everyone at once">
+      <Section title="Ask Everyone">
         <p>
-          Ask Everyone puts one question to every head simultaneously and, if you want
-          it, has the Chief of Staff read across the answers. Worth it for a genuinely
-          company-wide question and wasteful otherwise: it costs roughly eight replies
-          instead of one.
+          Puts one question to every department at once, with an optional summary from
+          the Chief of Staff. It costs roughly eight replies instead of one, so use it
+          for questions that genuinely cross the whole company.
         </p>
         <p>
-          Each head answers to a word budget, set in Settings. The point of asking
-          eight people at once is breadth; depth is what a one-to-one conversation is
-          for.
+          Each answer is capped to a word count, set in Settings. For depth, use a
+          normal conversation.
         </p>
       </Section>
     </>
@@ -292,45 +271,33 @@ function Heads() {
 function Memory() {
   return (
     <>
-      <Section title="Why it exists">
+      <Section title="What it holds">
         <p>
-          Without it every conversation starts from the same static profile, so a head
-          will happily contradict a decision made last month and has no figure to
-          reason from. Memory is the part that accumulates. Every head reads it before
-          answering.
+          Decisions and figures about the business. Every department reads these before
+          answering, so they do not have to be repeated in each conversation.
         </p>
-      </Section>
-
-      <Section title="The two kinds">
         <Definition term="Decisions">
-          Something settled, in one line, with the reasoning under it and what would
-          reopen it. A decision with no trigger is permanent, which is sometimes
-          right and worth being deliberate about.
+          Something settled, in one line, with the reasoning and an optional review
+          trigger.
         </Definition>
         <Definition term="Figures">
-          A measurement that was true on a date. Readings sharing a label read as a
-          trend, so write &ldquo;Wishlists&rdquo; the same way every time and the
-          heads see the direction rather than a pile of unrelated numbers.
+          A measurement and the date it was true. Readings sharing a name are shown as
+          a trend, so write &ldquo;Wishlists&rdquo; the same way each time.
         </Definition>
       </Section>
 
-      <Section title="Using it well">
+      <Section title="Guidelines">
         <Rule title="Keep entries short">
-          Every live entry sits in every head&apos;s prompt from then on. A four
-          hundred word paragraph costs tokens on every message and buries the line
-          that mattered.
+          Every live entry is added to every prompt.
         </Rule>
-        <Rule title="Date it when it happened">
-          Not when you typed it. A reading taken last Friday belongs on last Friday or
-          the trend the heads read is wrong.
+        <Rule title="Use the date it happened">
+          Not the date you typed it, or the trend will be wrong.
         </Rule>
-        <Rule title="Archive rather than delete">
-          An overtaken decision leaves the prompt and stays in the table, so the
-          history of what was decided survives being wrong.
+        <Rule title="Archive instead of deleting">
+          Archived entries leave the prompt and stay on record.
         </Rule>
-        <Rule title="Scope it">
-          Company-wide reaches every head and is paid for eight times over. A finance
-          figure belongs to Finance.
+        <Rule title="Scope it to a department">
+          Company-wide entries are sent to all eight.
         </Rule>
       </Section>
     </>
@@ -340,34 +307,29 @@ function Memory() {
 function Tasks() {
   return (
     <>
-      <Section title="What it is for">
+      <Section title="What it holds">
         <p>
-          Deliverables are things produced. Tasks are the other half: what has not
-          happened yet. Keeping them apart matters because &ldquo;what have we
-          made&rdquo; and &ldquo;what is outstanding&rdquo; are different questions and
-          merging them makes both lists useless.
+          Outstanding work. Deliverables are what has been produced; tasks are what has
+          not happened yet.
         </p>
         <p>
-          The open tasks in a head&apos;s own area go into its prompt, capped and
-          sorted by date. That is what makes &ldquo;what should I focus on&rdquo;
-          answerable: without it the question is answered from nothing.
+          Open tasks are shared with the department they belong to, capped and sorted
+          by date, so asking what to focus on is answered against the real list.
         </p>
       </Section>
 
-      <Section title="How it behaves">
+      <Section title="How it works">
         <Step n={1} title="Three columns">
           To do, Doing, Done. Drag a card between them or tick it off in place.
         </Step>
         <Step n={2} title="New tasks go to the top">
-          The thing just written down is the thing most on your mind. Appending it
-          under forty older ones is how a list stops being read.
+          Newest first within each column.
         </Step>
-        <Step n={3} title="Dates only where a date is real">
-          Anything past its date turns red and is called out on the dashboard. A list
-          where everything is overdue tells you nothing.
+        <Step n={3} title="Due dates are optional">
+          Overdue tasks turn red and appear in notifications.
         </Step>
-        <Step n={4} title="Finished work leaves the prompt">
-          Done tasks are history. They stay on the board and stop being context.
+        <Step n={4} title="Completed tasks leave the prompt">
+          They stay on the board.
         </Step>
       </Section>
     </>
@@ -379,34 +341,25 @@ function Skills() {
     <>
       <Section title="What a skill is">
         <p>
-          A written playbook a head follows: a name, a trigger line saying when it
-          applies, and a body telling it how to do the thing. Every enabled skill is
-          injected into that head&apos;s prompt in full, on every message.
-        </p>
-        <p>
-          That last point is the whole design constraint. Skills are not free
-          capability; they are prompt weight. A bloated library dilutes attention
-          rather than adding ability, which is why the shipped set was cut from
-          seventy-two to fifty-six by merging the ones that said the same thing twice.
+          A written playbook: a name, a trigger line saying when it applies, and a body
+          saying how to do the work. Every enabled skill is added to that
+          department&apos;s prompt in full, on every message.
         </p>
       </Section>
 
       <Section title="Writing one">
-        <Rule title="The trigger line does the work">
-          It is what the model matches against. &ldquo;Use when pricing a client
-          website&rdquo; beats &ldquo;pricing guidance&rdquo;.
+        <Rule title="The trigger line matters most">
+          It is what gets matched. &ldquo;Use when pricing a client website&rdquo;
+          beats &ldquo;pricing guidance&rdquo;.
         </Rule>
         <Rule title="Be specific to this studio">
-          A skill that would suit any company is a skill the model already knows.
-          Value is in the parts only true here: the loaders you target, the bands you
-          quote, the platforms you publish on.
+          The loaders you target, the rates you quote, the platforms you publish on.
         </Rule>
-        <Rule title="Disable rather than delete while testing">
+        <Rule title="Disable rather than delete">
           A disabled skill costs nothing and can be turned back on.
         </Rule>
-        <Rule title="Edited skills stay edited">
-          Anything you rewrite is left alone permanently by updates. The app only
-          replaces a skill whose text still matches exactly what it shipped.
+        <Rule title="Your edits are kept">
+          Updates only replace a skill whose text still matches what shipped.
         </Rule>
       </Section>
     </>
@@ -418,40 +371,32 @@ function Projects() {
     <>
       <Section title="Projects">
         <p>
-          A project groups conversations, deliverables, files, tasks, and recorded
-          decisions that belong to the same piece of work, wherever in the company
-          they happened. Deleting one releases its contents rather than destroying
-          them: a conversation is worth more than the folder it was filed in.
+          Groups conversations, deliverables, files, tasks, and decisions that belong
+          to the same piece of work. Deleting a project releases its contents rather
+          than deleting them.
         </p>
         <p>
           A project can be shared with another approved account, which makes its
-          conversations collaborative. Authorship is pinned when a message is written,
-          so re-saving a shared thread never rewrites who said what.
+          conversations collaborative.
         </p>
       </Section>
 
       <Section title="Library">
         <Definition term="Files">
-          Images, PDFs, and documents kept once and attached to any conversation
-          rather than re-uploaded each time. Scope one to a department and only that
-          head sees it.
+          Images, PDFs, and documents attached to any conversation without
+          re-uploading. Can be scoped to one department.
         </Definition>
         <Definition term="Deliverables">
-          Replies worth keeping, saved out of a conversation with a status.
+          Replies saved out of a conversation, with a status.
         </Definition>
-        <Definition term="Skills">
-          The playbooks above.
-        </Definition>
-        <Definition term="Memory">
-          The record every head reads.
-        </Definition>
+        <Definition term="Skills">Playbooks each department follows.</Definition>
+        <Definition term="Memory">Decisions and figures.</Definition>
       </Section>
 
       <Section title="Inbox">
         <p>
-          People rather than departments: ordinary direct messages with colleagues on
-          this workspace. Not visible to an administrator the way department
-          conversations are.
+          Direct messages with colleagues on this workspace, rather than with a
+          department. Recorded like everything else.
         </p>
       </Section>
     </>
@@ -461,35 +406,32 @@ function Projects() {
 function Cost() {
   return (
     <>
-      <Section title="What you are billed for">
+      <Section title="What is billed">
         <p>
-          Every reply is billed by length, on one shared account, and both halves
-          count: what is sent up and what comes back. What is sent up is larger than
-          it looks, because it carries the department prompt, its skills, the company
-          profile, the record, and the open work.
+          Every reply is billed by length on one shared account, both what is sent and
+          what comes back. What is sent includes the department prompt, its skills, the
+          company profile, memory, and open tasks.
         </p>
       </Section>
 
-      <Section title="What makes it cheaper">
+      <Section title="Keeping it down">
         <Rule title="Caching does most of the work">
-          The whole system block is cached for an hour, so the second message in a
-          session costs a fraction of the first. This is why the record and the task
-          list sit late in the prompt: changing them leaves everything above cached.
+          The context block is cached for an hour, so later messages in a session cost
+          a fraction of the first.
         </Rule>
         <Rule title="One topic per conversation">
-          A long thread re-sends its whole history every turn. Three unrelated topics
-          in one conversation is three topics being re-read on every message.
+          A conversation re-sends its full history on every message.
         </Rule>
         <Rule title="Ask Everyone costs about eight replies">
-          Use it for genuinely company-wide questions.
+          Use it for company-wide questions.
         </Rule>
         <Rule title="Attachments are large">
-          An image or PDF is measured in thousands of tokens and rides along with
-          every later message in that conversation.
+          An image or PDF is thousands of tokens, re-sent with every later message in
+          that conversation.
         </Rule>
-        <Rule title="Effort is a dial">
-          Settings controls how hard the model thinks. Higher settings are worth it
-          for architecture and forecasting, wasteful for a caption.
+        <Rule title="Effort is adjustable">
+          Higher effort in Settings costs more. Worth it for architecture and
+          forecasting, not for a caption.
         </Rule>
       </Section>
     </>
@@ -499,44 +441,37 @@ function Cost() {
 function Licensing() {
   return (
     <>
-      <Section title="Three lines, three answers">
-        <p>
-          Using one licence everywhere would either strangle the mods or give away the
-          panel, so the studio runs three positions. Full text is in the repository.
-        </p>
+      <Section title="Three lines, three licences">
         <Definition term="This panel and internal tools">
-          Source-available under PolyForm Strict, plus a grant permitting a copy to
-          prepare a contribution. Readable, not reusable. Never called open source,
-          because that term requires rights this deliberately withholds.
+          PolyForm Strict, plus a grant permitting a copy to prepare a contribution.
+          Source-available: readable, not reusable.
         </Definition>
         <Definition term="Minecraft mods">
-          LGPL-3.0-or-later for the code, all rights reserved for the art. The one
-          line where control is given up on purpose: a mod that cannot be forked dies
-          when the studio stops updating it. The name is trademark, not copyright, so
-          the licence does not hand that over either.
+          LGPL-3.0-or-later for code, all rights reserved for art. Forks are allowed;
+          the art and the name are not included.
         </Definition>
         <Definition term="Client websites">
-          The contract governs, and IP transfers on payment in full.
+          The contract governs. IP transfers on payment in full.
         </Definition>
       </Section>
 
-      <Section title="What a licence cannot do" tone="warning">
-        <Rule title="It cannot stop forking on GitHub">
-          Their terms grant every user a licence to fork a public repository whatever
-          the LICENSE file says. What it governs is what may be done with that copy.
+      <Section title="Limits" tone="warning">
+        <Rule title="Forking cannot be prevented on GitHub">
+          Their terms grant every user a licence to fork a public repository. The
+          licence governs what may be done with that copy.
         </Rule>
-        <Rule title="It cannot make contributions safe by itself">
-          That is what the contributing guide is for.
+        <Rule title="Contributions need their own terms">
+          Covered by CONTRIBUTING.md.
         </Rule>
-        <Rule title="It is worth what enforcing it is worth">
-          Two people will not litigate. Its value is making the position unambiguous.
+        <Rule title="Check dependencies first">
+          Linking copyleft code means the combined work inherits those terms.
         </Rule>
       </Section>
     </>
   );
 }
 
-/** A quiet way onward, so the wiki reads as a book rather than a menu. */
+/** A link to the next chapter, so the wiki can be read straight through. */
 function NextChapter({
   chapter,
   onOpen,
