@@ -9,7 +9,7 @@ import {
   overview,
   readConversation,
 } from "@/db/admin";
-import { ADMIN_EMAILS, isOperator } from "@/lib/admin";
+import { OPERATOR_EMAILS, isOperator } from "@/lib/admin";
 import { grantAccess, listAccess, revokeAccess } from "@/db/access";
 import { ALLOWED_EMAILS } from "@/auth";
 import { readJsonWithin } from "@/lib/guard";
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
       // know why someone can sign in who is not on the list they can edit.
       access: {
         allowed: ALLOWED_EMAILS,
-        admins: ADMIN_EMAILS,
+        admins: OPERATOR_EMAILS,
         invited: await listAccess(),
       },
     });

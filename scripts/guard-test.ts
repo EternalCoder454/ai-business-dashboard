@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 
 import { readJsonWithin, withinRate } from "../src/lib/guard";
-import { ADMIN_EMAILS, isOperator } from "../src/lib/admin";
+import { OPERATOR_EMAILS, isOperator } from "../src/lib/admin";
 import { safeDestination } from "../src/app/signin/page";
 import { WRITABLE_TABLES, applyOp, emptyWorkspace } from "../src/lib/workspace";
 import { filesForDepartment } from "../src/lib/files";
@@ -337,10 +337,10 @@ console.log("\na write immediately after a create can see it");
     // wrong: every business's first member is made an admin of their own
     // workspace, so the union handed each customer the routes that read and
     // delete every other customer's workspace.
-    check("the deployment has an operator", ADMIN_EMAILS.length > 0, ADMIN_EMAILS.join(","));
+    check("the deployment has an operator", OPERATOR_EMAILS.length > 0, OPERATOR_EMAILS.join(","));
     check(
       "an operator comes from the environment, never from a database row",
-      isOperator(ADMIN_EMAILS[0]) && !isOperator("someone@a-customer.invalid"),
+      isOperator(OPERATOR_EMAILS[0]) && !isOperator("someone@a-customer.invalid"),
     );
 
     // Everything on the admin route crosses the tenant boundary, so it gates

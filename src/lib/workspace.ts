@@ -306,7 +306,7 @@ export interface WorkspaceStatus {
   /** Admin of this workspace, as opposed to of the deployment. */
   workspaceRole?: "member" | "admin" | null;
   /** Whether this account may review other people's conversations. */
-  isAdmin?: boolean;
+  isOperator?: boolean;
   /** The single account the workspace belongs to. */
   isOwner?: boolean;
   email?: string;

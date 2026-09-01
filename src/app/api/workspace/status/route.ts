@@ -75,7 +75,7 @@ export async function GET() {
   }
 
   const serverKey = serverKeyConfigured();
-  const isAdmin = isOperator(email);
+  const operator = isOperator(email);
   const isOwner = isOwnerEmail(email);
 
   // Whether the business holds a key, and its last four characters. Never the
@@ -98,7 +98,7 @@ export async function GET() {
       serverKeys: serverKeys(),
       workspaceKeys,
       workspaceRole,
-      isAdmin,
+      isOperator: operator,
       isOwner,
       email,
       ...identity,
@@ -113,7 +113,7 @@ export async function GET() {
       serverKeys: serverKeys(),
       workspaceKeys,
       workspaceRole,
-      isAdmin,
+      isOperator: operator,
       isOwner,
       email,
       ...identity,

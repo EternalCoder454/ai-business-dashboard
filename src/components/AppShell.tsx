@@ -168,7 +168,7 @@ const ROUTE_TITLES: [string, string][] = [
   ["/onboarding", "Internal Wiki"],
   ["/tasks", "Tasks"],
   ["/projects", "Projects"],
-  ["/admin", "Admin"],
+  ["/admin", "Operator"],
   ["/library/skills", "Skills"],
   ["/library/deliverables", "Deliverables"],
   ["/library", "Library"],

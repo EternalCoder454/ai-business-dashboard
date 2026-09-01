@@ -17,7 +17,7 @@ import {
   overview,
   readConversation,
 } from "../src/db/admin";
-import { ADMIN_EMAILS, isAdminEmail } from "../src/lib/admin";
+import { OPERATOR_EMAILS, isOperatorEmail } from "../src/lib/admin";
 import { parseEmailList } from "../src/auth";
 
 const ONE = "admin-one@example.invalid";
@@ -90,13 +90,13 @@ async function main() {
   await Promise.all([wipe(ONE), wipe(TWO)]);
 
   console.log("only the configured addresses are administrators");
-  const configured = ADMIN_EMAILS[0] ?? "";
-  check("a configured address is", isAdminEmail(configured), configured);
-  check("case does not matter", isAdminEmail(configured.toUpperCase()));
-  check("surrounding space does not matter", isAdminEmail(`  ${configured}  `));
-  check("a stranger is not", !isAdminEmail("nobody@example.invalid"));
-  check("an empty value is not", !isAdminEmail(""));
-  check("a null value is not", !isAdminEmail(null));
+  const configured = OPERATOR_EMAILS[0] ?? "";
+  check("a configured address is", isOperatorEmail(configured), configured);
+  check("case does not matter", isOperatorEmail(configured.toUpperCase()));
+  check("surrounding space does not matter", isOperatorEmail(`  ${configured}  `));
+  check("a stranger is not", !isOperatorEmail("nobody@example.invalid"));
+  check("an empty value is not", !isOperatorEmail(""));
+  check("a null value is not", !isOperatorEmail(null));
 
   console.log("\nan address list survives however it was typed");
   check("commas", parseEmailList("a@x.com,b@x.com").length === 2);

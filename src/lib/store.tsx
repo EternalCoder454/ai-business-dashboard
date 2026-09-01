@@ -98,7 +98,7 @@ export interface StoreValue {
     key: string,
   ) => Promise<string | null>;
   /** Whether this account may review other people's conversations. */
-  isAdmin: boolean;
+  isOperator: boolean;
   /** Pushes everything in this browser into the signed-in account. */
   uploadLocalWorkspace: () => Promise<{ pushed: number }>;
   /** Department heads only. The CEO is excluded. */
@@ -232,7 +232,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     openai: false,
     google: false,
   });
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isOperator, setIsOperator] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [remote, setRemote] = useState<Workspace | null>(null);
 
@@ -284,7 +284,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (status?.serverKeys) setServerKeys(status.serverKeys);
         if (status?.workspaceKeys) setWorkspaceKeys(status.workspaceKeys);
         setWorkspaceRole(status?.workspaceRole ?? null);
-        setIsAdmin(Boolean(status?.isAdmin));
+        setIsOperator(Boolean(status?.isOperator));
         setIsOwner(Boolean(status?.isOwner));
         setMode(status?.hosted && status.signedIn ? "hosted" : "local");
       })
@@ -581,7 +581,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (body?.keys) setWorkspaceKeys(body.keys);
         return null;
       },
-      isAdmin,
+      isOperator,
       allDepartments: departmentList,
       departments: departmentList.filter((d) => !d.isCeo && !d.personal),
       personalDepartments: departmentList.filter((d) => d.personal),
@@ -1181,7 +1181,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     mode,
     signedInEmail,
     serverKey,
-    isAdmin,
+    isOperator,
     remote,
     push,
     departmentList,

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
-import { ADMIN_EMAILS } from "./admin";
+import { OPERATOR_EMAILS } from "./admin";
 import { membershipFor } from "@/db/tenancy";
 
 export interface Branding {
@@ -25,14 +25,14 @@ export const FALLBACK_BRANDING: Branding = {
  * Those are rendered for crawlers and browsers with no session, so there is no
  * account to read settings from, and no single "the workspace" either: settings
  * are stored per account. The deployment's owner is the first address in
- * ADMIN_EMAILS, so their branding stands for the deployment.
+ * OPERATOR_EMAILS, so their branding stands for the deployment.
  *
  * Never throws. A missing database, an owner who has not signed in, or a
  * database that is briefly down all fall back to the shipped defaults, because
  * an icon is not worth failing a request over.
  */
 export async function loadBranding(): Promise<Branding> {
-  const owner = ADMIN_EMAILS[0];
+  const owner = OPERATOR_EMAILS[0];
   if (!databaseEnabled || !owner) return FALLBACK_BRANDING;
 
   try {

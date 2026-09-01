@@ -88,7 +88,7 @@ const bytes = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : n >= 1_000 ? `${Math.round(n / 1_000)} KB` : `${n} B`;
 
 export default function AdminPage() {
-  const { isAdmin, storage, accountEmail } = useStore();
+  const { isOperator, storage, accountEmail } = useStore();
 
   const [tab, setTab] = useState<Tab>("overview");
   const [people, setPeople] = useState<Person[] | null>(null);
@@ -120,8 +120,8 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (isAdmin) void load();
-  }, [isAdmin, load]);
+    if (isOperator) void load();
+  }, [isOperator, load]);
 
   const openPerson = useCallback(async (row: Person) => {
     setPerson(row);
@@ -169,15 +169,15 @@ export default function AdminPage() {
     await load();
   };
 
-  if (storage !== "hosted" || !isAdmin) {
+  if (storage !== "hosted" || !isOperator) {
     return (
       <div className="flex h-full min-h-0 flex-col">
-        <PageHeader eyebrow="Oversight" title="Admin" />
+        <PageHeader eyebrow="Oversight" title="Operator" />
         <div className="page-x py-6">
           <EmptyState
             icon={<PersonIcon className="h-8 w-8" />}
-            title="No admin access"
-            description="Requires an address listed in ADMIN_EMAILS."
+            title="Not an operator"
+            description="Requires an address listed in OPERATOR_EMAILS."
           />
         </div>
       </div>
@@ -188,7 +188,7 @@ export default function AdminPage() {
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader
         eyebrow="Oversight"
-        title="Admin"
+        title="Operator"
       />
 
       <div className="flex flex-none items-center gap-2 border-b border-outline-variant page-x py-3">
@@ -532,7 +532,7 @@ function AccessTab({
           {access.allowed.map((email) => (
             <li key={email} className="flex flex-wrap items-center gap-2">
               <span className="md-body truncate">{email}</span>
-              {access.admins.includes(email) ? <Chip tone="primary">Admin</Chip> : null}
+              {access.admins.includes(email) ? <Chip tone="primary">Operator</Chip> : null}
               {signedIn.has(email) ? null : (
                 <Chip tone="warning">Has not signed in</Chip>
               )}
@@ -542,10 +542,12 @@ function AccessTab({
       </Card>
 
       <Card>
-        <h2 className="md-title-lg mb-1">Administrators</h2>
+        <h2 className="md-title-lg mb-1">Operators</h2>
         <p className="md-body text-on-variant">
-          Set as ADMIN_EMAILS, defaulting to the first address on the allowlist.
-          Administrators can read all conversations and delete a workspace.
+          Set as OPERATOR_EMAILS, defaulting to the first address on the
+          allowlist. An operator runs this deployment: they can read any
+          workspace and delete one. Being an administrator of your own business
+          is a different thing, granted per workspace, and gives none of this.
         </p>
       </Card>
     </div>
