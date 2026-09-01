@@ -1079,8 +1079,12 @@ function MessageBubble({
               )}
             </ul>
           ) : null}
+          {/* Anywhere, not break-word: a pasted URL or key is one word, and one
+              word wider than the bubble takes the layout with it. */}
           {message.content ? (
-            <p className="md-body whitespace-pre-wrap">{message.content}</p>
+            <p className="md-body whitespace-pre-wrap [overflow-wrap:anywhere]">
+              {message.content}
+            </p>
           ) : null}
         </div>
       </div>

@@ -284,7 +284,10 @@ function NavigationRail({
     <nav
       className={cx(
         "safe-left hidden w-20 flex-none flex-col items-center gap-1",
-        "border-r border-outline-variant bg-low py-3 medium:flex",
+        // Scrolls, because a phone held sideways is 360px tall and the rail is
+        // taller than that: without this the last destinations are simply
+        // unreachable.
+        "border-r border-outline-variant bg-low py-3 medium:flex overflow-y-auto rail-scroll",
         collapsed ? "large:flex" : "large:hidden",
       )}
     >

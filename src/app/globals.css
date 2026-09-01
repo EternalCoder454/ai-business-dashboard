@@ -471,6 +471,16 @@
   display: none;
 }
 
+/* Same idea for the navigation rail: it scrolls when the window is too short
+   for it, and a scrollbar down the middle of the navigation is not wanted. */
+.rail-scroll {
+  scrollbar-width: none;
+}
+
+.rail-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .filter-row > * {
   flex: none;
 }

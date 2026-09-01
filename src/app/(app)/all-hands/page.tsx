@@ -201,7 +201,11 @@ export default function AllHandsPage() {
         >
           <span className="hidden medium:inline">New thread</span>
         </Button>
-        <ProfileMenu />
+        {/* The top app bar carries it on compact, so this would be the second
+            avatar on the same screen. */}
+        <div className="hidden medium:block">
+          <ProfileMenu />
+        </div>
       </header>
 
       {showThreads ? (
@@ -400,9 +404,7 @@ export default function AllHandsPage() {
               value={question}
               rows={1}
               placeholder={
-                thread && !running
-                  ? "Ask the room a follow up…"
-                  : "What should the whole company weigh in on?"
+                thread && !running ? "Ask a follow up…" : "Ask the room…"
               }
               onChange={(event) => {
                 setQuestion(event.target.value);
@@ -416,7 +418,7 @@ export default function AllHandsPage() {
                   void ask(false);
                 }
               }}
-              className="md-body max-h-[200px] min-h-10 w-full resize-none bg-transparent py-2 text-on-surface placeholder:text-on-variant/70 focus:outline-none"
+              className="md-body max-h-[200px] min-h-10 w-full min-w-0 resize-none bg-transparent py-2 text-on-surface placeholder:text-on-variant/70 focus:outline-none"
             />
             {running ? (
               <Button
