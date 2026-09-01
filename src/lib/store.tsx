@@ -296,13 +296,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const hosted = mode === "hosted";
   /**
-   * True only once the answer is in. While the mode is still resolving,
-   * `hosted` is false but this is false too, which is the distinction the
-   * live queries below need: not-hosted-yet is not the same as local.
+   * "local" no longer means a workspace in this browser. It means the server
+   * could not give us one: not signed in, or not configured. There is nothing
+   * to fall back to, so the app waits rather than inventing a workspace.
    */
-  const local = mode === "local";
+  const hosted = mode === "hosted";
 
   // The hosted snapshot is read once; every later change is applied to it
   // locally and sent to the server, so no request is needed to re-render.
@@ -427,135 +426,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [hosted, isOwner, commitRemote]);
 
-  useEffect(() => {
-    // Seeding writes to IndexedDB, which a hosted browser never reads.
-    if (mode === "resolving" || hosted) return;
-    let cancelled = false;
-    ensureSeeded()
-      .then(() => {
-        if (!cancelled) setSeeded(true);
-      })
-      .catch((error) => {
-        console.error("Failed to initialise local database", error);
-        if (!cancelled) setSeeded(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [mode, hosted]);
-
-  const allDepartments = useLiveQuery(
-    async () => (!db || !local ? [] : db.departments.orderBy("order").toArray()),
-    [seeded, local],
-    undefined,
-  );
-
-  const conversations = useLiveQuery(
-    async () =>
-      !db || !local ? [] : db.conversations.orderBy("updatedAt").reverse().toArray(),
-    [seeded, local],
-    undefined,
-  );
-
-  const projects = useLiveQuery(
-    async () => (!db || !local ? [] : db.projects.orderBy("updatedAt").reverse().toArray()),
-    [seeded, local],
-    undefined,
-  );
-
-  const deliverables = useLiveQuery(
-    async () =>
-      !db || !local ? [] : db.deliverables.orderBy("updatedAt").reverse().toArray(),
-    [seeded, local],
-    undefined,
-  );
-
-  const skills = useLiveQuery(
-    async () => (!db || !local ? [] : db.skills.orderBy("updatedAt").reverse().toArray()),
-    [seeded, local],
-    undefined,
-  );
-
-  const memory = useLiveQuery(
-    async () => (!db || !local ? [] : db.memory.orderBy("occurredAt").reverse().toArray()),
-    [seeded, local],
-    undefined,
-  );
-
-  const tasks = useLiveQuery(
-    async () => (!db || !local ? [] : db.tasks.orderBy("order").toArray()),
-    [seeded, local],
-    undefined,
-  );
-
-  const wikiPages = useLiveQuery(
-    async () => (!db || !local ? [] : db.wikiPages.orderBy("order").toArray()),
-    [seeded, local],
-    undefined,
-  );
-
-  const files = useLiveQuery(
-    async () => (!db || !local ? [] : db.files.orderBy("updatedAt").reverse().toArray()),
-    [seeded, local],
-    undefined,
-  );
-
-  const allHandsRuns = useLiveQuery(
-    async () => (!db || !local ? [] : db.allHands.orderBy("updatedAt").reverse().toArray()),
-    [seeded, local],
-    undefined,
-  );
-
-  const storedAccount = useLiveQuery(
-    async () => (!db || !local ? undefined : db.account.get("me")),
-    [seeded, local],
-    undefined,
-  );
-
-  const storedProfile = useLiveQuery(
-    async () => (!db || !local ? undefined : db.profile.get("profile")),
-    [seeded, local],
-    undefined,
-  );
-
-  const storedSettings = useLiveQuery(
-    async () => (!db || !local ? undefined : db.settings.get("app")),
-    [seeded, local],
-    undefined,
-  );
 
   /**
-   * Picks the credentials up on load, and rescues one saved into Dexie before
-   * this browser had its own store, so the key does not have to be retyped.
-   * Runs once: after this, localStorage is the only home.
+   * The key this browser holds, if any.
+   *
+   * Only reached when the workspace has none of its own, which is the local
+   * development case. A business sets its key once and every member uses it
+   * without ever holding one; see the settings table.
    */
   useEffect(() => {
     if (credentialsReady) return;
-
-    const stored = readCredentials();
-    if (stored) {
-      setCredentials(stored);
-      setCredentialsReady(true);
-      return;
-    }
-
-    // Nothing saved here yet. In hosted mode there is nothing to inherit,
-    // since the server never held a key in the first place.
-    if (mode === "resolving") return;
-    if (hosted) {
-      setCredentialsReady(true);
-      return;
-    }
-    if (storedSettings === undefined) return; // Dexie has not answered yet
-
-    setCredentials(
-      writeCredentials({
-        apiKey: storedSettings.apiKey ?? "",
-        workspaceId: storedSettings.workspaceId ?? "",
-      }),
-    );
+    setCredentials(readCredentials() ?? EMPTY_CREDENTIALS);
     setCredentialsReady(true);
-  }, [credentialsReady, hosted, mode, storedSettings]);
+  }, [credentialsReady]);
 
   /**
    * Reads come from whichever storage is in use. Hosted keeps its snapshot in
@@ -563,39 +446,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    * written against these names and never has to know which one it got.
    */
   const settings: Settings = useMemo(() => {
-    const base = hosted
-      ? { ...DEFAULT_SETTINGS, ...(remote?.settings ?? {}) }
-      : { ...DEFAULT_SETTINGS, ...(storedSettings ?? {}) };
+    const base = { ...DEFAULT_SETTINGS, ...(remote?.settings ?? {}) };
     // Neither storage holds the credentials, so they are laid over the top from
     // this browser once read. Overlaying unconditionally is what lets an empty
     // key mean cleared rather than merely absent.
     return credentialsReady ? { ...base, ...credentials } : base;
-  }, [hosted, remote?.settings, storedSettings, credentials, credentialsReady]);
+  }, [remote?.settings, credentials, credentialsReady]);
 
   /**
    * Google supplies the name, avatar, and address on every sign in, so those
    * always win. Everything the person set themselves survives underneath.
    */
   const account: UserAccount = useMemo(() => {
-    const stored = hosted
-      ? (remote?.account ?? DEFAULT_ACCOUNT)
-      : storedAccount
-        ? { ...DEFAULT_ACCOUNT, ...storedAccount }
-        : DEFAULT_ACCOUNT;
+    const stored = remote?.account ?? DEFAULT_ACCOUNT;
     return {
       ...stored,
       email: googleIdentity?.email ?? stored.email,
       avatarUrl: googleIdentity?.image ?? stored.avatarUrl,
       displayName: stored.displayName || googleIdentity?.givenName || "",
     };
-  }, [hosted, remote?.account, storedAccount, googleIdentity]);
+  }, [remote?.account, googleIdentity]);
 
-  const profile: CompanyProfile = useMemo(() => {
-    if (hosted) return remote?.profile ?? DEFAULT_PROFILE;
-    if (!storedProfile) return DEFAULT_PROFILE;
-    const { id: _id, ...rest } = storedProfile;
-    return { ...DEFAULT_PROFILE, ...rest };
-  }, [hosted, remote?.profile, storedProfile]);
+  const profile: CompanyProfile = useMemo(
+    () => remote?.profile ?? DEFAULT_PROFILE,
+    [remote?.profile],
+  );
 
   /**
    * The theme lives on <html>. It is also mirrored into localStorage, because
@@ -622,16 +497,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    * the store then re-rendered along with it, so the memo was doing nothing but
    * costing a comparison. A stable reference is the whole fix.
    */
-  const departmentList = hosted ? (remote?.departments ?? NONE) : (allDepartments ?? NONE);
-  const conversationList = hosted ? (remote?.conversations ?? NONE) : (conversations ?? NONE);
-  const deliverableList = hosted ? (remote?.deliverables ?? NONE) : (deliverables ?? NONE);
-  const memoryList = hosted ? (remote?.memory ?? NONE) : (memory ?? NONE);
-  const taskList = hosted ? (remote?.tasks ?? NONE) : (tasks ?? NONE);
-  const wikiList = hosted ? (remote?.wikiPages ?? NONE) : (wikiPages ?? NONE);
-  const projectList = hosted ? (remote?.projects ?? NONE) : (projects ?? NONE);
-  const skillList = hosted ? (remote?.skills ?? NONE) : (skills ?? NONE);
-  const fileList = hosted ? (remote?.files ?? NONE) : (files ?? NONE);
-  const runList = hosted ? (remote?.allHandsRuns ?? NONE) : (allHandsRuns ?? NONE);
+  const departmentList = remote?.departments ?? NONE;
+  const conversationList = remote?.conversations ?? NONE;
+  const deliverableList = remote?.deliverables ?? NONE;
+  const memoryList = remote?.memory ?? NONE;
+  const taskList = remote?.tasks ?? NONE;
+  const wikiList = remote?.wikiPages ?? NONE;
+  const projectList = remote?.projects ?? NONE;
+  const skillList = remote?.skills ?? NONE;
+  const fileList = remote?.files ?? NONE;
+  const runList = remote?.allHandsRuns ?? NONE;
 
   const [writeError, setWriteError] = useState<string | null>(null);
 
@@ -684,7 +559,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
 
     return {
-      ready: hosted ? remote !== null : seeded && allDepartments !== undefined,
+      ready: remote !== null,
       writeError,
       dismissWriteError: () => setWriteError(null),
       storage: mode,
@@ -771,29 +646,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
         if (Object.keys(rest).length === 0) return;
 
-        if (hosted) {
-          await push({ table: "settings", action: "upsert", row: rest });
-          return;
-        }
-        await requireDb().settings.put({ ...settings, ...rest, id: "app" });
+        await push({ table: "settings", action: "upsert", row: rest });
       },
 
       updateProfile: async (patch) => {
         const next = { ...profile, ...patch };
-        if (hosted) {
-          await push({ table: "profile", action: "upsert", row: next });
-          return;
-        }
-        await requireDb().profile.put({ id: "profile", ...next });
+        await push({ table: "profile", action: "upsert", row: next });
       },
 
       updateAccount: async (patch) => {
         const next = { ...account, ...patch, updatedAt: Date.now() };
-        if (hosted) {
-          await push({ table: "account", action: "upsert", row: patch });
-          return;
-        }
-        await requireDb().account.put({ id: "me", ...next });
+        await push({ table: "account", action: "upsert", row: patch });
       },
 
       createDepartment: async (input) => {
@@ -810,34 +673,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           status: input.status ?? "online",
           order: input.order ?? maxOrder + 1,
         };
-        if (hosted) await push({ table: "departments", action: "upsert", rows: [department] });
-        else await requireDb().departments.put(department);
+        await push({ table: "departments", action: "upsert", rows: [department] });
         return department;
       },
 
       updateDepartment: async (id, patch) => {
-        if (hosted) {
-          const current = remoteRef.current?.departments.find((d) => d.id === id);
-          if (!current) {
-            console.error("[workspace] nothing to update with id", id, "- write dropped");
-            return;
-          }
-          await push({ table: "departments", action: "upsert", rows: [{ ...current, ...patch }] });
+        const current = remoteRef.current?.departments.find((d) => d.id === id);
+        if (!current) {
+          console.error("[workspace] nothing to update with id", id, "- write dropped");
           return;
         }
-        await requireDb().departments.update(id, patch);
+        await push({ table: "departments", action: "upsert", rows: [{ ...current, ...patch }] });
       },
 
       deleteDepartment: async (id) => {
-        if (hosted) {
-          await push({ table: "departments", action: "delete", ids: [id] });
-          return;
-        }
-        const database = requireDb();
-        await database.transaction("rw", database.departments, database.conversations, async () => {
-          await database.departments.delete(id);
-          await database.conversations.where("departmentId").equals(id).delete();
-        });
+        // The server takes the department's conversations with it, which is
+        // what applyOp does on this side too.
+        await push({ table: "departments", action: "delete", ids: [id] });
       },
 
       createConversation: async (departmentId, title) => {
@@ -850,85 +702,67 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           createdAt: now,
           updatedAt: now,
         };
-        if (hosted) await push({ table: "conversations", action: "upsert", rows: [conversation] });
-        else await requireDb().conversations.put(conversation);
+        await push({ table: "conversations", action: "upsert", rows: [conversation] });
         return conversation;
       },
 
       updateConversation: async (id, patch) => {
-        if (hosted) {
-          const current = remoteRef.current?.conversations.find((c) => c.id === id);
-          if (!current) {
-            console.error("[workspace] nothing to update with id", id, "- write dropped");
-            return;
-          }
-          await push({
-            table: "conversations",
-            action: "upsert",
-            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
-          });
+        const current = remoteRef.current?.conversations.find((c) => c.id === id);
+        if (!current) {
+          console.error("[workspace] nothing to update with id", id, "- write dropped");
           return;
         }
-        await requireDb().conversations.update(id, { ...patch, updatedAt: Date.now() });
+        await push({
+          table: "conversations",
+          action: "upsert",
+          rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+        });
       },
 
       setMessages: async (id, messages) => {
-        if (hosted) {
-          const current = remoteRef.current?.conversations.find((c) => c.id === id);
-          if (!current) {
-            console.error("[workspace] nothing to update with id", id, "- write dropped");
-            return;
-          }
-          await push({
-            table: "conversations",
-            action: "upsert",
-            rows: [{ ...current, messages, updatedAt: Date.now() }],
-          });
+        const current = remoteRef.current?.conversations.find((c) => c.id === id);
+        if (!current) {
+          console.error("[workspace] nothing to update with id", id, "- write dropped");
           return;
         }
-        await requireDb().conversations.update(id, { messages, updatedAt: Date.now() });
+        await push({
+          table: "conversations",
+          action: "upsert",
+          rows: [{ ...current, messages, updatedAt: Date.now() }],
+        });
       },
 
       deleteConversation: async (id) => {
-        if (hosted) await push({ table: "conversations", action: "delete", ids: [id] });
-        else await requireDb().conversations.delete(id);
+        await push({ table: "conversations", action: "delete", ids: [id] });
       },
 
       saveAllHandsRun: async (run) => {
-        if (hosted) await push({ table: "allHands", action: "upsert", rows: [run] });
-        else await requireDb().allHands.put(run);
+        await push({ table: "allHands", action: "upsert", rows: [run] });
       },
 
       deleteAllHandsRun: async (id) => {
-        if (hosted) await push({ table: "allHands", action: "delete", ids: [id] });
-        else await requireDb().allHands.delete(id);
+        await push({ table: "allHands", action: "delete", ids: [id] });
       },
 
       addFile: async (file) => {
-        if (hosted) await push({ table: "files", action: "upsert", rows: [file] });
-        else await requireDb().files.put(file);
+        await push({ table: "files", action: "upsert", rows: [file] });
       },
 
       updateFile: async (id, patch) => {
-        if (hosted) {
-          const current = remoteRef.current?.files.find((f) => f.id === id);
-          if (!current) {
-            console.error("[workspace] nothing to update with id", id, "- write dropped");
-            return;
-          }
-          await push({
-            table: "files",
-            action: "upsert",
-            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
-          });
+        const current = remoteRef.current?.files.find((f) => f.id === id);
+        if (!current) {
+          console.error("[workspace] nothing to update with id", id, "- write dropped");
           return;
         }
-        await requireDb().files.update(id, { ...patch, updatedAt: Date.now() });
+        await push({
+          table: "files",
+          action: "upsert",
+          rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+        });
       },
 
       deleteFile: async (id) => {
-        if (hosted) await push({ table: "files", action: "delete", ids: [id] });
-        else await requireDb().files.delete(id);
+        await push({ table: "files", action: "delete", ids: [id] });
       },
 
       createSkill: async (input) => {
@@ -943,31 +777,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           createdAt: now,
           updatedAt: now,
         };
-        if (hosted) await push({ table: "skills", action: "upsert", rows: [skill] });
-        else await requireDb().skills.put(skill);
+        await push({ table: "skills", action: "upsert", rows: [skill] });
         return skill;
       },
 
       updateSkill: async (id, patch) => {
-        if (hosted) {
-          const current = remoteRef.current?.skills.find((sk) => sk.id === id);
-          if (!current) {
-            console.error("[workspace] nothing to update with id", id, "- write dropped");
-            return;
-          }
-          await push({
-            table: "skills",
-            action: "upsert",
-            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
-          });
+        const current = remoteRef.current?.skills.find((sk) => sk.id === id);
+        if (!current) {
+          console.error("[workspace] nothing to update with id", id, "- write dropped");
           return;
         }
-        await requireDb().skills.update(id, { ...patch, updatedAt: Date.now() });
+        await push({
+          table: "skills",
+          action: "upsert",
+          rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+        });
       },
 
       deleteSkill: async (id) => {
-        if (hosted) await push({ table: "skills", action: "delete", ids: [id] });
-        else await requireDb().skills.delete(id);
+        await push({ table: "skills", action: "delete", ids: [id] });
       },
 
       createProject: async (input) => {
@@ -982,33 +810,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           createdAt: now,
           updatedAt: now,
         };
-        if (hosted) await push({ table: "projects", action: "upsert", rows: [project] });
-        else await requireDb().projects.put(project);
+        await push({ table: "projects", action: "upsert", rows: [project] });
         return project;
       },
 
       updateProject: async (id, patch) => {
-        if (hosted) {
-          const current = remoteRef.current?.projects.find((row) => row.id === id);
-          if (!current) {
-            console.error("[workspace] nothing to update with id", id, "- write dropped");
-            return;
-          }
-          await push({
-            table: "projects",
-            action: "upsert",
-            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
-          });
+        const current = remoteRef.current?.projects.find((row) => row.id === id);
+        if (!current) {
+          console.error("[workspace] nothing to update with id", id, "- write dropped");
           return;
         }
-        await requireDb().projects.update(id, { ...patch, updatedAt: Date.now() });
+        await push({
+          table: "projects",
+          action: "upsert",
+          rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+        });
       },
 
       deleteProject: async (id) => {
-        if (hosted) {
-          await push({ table: "projects", action: "delete", ids: [id] });
-          return;
-        }
+        await push({ table: "projects", action: "delete", ids: [id] });
         // Local mode has no server to mirror, so the unlinking that applyOp
         // does for a hosted workspace has to be written out by hand here.
         const database = requireDb();
@@ -1056,24 +876,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }),
 
       setConversationProject: async (conversationId, projectId) => {
-        if (hosted) {
-          const current = remoteRef.current?.conversations.find(
-            (row) => row.id === conversationId,
-          );
-          if (!current) {
-            console.error("[workspace] no conversation", conversationId, "- write dropped");
-            return;
-          }
-          await push({
-            table: "conversations",
-            action: "upsert",
-            rows: [{ ...current, projectId, updatedAt: Date.now() }],
-          });
+        const current = remoteRef.current?.conversations.find(
+          (row) => row.id === conversationId,
+        );
+        if (!current) {
+          console.error("[workspace] no conversation", conversationId, "- write dropped");
           return;
         }
-        await requireDb().conversations.update(conversationId, {
-          projectId,
-          updatedAt: Date.now(),
+        await push({
+          table: "conversations",
+          action: "upsert",
+          rows: [{ ...current, projectId, updatedAt: Date.now() }],
         });
       },
 
@@ -1142,31 +955,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           updatedAt: now,
           sourceConversationId: input.sourceConversationId,
         };
-        if (hosted) await push({ table: "deliverables", action: "upsert", rows: [deliverable] });
-        else await requireDb().deliverables.put(deliverable);
+        await push({ table: "deliverables", action: "upsert", rows: [deliverable] });
         return deliverable;
       },
 
       updateDeliverable: async (id, patch) => {
-        if (hosted) {
-          const current = remoteRef.current?.deliverables.find((d) => d.id === id);
-          if (!current) {
-            console.error("[workspace] nothing to update with id", id, "- write dropped");
-            return;
-          }
-          await push({
-            table: "deliverables",
-            action: "upsert",
-            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
-          });
+        const current = remoteRef.current?.deliverables.find((d) => d.id === id);
+        if (!current) {
+          console.error("[workspace] nothing to update with id", id, "- write dropped");
           return;
         }
-        await requireDb().deliverables.update(id, { ...patch, updatedAt: Date.now() });
+        await push({
+          table: "deliverables",
+          action: "upsert",
+          rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+        });
       },
 
       deleteDeliverable: async (id) => {
-        if (hosted) await push({ table: "deliverables", action: "delete", ids: [id] });
-        else await requireDb().deliverables.delete(id);
+        await push({ table: "deliverables", action: "delete", ids: [id] });
       },
 
       memoryFor: (departmentId) => liveMemoryFor(memoryList, departmentId),
@@ -1191,31 +998,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           createdAt: input.createdAt ?? now,
           updatedAt: now,
         };
-        if (hosted) await push({ table: "wikiPages", action: "upsert", rows: [page] });
-        else await requireDb().wikiPages.put(page);
+        await push({ table: "wikiPages", action: "upsert", rows: [page] });
         return page;
       },
 
       updateWikiPage: async (id, patch) => {
-        if (hosted) {
-          const current = remoteRef.current?.wikiPages.find((page) => page.id === id);
-          if (!current) {
-            console.error("[workspace] nothing to update with id", id, "- write dropped");
-            return;
-          }
-          await push({
-            table: "wikiPages",
-            action: "upsert",
-            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
-          });
+        const current = remoteRef.current?.wikiPages.find((page) => page.id === id);
+        if (!current) {
+          console.error("[workspace] nothing to update with id", id, "- write dropped");
           return;
         }
-        await requireDb().wikiPages.update(id, { ...patch, updatedAt: Date.now() });
+        await push({
+          table: "wikiPages",
+          action: "upsert",
+          rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+        });
       },
 
       deleteWikiPage: async (id) => {
-        if (hosted) await push({ table: "wikiPages", action: "delete", ids: [id] });
-        else await requireDb().wikiPages.delete(id);
+        await push({ table: "wikiPages", action: "delete", ids: [id] });
       },
 
       createTask: async (input) => {
@@ -1235,8 +1036,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           updatedAt: now,
           completedAt: input.completedAt,
         };
-        if (hosted) await push({ table: "tasks", action: "upsert", rows: [task] });
-        else await requireDb().tasks.put(task);
+        await push({ table: "tasks", action: "upsert", rows: [task] });
         return task;
       },
 
@@ -1247,21 +1047,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (patch.status !== undefined) {
           stamped.completedAt = patch.status === "done" ? Date.now() : undefined;
         }
-        if (hosted) {
-          const current = remoteRef.current?.tasks.find((task) => task.id === id);
-          if (!current) {
-            console.error("[workspace] nothing to update with id", id, "- write dropped");
-            return;
-          }
-          await push({ table: "tasks", action: "upsert", rows: [{ ...current, ...stamped }] });
+        const current = remoteRef.current?.tasks.find((task) => task.id === id);
+        if (!current) {
+          console.error("[workspace] nothing to update with id", id, "- write dropped");
           return;
         }
-        await requireDb().tasks.update(id, stamped);
+        await push({ table: "tasks", action: "upsert", rows: [{ ...current, ...stamped }] });
       },
 
       deleteTask: async (id) => {
-        if (hosted) await push({ table: "tasks", action: "delete", ids: [id] });
-        else await requireDb().tasks.delete(id);
+        await push({ table: "tasks", action: "delete", ids: [id] });
       },
 
       /**
@@ -1288,31 +1083,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           createdAt: input.createdAt ?? now,
           updatedAt: now,
         };
-        if (hosted) await push({ table: "memory", action: "upsert", rows: [entry] });
-        else await requireDb().memory.put(entry);
+        await push({ table: "memory", action: "upsert", rows: [entry] });
         return entry;
       },
 
       updateMemory: async (id, patch) => {
-        if (hosted) {
-          const current = remoteRef.current?.memory.find((entry) => entry.id === id);
-          if (!current) {
-            console.error("[workspace] nothing to update with id", id, "- write dropped");
-            return;
-          }
-          await push({
-            table: "memory",
-            action: "upsert",
-            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
-          });
+        const current = remoteRef.current?.memory.find((entry) => entry.id === id);
+        if (!current) {
+          console.error("[workspace] nothing to update with id", id, "- write dropped");
           return;
         }
-        await requireDb().memory.update(id, { ...patch, updatedAt: Date.now() });
+        await push({
+          table: "memory",
+          action: "upsert",
+          rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+        });
       },
 
       deleteMemory: async (id) => {
-        if (hosted) await push({ table: "memory", action: "delete", ids: [id] });
-        else await requireDb().memory.delete(id);
+        await push({ table: "memory", action: "delete", ids: [id] });
       },
 
       /**
@@ -1395,8 +1184,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     isAdmin,
     remote,
     push,
-    seeded,
-    allDepartments,
     departmentList,
     conversationList,
     deliverableList,
