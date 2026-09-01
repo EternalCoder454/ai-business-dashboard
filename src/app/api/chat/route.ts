@@ -1,6 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
 import { readJsonWithin, requireSession, withinRate } from "@/lib/guard";
+import { auth } from "@/auth";
+import { workspaceKey } from "@/db/keys";
+import { membershipFor } from "@/db/tenancy";
 import { DEFAULT_PROVIDER, providerInfo, providerOf, type Provider } from "@/lib/providers";
 import { droppedAttachments, streamGemini, streamOpenAi } from "@/lib/serverProviders";
 import type { ChatRequestBody, ChatStreamEvent, WireContent } from "@/lib/types";
@@ -96,6 +99,21 @@ const MAX_BODY_BYTES = 20_000_000;
 const RATE_LIMIT = 60;
 const RATE_WINDOW_MS = 60_000;
 
+/**
+ * The key belonging to the workspace this request is acting in.
+ *
+ * Empty for anyone signed in to nothing, and for a checkout with no database,
+ * both of which fall through to the header below.
+ */
+async function keyForRequester(provider: Provider): Promise<string> {
+  const session = await auth();
+  const email = session?.user?.email?.toLowerCase();
+  if (!email) return "";
+  const membership = await membershipFor(email);
+  if (!membership) return "";
+  return workspaceKey(membership.workspaceId, provider);
+}
+
 export async function POST(request: NextRequest) {
   // This route spends money. It checks for itself rather than trusting that the
   // proxy matcher still covers it.
@@ -118,16 +136,26 @@ export async function POST(request: NextRequest) {
   const body = parsed.body;
 
   /**
-   * The server key wins outright when it is set, and the client header is
-   * ignored rather than used as a fallback. On a deployed instance that keeps
-   * spending tied to one key held on the server; the browser field stays
-   * available only for a local checkout that has no env var.
+   * Three places a key can come from, in this order, and the first one wins.
+   *
+   * 1. The deployment's own environment. An operator running the panel for one
+   *    company, or a local checkout.
+   * 2. The workspace. This is the normal case for a business: the owner sets
+   *    it once and everyone they invited spends against it, without any of
+   *    them ever holding the credential.
+   * 3. A header from the browser, which is what a local checkout with no
+   *    database still uses.
+   *
+   * The header is last rather than first on purpose. A member could otherwise
+   * put their own key in a browser and bill themselves for company work by
+   * accident, and the workspace's key is the answer to who pays.
    */
   const provider: Provider = body.provider ?? providerOf(body.model);
   const info = providerInfo(provider);
 
   const serverKey = process.env[info.envVar]?.trim();
-  const apiKey = serverKey || request.headers.get(info.header)?.trim();
+  const fromWorkspace = serverKey ? "" : await keyForRequester(provider);
+  const apiKey = serverKey || fromWorkspace || request.headers.get(info.header)?.trim();
 
   /**
    * An identity-linked key refuses any request that does not say which
@@ -139,7 +167,9 @@ export async function POST(request: NextRequest) {
       ? undefined
       : serverKey
         ? process.env.ANTHROPIC_WORKSPACE_ID?.trim()
-        : request.headers.get("x-anthropic-workspace")?.trim();
+        : fromWorkspace
+          ? undefined
+          : request.headers.get("x-anthropic-workspace")?.trim();
 
   if (!apiKey) {
     // Which server is answering matters here. The deployment holds the key in

@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { databaseEnabled, requireDb } from "@/db/client";
 import { membershipsFor } from "@/db/sharing";
+import { membershipFor } from "@/db/tenancy";
 import * as t from "@/db/schema";
 import { requireSession } from "@/lib/guard";
 
@@ -41,8 +42,11 @@ export async function GET(
    * visible in the transcript and refuses to load for the person it was
    * shared with, which reads as the app being broken.
    */
+  const mine = await membershipFor(session.email);
+  if (!mine) return Response.json({ error: "Not found." }, { status: 404 });
+
   const shared = await membershipsFor(session.email);
-  const owners = [session.email, ...new Set(shared.map((m) => m.ownerEmail))];
+  const owners = [mine.workspaceId, ...new Set(shared.map((m) => m.workspaceId))];
 
   const db = requireDb();
   let row: typeof t.files.$inferSelect | undefined;
@@ -50,7 +54,7 @@ export async function GET(
     const [found] = await db
       .select()
       .from(t.files)
-      .where(and(eq(t.files.userEmail, owner), eq(t.files.id, id)))
+      .where(and(eq(t.files.workspaceId, owner), eq(t.files.id, id)))
       .limit(1);
     if (found) {
       row = found;

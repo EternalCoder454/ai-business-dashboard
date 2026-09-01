@@ -18,13 +18,18 @@ import type {
 } from "@/lib/types";
 
 /**
- * Every row is scoped by the signed-in email.
+ * Every row belongs to a workspace, not to a person.
  *
- * There is no users table on purpose. Auth is JWT only with a Google provider
- * and an allowlist, so the email is the whole identity and a table mapping it
- * to itself would earn nothing.
+ * It used to be the signed-in email, which made one account and one workspace
+ * the same thing and left no way for two people at the same business to see
+ * the same departments, skills, and memory. The workspace is now its own
+ * record, `access` says who may open which one, and the email is only ever an
+ * identity.
+ *
+ * Identity that follows the person rather than the business stays keyed by
+ * email: see `accounts` below, which is who you are, not where you work.
  */
-const owner = () => text("user_email").notNull();
+const workspace = () => text("workspace_id").notNull();
 const created = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 const updated = () => timestamp("updated_at", { withTimezone: true }).notNull().defaultNow();
 
@@ -32,7 +37,7 @@ export const departments = pgTable(
   "departments",
   {
     id: text("id").notNull(),
-    userEmail: owner(),
+    workspaceId: workspace(),
     name: text("name").notNull(),
     avatarUrl: text("avatar_url"),
     personal: boolean("personal").notNull().default(false),
@@ -50,8 +55,8 @@ export const departments = pgTable(
     updatedAt: updated(),
   },
   (table) => [
-    primaryKey({ columns: [table.userEmail, table.id] }),
-    index("departments_owner_idx").on(table.userEmail, table.sortOrder),
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("departments_ws_idx").on(table.workspaceId, table.sortOrder),
   ],
 );
 
@@ -68,7 +73,7 @@ export const projects = pgTable(
   "projects",
   {
     id: text("id").notNull(),
-    userEmail: owner(),
+    workspaceId: workspace(),
     name: text("name").notNull(),
     summary: text("summary").notNull().default(""),
     status: text("status").notNull().default("active"),
@@ -78,8 +83,8 @@ export const projects = pgTable(
     updatedAt: updated(),
   },
   (table) => [
-    primaryKey({ columns: [table.userEmail, table.id] }),
-    index("projects_owner_idx").on(table.userEmail, table.updatedAt),
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("projects_ws_idx").on(table.workspaceId, table.updatedAt),
   ],
 );
 
@@ -87,7 +92,7 @@ export const conversations = pgTable(
   "conversations",
   {
     id: text("id").notNull(),
-    userEmail: owner(),
+    workspaceId: workspace(),
     departmentId: text("department_id").notNull(),
     projectId: text("project_id"),
     title: text("title").notNull(),
@@ -95,9 +100,9 @@ export const conversations = pgTable(
     updatedAt: updated(),
   },
   (table) => [
-    primaryKey({ columns: [table.userEmail, table.id] }),
-    index("conversations_owner_idx").on(table.userEmail, table.updatedAt),
-    index("conversations_project_idx").on(table.userEmail, table.projectId),
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("conversations_ws_idx").on(table.workspaceId, table.updatedAt),
+    index("conversations_project_idx").on(table.workspaceId, table.projectId),
   ],
 );
 
@@ -112,7 +117,7 @@ export const messages = pgTable(
   "messages",
   {
     id: text("id").notNull(),
-    userEmail: owner(),
+    workspaceId: workspace(),
     conversationId: text("conversation_id").notNull(),
     role: text("role").notNull(),
     content: text("content").notNull().default(""),
@@ -152,8 +157,8 @@ export const messages = pgTable(
     createdAt: created(),
   },
   (table) => [
-    primaryKey({ columns: [table.userEmail, table.id] }),
-    index("messages_conversation_idx").on(table.userEmail, table.conversationId, table.sentAt),
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("messages_conversation_idx").on(table.workspaceId, table.conversationId, table.sentAt),
   ],
 );
 
@@ -161,7 +166,7 @@ export const skills = pgTable(
   "skills",
   {
     id: text("id").notNull(),
-    userEmail: owner(),
+    workspaceId: workspace(),
     /** A department id, or the company sentinel for one every head inherits. */
     departmentId: text("department_id").notNull(),
     name: text("name").notNull(),
@@ -172,8 +177,8 @@ export const skills = pgTable(
     updatedAt: updated(),
   },
   (table) => [
-    primaryKey({ columns: [table.userEmail, table.id] }),
-    index("skills_owner_idx").on(table.userEmail, table.departmentId),
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("skills_ws_idx").on(table.workspaceId, table.departmentId),
   ],
 );
 
@@ -181,7 +186,7 @@ export const deliverables = pgTable(
   "deliverables",
   {
     id: text("id").notNull(),
-    userEmail: owner(),
+    workspaceId: workspace(),
     title: text("title").notNull(),
     body: text("body").notNull().default(""),
     departmentId: text("department_id").notNull(),
@@ -192,8 +197,8 @@ export const deliverables = pgTable(
     updatedAt: updated(),
   },
   (table) => [
-    primaryKey({ columns: [table.userEmail, table.id] }),
-    index("deliverables_owner_idx").on(table.userEmail, table.status),
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("deliverables_ws_idx").on(table.workspaceId, table.status),
   ],
 );
 
@@ -207,7 +212,7 @@ export const files = pgTable(
   "files",
   {
     id: text("id").notNull(),
-    userEmail: owner(),
+    workspaceId: workspace(),
     kind: text("kind").notNull(),
     mediaType: text("media_type").notNull(),
     name: text("name").notNull(),
@@ -227,8 +232,8 @@ export const files = pgTable(
     updatedAt: updated(),
   },
   (table) => [
-    primaryKey({ columns: [table.userEmail, table.id] }),
-    index("files_owner_idx").on(table.userEmail, table.kind),
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("files_ws_idx").on(table.workspaceId, table.kind),
   ],
 );
 
@@ -236,15 +241,15 @@ export const allHandsRuns = pgTable(
   "all_hands_runs",
   {
     id: text("id").notNull(),
-    userEmail: owner(),
+    workspaceId: workspace(),
     title: text("title").notNull(),
     status: text("status").notNull().default("done"),
     createdAt: created(),
     updatedAt: updated(),
   },
   (table) => [
-    primaryKey({ columns: [table.userEmail, table.id] }),
-    index("all_hands_owner_idx").on(table.userEmail, table.updatedAt),
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("all_hands_ws_idx").on(table.workspaceId, table.updatedAt),
   ],
 );
 
@@ -257,7 +262,7 @@ export const allHandsRounds = pgTable(
   "all_hands_rounds",
   {
     id: text("id").notNull(),
-    userEmail: owner(),
+    workspaceId: workspace(),
     runId: text("run_id").notNull(),
     question: text("question").notNull(),
     responses: jsonb("responses").$type<AllHandsResponse[]>().notNull().default([]),
@@ -267,8 +272,8 @@ export const allHandsRounds = pgTable(
     createdAt: created(),
   },
   (table) => [
-    primaryKey({ columns: [table.userEmail, table.id] }),
-    index("rounds_run_idx").on(table.userEmail, table.runId, table.sortOrder),
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("rounds_run_idx").on(table.workspaceId, table.runId, table.sortOrder),
   ],
 );
 
@@ -291,7 +296,7 @@ export const accounts = pgTable("accounts", {
 });
 
 export const profiles = pgTable("profiles", {
-  userEmail: text("user_email").primaryKey(),
+  workspaceId: text("workspace_id").primaryKey(),
   mission: text("mission").notNull().default(""),
   audience: text("audience").notNull().default(""),
   brandVoice: text("brand_voice").notNull().default(""),
@@ -305,12 +310,27 @@ export const profiles = pgTable("profiles", {
 });
 
 /**
- * Deliberately has no api key column. The key is a server environment variable
- * now, so a database dump cannot leak it and a second device cannot pick up a
- * key that was typed into the first.
+ * Settings for one business, including its model keys.
+ *
+ * The keys used to be refused a column here on the grounds that a credential
+ * in a database is a credential in a database dump. That was right when a
+ * workspace was one person: the key lived in their browser and rode along as a
+ * request header. It stops being right when a workspace is a company. The
+ * owner buys the capacity and the staff use it, so a key in each employee's
+ * browser means every one of them holds the company's billing credential, on
+ * every device they sign in from, and losing one is a rotation.
+ *
+ * So they live here, and the trade is paid for rather than ignored: these
+ * columns are never read into the workspace snapshot, only ever a boolean and
+ * the last four characters, and only an admin can write them. The key itself
+ * goes from this table to the model and nowhere else, which also takes it out
+ * of the request headers it used to travel in.
  */
 export const settings = pgTable("settings", {
-  userEmail: text("user_email").primaryKey(),
+  workspaceId: text("workspace_id").primaryKey(),
+  anthropicKey: text("anthropic_key").notNull().default(""),
+  openaiKey: text("openai_key").notNull().default(""),
+  googleKey: text("google_key").notNull().default(""),
   model: text("model").notNull().default("claude-sonnet-5"),
   effort: text("effort").notNull().default("medium"),
   theme: text("theme").notNull().default("dark"),
@@ -336,7 +356,7 @@ export const memory = pgTable(
   "memory",
   {
     id: text("id").notNull(),
-    userEmail: owner(),
+    workspaceId: workspace(),
     kind: text("kind").notNull(),
     label: text("label").notNull(),
     value: text("value").notNull().default(""),
@@ -351,9 +371,9 @@ export const memory = pgTable(
     updatedAt: updated(),
   },
   (table) => [
-    primaryKey({ columns: [table.userEmail, table.id] }),
+    primaryKey({ columns: [table.workspaceId, table.id] }),
     // The prompt reads the live entries for one head, newest first.
-    index("memory_owner_idx").on(table.userEmail, table.archived, table.occurredAt),
+    index("memory_ws_idx").on(table.workspaceId, table.archived, table.occurredAt),
   ],
 );
 
@@ -365,7 +385,7 @@ export const tasks = pgTable(
   "tasks",
   {
     id: text("id").notNull(),
-    userEmail: owner(),
+    workspaceId: workspace(),
     title: text("title").notNull(),
     notes: text("notes").notNull().default(""),
     status: text("status").notNull().default("todo"),
@@ -379,8 +399,8 @@ export const tasks = pgTable(
     updatedAt: updated(),
   },
   (table) => [
-    primaryKey({ columns: [table.userEmail, table.id] }),
-    index("tasks_owner_idx").on(table.userEmail, table.status, table.sortOrder),
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("tasks_ws_idx").on(table.workspaceId, table.status, table.sortOrder),
   ],
 );
 
@@ -389,7 +409,7 @@ export const wikiPages = pgTable(
   "wiki_pages",
   {
     id: text("id").notNull(),
-    userEmail: owner(),
+    workspaceId: workspace(),
     title: text("title").notNull(),
     blurb: text("blurb").notNull().default(""),
     body: text("body").notNull().default(""),
@@ -400,8 +420,8 @@ export const wikiPages = pgTable(
     updatedAt: updated(),
   },
   (table) => [
-    primaryKey({ columns: [table.userEmail, table.id] }),
-    index("wiki_owner_idx").on(table.userEmail, table.sortOrder),
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("wiki_ws_idx").on(table.workspaceId, table.sortOrder),
   ],
 );
 
@@ -411,8 +431,8 @@ export const conversationRelations = relations(conversations, ({ many }) => ({
 
 export const messageRelations = relations(messages, ({ one }) => ({
   conversation: one(conversations, {
-    fields: [messages.userEmail, messages.conversationId],
-    references: [conversations.userEmail, conversations.id],
+    fields: [messages.workspaceId, messages.conversationId],
+    references: [conversations.workspaceId, conversations.id],
   }),
 }));
 
@@ -422,8 +442,8 @@ export const runRelations = relations(allHandsRuns, ({ many }) => ({
 
 export const roundRelations = relations(allHandsRounds, ({ one }) => ({
   run: one(allHandsRuns, {
-    fields: [allHandsRounds.userEmail, allHandsRounds.runId],
-    references: [allHandsRuns.userEmail, allHandsRuns.id],
+    fields: [allHandsRounds.workspaceId, allHandsRounds.runId],
+    references: [allHandsRuns.workspaceId, allHandsRuns.id],
   }),
 }));
 
@@ -446,6 +466,8 @@ export const directMessages = pgTable(
   "direct_messages",
   {
     id: text("id").primaryKey(),
+    /** Whose workspace this conversation happened in. */
+    workspaceId: workspace(),
     threadKey: text("thread_key").notNull(),
     fromEmail: text("from_email").notNull(),
     toEmail: text("to_email").notNull(),
@@ -477,14 +499,64 @@ export const projectMembers = pgTable(
   "project_members",
   {
     projectId: text("project_id").notNull(),
-    /** The project's owner, which is also the scope key its rows are stored under. */
-    ownerEmail: text("owner_email").notNull(),
+    /** The workspace the project lives in, which is its scope key. */
+    workspaceId: text("workspace_id").notNull(),
     memberEmail: text("member_email").notNull(),
     addedAt: created(),
   },
   (table) => [
-    primaryKey({ columns: [table.ownerEmail, table.projectId, table.memberEmail] }),
+    primaryKey({ columns: [table.workspaceId, table.projectId, table.memberEmail] }),
     // "Which projects am I in", asked on every workspace load.
     index("project_members_member_idx").on(table.memberEmail),
   ],
 );
+
+/**
+ * Who is allowed to sign in, and who may review other people's work.
+ *
+ * This used to be two environment variables, which meant adding one beta
+ * tester was a dashboard edit and a redeploy, and revoking someone was the
+ * same again. The addresses in ALLOWED_EMAILS and ADMIN_EMAILS still work and
+ * still win: they are the way back in if this table is empty, wrong, or the
+ * database is unreachable during a sign-in.
+ *
+ * Revoking sets `revokedAt` rather than deleting the row, so a mistake is
+ * reversible and there is a record of who was invited and by whom.
+ */
+export const access = pgTable(
+  "access",
+  {
+    /** Lowercased. Google's address is the whole identity, as everywhere else. */
+    email: text("email").primaryKey(),
+    /** The workspace this address opens. One each, for now. */
+    workspaceId: text("workspace_id").notNull(),
+    /** member or admin. Admin adds reviewing other people's conversations. */
+    role: text("role").notNull().default("member"),
+    /** Who this is, in the inviter's words. Shown in Admin, never sent anywhere. */
+    note: text("note"),
+    invitedBy: text("invited_by"),
+    createdAt: created(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    /** Set on each successful sign-in, so an unused invite is visible as one. */
+    lastSignedInAt: timestamp("last_signed_in_at", { withTimezone: true }),
+  },
+  (table) => [index("access_revoked_idx").on(table.revokedAt)],
+);
+
+/**
+ * One business.
+ *
+ * Every data table above is scoped to one of these rather than to a person, so
+ * inviting a second colleague into a company means adding a row to `access`
+ * pointing at the same workspace, not copying anything.
+ */
+export const workspaces = pgTable("workspaces", {
+  id: text("id").primaryKey(),
+  /** What the business is called, shown in the operator list. */
+  name: text("name").notNull(),
+  /** Why it exists, in the operator's words. Never shown to the customer. */
+  note: text("note"),
+  createdBy: text("created_by"),
+  createdAt: created(),
+  updatedAt: updated(),
+});

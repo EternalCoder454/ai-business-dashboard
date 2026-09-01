@@ -222,17 +222,7 @@ export function seedWikiPages(now: number = Date.now()): WikiPage[] {
   }));
 }
 
-/**
- * The cards on a page, whichever way it was stored.
- *
- * Pages held one markdown body before they held cards. A page saved then still
- * has that body and no blocks, and reading it as an untitled card is better
- * than showing a blank page while someone works out why.
- */
+/** The cards on a page. */
 export function blocksOf(page: WikiPage): WikiBlock[] {
-  if (page.blocks?.length) return page.blocks;
-  if (page.body?.trim()) {
-    return [{ id: `${page.id}_body`, title: "", body: page.body, tone: "default" }];
-  }
-  return [];
+  return page.blocks ?? [];
 }

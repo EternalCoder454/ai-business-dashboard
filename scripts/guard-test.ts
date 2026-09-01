@@ -10,6 +10,7 @@
 import { readFileSync } from "node:fs";
 
 import { readJsonWithin, withinRate } from "../src/lib/guard";
+import { OPERATOR_EMAILS, isOperator } from "../src/lib/admin";
 import { safeDestination } from "../src/app/signin/page";
 import { WRITABLE_TABLES, applyOp, emptyWorkspace } from "../src/lib/workspace";
 import { filesForDepartment } from "../src/lib/files";
@@ -328,6 +329,40 @@ console.log("\na write immediately after a create can see it");
       if (pattern.test(text)) offenders.push(file);
     }
     check("no handler clears the input while still holding its list", offenders.length === 0, offenders.join(", "));
+  }
+
+  console.log("\nthe operator is not the same person as a business's admin");
+  {
+    // These were one function for a few hours, and it was the worst kind of
+    // wrong: every business's first member is made an admin of their own
+    // workspace, so the union handed each customer the routes that read and
+    // delete every other customer's workspace.
+    // Deliberately not "this machine has one configured": that is true of a
+    // deployment and false of a checkout, and a test that depends on the
+    // environment fails for whoever clones the repository.
+    check(
+      "nobody is an operator unless the environment says so",
+      !isOperator("someone@a-customer.invalid") && !isOperator(""),
+    );
+    check(
+      "a configured address is one",
+      OPERATOR_EMAILS.length === 0 || isOperator(OPERATOR_EMAILS[0]),
+      OPERATOR_EMAILS.join(","),
+    );
+
+    // Everything on the admin route crosses the tenant boundary, so it gates
+    // on the operator. The keys route stays inside one workspace, so it gates
+    // on that workspace's own role.
+    const adminRoute = readFileSync("src/app/api/admin/route.ts", "utf8");
+    check(
+      "the admin API gates on the operator",
+      adminRoute.includes("isOperator(email)") && !adminRoute.includes("isAdminAccount"),
+    );
+    const keysRoute = readFileSync("src/app/api/workspace/keys/route.ts", "utf8");
+    check(
+      "the workspace key API gates on the workspace role instead",
+      keysRoute.includes('membership.role !== "admin"') && !keysRoute.includes("isOperator"),
+    );
   }
 
   console.log(failures ? "\nFAILURES ABOVE" : "\nall checks passed");

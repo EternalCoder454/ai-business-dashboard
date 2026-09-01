@@ -33,7 +33,9 @@ function check(label: string, condition: boolean, detail = "") {
 
 let counter = 0;
 const send = (from: string, to: string, body: string) =>
-  sendMessage(from, to, body, `dmtest_${counter++}`);
+  sendMessage(
+  "ws_test",
+  from, to, body, `dmtest_${counter++}`);
 
 async function main() {
   await deleteThreadsFor(EVERYONE);

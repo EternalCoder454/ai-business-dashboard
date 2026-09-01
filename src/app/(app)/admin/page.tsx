@@ -2,6 +2,7 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { WikiEditor } from "@/components/WikiEditor";
+import { BusinessesTab, type WorkspaceRow } from "@/components/BusinessesTab";
 import { useCallback, useEffect, useState } from "react";
 import {
   Button,
@@ -72,9 +73,10 @@ interface Thread {
   messages: Message[];
 }
 
-type Tab = "overview" | "people" | "access" | "wiki";
+type Tab = "businesses" | "overview" | "people" | "access" | "wiki";
 
 const TAB_LABEL: Record<Tab, string> = {
+  businesses: "Businesses",
   overview: "Overview",
   people: "People",
   access: "Access",
@@ -88,12 +90,14 @@ const bytes = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : n >= 1_000 ? `${Math.round(n / 1_000)} KB` : `${n} B`;
 
 export default function AdminPage() {
-  const { isAdmin, storage, accountEmail } = useStore();
+  const { isOperator, storage, accountEmail } = useStore();
 
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("businesses");
   const [people, setPeople] = useState<Person[] | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [access, setAccess] = useState<{ allowed: string[]; admins: string[] }>();
+  const [workspaces, setWorkspaces] = useState<WorkspaceRow[] | null>(null);
+  const [emailReady, setEmailReady] = useState(false);
   const [error, setError] = useState<string>();
 
   const [person, setPerson] = useState<Person>();
@@ -114,14 +118,16 @@ export default function AdminPage() {
       setPeople(body.people ?? []);
       setOverview(body.overview ?? null);
       setAccess(body.access);
+      setWorkspaces(body.workspaces ?? []);
+      setEmailReady(Boolean(body.email));
     } catch {
       setError("Could not load the workspace.");
     }
   }, []);
 
   useEffect(() => {
-    if (isAdmin) void load();
-  }, [isAdmin, load]);
+    if (isOperator) void load();
+  }, [isOperator, load]);
 
   const openPerson = useCallback(async (row: Person) => {
     setPerson(row);
@@ -169,15 +175,15 @@ export default function AdminPage() {
     await load();
   };
 
-  if (storage !== "hosted" || !isAdmin) {
+  if (storage !== "hosted" || !isOperator) {
     return (
       <div className="flex h-full min-h-0 flex-col">
-        <PageHeader eyebrow="Oversight" title="Admin" />
+        <PageHeader eyebrow="Oversight" title="Operator" />
         <div className="page-x py-6">
           <EmptyState
             icon={<PersonIcon className="h-8 w-8" />}
-            title="No admin access"
-            description="Requires an address listed in ADMIN_EMAILS."
+            title="Not an operator"
+            description="Requires an address listed in OPERATOR_EMAILS."
           />
         </div>
       </div>
@@ -188,11 +194,11 @@ export default function AdminPage() {
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader
         eyebrow="Oversight"
-        title="Admin"
+        title="Operator"
       />
 
       <div className="flex flex-none items-center gap-2 border-b border-outline-variant page-x py-3">
-        {(["overview", "people", "access", "wiki"] as Tab[]).map((key) => (
+        {(["businesses", "overview", "people", "access", "wiki"] as Tab[]).map((key) => (
           <Chip
             key={key}
             selected={tab === key}
@@ -209,6 +215,14 @@ export default function AdminPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto page-x py-6">
         {error ? <p className="md-label mb-4 text-error">{error}</p> : null}
+
+        {tab === "businesses" ? (
+          <BusinessesTab
+            workspaces={workspaces}
+            emailReady={emailReady}
+            onChanged={(next) => setWorkspaces(next)}
+          />
+        ) : null}
 
         {tab === "overview" ? <OverviewTab overview={overview} /> : null}
 
@@ -270,7 +284,7 @@ export default function AdminPage() {
         <p className="md-body text-on-variant">
           Deletes their conversations, deliverables, projects, files, skills,
           departments, settings, and messages. This cannot be undone. They keep access
-          unless you also remove them from ALLOWED_EMAILS.
+          unless you also remove them from OPERATOR_EMAILS.
         </p>
         <Field label="Type the address to confirm" className="mt-4">
           <TextInput
@@ -526,13 +540,13 @@ function AccessTab({
       <Card>
         <h2 className="md-title-lg mb-1">Who can sign in</h2>
         <p className="md-body mb-4 text-on-variant">
-          Set as ALLOWED_EMAILS. Changes require a redeploy.
+          Set as OPERATOR_EMAILS. Changes require a redeploy.
         </p>
         <ul className="flex flex-col gap-1.5">
           {access.allowed.map((email) => (
             <li key={email} className="flex flex-wrap items-center gap-2">
               <span className="md-body truncate">{email}</span>
-              {access.admins.includes(email) ? <Chip tone="primary">Admin</Chip> : null}
+              {access.admins.includes(email) ? <Chip tone="primary">Operator</Chip> : null}
               {signedIn.has(email) ? null : (
                 <Chip tone="warning">Has not signed in</Chip>
               )}
@@ -542,10 +556,12 @@ function AccessTab({
       </Card>
 
       <Card>
-        <h2 className="md-title-lg mb-1">Administrators</h2>
+        <h2 className="md-title-lg mb-1">Operators</h2>
         <p className="md-body text-on-variant">
-          Set as ADMIN_EMAILS, defaulting to the first address on the allowlist.
-          Administrators can read all conversations and delete a workspace.
+          Set as OPERATOR_EMAILS, defaulting to the first address on the
+          allowlist. An operator runs this deployment: they can read any
+          workspace and delete one. Being an administrator of your own business
+          is a different thing, granted per workspace, and gives none of this.
         </p>
       </Card>
     </div>

@@ -132,11 +132,17 @@ export const SETUP_LINKS: NavLink[] = [
 ];
 
 /** The five destinations that fit a navigation rail or a bottom bar. */
-/** Only shown to an administrator, and never in the bottom bar. */
-const ADMIN_LINK: NavLink = {
+/**
+ * Only shown to the operator, and never in the bottom bar.
+ *
+ * Named Operator rather than Admin because a customer running their own
+ * business is an admin, of that business, and this is the other thing: the
+ * screen that reads across every workspace on the deployment.
+ */
+const OPERATOR_LINK: NavLink = {
   href: "/admin",
-  label: "Admin",
-  short: "Admin",
+  label: "Operator",
+  short: "Operator",
   icon: <ShieldIcon className="h-5 w-5" />,
 };
 
@@ -208,7 +214,7 @@ export function SidebarContent({
     ownSkillsFor,
     updateSettings,
     createConversation,
-    isAdmin,
+    isOperator,
     personalDepartments,
     serverKey,
   } = useStore();

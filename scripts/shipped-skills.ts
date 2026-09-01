@@ -1,70 +1,28 @@
 /**
  * Regenerates the fingerprint set in `src/lib/shippedSkills.ts`.
  *
- * The set has to hold every skill body this app has ever shipped, not just the
- * current one, because a workspace loading after a gap still carries an older
- * version and reconciliation has to recognise it as unedited. So this walks
- * back through git history, fingerprints the skill bodies in each revision of
- * the three skill files, and unions them with the working tree.
+ * The set holds the current shipped bodies. Reconciliation uses it to tell a
+ * skill nobody has touched from one somebody has rewritten, and only touches
+ * the first kind.
+ *
+ * It used to walk git history as well, so that a workspace loading after a gap
+ * still had its older copy recognised. Nothing out there holds an older copy
+ * any more, and carrying every body this app ever shipped meant an edit could
+ * collide with a fingerprint from a version nobody remembers.
  *
  *   npm run skills-fingerprint
  *
  * Run it after changing any shipped skill, and commit the result alongside.
  * `npm run skills-test` fails if you forget.
  */
-import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 
 import { promptFingerprint, seedCoachSkills } from "../src/lib/coachSkills";
 import { seedSkills } from "../src/lib/seedSkills";
 
-const SOURCES = [
-  "src/lib/seedSkills.ts",
-  // Deleted from the working tree. The path stays so its history is still
-  // walked: workspaces out there still hold those bodies, and reconciliation
-  // has to recognise them as unedited.
-  "src/lib/handbookSkills.ts",
-  "src/lib/coachSkills.ts",
-];
-
 const OUT = "src/lib/shippedSkills.ts";
 
-/**
- * Every `content` body in one past revision of a skill file.
- *
- * Old revisions are only text, so the template literals have to be unescaped
- * by hand to recover the string the app actually stored. Missing that makes a
- * body containing a backtick fingerprint differently from the running one, and
- * reconciliation then treats a skill nobody has touched as edited.
- */
-function bodies(source: string): string[] {
-  return [...source.matchAll(/content:\s*`((?:[^`\\]|\\[\s\S])*)`/g)].map((match) =>
-    match[1].replace(/\\([\s\S])/g, (_, char: string) =>
-      char === "n" ? "\n" : char === "t" ? "\t" : char,
-    ),
-  );
-}
-
-function git(...args: string[]): string {
-  return execFileSync("git", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
-}
-
 const seen = new Set<string>();
-let revisions = 0;
-
-for (const file of SOURCES) {
-  for (const commit of git("log", "--format=%H", "--", file).split("\n").filter(Boolean)) {
-    let source: string;
-    try {
-      source = git("show", `${commit}:${file}`);
-    } catch {
-      continue; // The file did not exist at that commit.
-    }
-    revisions += 1;
-    for (const body of bodies(source)) seen.add(promptFingerprint(body));
-  }
-}
-
 // The working tree is read from the modules rather than parsed, so what gets
 // fingerprinted is exactly what reconciliation writes into a workspace.
 const current = [...seedSkills(), ...seedCoachSkills()];
@@ -85,6 +43,4 @@ writeFileSync(
   "utf8",
 );
 
-console.log(
-  `${seen.size} fingerprints: ${revisions} past revisions of ${SOURCES.length} files, plus ${current.length} current skills`,
-);
+console.log(`${seen.size} fingerprints from ${current.length} shipped skills`);

@@ -240,7 +240,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     ? projects.find((p) => p.id === active.projectId)
     : undefined;
   const isShared = Boolean(
-    sharedProject && (sharedProject.ownerEmail || sharedProject.sharedWith?.length),
+    sharedProject && (sharedProject.sharedFrom || sharedProject.sharedWith?.length),
   );
 
   useEffect(() => {
@@ -545,7 +545,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               {skillsFor(departmentId).length} skills
             </Chip>
           </Link>
-          {active && messages.length > 0 && !active.ownerEmail ? (
+          {active && messages.length > 0 && !active.sharedFrom ? (
             <button
               onClick={async (event) => {
                 createRipple(event);

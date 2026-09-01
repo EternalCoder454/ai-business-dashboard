@@ -297,8 +297,16 @@ export interface WorkspaceStatus {
   serverKey?: boolean;
   /** One flag per provider, so Settings can say which are ready to use. */
   serverKeys?: { anthropic: boolean; openai: boolean; google: boolean };
+  /**
+   * The business's own keys: whether each is set, and its last four characters.
+   * Deliberately never the key. It goes from the settings table to the model
+   * and is not returned to a browser, not even to the admin who set it.
+   */
+  workspaceKeys?: Record<"anthropic" | "openai" | "google", { set: boolean; tail: string }>;
+  /** Admin of this workspace, as opposed to of the deployment. */
+  workspaceRole?: "member" | "admin" | null;
   /** Whether this account may review other people's conversations. */
-  isAdmin?: boolean;
+  isOperator?: boolean;
   /** The single account the workspace belongs to. */
   isOwner?: boolean;
   email?: string;

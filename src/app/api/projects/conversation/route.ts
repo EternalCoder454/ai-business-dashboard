@@ -49,7 +49,7 @@ export async function GET(request: Request) {
       .from(t.messages)
       .where(
         and(
-          eq(t.messages.userEmail, owner),
+          eq(t.messages.workspaceId, owner),
           eq(t.messages.conversationId, conversationId),
           gt(t.messages.sentAt, since),
         ),

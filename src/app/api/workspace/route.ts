@@ -4,6 +4,8 @@ import { applyMutations, loadWorkspace, type MutationOp } from "@/db/repo";
 // The compiler-checked list, so it cannot fall behind MutationOp the way a
 // hand-written copy of it here did.
 import { MAX_WRITE_BYTES, WRITABLE_TABLES } from "@/lib/workspace";
+import { membershipFor, provisionFor } from "@/db/tenancy";
+import { OPERATOR_EMAILS } from "@/auth";
 import { readJsonWithin } from "@/lib/guard";
 
 export const runtime = "nodejs";
@@ -17,7 +19,7 @@ export const dynamic = "force-dynamic";
  * shared account.
  */
 async function resolveOwner(): Promise<
-  { email: string } | { error: string; status: number }
+  { workspaceId: string; email: string } | { error: string; status: number }
 > {
   if (!databaseEnabled) {
     return { error: "No DATABASE_URL, so this instance stores everything locally.", status: 501 };
@@ -27,10 +29,35 @@ async function resolveOwner(): Promise<
   }
 
   const session = await auth();
-  const email = session?.user?.email;
+  const email = session?.user?.email?.toLowerCase();
   if (!email) return { error: "Not signed in.", status: 401 };
 
-  return { email };
+  const membership = await membershipFor(email);
+  if (membership) return { workspaceId: membership.workspaceId, email };
+
+  /*
+   * Signed in and in no workspace.
+   *
+   * Only reachable by an address in OPERATOR_EMAILS, since everyone else got in
+   * through an access row that names one. That list is the environment escape
+   * hatch, so it has to land somewhere rather than 403 the owner out of their
+   * own deployment; anyone else is told to ask, because inventing a workspace
+   * for them would quietly separate a colleague from the company they were
+   * meant to join.
+   */
+  /*
+   * The same two cases sign-in allows: an operator, or the first person into
+   * an install that has nobody. Both have to land in a workspace, or they are
+   * signed in to a door that opens onto nothing.
+   */
+  const { nobodyHasAccess } = await import("@/db/access");
+  const firstRun = OPERATOR_EMAILS.length === 0 && (await nobodyHasAccess());
+  if (!OPERATOR_EMAILS.includes(email) && !firstRun) {
+    return { error: "This account is not in a workspace yet.", status: 403 };
+  }
+
+  const provisioned = await provisionFor(email, "Your Company");
+  return { workspaceId: provisioned.workspaceId, email };
 }
 
 export async function GET() {
@@ -40,7 +67,7 @@ export async function GET() {
   }
 
   try {
-    return Response.json(await loadWorkspace(owner.email));
+    return Response.json(await loadWorkspace(owner.workspaceId, owner.email));
   } catch (error) {
     console.error("[api/workspace] load", error);
     return Response.json({ error: "Could not read the workspace." }, { status: 500 });
@@ -74,7 +101,7 @@ export async function POST(request: Request) {
   try {
     // One transaction for the batch, so a failure halfway cannot leave a
     // conversation saved with none of its messages.
-    await applyMutations(owner.email, ops);
+    await applyMutations(owner.workspaceId, owner.email, ops);
     return Response.json({ applied: ops.length });
   } catch (error) {
     console.error("[api/workspace] mutate", error);

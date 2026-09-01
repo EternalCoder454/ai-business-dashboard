@@ -105,7 +105,7 @@ export default function MessagesPage() {
               <EmptyState
                 icon="👤"
                 title="Nobody else yet"
-                description="Add an address to ALLOWED_EMAILS and they appear here."
+                description="Add an address to OPERATOR_EMAILS and they appear here."
               />
             </div>
           ) : (

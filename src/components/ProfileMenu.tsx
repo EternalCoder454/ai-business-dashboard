@@ -34,7 +34,7 @@ const LINKS = [
 ];
 
 export function ProfileMenu() {
-  const { account, isAdmin, accountEmail } = useStore();
+  const { account, isOperator, accountEmail } = useStore();
   const notifications = useNotifications();
   const pathname = usePathname();
 
@@ -180,7 +180,7 @@ export function ProfileMenu() {
           </div>
 
           <nav className="px-2 py-2">
-            {[...LINKS, ...(isAdmin ? [ADMIN] : [])].map((link) => (
+            {[...LINKS, ...(isOperator ? [OPERATOR] : [])].map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -241,8 +241,8 @@ export function ProfileMenu() {
   );
 }
 
-const ADMIN = {
+const OPERATOR = {
   href: "/admin",
-  label: "Admin",
+  label: "Operator",
   icon: <ShieldIcon className="h-4 w-4" />,
 };

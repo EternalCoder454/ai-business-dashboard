@@ -1,4 +1,5 @@
-import { ALLOWED_EMAILS, auth, authEnabled } from "@/auth";
+import { auth, authEnabled } from "@/auth";
+import { membershipFor } from "@/db/tenancy";
 import { databaseEnabled } from "@/db/client";
 import { shareProject, unshareProject } from "@/db/sharing";
 import { readJsonWithin } from "@/lib/guard";
@@ -45,8 +46,12 @@ export async function POST(request: Request) {
   if (target === caller.email) {
     return Response.json({ error: "You already have this one." }, { status: 400 });
   }
-  // The allowlist is the boundary for sharing exactly as it is for signing in.
-  if (!ALLOWED_EMAILS.includes(target)) {
+  // Sharing reaches inside one workspace. Everything in a workspace is already
+  // shared with everyone in it, so this is for reaching somebody who is in it
+  // and nobody outside.
+  const theirs = await membershipFor(target);
+  const mine = await membershipFor(caller.email);
+  if (!theirs || !mine || theirs.workspaceId !== mine.workspaceId) {
     return Response.json(
       { error: "That address is not approved for this workspace." },
       { status: 403 },

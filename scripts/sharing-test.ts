@@ -29,14 +29,14 @@ function check(label: string, condition: boolean, detail = "") {
 }
 
 async function wipe(email: string) {
-  const current = await loadWorkspace(email);
-  const own = current.conversations.filter((c) => !c.ownerEmail);
-  await applyMutations(email, [
+  const current = await loadWorkspace(email, email);
+  const own = current.conversations.filter((c) => !c.sharedFrom);
+  await applyMutations(email, email, [
     { table: "conversations", action: "delete", ids: own.map((c) => c.id) },
     {
       table: "projects",
       action: "delete",
-      ids: current.projects.filter((p) => !p.ownerEmail).map((p) => p.id),
+      ids: current.projects.filter((p) => !p.sharedFrom).map((p) => p.id),
     },
   ]);
 }
@@ -50,7 +50,7 @@ async function main() {
   }
 
   console.log("the owner sets up a shared project and a private one");
-  await applyMutations(OWNER, [
+  await applyMutations(OWNER, OWNER, [
     {
       table: "projects",
       action: "upsert",
@@ -87,15 +87,15 @@ async function main() {
 
   console.log("\\nnothing is shared until it is shared");
   check("member sees nothing yet", (await membershipsFor(MEMBER)).length === 0);
-  const before = await loadWorkspace(MEMBER);
+  const before = await loadWorkspace(MEMBER, MEMBER);
   check("and has no projects", before.projects.length === 0, String(before.projects.length));
 
   console.log("\\nafter sharing, the member sees that project and only that project");
   check("share succeeds", await shareProject(OWNER, "proj_shared", MEMBER));
-  const after = await loadWorkspace(MEMBER);
+  const after = await loadWorkspace(MEMBER, MEMBER);
   check("one project", after.projects.length === 1, after.projects.map((p) => p.name).join(","));
   check("the shared one", after.projects[0]?.name === "Launch");
-  check("marked as someone else's", after.projects[0]?.ownerEmail === OWNER);
+  check("marked as someone else's", after.projects[0]?.sharedFrom === OWNER);
   check("not the private one", !after.projects.some((p) => p.name === "Secret"));
 
   check("one conversation", after.conversations.length === 1, String(after.conversations.length));
@@ -104,7 +104,7 @@ async function main() {
   check("not the private conversation", !after.conversations.some((c) => c.title === "Payroll"));
 
   console.log("\\nan outsider sees none of it");
-  const outside = await loadWorkspace(OUTSIDER);
+  const outside = await loadWorkspace(OUTSIDER, OUTSIDER);
   check("no projects", outside.projects.length === 0);
   check("no conversations", outside.conversations.length === 0);
 
@@ -121,7 +121,7 @@ async function main() {
   );
 
   const shared = after.conversations[0];
-  await applyMutations(MEMBER, [
+  await applyMutations(MEMBER, MEMBER, [
     {
       table: "conversations",
       action: "upsert",
@@ -137,7 +137,7 @@ async function main() {
     },
   ]);
 
-  const ownerView = await loadWorkspace(OWNER);
+  const ownerView = await loadWorkspace(OWNER, OWNER);
   const ownerThread = ownerView.conversations.find((c) => c.id === "conv_shared");
   check("the owner sees the new message", ownerThread?.messages.length === 2, String(ownerThread?.messages.length));
   check(
@@ -151,7 +151,7 @@ async function main() {
   );
   check(
     "no duplicate copy under the member",
-    (await loadWorkspace(MEMBER)).conversations.filter((c) => c.id === "conv_shared").length === 1,
+    (await loadWorkspace(MEMBER, MEMBER)).conversations.filter((c) => c.id === "conv_shared").length === 1,
   );
 
   console.log("\\nthe owner can see who it is shared with");
@@ -161,23 +161,23 @@ async function main() {
   const people = await participantsOf(OWNER, "proj_shared");
   check("participants are owner and member", people.length === 2 && people.includes(MEMBER));
   console.log("\na member cannot delete the owner's conversation");
-  await applyMutations(MEMBER, [
+  await applyMutations(MEMBER, MEMBER, [
     { table: "conversations", action: "delete", ids: ["conv_shared"] },
   ]);
   check(
     "it survives",
-    (await loadWorkspace(OWNER)).conversations.some((c) => c.id === "conv_shared"),
+    (await loadWorkspace(OWNER, OWNER)).conversations.some((c) => c.id === "conv_shared"),
   );
   check(
     "with its messages intact",
-    ((await loadWorkspace(OWNER)).conversations.find((c) => c.id === "conv_shared")?.messages
+    ((await loadWorkspace(OWNER, OWNER)).conversations.find((c) => c.id === "conv_shared")?.messages
       .length ?? 0) >= 2,
   );
 
 
   console.log("\\nunsharing takes it back");
   await unshareProject(OWNER, "proj_shared", MEMBER);
-  const revoked = await loadWorkspace(MEMBER);
+  const revoked = await loadWorkspace(MEMBER, MEMBER);
   check("member sees nothing", revoked.projects.length === 0 && revoked.conversations.length === 0);
   check(
     "and can no longer write to it",
@@ -185,12 +185,12 @@ async function main() {
   );
   check(
     "while the owner keeps everything",
-    (await loadWorkspace(OWNER)).conversations.some((c) => c.id === "conv_shared"),
+    (await loadWorkspace(OWNER, OWNER)).conversations.some((c) => c.id === "conv_shared"),
   );
 
   console.log("\\ncleaning up");
   for (const email of [OWNER, MEMBER, OUTSIDER]) await wipe(email);
-  check("nothing left", (await loadWorkspace(OWNER)).projects.length === 0);
+  check("nothing left", (await loadWorkspace(OWNER, OWNER)).projects.length === 0);
 
   console.log(failures ? "\\nFAILURES ABOVE" : "\\nall checks passed");
   process.exit(failures ? 1 : 0);
