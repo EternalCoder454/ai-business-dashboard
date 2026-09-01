@@ -17,8 +17,17 @@ export interface Attachment {
   kind: AttachmentKind;
   mediaType: string;
   name: string;
-  /** Base64 with no data: prefix, which is the shape the API wants. Empty for documents. */
-  data: string;
+  /**
+   * Base64 with no data: prefix, which is the shape the API wants.
+   *
+   * Absent on a hosted workspace. The bytes used to ride in the snapshot the
+   * browser downloads on every load, which for eight screenshots was eleven
+   * megabytes on every page, on every device, whether or not anything was
+   * opened. They are served from /api/files/[id] instead and cached by the
+   * browser. A local workspace keeps them inline, since reading IndexedDB in
+   * the same browser costs nothing.
+   */
+  data?: string;
   /** Extracted text, for documents the API cannot read directly. */
   text?: string;
   width: number;

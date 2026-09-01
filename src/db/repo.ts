@@ -22,13 +22,20 @@ export type { MutationOp, Workspace };
 
 const ms = (value: Date) => value.getTime();
 
+/**
+ * A file as the snapshot carries it: everything except the bytes.
+ *
+ * The bytes are the whole weight of a workspace and are needed only when
+ * something is opened or sent, so they are fetched from /api/files/[id] then.
+ * Extracted text is kept: it is small, and a document with no text has nothing
+ * to show at all.
+ */
 function toAttachment(row: typeof t.files.$inferSelect): Attachment {
   return {
     id: row.id,
     kind: row.kind as Attachment["kind"],
     mediaType: row.mediaType,
     name: row.name,
-    data: row.data,
     text: row.textContent ?? undefined,
     width: row.width,
     height: row.height,
@@ -515,7 +522,9 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
                   kind: attachment.kind,
                   mediaType: attachment.mediaType,
                   name: attachment.name,
-                  data: attachment.data,
+                  // Empty only when the client never had the bytes, which means
+                  // the row already exists; the insert below leaves it alone.
+                  data: attachment.data ?? "",
                   textContent: attachment.text ?? null,
                   width: attachment.width,
                   height: attachment.height,

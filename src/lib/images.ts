@@ -114,13 +114,23 @@ export async function fileToAttachment(file: File): Promise<Attachment> {
 }
 
 /** For rendering a stored attachment back into an <img>. */
+/**
+ * Where to point an <img> or an <embed> at.
+ *
+ * A local workspace holds the bytes already, so a data URL costs nothing. A
+ * hosted one does not, and a URL lets the browser fetch and cache the file
+ * itself rather than every file riding in on every page load.
+ */
 export function attachmentSrc(attachment: Attachment): string {
-  return `data:${attachment.mediaType};base64,${attachment.data}`;
+  if (attachment.data) return `data:${attachment.mediaType};base64,${attachment.data}`;
+  return `/api/files/${encodeURIComponent(attachment.id)}`;
 }
 
 /** Rough byte size of the stored base64, for the size hint in the UI. */
 export function attachmentBytes(attachment: Attachment): number {
-  return Math.round((attachment.data.length * 3) / 4);
+  // The stored size, since the bytes themselves are usually not here.
+  if (typeof attachment.size === "number" && attachment.size > 0) return attachment.size;
+  return attachment.data ? Math.round((attachment.data.length * 3) / 4) : 0;
 }
 
 /**

@@ -64,27 +64,55 @@ interface StreamState {
 const EMPTY_STREAM: StreamState = { text: "", thinking: "" };
 
 /**
+ * The bytes for one file, fetched once and kept for the session.
+ *
+ * A hosted workspace no longer carries them in its snapshot, so a message
+ * being re-sent has metadata and no data. The cache is per tab: a long
+ * conversation re-sends its history on every turn, and fetching the same
+ * attachment on each of them would undo the point of not shipping them.
+ */
+const byteCache = new Map<string, string>();
+
+async function bytesFor(attachment: Attachment): Promise<string> {
+  if (attachment.data) return attachment.data;
+  const cached = byteCache.get(attachment.id);
+  if (cached !== undefined) return cached;
+  try {
+    const response = await fetch(`/api/files/${encodeURIComponent(attachment.id)}?json=1`);
+    if (!response.ok) return "";
+    const body = (await response.json()) as { data?: string };
+    const data = body.data ?? "";
+    byteCache.set(attachment.id, data);
+    return data;
+  } catch {
+    // An attachment that will not load is better than a turn that will not send.
+    return "";
+  }
+}
+
+/**
  * A turn with attachments becomes content blocks. Files lead, because the API
  * answers a question about a document better when the document comes first.
  */
-function toWire(message: Message): string | WireContent[] {
+async function toWire(message: Message): Promise<string | WireContent[]> {
   if (!message.attachments?.length) return message.content;
 
   const blocks: WireContent[] = [];
   for (const attachment of message.attachments) {
-    if (attachment.kind === "image") {
-      blocks.push({
-        type: "image",
-        mediaType: attachment.mediaType,
-        data: attachment.data,
-      });
-    } else if (attachment.kind === "pdf") {
-      blocks.push({
-        type: "document",
-        mediaType: attachment.mediaType,
-        data: attachment.data,
-        name: attachment.name,
-      });
+    if (attachment.kind === "image" || attachment.kind === "pdf") {
+      const data = await bytesFor(attachment);
+      // Nothing to send rather than an empty block the API would reject.
+      if (!data) continue;
+      blocks.push(
+        attachment.kind === "image"
+          ? { type: "image", mediaType: attachment.mediaType, data }
+          : {
+              type: "document",
+              mediaType: attachment.mediaType,
+              data,
+              name: attachment.name,
+            },
+      );
     } else if (attachment.text) {
       // Converted on the way in, so it travels as plain text with a header
       // naming the file, which is what makes it quotable in a reply.
@@ -346,10 +374,9 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           tasks,
           toolsFor(departmentId),
         ),
-        messages: history.map((m) => ({
-          role: m.role,
-          content: toWire(m),
-        })),
+        messages: await Promise.all(
+          history.map(async (m) => ({ role: m.role, content: await toWire(m) })),
+        ),
         // A department pointed at its own model wins; otherwise the
         // workspace default, which is what every department has until one is
         // changed.

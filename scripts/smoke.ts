@@ -7,6 +7,10 @@
  *
  *   npm run smoke
  */
+import { and, eq } from "drizzle-orm";
+
+import { requireDb } from "../src/db/client";
+import * as schema from "../src/db/schema";
 import { applyMutations, isEmpty, loadWorkspace } from "../src/db/repo";
 import { seedDepartments } from "../src/lib/seed";
 import { seedSkills } from "../src/lib/seedSkills";
@@ -126,7 +130,13 @@ async function main() {
     loaded?.messages[0]?.id === "msg_smoke_1" && loaded?.messages[1]?.id === "msg_smoke_2",
   );
   check("attachment rehydrated", loaded?.messages[0]?.attachments?.[0]?.name === "sprite.png");
-  check("attachment bytes intact", loaded?.messages[0]?.attachments?.[0]?.data === "iVBORw0KGgo=");
+  // Bytes deliberately do not travel with a message either. A conversation
+  // full of screenshots used to re-download all of them on every page load;
+  // they are fetched from /api/files when one is opened or re-sent.
+  check(
+    "attachment bytes stay out of the snapshot",
+    loaded?.messages[0]?.attachments?.[0]?.data === undefined,
+  );
   check("thinking survives", loaded?.messages[1]?.thinking === "checking readability");
   check(
     "chat attachment stays out of the Library",
@@ -414,6 +424,64 @@ async function main() {
 
     await applyMutations(USER, [{ table: "tasks", action: "delete", ids: ["task_smoke_1"] }]);
     check("and it deletes", (await loadWorkspace(USER)).tasks.length === 0);
+  }
+
+  console.log("\nfile bytes stay in the database and out of the snapshot");
+  {
+    const now = Date.now();
+    // Big enough that carrying it in the snapshot would be obvious.
+    const data = "A".repeat(200_000);
+    await applyMutations(USER, [
+      {
+        table: "files",
+        action: "upsert",
+        rows: [
+          {
+            id: "file_payload_1",
+            kind: "image",
+            mediaType: "image/png",
+            name: "screenshot.png",
+            data,
+            width: 100,
+            height: 100,
+            size: 150_000,
+            createdAt: now,
+            updatedAt: now,
+          },
+        ],
+      },
+    ]);
+
+    const back = await loadWorkspace(USER);
+    const file = back.files.find((row) => row.id === "file_payload_1");
+    check("the file is listed", Boolean(file));
+    check("its name survived", file?.name === "screenshot.png");
+    check("its size survived, so the interface can still show one", file?.size === 150_000);
+    // The whole point: metadata travels, bytes do not.
+    check("the bytes are not in the snapshot", file?.data === undefined);
+
+    const serialised = JSON.stringify(back).length;
+    check(
+      "so the snapshot is nowhere near the size of the file",
+      serialised < 100_000,
+      `${serialised.toLocaleString()} bytes`,
+    );
+
+    // Still stored, or /api/files would have nothing to serve.
+    const [row] = await requireDb()
+      .select()
+      .from(schema.files)
+      .where(and(eq(schema.files.userEmail, USER), eq(schema.files.id, "file_payload_1")))
+      .limit(1);
+    check("the bytes are still in the database", row?.data.length === data.length);
+
+    await applyMutations(USER, [{ table: "files", action: "delete", ids: ["file_payload_1"] }]);
+    const after = await loadWorkspace(USER);
+    check(
+      "and it deletes",
+      !after.files.some((row) => row.id === "file_payload_1"),
+      `${after.files.length} file(s) left from earlier checks`,
+    );
   }
 
   console.log("\ndeleting a head takes its conversations with it");
