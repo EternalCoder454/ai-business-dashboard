@@ -144,7 +144,7 @@ export default function MemoryPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 medium:px-6 expanded:px-8">
         <div className="measure-wide">
-          <div className="mb-5 flex flex-wrap items-center gap-2">
+          <div className="filter-row mb-5">
             {(["all", "decision", "figure"] as const).map((kind) => (
               <Chip
                 key={kind}
@@ -178,7 +178,7 @@ export default function MemoryPage() {
                   a short line of text and a long scroll, which is the worst of
                   both. Cards vary in height, so this is a grid rather than
                   columns, which would break a card across the fold. */}
-              <ul className="grid gap-2 expanded:grid-cols-2">
+              <ul className="grid grid-cols-1 gap-2 expanded:grid-cols-2">
                 {decisions.map((entry) => (
                   <li key={entry.id}>
                     <EntryCard
@@ -197,7 +197,7 @@ export default function MemoryPage() {
           {series.size > 0 ? (
             <section className="mb-8">
               <h2 className="md-label-sm mb-3 text-on-variant">Figures · {series.size}</h2>
-              <ul className="grid gap-2 medium:grid-cols-2 large:grid-cols-3">
+              <ul className="grid grid-cols-1 gap-2 medium:grid-cols-2 large:grid-cols-3">
                 {[...series].map(([label, readings]) => (
                   <li
                     key={label}
@@ -316,7 +316,7 @@ export default function MemoryPage() {
               </>
             )}
 
-            <div className="grid gap-4 medium:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 medium:grid-cols-2">
               <Field label="Applies to">
                 <Select
                   value={draft.departmentId}

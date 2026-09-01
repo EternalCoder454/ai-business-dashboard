@@ -99,7 +99,7 @@ export function Dashboard() {
           </Link>
         </div>
         {figures.length > 0 ? (
-          <div className="grid gap-3 medium:grid-cols-2 expanded:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 medium:grid-cols-2 expanded:grid-cols-4">
             {figures.map(({ label, latest, previous }) => (
               <div key={label} className="rounded-2xl bg-container p-4 shadow-e1">
                 <p className="md-label-sm truncate text-on-variant">{label}</p>
@@ -138,7 +138,7 @@ export function Dashboard() {
         </span>
       </div>
 
-      <div className="grid gap-4 medium:grid-cols-2 large:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-3">
         <PaneList
           title="Open tasks"
           icon={<CheckIcon className="h-3.5 w-3.5" />}

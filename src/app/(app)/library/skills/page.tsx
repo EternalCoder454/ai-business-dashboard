@@ -170,7 +170,7 @@ function SkillsView() {
 
       <LibraryTabs />
 
-      <div className="flex flex-none flex-wrap items-center gap-2 border-b border-outline-variant px-4 medium:px-6 expanded:px-8 py-3">
+      <div className="filter-row flex-none border-b border-outline-variant px-4 medium:px-6 expanded:px-8 py-3">
         <Chip selected={filter === "all"} onClick={() => setFilter("all")}>
           All · {skills.length}
         </Chip>
@@ -344,7 +344,7 @@ function SkillsView() {
       >
         {draft ? (
           <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Name" hint="How it is referred to when used.">
                 <TextInput
                   value={draft.name ?? ""}

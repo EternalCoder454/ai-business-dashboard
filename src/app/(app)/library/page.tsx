@@ -114,7 +114,7 @@ export default function LibraryPage() {
 
       <LibraryTabs />
 
-      <div className="flex flex-none flex-wrap items-center gap-2 border-b border-outline-variant px-4 py-3 medium:px-6 expanded:px-8">
+      <div className="filter-row flex-none border-b border-outline-variant px-4 py-3 medium:px-6 expanded:px-8">
         <Chip selected={filter === "all"} onClick={() => setFilter("all")}>
           All · {files.length}
         </Chip>
@@ -166,7 +166,7 @@ export default function LibraryPage() {
               }
             />
           ) : (
-            <ul className="grid gap-3 medium:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-3 medium:grid-cols-2">
               {visible.map((file) => (
                 <li key={file.id}>
                   <Card className="flex h-full flex-col gap-3">

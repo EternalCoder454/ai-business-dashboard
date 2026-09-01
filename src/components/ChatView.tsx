@@ -505,18 +505,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           aria-label="Go back"
           className="md-state grid h-11 w-11 flex-none place-items-center rounded-full text-on-surface medium:hidden"
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-            className="h-5 w-5"
-          >
-            <path d="M15 5l-7 7 7 7" />
-          </svg>
+          <ChevronIcon className="h-5 w-5 rotate-180" />
         </button>
         <div className="hidden flex-none medium:block">
           <DepartmentAvatar department={department} size={44} />
@@ -525,7 +514,10 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           <div className="flex items-center gap-2">
             <h1 className="md-title-lg truncate">{department.name}</h1>
             <StatusDot status={liveStatus} />
-            <span className="md-label-sm text-on-variant">
+            {/* The dot says the same thing in a tenth of the width. On a phone
+                the words were wrapping to two lines and truncating the name
+                they were meant to annotate. */}
+            <span className="md-label-sm hidden flex-none text-on-variant medium:inline">
               {STATUS_MEANING[liveStatus]}
             </span>
           </div>
@@ -1212,17 +1204,8 @@ function ThinkingBlock({ text, defaultOpen = false }: { text: string; defaultOpe
 
 function PaperclipIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className={className}
-    >
-      <path d="M21 11.5 12.5 20a5 5 0 0 1-7-7l8-8a3.5 3.5 0 0 1 5 5l-8 8a2 2 0 0 1-3-3l7.5-7.5" />
+    <svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden className={className}>
+      <path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z" />
     </svg>
   );
 }

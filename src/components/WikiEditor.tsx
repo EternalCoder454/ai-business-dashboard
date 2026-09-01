@@ -120,7 +120,7 @@ export function WikiEditor() {
 
       <Card>
         <h2 className="md-title-lg mb-4">Heading</h2>
-        <div className="grid gap-4 medium:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 medium:grid-cols-2">
           <Field label="Name">
             <TextInput
               value={title}
@@ -327,7 +327,7 @@ function PageEditor({
 
   return (
     <div className="border-t border-outline-variant p-3">
-      <div className="mb-4 grid gap-4 medium:grid-cols-2">
+      <div className="mb-4 grid grid-cols-1 gap-4 medium:grid-cols-2">
         <Field label="Page title">
           <TextInput
             value={title}

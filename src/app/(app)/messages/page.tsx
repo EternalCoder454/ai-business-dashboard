@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
+  ChevronIcon,
   Chip,
   EmptyState,
   SendIcon,
@@ -258,18 +259,7 @@ function Thread({
           aria-label="Back to messages"
           className="md-state grid h-11 w-11 flex-none place-items-center rounded-full text-on-surface expanded:hidden"
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-            className="h-5 w-5"
-          >
-            <path d="M15 5l-7 7 7 7" />
-          </svg>
+          <ChevronIcon className="h-5 w-5 rotate-180" />
         </button>
 
         <Avatar person={person} email={other} />

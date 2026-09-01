@@ -183,7 +183,7 @@ export default function AccountPage() {
               Sent with every conversation.
             </p>
 
-            <div className="grid gap-4 medium:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 medium:grid-cols-2">
               <Field label="Name">
                 <TextInput
                   value={local.displayName}

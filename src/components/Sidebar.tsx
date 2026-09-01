@@ -309,9 +309,14 @@ export function SidebarContent({
           >
             <SearchIcon className="h-4 w-4 flex-none" />
             <span className="md-body flex-1 text-left">Search</span>
-            <kbd className="md-label-sm rounded border border-outline-variant px-1.5 py-0.5">
-              /
-            </kbd>
+            {/* Hidden on compact: the drawer is the only place this shows on a
+                phone, and a phone has no key to press. It also has to say what
+                the shortcut actually is, which is a setting. */}
+            {settings.searchShortcut === "none" ? null : (
+              <kbd className="md-label-sm hidden rounded border border-outline-variant px-1.5 py-0.5 medium:inline">
+                {settings.searchShortcut === "k" ? "K" : "/"}
+              </kbd>
+            )}
           </button>
         </div>
       ) : null}

@@ -9,6 +9,7 @@ import { useStore } from "@/lib/store";
 import { useKeyboardInset } from "@/lib/viewport";
 import { PRIMARY_LINKS, Sidebar, SidebarContent, isActive } from "./Sidebar";
 import { CompanyMark } from "./CompanyMark";
+import { ProfileMenu } from "./ProfileMenu";
 import { setNavCollapsed, useNavCollapsed } from "@/lib/navCollapsed";
 import { ChevronIcon, CloseIcon, NavBadge, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
@@ -245,10 +246,16 @@ function TopAppBar({
           onOpenSearch();
         }}
         aria-label="Search"
-        className="md-state ml-auto mr-1 grid h-12 w-12 flex-none place-items-center rounded-full text-on-variant"
+        className="md-state ml-auto grid h-12 w-12 flex-none place-items-center rounded-full text-on-variant"
       >
         <SearchIcon className="h-5 w-5" />
       </button>
+      {/* The account menu belongs up here on a phone rather than in the page
+          header, where it had to wrap onto a line of its own behind whatever
+          buttons the page already had. */}
+      <div className="mr-2 flex-none">
+        <ProfileMenu />
+      </div>
     </header>
   );
 }
@@ -464,16 +471,8 @@ function ModalDrawer({
 
 function MenuIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      aria-hidden
-      className="h-5 w-5"
-    >
-      <path d="M4 7h16M4 12h16M4 17h16" />
+    <svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden className="h-5 w-5">
+      <path d="M120-240v-80h720v80H120Zm0-200v-80h720v80H120Zm0-200v-80h720v80H120Z" />
     </svg>
   );
 }

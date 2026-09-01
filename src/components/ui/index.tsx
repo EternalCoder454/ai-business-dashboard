@@ -183,7 +183,9 @@ export function Chip({
         createRipple(event);
         onClick();
       }}
-      className={cx(base, "md-state transition-colors")}
+      // md-chip is a touch-size hook, not a look: a 28px chip is comfortable
+      // to click and awkward to thumb, so it grows on a coarse pointer.
+      className={cx(base, "md-chip md-state transition-colors")}
     >
       {children}
     </button>
@@ -216,6 +218,9 @@ export function StatusDot({
   return (
     <span
       aria-label={STATUS_LABEL[status]}
+      // Compact windows drop the words beside it, so the dot has to answer for
+      // itself when someone presses and holds.
+      title={STATUS_LABEL[status]}
       className={animate && status === "online" ? "status-dot" : "status-dot [&::after]:hidden"}
       style={{ background: STATUS_COLOR[status] }}
     />
@@ -226,8 +231,12 @@ export function StatusDot({
  * Form fields
  */
 
+// min-w-0 matters more than it looks: a select's intrinsic minimum is the
+// width of its longest option, and a grid or flex item is allowed to grow to
+// its content's minimum. One long model name was widening every card on the
+// settings page past the side of a phone.
 const FIELD_BASE =
-  "w-full rounded-xl border border-outline-variant bg-lowest px-3.5 py-2.5 md-body " +
+  "w-full min-w-0 rounded-xl border border-outline-variant bg-lowest px-3.5 py-2.5 md-body " +
   "text-on-surface placeholder:text-on-variant/70 transition-colors " +
   "focus:border-primary focus:outline-none";
 
@@ -405,82 +414,68 @@ export function LinkButton({
 
 type IconProps = { className?: string };
 
-function icon(path: ReactNode) {
+/**
+ * A Material Symbol.
+ *
+ * Google exports these as a filled shape on a 960 grid drawn up from the
+ * baseline, which is why the viewBox is negative. Inlining the path rather
+ * than loading the icon font keeps the app dependency-free and costs nothing
+ * on first paint.
+ */
+function symbol(d: string) {
   return function Icon({ className }: IconProps) {
     return (
       <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        viewBox="0 -960 960 960"
+        fill="currentColor"
         aria-hidden
         className={className}
       >
-        {path}
+        <path d={d} />
       </svg>
     );
   };
 }
 
-export const PlusIcon = icon(<path d="M12 5v14M5 12h14" />);
-export const CloseIcon = icon(<path d="M18 6 6 18M6 6l12 12" />);
-export const SendIcon = icon(<path d="M4.5 12h15m0 0-6-6m6 6-6 6" />);
+export const PlusIcon = symbol(
+  "M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z",
+);
+export const CloseIcon = symbol(
+  "m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z",
+);
+export const SendIcon = symbol(
+  "M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Zm0 0v-400 400Z",
+);
 /** Panels, for the dashboard. The org chart it replaced is gone. */
-export const DashboardIcon = icon(
-  <>
-    <rect x="3" y="3" width="7.5" height="8" rx="1.5" />
-    <rect x="13.5" y="3" width="7.5" height="5" rx="1.5" />
-    <rect x="3" y="14" width="7.5" height="7" rx="1.5" />
-    <rect x="13.5" y="11" width="7.5" height="10" rx="1.5" />
-  </>,
+export const DashboardIcon = symbol(
+  "M520-600v-240h320v240H520ZM120-440v-400h320v400H120Zm400 320v-400h320v400H520Zm-400 0v-240h320v240H120Zm80-400h160v-240H200v240Zm400 320h160v-240H600v240Zm0-480h160v-80H600v80ZM200-200h160v-80H200v80Zm160-320Zm240-160Zm0 240ZM360-280Z",
 );
-export const BriefcaseIcon = icon(
-  <>
-    <rect x="3" y="7" width="18" height="13" rx="2.5" />
-    <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 12h18" />
-  </>,
+export const BriefcaseIcon = symbol(
+  "M160-120q-33 0-56.5-23.5T80-200v-440q0-33 23.5-56.5T160-720h160v-80q0-33 23.5-56.5T400-880h160q33 0 56.5 23.5T640-800v80h160q33 0 56.5 23.5T880-640v440q0 33-23.5 56.5T800-120H160Zm240-600h160v-80H400v80Zm400 360H600v80H360v-80H160v160h640v-160Zm-360 0h80v-80h-80v80Zm-280-80h200v-80h240v80h200v-200H160v200Zm320 40Z",
 );
-export const DocIcon = icon(
-  <>
-    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-    <path d="M14 3v5h5M9 13h6M9 17h4" />
-  </>,
+export const DocIcon = symbol(
+  "M320-240h320v-80H320v80Zm0-160h320v-80H320v80ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z",
 );
-export const BuildingIcon = icon(
-  <>
-    <rect x="4" y="3" width="16" height="18" rx="2" />
-    <path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h6" />
-  </>,
+export const BuildingIcon = symbol(
+  "M120-120v-560h160v-160h400v320h160v400H520v-160h-80v160H120Zm80-80h80v-80h-80v80Zm0-160h80v-80h-80v80Zm0-160h80v-80h-80v80Zm160 160h80v-80h-80v80Zm0-160h80v-80h-80v80Zm0-160h80v-80h-80v80Zm160 320h80v-80h-80v80Zm0-160h80v-80h-80v80Zm0-160h80v-80h-80v80Zm160 480h80v-80h-80v80Zm0-160h80v-80h-80v80Z",
 );
-export const GearIcon = icon(
-  <>
-    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-    <circle cx="12" cy="12" r="3" />
-  </>,
+export const GearIcon = symbol(
+  "m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm70-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z",
 );
-export const TrashIcon = icon(
-  <>
-    <path d="M4 7h16M10 11v6M14 11v6" />
-    <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7" />
-  </>,
+export const TrashIcon = symbol(
+  "M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z",
 );
-export const EditIcon = icon(
-  <>
-    <path d="M12 20h9" />
-    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-  </>,
+export const EditIcon = symbol(
+  "M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z",
 );
-export const BookmarkIcon = icon(<path d="M19 21 12 16l-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />);
-export const CopyIcon = icon(
-  <>
-    <rect x="9" y="9" width="12" height="12" rx="2" />
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-  </>,
+export const BookmarkIcon = symbol(
+  "M200-120v-640q0-33 23.5-56.5T280-840h400q33 0 56.5 23.5T760-760v640L480-240 200-120Zm80-122 200-86 200 86v-518H280v518Zm0-518h400-400Z",
 );
-export const SparkIcon = icon(
-  <path d="m12 3 2.2 5.4L20 10.5l-5.8 2.1L12 18l-2.2-5.4L4 10.5l5.8-2.1Z" />,
+export const CopyIcon = symbol(
+  "M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z",
+);
+export const SparkIcon = symbol(
+  "m520-120 40-280H319l321-440h40l-40 280h241L560-120h-40ZM120-240v-80h348l-12 80H120ZM80-440v-80h228l-58 80H80Zm80-200v-80h294l-58 80H160Z",
 );
 /**
  * A Material navigation badge: the count of something waiting, sitting on the
@@ -508,42 +503,33 @@ export function NavBadge({ count, label }: { count: number; label: string }) {
   );
 }
 
-export const BookIcon = icon(
-  <>
-    <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z" />
-    <path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H19v3H6.5" />
-  </>,
+export const BookIcon = symbol(
+  "M300-80q-58 0-99-41t-41-99v-520q0-58 41-99t99-41h500v600q-25 0-42.5 17.5T740-220q0 25 17.5 42.5T800-160v80H300Zm-60-267q14-7 29-10t31-3h20v-440h-20q-25 0-42.5 17.5T240-740v393Zm160-13h320v-440H400v440Zm-160 13v-453 453Zm60 187h373q-6-14-9.5-28.5T660-220q0-16 3-31t10-29H300q-26 0-43 17.5T240-220q0 26 17 43t43 17Z",
 );
-export const ShieldIcon = icon(
-  <path d="M12 3.5 5 6v5.5c0 4 2.9 7.4 7 8.5 4.1-1.1 7-4.5 7-8.5V6z" />,
+export const ShieldIcon = symbol(
+  "M722.5-297.5Q740-315 740-340t-17.5-42.5Q705-400 680-400t-42.5 17.5Q620-365 620-340t17.5 42.5Q655-280 680-280t42.5-17.5ZM680-160q31 0 57-14.5t42-38.5q-22-13-47-20t-52-7q-27 0-52 7t-47 20q16 24 42 38.5t57 14.5ZM480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v227q-19-8-39-14.5t-41-9.5v-147l-240-90-240 90v188q0 47 12.5 94t35 89.5Q310-290 342-254t71 60q11 32 29 61t41 52q-1 0-1.5.5t-1.5.5Zm200 0q-83 0-141.5-58.5T480-280q0-83 58.5-141.5T680-480q83 0 141.5 58.5T880-280q0 83-58.5 141.5T680-80ZM480-494Z",
 );
-export const MailIcon = icon(
-  <>
-    <rect x="3" y="5" width="18" height="14" rx="2" />
-    <path d="m3.5 7 8.5 6 8.5-6" />
-  </>,
+export const MailIcon = symbol(
+  "M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-120H640q-30 38-71.5 59T480-240q-47 0-88.5-21T320-320H200v120Zm349-142q31-22 43-58h168v-360H200v360h168q12 36 43 58t69 22q38 0 69-22ZM200-200h560-560Z",
 );
-export const FolderIcon = icon(
-  <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
+export const FolderIcon = symbol(
+  "M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h240l80 80h320q33 0 56.5 23.5T880-640v400q0 33-23.5 56.5T800-160H160Zm0-80h640v-400H447l-80-80H160v480Zm0 0v-480 480Z",
 );
-export const ChevronIcon = icon(<path d="m9 6 6 6-6 6" />);
-export const PersonIcon = icon(
-  <>
-    <circle cx="12" cy="8" r="3.6" />
-    <path d="M5 20v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1" />
-  </>,
+export const ChevronIcon = symbol(
+  "M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z",
 );
-export const UsersIcon = icon(
-  <>
-    <path d="M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20" />
-    <circle cx="10" cy="8" r="3.2" />
-    <path d="M20 20v-1.5a3.5 3.5 0 0 0-2.6-3.4M15.5 5.2a3.2 3.2 0 0 1 0 5.6" />
-  </>,
+export const PersonIcon = symbol(
+  "M367-527q-47-47-47-113t47-113q47-47 113-47t113 47q47 47 47 113t-47 113q-47 47-113 47t-113-47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Zm80-80h480v-32q0-11-5.5-20T700-306q-54-27-109-40.5T480-360q-56 0-111 13.5T260-306q-9 5-14.5 14t-5.5 20v32Zm296.5-343.5Q560-607 560-640t-23.5-56.5Q513-720 480-720t-56.5 23.5Q400-673 400-640t23.5 56.5Q447-560 480-560t56.5-23.5ZM480-640Zm0 400Z",
 );
-export const CheckIcon = icon(<path d="m5 13 4 4L19 7" />);
-export const DownloadIcon = icon(
-  <>
-    <path d="M12 3v12M7 11l5 5 5-5" />
-    <path d="M4 20h16" />
-  </>,
+export const UsersIcon = symbol(
+  "M40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm720 0v-120q0-44-24.5-84.5T666-434q51 6 96 20.5t84 35.5q36 20 55 44.5t19 53.5v120H760ZM247-527q-47-47-47-113t47-113q47-47 113-47t113 47q47 47 47 113t-47 113q-47 47-113 47t-113-47Zm466 0q-47 47-113 47-11 0-28-2.5t-28-5.5q27-32 41.5-71t14.5-81q0-42-14.5-81T544-792q14-5 28-6.5t28-1.5q66 0 113 47t47 113q0 66-47 113ZM120-240h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm296.5-343.5Q440-607 440-640t-23.5-56.5Q393-720 360-720t-56.5 23.5Q280-673 280-640t23.5 56.5Q327-560 360-560t56.5-23.5ZM360-240Zm0-400Z",
+);
+export const CheckIcon = symbol(
+  "M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z",
+);
+export const UploadIcon = symbol(
+  "M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z",
+);
+export const DownloadIcon = symbol(
+  "M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z",
 );

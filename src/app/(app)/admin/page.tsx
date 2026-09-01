@@ -303,7 +303,7 @@ function OverviewTab({ overview }: { overview: Overview | null }) {
 
   return (
     <div className="measure flex flex-col gap-5">
-      <div className="stagger grid gap-3 medium:grid-cols-3">
+      <div className="stagger grid grid-cols-1 gap-3 medium:grid-cols-3">
         <Stat label="Accounts" value={String(overview.signedIn)} hint={`${overview.people} with a workspace`} />
         <Stat label="Conversations" value={compact(overview.conversations)} hint={`${compact(overview.messages)} messages`} />
         <Stat label="Attachments" value={compact(overview.files)} hint={bytes(overview.storageBytes)} />
@@ -317,7 +317,7 @@ function OverviewTab({ overview }: { overview: Overview | null }) {
         <p className="md-body mb-4 text-on-variant">
           Recorded since usage tracking began. Billing is in the Anthropic console.
         </p>
-        <dl className="grid gap-3 medium:grid-cols-4">
+        <dl className="grid grid-cols-1 gap-3 medium:grid-cols-4">
           {[
             ["Input, new", u.input],
             ["Input, cached", u.cacheRead],
@@ -470,7 +470,7 @@ function PersonDetail({
       ) : (
         <>
           {detail ? (
-            <div className="grid gap-3 medium:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 medium:grid-cols-3">
               <Stat label="Departments" value={String(detail.departments)} hint={`${detail.skills} skills`} />
               <Stat label="Deliverables" value={String(detail.deliverables)} hint={`${detail.projects} projects`} />
               <Stat label="Attachments" value={String(detail.files)} hint={bytes(detail.storageBytes)} />

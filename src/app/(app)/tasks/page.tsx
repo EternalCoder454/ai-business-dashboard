@@ -5,6 +5,7 @@ import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useMemo, useState } from "react";
 import {
   Button,
+  CheckIcon,
   Chip,
   Dialog,
   EmptyState,
@@ -169,7 +170,7 @@ export default function TasksPage() {
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto page-x py-5">
-        <div className="mb-5 flex flex-wrap items-center gap-2">
+        <div className="filter-row mb-5">
           <Chip selected={filter === "all"} onClick={() => setFilter("all")}>
             Everything
           </Chip>
@@ -204,7 +205,7 @@ export default function TasksPage() {
           // Three columns from expanded up. A board is the one place a column
           // per state genuinely beats a list, because the shape of the work is
           // the information.
-          <div className="grid gap-4 expanded:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 expanded:grid-cols-3">
             {columns.map(({ status, items }) => (
               <section
                 key={status}
@@ -276,15 +277,7 @@ export default function TasksPage() {
                                 )}
                               >
                                 {task.status === "done" ? (
-                                  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none">
-                                    <path
-                                      d="m5 12 5 5L19 7"
-                                      stroke="currentColor"
-                                      strokeWidth="3"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                  </svg>
+                                  <CheckIcon className="h-3 w-3" />
                                 ) : null}
                               </button>
                               <button
@@ -382,7 +375,7 @@ export default function TasksPage() {
                 onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
               />
             </Field>
-            <div className="grid gap-4 medium:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 medium:grid-cols-2">
               <Field label="Department">
                 <Select
                   value={draft.departmentId}

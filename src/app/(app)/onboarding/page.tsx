@@ -60,7 +60,7 @@ export default function WikiPage() {
         ) : (
           // Contents beside the page on a wide screen, above it otherwise.
           // Sticky, so moving between pages never means scrolling back.
-          <div className="grid gap-6 expanded:grid-cols-[15rem_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 gap-6 expanded:grid-cols-[15rem_minmax(0,1fr)]">
             <nav className="expanded:sticky expanded:top-0 expanded:self-start">
               <h2 className="md-label-sm mb-2 px-2 text-on-variant">Contents</h2>
               <ul className="flex gap-1.5 overflow-x-auto pb-1 expanded:flex-col expanded:overflow-visible expanded:pb-0">

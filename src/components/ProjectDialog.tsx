@@ -105,7 +105,7 @@ export function ProjectDialog({
           />
         </Field>
 
-        <div className="grid gap-4 medium:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 medium:grid-cols-2">
           <Field label="Status">
             <Select
               value={status}

@@ -105,7 +105,7 @@ export default function InformationPage() {
           {/* ------------------------------------------------ the model */}
           <Card>
             <h2 className="md-title-lg mb-4">Model</h2>
-            <dl className="grid gap-3 medium:grid-cols-2">
+            <dl className="grid grid-cols-1 gap-3 medium:grid-cols-2">
               <Fact label="Model" value={settings.model} />
               <Fact label="Effort" value={settings.effort} />
               <Fact
@@ -200,7 +200,7 @@ export default function InformationPage() {
           {/* ------------------------------------------------ shared context */}
           <Card>
             <h2 className="md-title-lg mb-4">Shared context</h2>
-            <dl className="grid gap-3 medium:grid-cols-2">
+            <dl className="grid grid-cols-1 gap-3 medium:grid-cols-2">
               <Fact
                 label="Company Profile"
                 value={hasProfileContent(profile) ? "filled in" : "empty"}

@@ -92,7 +92,7 @@ export default function DeliverablesPage() {
 
       <LibraryTabs />
 
-      <div className="flex flex-none flex-wrap items-center gap-2 border-b border-outline-variant px-4 medium:px-6 expanded:px-8 py-3">
+      <div className="filter-row flex-none border-b border-outline-variant px-4 medium:px-6 expanded:px-8 py-3">
         <Chip selected={filter === "all"} onClick={() => setFilter("all")}>
           All · {deliverables.length}
         </Chip>
@@ -122,7 +122,7 @@ export default function DeliverablesPage() {
             action={<Button onClick={openNew}>Add one manually</Button>}
           />
         ) : (
-          <div className="grid gap-5 expanded:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 expanded:grid-cols-3">
             {DELIVERABLE_COLUMNS.map((column, columnIndex) => {
               const items = visible.filter((d) => d.status === column.id);
               return (
@@ -264,7 +264,7 @@ export default function DeliverablesPage() {
                 }
               />
             </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Department">
                 <Select
                   value={draft.departmentId}

@@ -123,7 +123,7 @@ export default function CompanyProfilePage() {
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 expanded:px-8 py-6">
-        <div className="measure grid gap-5 medium:grid-cols-2">
+        <div className="measure grid grid-cols-1 gap-5 medium:grid-cols-2">
           {FIELDS.map((field) => (
             <Card
               key={field.key}

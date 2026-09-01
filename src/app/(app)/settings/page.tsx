@@ -125,15 +125,21 @@ export default function SettingsPage() {
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 expanded:px-8 py-6">
-        <div className="measure-wide grid items-start gap-5 expanded:grid-cols-2">
+        <div className="measure-wide grid grid-cols-1 items-start gap-5 expanded:grid-cols-2">
           <Card className="expanded:col-span-2">
             <h2 className="md-title-lg mb-1">API</h2>
             <p className="md-body mb-5 text-on-variant">
               The default every department uses. One can be pointed elsewhere below.
             </p>
 
-            <div className="mb-5 grid gap-4 sm:grid-cols-2">
-              <Field label="Default model">
+            <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* The hint goes under the field rather than into the option
+                  text. A select cannot ellipsis, so a long option is simply
+                  cut off, and on a phone that cut lands mid-sentence. */}
+              <Field
+                label="Default model"
+                hint={MODELS.find((model) => model.id === settings.model)?.hint}
+              >
                 <Select
                   value={settings.model}
                   onChange={(event) => void updateSettings({ model: event.target.value })}
@@ -142,14 +148,17 @@ export default function SettingsPage() {
                     <optgroup key={provider.id} label={provider.label}>
                       {modelsFor(provider.id).map((model) => (
                         <option key={model.id} value={model.id}>
-                          {model.label} ({model.hint})
+                          {model.label}
                         </option>
                       ))}
                     </optgroup>
                   ))}
                 </Select>
               </Field>
-              <Field label="Reasoning effort">
+              <Field
+                label="Reasoning effort"
+                hint={EFFORT_OPTIONS.find((option) => option.id === settings.effort)?.hint}
+              >
                 <Select
                   value={settings.effort}
                   onChange={(event) =>
@@ -158,7 +167,7 @@ export default function SettingsPage() {
                 >
                   {EFFORT_OPTIONS.map((option) => (
                     <option key={option.id} value={option.id}>
-                      {option.label} ({option.hint})
+                      {option.label}
                     </option>
                   ))}
                 </Select>
@@ -216,7 +225,7 @@ export default function SettingsPage() {
 
             {markError ? <p className="md-label mt-2 text-error">{markError}</p> : null}
 
-            <div className="mt-5 grid gap-4 medium:grid-cols-3">
+            <div className="mt-5 grid grid-cols-1 gap-4 medium:grid-cols-3">
               <Field label="Letters">
                 <TextInput
                   value={settings.companyMark}
@@ -261,7 +270,7 @@ export default function SettingsPage() {
 
           <Card>
             <h2 className="md-title-lg mb-5">Company</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Company name">
                 <TextInput
                   value={settings.companyName}
@@ -517,7 +526,7 @@ export default function SettingsPage() {
               <p className="md-label text-error">{avatarError}</p>
             ) : null}
 
-            <div className="grid gap-4 medium:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 medium:grid-cols-2">
               <Field label="Department">
                 <TextInput
                   value={draft.name ?? ""}
@@ -537,7 +546,7 @@ export default function SettingsPage() {
               </Field>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field
                 label="Role title"
               >
