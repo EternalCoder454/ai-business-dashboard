@@ -365,7 +365,7 @@ export default function TasksPage() {
                 autoFocus
                 value={draft.title}
                 onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-                placeholder="Write the Steam short description"
+                placeholder="What needs doing"
               />
             </Field>
             <Field label="Notes">

@@ -88,7 +88,7 @@ export function ProjectDialog({
           <TextInput
             value={name}
             autoFocus
-            placeholder="Ravenmoor server launch"
+            placeholder="What this piece of work is called"
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") void save();
@@ -100,7 +100,7 @@ export function ProjectDialog({
           <TextArea
             value={summary}
             rows={3}
-            placeholder="Ship the modpack and the client site together by the end of the month."
+            placeholder="What finishing it looks like, and by when."
             onChange={(event) => setSummary(event.target.value)}
           />
         </Field>

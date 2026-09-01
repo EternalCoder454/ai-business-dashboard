@@ -926,7 +926,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
                   <TextInput
                     value={capture.revisitWhen}
                     onChange={(e) => setCapture({ ...capture, revisitWhen: e.target.value })}
-                    placeholder="Frontier Assembly ships"
+                    placeholder="What would make you look at this again"
                   />
                 </Field>
               </div>

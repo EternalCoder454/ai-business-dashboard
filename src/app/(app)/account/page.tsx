@@ -187,7 +187,7 @@ export default function AccountPage() {
               <Field label="Name">
                 <TextInput
                   value={local.displayName}
-                  placeholder="Zachary"
+                  placeholder="The name you go by"
                   onChange={(event) => set({ displayName: event.target.value })}
                 />
               </Field>
@@ -195,7 +195,7 @@ export default function AccountPage() {
               <Field label="Your role">
                 <TextInput
                   value={local.roleTitle}
-                  placeholder="Founder"
+                  placeholder="What you do here"
                   onChange={(event) => set({ roleTitle: event.target.value })}
                 />
               </Field>
@@ -205,7 +205,7 @@ export default function AccountPage() {
               >
                 <TextInput
                   value={local.pronouns}
-                  placeholder="he/him"
+                  placeholder="Used verbatim, or left out"
                   onChange={(event) => set({ pronouns: event.target.value })}
                 />
               </Field>
@@ -256,7 +256,7 @@ export default function AccountPage() {
                 <TextArea
                   rows={2}
                   value={local.expertise}
-                  placeholder="Strong on Minecraft modding and UE5. Newer to accounting, contracts, and hiring."
+                  placeholder="What you know well, and what you would rather have explained."
                   onChange={(event) => set({ expertise: event.target.value })}
                 />
               </Field>
@@ -278,7 +278,7 @@ export default function AccountPage() {
                 <TextArea
                   rows={2}
                   value={local.currentFocus}
-                  placeholder="Shipping Vandrix 1.21.1 and two client sites before the end of the month."
+                  placeholder="What you are working on now, so answers land on the current thing."
                   onChange={(event) => set({ currentFocus: event.target.value })}
                 />
               </Field>
@@ -287,7 +287,7 @@ export default function AccountPage() {
                 <TextArea
                   rows={2}
                   value={local.notes}
-                  placeholder="Two people, no employees. Everything has to be maintainable by one person."
+                  placeholder="Anything a department should know before it answers you."
                   onChange={(event) => set({ notes: event.target.value })}
                 />
               </Field>

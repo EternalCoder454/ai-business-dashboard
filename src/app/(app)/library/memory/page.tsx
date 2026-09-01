@@ -282,8 +282,8 @@ export default function MemoryPage() {
                 onChange={(e) => setDraft({ ...draft, label: e.target.value })}
                 placeholder={
                   draft.kind === "figure"
-                    ? "Frontier Assembly wishlists"
-                    : "Not taking new client sites until Frontier Assembly ships"
+                    ? "What is being measured"
+                    : "What was settled, in one line"
                 }
               />
             </Field>
@@ -303,14 +303,14 @@ export default function MemoryPage() {
                     rows={3}
                     value={draft.detail}
                     onChange={(e) => setDraft({ ...draft, detail: e.target.value })}
-                    placeholder="Client work pays now but the game is the thing with upside, and splitting attention was costing both."
+                    placeholder="Why it went that way, and what was weighed against it."
                   />
                 </Field>
                 <Field label="Review trigger">
                   <TextInput
                     value={draft.revisitWhen}
                     onChange={(e) => setDraft({ ...draft, revisitWhen: e.target.value })}
-                    placeholder="Frontier Assembly ships, or runway drops under three months"
+                    placeholder="What would make you look at this again"
                   />
                 </Field>
               </>
