@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
+import { WikiEditor } from "@/components/WikiEditor";
 import { useCallback, useEffect, useState } from "react";
 import {
   Button,
@@ -71,7 +72,14 @@ interface Thread {
   messages: Message[];
 }
 
-type Tab = "overview" | "people" | "access";
+type Tab = "overview" | "people" | "access" | "wiki";
+
+const TAB_LABEL: Record<Tab, string> = {
+  overview: "Overview",
+  people: "People",
+  access: "Access",
+  wiki: "Wiki",
+};
 
 const compact = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}k` : String(n);
@@ -184,7 +192,7 @@ export default function AdminPage() {
       />
 
       <div className="flex flex-none items-center gap-2 border-b border-outline-variant page-x py-3">
-        {(["overview", "people", "access"] as Tab[]).map((key) => (
+        {(["overview", "people", "access", "wiki"] as Tab[]).map((key) => (
           <Chip
             key={key}
             selected={tab === key}
@@ -194,7 +202,7 @@ export default function AdminPage() {
               setThread(null);
             }}
           >
-            {key === "overview" ? "Overview" : key === "people" ? "People" : "Access"}
+            {TAB_LABEL[key]}
           </Chip>
         ))}
       </div>
@@ -203,6 +211,8 @@ export default function AdminPage() {
         {error ? <p className="md-label mb-4 text-error">{error}</p> : null}
 
         {tab === "overview" ? <OverviewTab overview={overview} /> : null}
+
+        {tab === "wiki" ? <WikiEditor /> : null}
 
         {tab === "access" ? (
           <AccessTab access={access} people={people ?? []} />

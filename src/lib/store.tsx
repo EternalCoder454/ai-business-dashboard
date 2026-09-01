@@ -49,6 +49,7 @@ import {
   seedCoachSkills,
 } from "./coachSkills";
 import { seedSkills } from "./seedSkills";
+import { seedWikiPages } from "./seedWiki";
 import type {
   AllHandsRun,
   CompanyProfile,
@@ -61,6 +62,7 @@ import type {
   MemoryKind,
   Task,
   TaskStatus,
+  WikiPage,
   Message,
   Project,
   Settings,
@@ -102,6 +104,11 @@ export interface StoreValue {
   memory: MemoryEntry[];
   /** Things to do, as opposed to deliverables, which are things produced. */
   tasks: Task[];
+  /** The internal wiki, in order. Editable by an administrator. */
+  wikiPages: WikiPage[];
+  saveWikiPage: (input: Partial<WikiPage> & { title: string }) => Promise<WikiPage>;
+  updateWikiPage: (id: string, patch: Partial<WikiPage>) => Promise<void>;
+  deleteWikiPage: (id: string) => Promise<void>;
   createTask: (input: Partial<Task> & { title: string }) => Promise<Task>;
   updateTask: (id: string, patch: Partial<Task>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
@@ -299,6 +306,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const ops: MutationOp[] = [
           { table: "departments", action: "upsert", rows: seedDepartments() },
           { table: "skills", action: "upsert", rows: seedSkills() },
+          { table: "wikiPages", action: "upsert", rows: seedWikiPages() },
           { table: "profile", action: "upsert", row: DEFAULT_PROFILE },
           { table: "settings", action: "upsert", row: defaultSettings },
         ];
@@ -326,6 +334,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           [...seedSkills(), ...handbookSkills()],
           handbookSkills(),
         );
+
+        // A workspace from before the wiki was data has no pages, and an empty
+        // wiki reads as broken rather than as unwritten. Only when there are
+        // none at all, so a page someone deleted stays deleted.
+        if (snapshot.wikiPages.length === 0) {
+          ops.push({ table: "wikiPages", action: "upsert", rows: seedWikiPages() });
+        }
         if (ops.length) {
           await fetch("/api/workspace", {
             method: "POST",
@@ -515,6 +530,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     undefined,
   );
 
+  const wikiPages = useLiveQuery(
+    async () => (!db || !local ? [] : db.wikiPages.orderBy("order").toArray()),
+    [seeded, local],
+    undefined,
+  );
+
   const files = useLiveQuery(
     async () => (!db || !local ? [] : db.files.orderBy("updatedAt").reverse().toArray()),
     [seeded, local],
@@ -648,6 +669,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const deliverableList = hosted ? (remote?.deliverables ?? NONE) : (deliverables ?? NONE);
   const memoryList = hosted ? (remote?.memory ?? NONE) : (memory ?? NONE);
   const taskList = hosted ? (remote?.tasks ?? NONE) : (tasks ?? NONE);
+  const wikiList = hosted ? (remote?.wikiPages ?? NONE) : (wikiPages ?? NONE);
   const projectList = hosted ? (remote?.projects ?? NONE) : (projects ?? NONE);
   const skillList = hosted ? (remote?.skills ?? NONE) : (skills ?? NONE);
   const fileList = hosted ? (remote?.files ?? NONE) : (files ?? NONE);
@@ -702,6 +724,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deliverables: deliverableList,
       memory: memoryList,
       tasks: taskList,
+      wikiPages: wikiList,
       projects: projectList,
       allHandsRuns: runList,
       skills: skillList,
@@ -1163,6 +1186,46 @@ export function StoreProvider({ children }: { children: ReactNode }) {
        * Something just written down is the thing most on your mind, and
        * appending it under forty older ones is how a list stops being read.
        */
+      saveWikiPage: async (input) => {
+        const now = Date.now();
+        const lowest = wikiList.reduce((max, page) => Math.max(max, page.order), -1);
+        const page: WikiPage = {
+          id: input.id ?? newId("wiki"),
+          title: input.title.trim() || "Untitled page",
+          blurb: input.blurb?.trim() ?? "",
+          body: input.body ?? "",
+          order: input.order ?? lowest + 1,
+          enabled: input.enabled ?? true,
+          createdAt: input.createdAt ?? now,
+          updatedAt: now,
+        };
+        if (hosted) await push({ table: "wikiPages", action: "upsert", rows: [page] });
+        else await requireDb().wikiPages.put(page);
+        return page;
+      },
+
+      updateWikiPage: async (id, patch) => {
+        if (hosted) {
+          const current = remoteRef.current?.wikiPages.find((page) => page.id === id);
+          if (!current) {
+            console.error("[workspace] nothing to update with id", id, "- write dropped");
+            return;
+          }
+          await push({
+            table: "wikiPages",
+            action: "upsert",
+            rows: [{ ...current, ...patch, updatedAt: Date.now() }],
+          });
+          return;
+        }
+        await requireDb().wikiPages.update(id, { ...patch, updatedAt: Date.now() });
+      },
+
+      deleteWikiPage: async (id) => {
+        if (hosted) await push({ table: "wikiPages", action: "delete", ids: [id] });
+        else await requireDb().wikiPages.delete(id);
+      },
+
       createTask: async (input) => {
         const now = Date.now();
         const lowest = taskList.reduce((min, t) => Math.min(min, t.order), 0);
@@ -1329,6 +1392,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     commitRemote,
     memoryList,
     taskList,
+    wikiList,
     serverKeys,
     mode,
     signedInEmail,

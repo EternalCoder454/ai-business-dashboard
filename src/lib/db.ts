@@ -8,6 +8,7 @@ import {
 } from "./seed";
 import { COMPANY_ID } from "./seed";
 import { seedSkills } from "./seedSkills";
+import { seedWikiPages } from "./seedWiki";
 import type {
   AllHandsRun,
   LibraryFile,
@@ -21,6 +22,7 @@ import type {
   Task,
   Settings,
   Skill,
+  WikiPage,
 } from "./types";
 
 /** Singleton rows still need a key in Dexie. */
@@ -54,6 +56,7 @@ class CeoHqDatabase extends Dexie {
   skills!: Table<Skill, string>;
   memory!: Table<MemoryEntry, string>;
   tasks!: Table<Task, string>;
+  wikiPages!: Table<WikiPage, string>;
   files!: Table<LibraryFile, string>;
   account!: Table<StoredAccount, string>;
   profile!: Table<StoredProfile, string>;
@@ -234,6 +237,26 @@ class CeoHqDatabase extends Dexie {
       });
 
     /**
+     * v14 adds the internal wiki as data, so an installation can write its
+     * own pages rather than reading whatever was compiled into the app.
+     */
+    this.version(14).stores({
+      departments: "id, order, isCeo",
+      projects: "id, status, updatedAt",
+      conversations: "id, departmentId, projectId, updatedAt",
+      deliverables: "id, departmentId, projectId, status, updatedAt",
+      allHands: "id, createdAt, updatedAt",
+      skills: "id, departmentId, updatedAt",
+      memory: "id, kind, departmentId, projectId, archived, occurredAt",
+      tasks: "id, status, departmentId, projectId, order, dueAt",
+      wikiPages: "id, order, enabled",
+      files: "id, kind, departmentId, projectId, updatedAt",
+      account: "id",
+      profile: "id",
+      settings: "id",
+    });
+
+    /**
      * v13 adds tasks: things to do, as opposed to deliverables, which are
      * things produced. Indexed by status and by hand ordering, which is how
      * the board reads them.
@@ -366,6 +389,11 @@ export function ensureSeeded(): Promise<void> {
         await db.skills.bulkPut(seedSkills());
       }
 
+      const existingWiki = await db.wikiPages.count();
+      if (existingWiki === 0) {
+        await db.wikiPages.bulkPut(seedWikiPages());
+      }
+
       const existingSettings = await db.settings.get("app");
       if (!existingSettings) {
         await db.settings.put({ ...DEFAULT_SETTINGS });
@@ -456,7 +484,7 @@ export async function importAll(raw: unknown): Promise<{
 
   const payload = raw as Partial<ExportPayload> | null;
   if (!payload || typeof payload !== "object" || payload.app !== "ceo-hq") {
-    throw new Error("That file is not an Eterneon export.");
+    throw new Error("That file is not a workspace export.");
   }
 
   const departments = Array.isArray(payload.departments) ? payload.departments : [];

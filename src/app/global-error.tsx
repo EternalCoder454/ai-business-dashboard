@@ -27,7 +27,7 @@ export default function GlobalError({
         }}
       >
         <div style={{ maxWidth: "28rem" }}>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 500 }}>Eterneon failed to start</h1>
+          <h1 style={{ fontSize: "1.5rem", fontWeight: 500 }}>This workspace failed to start</h1>
           <p style={{ color: "#bfc6cb", marginTop: "0.5rem" }}>
             {error.message || "The application shell hit an error."}
           </p>

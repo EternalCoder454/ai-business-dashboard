@@ -1,3 +1,4 @@
+import { loadBranding } from "@/lib/branding";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth, authEnabled, signIn } from "@/auth";
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
  *
  * `from` arrives in the query string, so it is whatever the link said. Without
  * this check, /signin?from=https://example.com would hand someone a real
- * Eterneon sign-in page that lands them somewhere else afterwards, which is the
+ * sign-in page that lands them somewhere else afterwards, which is the
  * shape every credential phishing page wants. A protocol-relative //host is
  * rejected for the same reason: the browser reads it as absolute.
  */
@@ -38,14 +39,30 @@ export default async function SignInPage({
   const session = await auth();
   if (session?.user) redirect(from);
 
+  // The only page a crawler or a stranger reaches, so it carries whatever the
+  // deployment calls itself rather than the name of whoever wrote the panel.
+  const { name, mark, logo } = await loadBranding();
+
   return (
     <div className="flex min-h-dvh items-center justify-center bg-surface px-4 py-10">
       <div className="w-full max-w-sm text-center">
-        <div className="mx-auto mb-6 grid h-14 w-14 place-items-center rounded-2xl bg-primary-container text-on-primary-container shadow-e2">
-          <span className="text-lg font-semibold tracking-tight">HQ</span>
-        </div>
+        {logo ? (
+          // A stored data URL, already downsized on upload.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logo}
+            alt=""
+            width={56}
+            height={56}
+            className="mx-auto mb-6 h-14 w-14 rounded-2xl object-cover shadow-e2"
+          />
+        ) : (
+          <div className="mx-auto mb-6 grid h-14 w-14 place-items-center rounded-2xl bg-primary-container text-on-primary-container shadow-e2">
+            <span className="text-lg font-semibold tracking-tight">{mark}</span>
+          </div>
+        )}
 
-        <h1 className="md-headline">Eterneon</h1>
+        <h1 className="md-headline">{name}</h1>
         <p className="md-body mt-2 text-on-variant">
           This is a private workspace. Sign in with the Google account it belongs to.
         </p>

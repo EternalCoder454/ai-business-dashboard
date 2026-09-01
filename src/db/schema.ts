@@ -309,7 +309,7 @@ export const settings = pgTable("settings", {
   model: text("model").notNull().default("claude-sonnet-5"),
   effort: text("effort").notNull().default("medium"),
   theme: text("theme").notNull().default("dark"),
-  companyName: text("company_name").notNull().default("Eterneon"),
+  companyName: text("company_name").notNull().default("Your Company"),
   companySubtitle: text("company_subtitle").notNull().default(""),
   writingRules: text("writing_rules").notNull().default(""),
   roomBrevity: text("room_brevity").notNull().default("tight"),
@@ -317,6 +317,8 @@ export const settings = pgTable("settings", {
   companyLogoUrl: text("company_logo_url"),
   sidebarSide: text("sidebar_side").notNull().default("left"),
   searchShortcut: text("search_shortcut").notNull().default("slash"),
+  wikiTitle: text("wiki_title").notNull().default("Internal Wiki"),
+  wikiSubtitle: text("wiki_subtitle").notNull().default("2 minute read"),
   updatedAt: updated(),
 });
 
@@ -374,6 +376,26 @@ export const tasks = pgTable(
   (table) => [
     primaryKey({ columns: [table.userEmail, table.id] }),
     index("tasks_owner_idx").on(table.userEmail, table.status, table.sortOrder),
+  ],
+);
+
+/** The internal wiki, so an installation can write its own. */
+export const wikiPages = pgTable(
+  "wiki_pages",
+  {
+    id: text("id").notNull(),
+    userEmail: owner(),
+    title: text("title").notNull(),
+    blurb: text("blurb").notNull().default(""),
+    body: text("body").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(0),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: created(),
+    updatedAt: updated(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userEmail, table.id] }),
+    index("wiki_owner_idx").on(table.userEmail, table.sortOrder),
   ],
 );
 

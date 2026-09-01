@@ -308,6 +308,27 @@ export interface Task {
   completedAt?: number;
 }
 
+/**
+ * One page of the internal wiki.
+ *
+ * Stored rather than written into the app, so an installation can say what it
+ * needs to say. The shipped pages describe the panel itself and nothing about
+ * whoever built it, which is what makes it sellable as a product.
+ */
+export interface WikiPage {
+  id: string;
+  title: string;
+  /** One line under the title in the contents list. */
+  blurb: string;
+  /** Markdown. */
+  body: string;
+  order: number;
+  /** A page can be put away without deleting what it said. */
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Deliverable {
   id: string;
   title: string;
@@ -357,6 +378,10 @@ export interface Settings {
   sidebarSide: SidebarSide;
   /** The single key that opens search. "none" turns the bare key off. */
   searchShortcut: SearchShortcut;
+  /** What the internal wiki is called here. */
+  wikiTitle: string;
+  /** The line under it, usually a reading time. */
+  wikiSubtitle: string;
 }
 
 /** Which edge the drawer and rail sit on. */

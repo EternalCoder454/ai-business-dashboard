@@ -1,3 +1,4 @@
+import { loadBranding } from "@/lib/branding";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
@@ -14,16 +15,18 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  const { name } = await loadBranding();
+  return {
   metadataBase: new URL(siteUrl()),
-  title: "Eterneon",
-  description: "A personal AI operating system for running Eterneon Studio.",
-  applicationName: "Eterneon",
+  title: name,
+  description: "Internal operations workspace.",
+  applicationName: name,
   // Internal tool. It should never appear in a search index.
   robots: { index: false, follow: false },
   appleWebApp: {
     capable: true,
-    title: "Eterneon",
+    title: name,
     statusBarStyle: "black-translucent",
   },
   formatDetection: { telephone: false, address: false, email: false },
@@ -37,17 +40,18 @@ export const metadata: Metadata = {
    */
   openGraph: {
     type: "website",
-    siteName: "Eterneon",
-    title: "Eterneon",
+    siteName: name,
+    title: name,
     description: "Internal operations workspace. Sign in required.",
     url: siteUrl(),
   },
   twitter: {
     card: "summary_large_image",
-    title: "Eterneon",
+    title: name,
     description: "Internal operations workspace. Sign in required.",
   },
-};
+  };
+}
 
 export const viewport: Viewport = {
   // cover paints under the notch and home indicator; the safe-area utilities

@@ -3,7 +3,7 @@ import { loadBranding } from "@/lib/branding";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "Eterneon";
+export const alt = "Internal operations workspace";
 
 /**
  * Read at request time rather than baked at build time, since the branding it

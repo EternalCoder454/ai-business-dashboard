@@ -15,6 +15,7 @@ import type {
   Project,
   Settings,
   UserAccount,
+  WikiPage,
 } from "@/lib/types";
 
 export type { MutationOp, Workspace };
@@ -47,6 +48,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
     deliverableRows,
     memoryRows,
     taskRows,
+    wikiRows,
     fileRows,
     runRows,
     roundRows,
@@ -62,6 +64,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
     db.select().from(t.deliverables).where(eq(t.deliverables.userEmail, userEmail)).orderBy(desc(t.deliverables.updatedAt)),
     db.select().from(t.memory).where(eq(t.memory.userEmail, userEmail)).orderBy(desc(t.memory.occurredAt)),
     db.select().from(t.tasks).where(eq(t.tasks.userEmail, userEmail)).orderBy(asc(t.tasks.sortOrder)),
+    db.select().from(t.wikiPages).where(eq(t.wikiPages.userEmail, userEmail)).orderBy(asc(t.wikiPages.sortOrder)),
     db.select().from(t.files).where(eq(t.files.userEmail, userEmail)).orderBy(desc(t.files.updatedAt)),
     db.select().from(t.allHandsRuns).where(eq(t.allHandsRuns.userEmail, userEmail)).orderBy(desc(t.allHandsRuns.updatedAt)),
     db.select().from(t.allHandsRounds).where(eq(t.allHandsRounds.userEmail, userEmail)).orderBy(asc(t.allHandsRounds.sortOrder)),
@@ -185,6 +188,17 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       updatedAt: ms(row.updatedAt),
     })),
 
+    wikiPages: wikiRows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      blurb: row.blurb,
+      body: row.body,
+      order: row.sortOrder,
+      enabled: row.enabled,
+      createdAt: ms(row.createdAt),
+      updatedAt: ms(row.updatedAt),
+    })),
+
     tasks: taskRows.map((row) => ({
       id: row.id,
       title: row.title,
@@ -266,7 +280,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       model: settingsRow[0]?.model ?? "claude-sonnet-5",
       effort: (settingsRow[0]?.effort ?? "medium") as Settings["effort"],
       theme: (settingsRow[0]?.theme ?? "dark") as Settings["theme"],
-      companyName: settingsRow[0]?.companyName ?? "Eterneon",
+      companyName: settingsRow[0]?.companyName ?? "Your Company",
       companySubtitle: settingsRow[0]?.companySubtitle ?? "",
       writingRules: settingsRow[0]?.writingRules ?? "",
       roomBrevity: (settingsRow[0]?.roomBrevity ?? "tight") as Settings["roomBrevity"],
@@ -274,6 +288,8 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       companyLogoUrl: settingsRow[0]?.companyLogoUrl ?? undefined,
       sidebarSide: (settingsRow[0]?.sidebarSide ?? "left") as Settings["sidebarSide"],
       searchShortcut: (settingsRow[0]?.searchShortcut ?? "slash") as Settings["searchShortcut"],
+      wikiTitle: settingsRow[0]?.wikiTitle ?? "Internal Wiki",
+      wikiSubtitle: settingsRow[0]?.wikiSubtitle ?? "2 minute read",
     },
   };
 }
@@ -603,6 +619,37 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               .values(values)
               .onConflictDoUpdate({
                 target: [t.deliverables.userEmail, t.deliverables.id],
+                set: values,
+              });
+          }
+          break;
+        }
+
+        case "wikiPages": {
+          if (op.action === "delete") {
+            if (op.ids.length) {
+              await tx
+                .delete(t.wikiPages)
+                .where(and(eq(t.wikiPages.userEmail, userEmail), inArray(t.wikiPages.id, op.ids)));
+            }
+            break;
+          }
+          for (const row of op.rows) {
+            const values = {
+              id: row.id,
+              userEmail,
+              title: row.title,
+              blurb: row.blurb,
+              body: row.body,
+              sortOrder: row.order,
+              enabled: row.enabled,
+              updatedAt: now,
+            };
+            await tx
+              .insert(t.wikiPages)
+              .values(values)
+              .onConflictDoUpdate({
+                target: [t.wikiPages.userEmail, t.wikiPages.id],
                 set: values,
               });
           }

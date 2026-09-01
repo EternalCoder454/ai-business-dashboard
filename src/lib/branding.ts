@@ -13,7 +13,7 @@ export interface Branding {
 
 /** What a fresh deployment shows, before anyone has edited Settings. */
 export const FALLBACK_BRANDING: Branding = {
-  name: "Eterneon",
+  name: "Your Company",
   mark: "HQ",
   logo: null,
 };

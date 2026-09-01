@@ -97,7 +97,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const title =
     ROUTE_TITLES.find(([href]) => isActive(pathname, href))?.[1] ??
-    (pathname.startsWith("/dept/") ? "Department" : "Eterneon");
+    (pathname.startsWith("/dept/") ? "Department" : settings.companyName);
 
   const edgeSwipe = useEdgeSwipe(() => setDrawerOpen(true));
   useKeyboardInset();

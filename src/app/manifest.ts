@@ -1,3 +1,4 @@
+import { loadBranding } from "@/lib/branding";
 import type { MetadataRoute } from "next";
 
 /**
@@ -5,11 +6,12 @@ import type { MetadataRoute } from "next";
  * the manifest is not discovery, it is getting rid of browser chrome and
  * letting it sit on a home screen like any other work app.
  */
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const { name } = await loadBranding();
   return {
-    name: "Eterneon",
-    short_name: "Eterneon",
-    description: "A personal AI operating system for running Eterneon Studio.",
+    name,
+    short_name: name,
+    description: "Internal operations workspace.",
     start_url: "/",
     scope: "/",
     display: "standalone",

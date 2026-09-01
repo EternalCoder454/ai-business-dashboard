@@ -106,7 +106,7 @@ async function main() {
 console.log("\na write immediately after a create can see it");
 {
   const blank = emptyWorkspace(
-    { model: "claude-sonnet-5", effort: "medium", theme: "dark", companyName: "T", companySubtitle: "", writingRules: "", roomBrevity: "tight", companyMark: "T", sidebarSide: "left", searchShortcut: "slash" },
+    { model: "claude-sonnet-5", effort: "medium", theme: "dark", companyName: "T", companySubtitle: "", writingRules: "", roomBrevity: "tight", companyMark: "T", sidebarSide: "left", searchShortcut: "slash", wikiTitle: "Internal Wiki", wikiSubtitle: "2 minute read" },
     { mission: "", audience: "", brandVoice: "", keyFacts: "", products: "", stage: "", competitors: "", constraints: "", goals: "" },
     { displayName: "", roleTitle: "", pronouns: "", timezone: "", expertise: "", preferences: "", currentFocus: "", notes: "", updatedAt: 0 },
   );

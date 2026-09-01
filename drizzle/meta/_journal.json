@@ -99,6 +99,13 @@
       "when": 1788228223446,
       "tag": "0013_cynical_pride",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788230666428,
+      "tag": "0014_complete_stellaris",
+      "breakpoints": true
     }
   ]
 }

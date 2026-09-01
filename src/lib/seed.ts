@@ -313,15 +313,19 @@ export const DEFAULT_ACCOUNT: UserAccount = {
   updatedAt: 0,
 };
 
+/**
+ * A fresh install starts empty rather than pre-filled.
+ *
+ * This used to describe one particular studio, which is wrong for anyone else
+ * running the panel and worse than blank: a department reading a mission that
+ * is not the company's answers confidently about the wrong business. The
+ * Company Profile page prompts for each field instead.
+ */
 export const DEFAULT_PROFILE: CompanyProfile = {
-  mission: `Eterneon Studio is a business developing a range from Minecraft Mods, to Websites, to Standalone Video Games.
-It exists for the customers, but also for our efficiency using AI tools so we can profit easily while giving the best to our customers.`,
-  audience:
-    "Minecraft Players, Small businesses that need quick and cheap websites that work good, and user's who love factory games.",
-  brandVoice:
-    "Casually Professional, Friendly, no buzzwords or anything. Able to understand easily.",
-  keyFacts:
-    "We use Google Workspace for the Business Email, Hostinger for the Domain host, Cloudflare for the Domain stuff, Vercel for current website hosting. Aseprite for Art (pixel art), Blender/Blockbench for modelling depending on difficulty,",
+  mission: "",
+  audience: "",
+  brandVoice: "",
+  keyFacts: "",
   products: "",
   stage: "",
   competitors: "",
@@ -338,13 +342,15 @@ export const DEFAULT_SETTINGS: Settings = {
   model: DEFAULT_MODEL,
   effort: "medium",
   theme: "dark",
-  companyName: "Eterneon",
-  companySubtitle: "Your AI operating system",
+  companyName: "Your Company",
+  companySubtitle: "",
   writingRules: WRITING_RULES,
   roomBrevity: "tight",
   companyMark: "HQ",
   sidebarSide: "left",
   searchShortcut: "slash",
+  wikiTitle: "Internal Wiki",
+  wikiSubtitle: "2 minute read",
 };
 
 export const MODEL_OPTIONS = [
