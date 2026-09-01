@@ -9,7 +9,7 @@ import {
   overview,
   readConversation,
 } from "@/db/admin";
-import { ADMIN_EMAILS, isAdminAccount } from "@/lib/admin";
+import { ADMIN_EMAILS, isOperator } from "@/lib/admin";
 import { grantAccess, listAccess, revokeAccess } from "@/db/access";
 import { ALLOWED_EMAILS } from "@/auth";
 import { readJsonWithin } from "@/lib/guard";
@@ -37,7 +37,9 @@ async function requireAdmin(): Promise<
 
   // A plain 404 rather than a 403: someone who is not an administrator has no
   // business learning that this route exists.
-  if (!(await isAdminAccount(email))) return { ok: false, status: 404, error: "Not found." };
+  // Operator only. An administrator of their own business is not one of
+  // these, and everything below this line crosses the tenant boundary.
+  if (!isOperator(email)) return { ok: false, status: 404, error: "Not found." };
 
   return { ok: true, email };
 }

@@ -40,22 +40,6 @@ export async function isAllowed(email: string): Promise<boolean> {
   }
 }
 
-/** Whether this address has been granted admin in the table. */
-export async function isAdminInDatabase(email: string): Promise<boolean> {
-  if (!databaseEnabled || !db) return false;
-  try {
-    const [row] = await db
-      .select({ role: t.access.role })
-      .from(t.access)
-      .where(and(eq(t.access.email, clean(email)), isNull(t.access.revokedAt)))
-      .limit(1);
-    return row?.role === "admin";
-  } catch (error) {
-    console.error("[access] could not read the allowlist", error);
-    return false;
-  }
-}
-
 /**
  * Records that this address just signed in.
  *

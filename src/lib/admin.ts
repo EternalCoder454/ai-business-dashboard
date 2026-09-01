@@ -29,19 +29,22 @@ export function isAdminEmail(email: string | null | undefined): boolean {
 }
 
 /**
- * Administrator by environment or by grant.
+ * The operator: whoever runs this deployment.
  *
- * ADMIN_EMAILS is still the deployment's own answer and is checked first, so
- * the owner never waits on a query and never loses admin because a row is
- * wrong. Anything granted in the access table is added to that, which is what
- * lets a second administrator be appointed without a redeploy.
+ * ADMIN_EMAILS and nothing else. This used to also accept anyone the access
+ * table marked as an admin, which was wrong in the worst available way: every
+ * business's first member is made an admin of their own workspace, so that
+ * union handed each customer the routes that read and delete every other
+ * customer's workspace.
  *
- * Async, and therefore only usable from a route or a server component. The
- * synchronous `isAdminEmail` above stays for the environment-only checks.
+ * Being an administrator of your own business is a different permission, and
+ * it lives on the access row as `role`. The two are deliberately not one
+ * function, because the whole difference between them is which side of the
+ * tenant boundary they act on.
+ *
+ * Kept in the environment rather than the database so it cannot be granted by
+ * anything the app itself does.
  */
-export async function isAdminAccount(email: string | null | undefined): Promise<boolean> {
-  if (!email) return false;
-  if (isAdminEmail(email)) return true;
-  const { isAdminInDatabase } = await import("@/db/access");
-  return isAdminInDatabase(email);
+export function isOperator(email: string | null | undefined): boolean {
+  return isAdminEmail(email);
 }

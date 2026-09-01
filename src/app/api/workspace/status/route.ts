@@ -1,7 +1,7 @@
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { isEmpty } from "@/db/repo";
-import { isAdminAccount, isOwnerEmail } from "@/lib/admin";
+import { isOperator, isOwnerEmail } from "@/lib/admin";
 import { NO_KEYS, keySummaries } from "@/db/keys";
 import { membershipFor } from "@/db/tenancy";
 
@@ -75,7 +75,7 @@ export async function GET() {
   }
 
   const serverKey = serverKeyConfigured();
-  const isAdmin = await isAdminAccount(email);
+  const isAdmin = isOperator(email);
   const isOwner = isOwnerEmail(email);
 
   // Whether the business holds a key, and its last four characters. Never the
