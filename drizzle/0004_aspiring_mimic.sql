@@ -1,1 +1,0 @@
-ALTER TABLE "departments" ADD COLUMN "avatar_url" text;

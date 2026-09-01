@@ -1,7 +1,7 @@
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { isEmpty } from "@/db/repo";
-import { isAdminEmail, isOwnerEmail } from "@/lib/admin";
+import { isAdminAccount, isOwnerEmail } from "@/lib/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,7 +73,7 @@ export async function GET() {
   }
 
   const serverKey = serverKeyConfigured();
-  const isAdmin = isAdminEmail(email);
+  const isAdmin = await isAdminAccount(email);
   const isOwner = isOwnerEmail(email);
 
   const identity = {

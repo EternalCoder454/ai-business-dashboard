@@ -30,15 +30,15 @@ function check(label: string, condition: boolean, detail = "") {
 }
 
 async function wipe(email: string) {
-  const current = await loadWorkspace(email);
-  await applyMutations(email, [
+  const current = await loadWorkspace(email, email);
+  await applyMutations(email, email, [
     { table: "conversations", action: "delete", ids: current.conversations.map((c) => c.id) },
     { table: "departments", action: "delete", ids: current.departments.map((d) => d.id) },
   ]);
 }
 
 async function seed(email: string, title: string, body: string, withUsage = false) {
-  await applyMutations(email, [
+  await applyMutations(email, email, [
     {
       table: "departments",
       action: "upsert",
@@ -111,9 +111,9 @@ async function main() {
 
   console.log("\nthe roster covers everyone with a workspace");
   const people = await listPeople();
-  const emails = people.map((p) => p.email);
+  const emails = people.map((p) => p.workspaceId);
   check("both accounts appear", emails.includes(ONE) && emails.includes(TWO));
-  const one = people.find((p) => p.email === ONE);
+  const one = people.find((p) => p.workspaceId === ONE);
   check("counts are per account", one?.conversations === 1, String(one?.conversations));
   check("last active is set", Boolean(one?.lastActive));
 
@@ -144,7 +144,7 @@ async function main() {
   check("the head is named", names.ops === "Theo, Operations", names.ops);
 
   console.log("\nempty conversations are not listed");
-  await applyMutations(ONE, [
+  await applyMutations(ONE, ONE, [
     {
       table: "conversations",
       action: "upsert",
@@ -164,12 +164,12 @@ async function main() {
   check("still one conversation", afterEmpty.length === 1, String(afterEmpty.length));
   console.log("\nusage is recorded per message and totalled per person");
   const withUsage = await listPeople();
-  const first = withUsage.find((p) => p.email === ONE);
+  const first = withUsage.find((p) => p.workspaceId === ONE);
   check("usage is present", Boolean(first?.usage));
   check("output tokens counted", first?.usage.output === 40, String(first?.usage.output));
   check("cached input counted", first?.usage.cacheRead === 300, String(first?.usage.cacheRead));
   check("the other account is separate", 
-    withUsage.find((p) => p.email === TWO)?.usage.output === 0);
+    withUsage.find((p) => p.workspaceId === TWO)?.usage.output === 0);
 
   console.log("\nthe overview totals across everyone");
   const totals = await overview();
@@ -184,7 +184,7 @@ async function main() {
   console.log("\ndeleting a workspace leaves the other one alone");
   await deleteEverythingFor(ONE);
   check("their conversations are gone", (await listConversationsFor(ONE)).length === 0);
-  check("their account row is gone", !(await listPeople()).some((p) => p.email === ONE));
+  check("their account row is gone", !(await listPeople()).some((p) => p.workspaceId === ONE));
   check(
     "the other account survived",
     (await listConversationsFor(TWO)).length === 1,

@@ -16,31 +16,31 @@ const lower = (email: string) => email.trim().toLowerCase();
 
 export interface Membership {
   projectId: string;
-  ownerEmail: string;
+  workspaceId: string;
 }
 
 /** Projects belonging to other people that this account has been added to. */
 export async function membershipsFor(email: string): Promise<Membership[]> {
   const db = requireDb();
   const rows = await db
-    .select({ projectId: t.projectMembers.projectId, ownerEmail: t.projectMembers.ownerEmail })
+    .select({ projectId: t.projectMembers.projectId, workspaceId: t.projectMembers.workspaceId })
     .from(t.projectMembers)
     .where(eq(t.projectMembers.memberEmail, lower(email)));
 
   // A project can only be shared by its owner, so a row where the two match is
   // meaningless and would make the owner appear as their own guest.
-  return rows.filter((row) => row.ownerEmail !== lower(email));
+  return rows.filter((row) => row.workspaceId !== lower(email));
 }
 
 /** Who each of this account's own projects is shared with. */
 export async function sharesByProject(
-  ownerEmail: string,
+  workspaceId: string,
 ): Promise<Record<string, string[]>> {
   const db = requireDb();
   const rows = await db
     .select({ projectId: t.projectMembers.projectId, memberEmail: t.projectMembers.memberEmail })
     .from(t.projectMembers)
-    .where(eq(t.projectMembers.ownerEmail, lower(ownerEmail)));
+    .where(eq(t.projectMembers.workspaceId, lower(workspaceId)));
 
   const byProject: Record<string, string[]> = {};
   for (const row of rows) {
@@ -65,24 +65,34 @@ export async function loadSharedInto(
   const db = requireDb();
   const byOwner = new Map<string, string[]>();
   for (const m of memberships) {
-    byOwner.set(m.ownerEmail, [...(byOwner.get(m.ownerEmail) ?? []), m.projectId]);
+    byOwner.set(m.workspaceId, [...(byOwner.get(m.workspaceId) ?? []), m.projectId]);
   }
 
   const projects: Project[] = [];
   const conversations: Conversation[] = [];
 
-  for (const [ownerEmail, projectIds] of byOwner) {
+  for (const [workspaceId, projectIds] of byOwner) {
+    const [named] = await db
+      .select({ name: t.workspaces.name })
+      .from(t.workspaces)
+      .where(eq(t.workspaces.id, workspaceId))
+      .limit(1);
+    // Falls back to the id rather than showing nothing: a share from a
+    // workspace that has since been removed should still say where it came
+    // from, even if the answer is unhelpful.
+    const sharedFrom = named?.name ?? workspaceId;
+
     const [projectRows, conversationRows] = await Promise.all([
       db
         .select()
         .from(t.projects)
-        .where(and(eq(t.projects.userEmail, ownerEmail), inArray(t.projects.id, projectIds))),
+        .where(and(eq(t.projects.workspaceId, workspaceId), inArray(t.projects.id, projectIds))),
       db
         .select()
         .from(t.conversations)
         .where(
           and(
-            eq(t.conversations.userEmail, ownerEmail),
+            eq(t.conversations.workspaceId, workspaceId),
             inArray(t.conversations.projectId, projectIds),
           ),
         ),
@@ -98,7 +108,7 @@ export async function loadSharedInto(
         dueOn: row.dueOn,
         createdAt: row.createdAt.getTime(),
         updatedAt: row.updatedAt.getTime(),
-        ownerEmail,
+        sharedFrom,
       });
     }
 
@@ -109,7 +119,7 @@ export async function loadSharedInto(
       .from(t.messages)
       .where(
         and(
-          eq(t.messages.userEmail, ownerEmail),
+          eq(t.messages.workspaceId, workspaceId),
           inArray(
             t.messages.conversationId,
             conversationRows.map((row) => row.id),
@@ -143,7 +153,7 @@ export async function loadSharedInto(
         messages: byConversation.get(row.id) ?? [],
         createdAt: row.createdAt.getTime(),
         updatedAt: row.updatedAt.getTime(),
-        ownerEmail,
+        sharedFrom,
       });
     }
   }
@@ -168,7 +178,7 @@ export async function resolveConversationOwner(
   const [own] = await db
     .select({ id: t.conversations.id })
     .from(t.conversations)
-    .where(and(eq(t.conversations.userEmail, me), eq(t.conversations.id, conversationId)))
+    .where(and(eq(t.conversations.workspaceId, me), eq(t.conversations.id, conversationId)))
     .limit(1);
   if (own) return me;
 
@@ -179,7 +189,7 @@ export async function resolveConversationOwner(
   // anyone sends, and each round trip to a serverless database is real
   // latency, so the loop that was here cost more than the work it did.
   const rows = await db
-    .select({ owner: t.conversations.userEmail, projectId: t.conversations.projectId })
+    .select({ owner: t.conversations.workspaceId, projectId: t.conversations.projectId })
     .from(t.conversations)
     .where(
       and(
@@ -193,7 +203,7 @@ export async function resolveConversationOwner(
 
   // A project id alone is not proof: the row has to belong to the owner this
   // account was actually added by, or a shared id would open someone else's.
-  const allowed = new Set(memberships.map((m) => `${m.ownerEmail}::${m.projectId}`));
+  const allowed = new Set(memberships.map((m) => `${m.workspaceId}::${m.projectId}`));
   for (const row of rows) {
     if (row.projectId && allowed.has(`${row.owner}::${row.projectId}`)) return row.owner;
   }
@@ -205,11 +215,11 @@ export async function resolveConversationOwner(
 
 /** Shares a project. Only its owner may do this. */
 export async function shareProject(
-  ownerEmail: string,
+  workspaceId: string,
   projectId: string,
   memberEmail: string,
 ): Promise<boolean> {
-  const owner = lower(ownerEmail);
+  const owner = lower(workspaceId);
   const member = lower(memberEmail);
   if (owner === member) return false;
 
@@ -217,19 +227,19 @@ export async function shareProject(
   const [project] = await db
     .select({ id: t.projects.id })
     .from(t.projects)
-    .where(and(eq(t.projects.userEmail, owner), eq(t.projects.id, projectId)))
+    .where(and(eq(t.projects.workspaceId, owner), eq(t.projects.id, projectId)))
     .limit(1);
   if (!project) return false;
 
   await db
     .insert(t.projectMembers)
-    .values({ projectId, ownerEmail: owner, memberEmail: member })
+    .values({ projectId, workspaceId: owner, memberEmail: member })
     .onConflictDoNothing();
   return true;
 }
 
 export async function unshareProject(
-  ownerEmail: string,
+  workspaceId: string,
   projectId: string,
   memberEmail: string,
 ): Promise<void> {
@@ -238,7 +248,7 @@ export async function unshareProject(
     .delete(t.projectMembers)
     .where(
       and(
-        eq(t.projectMembers.ownerEmail, lower(ownerEmail)),
+        eq(t.projectMembers.workspaceId, lower(workspaceId)),
         eq(t.projectMembers.projectId, projectId),
         eq(t.projectMembers.memberEmail, lower(memberEmail)),
       ),
@@ -247,17 +257,17 @@ export async function unshareProject(
 
 /** Everyone who can see a conversation, for polling and for the header. */
 export async function participantsOf(
-  ownerEmail: string,
+  workspaceId: string,
   projectId: string | null,
 ): Promise<string[]> {
-  const owner = lower(ownerEmail);
+  const owner = lower(workspaceId);
   if (!projectId) return [owner];
   const db = requireDb();
   const rows = await db
     .select({ memberEmail: t.projectMembers.memberEmail })
     .from(t.projectMembers)
     .where(
-      and(eq(t.projectMembers.ownerEmail, owner), eq(t.projectMembers.projectId, projectId)),
+      and(eq(t.projectMembers.workspaceId, owner), eq(t.projectMembers.projectId, projectId)),
     );
   return [owner, ...rows.map((row) => row.memberEmail)];
 }

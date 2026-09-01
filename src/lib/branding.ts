@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { ADMIN_EMAILS } from "./admin";
+import { membershipFor } from "@/db/tenancy";
 
 export interface Branding {
   name: string;
@@ -35,6 +36,11 @@ export async function loadBranding(): Promise<Branding> {
   if (!databaseEnabled || !owner) return FALLBACK_BRANDING;
 
   try {
+    // The icon and the link card are the deployment's own, and a deployment
+    // now holds many businesses, so this is deliberately the operator's
+    // workspace rather than whichever one the visitor might belong to.
+    const operator = await membershipFor(owner);
+    if (!operator) return FALLBACK_BRANDING;
     const [row] = await requireDb()
       .select({
         name: t.settings.companyName,
@@ -42,7 +48,7 @@ export async function loadBranding(): Promise<Branding> {
         logo: t.settings.companyLogoUrl,
       })
       .from(t.settings)
-      .where(eq(t.settings.userEmail, owner))
+      .where(eq(t.settings.workspaceId, operator.workspaceId))
       .limit(1);
 
     if (!row) return FALLBACK_BRANDING;
