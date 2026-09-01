@@ -236,9 +236,25 @@ export function StatusDot({
 // its content's minimum. One long model name was widening every card on the
 // settings page past the side of a phone.
 const FIELD_BASE =
-  "w-full min-w-0 rounded-xl border border-outline-variant bg-lowest px-3.5 py-2.5 md-body " +
+  "w-full min-w-0 rounded-xl border border-outline-variant bg-lowest md-body " +
   "text-on-surface placeholder:text-on-variant/70 transition-colors " +
   "focus:border-primary focus:outline-none";
+
+/**
+ * Field padding, as a prop rather than something a caller overrides.
+ *
+ * Passing `h-9 py-0` alongside the base's own `py-2.5` is a collision, and
+ * which one wins is decided by the order Tailwind happens to emit them, not by
+ * the call site. It lost: the Library's selects kept the 10px padding, kept a
+ * 36px height, and squeezed a 24px line into the 14px left over, so every
+ * label was cut off halfway down. A size never fights itself.
+ */
+const FIELD_SIZE = {
+  sm: "px-3 py-1.5 text-[0.8125rem]",
+  md: "px-3.5 py-2.5",
+} as const;
+
+type FieldSize = keyof typeof FIELD_SIZE;
 
 export function Field({
   label,
@@ -260,25 +276,45 @@ export function Field({
   );
 }
 
-export const TextInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
-  function TextInput({ className, ...rest }, ref) {
-    return <input ref={ref} className={cx(FIELD_BASE, className)} {...rest} />;
-  },
-);
+// `size` is an HTML attribute on input and select, in characters. It is not
+// useful on either of these and the name is worth more as the padding scale.
+export const TextInput = forwardRef<
+  HTMLInputElement,
+  Omit<InputHTMLAttributes<HTMLInputElement>, "size"> & { size?: FieldSize }
+>(function TextInput({ className, size = "md", ...rest }, ref) {
+  return <input ref={ref} className={cx(FIELD_BASE, FIELD_SIZE[size], className)} {...rest} />;
+});
 
-export const TextArea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
-  function TextArea({ className, ...rest }, ref) {
-    return <textarea ref={ref} className={cx(FIELD_BASE, "resize-y", className)} {...rest} />;
-  },
-);
+export const TextArea = forwardRef<
+  HTMLTextAreaElement,
+  TextareaHTMLAttributes<HTMLTextAreaElement> & { size?: FieldSize }
+>(function TextArea({ className, size = "md", ...rest }, ref) {
+  return (
+    <textarea
+      ref={ref}
+      className={cx(FIELD_BASE, FIELD_SIZE[size], "resize-y", className)}
+      {...rest}
+    />
+  );
+});
 
 export function Select({
   className,
+  size = "md",
   children,
   ...rest
-}: SelectHTMLAttributes<HTMLSelectElement>) {
+}: Omit<SelectHTMLAttributes<HTMLSelectElement>, "size"> & { size?: FieldSize }) {
   return (
-    <select className={cx(FIELD_BASE, "cursor-pointer appearance-none pr-9", className)} {...rest}>
+    <select
+      className={cx(
+        FIELD_BASE,
+        FIELD_SIZE[size],
+        "cursor-pointer appearance-none",
+        size === "sm" ? "pr-8" : "pr-9",
+        className,
+      )}
+      {...rest}
+    >
       {children}
     </select>
   );
