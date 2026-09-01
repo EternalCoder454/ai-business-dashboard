@@ -56,7 +56,6 @@ export default function InformationPage() {
     profile,
     settings,
     skillsFor,
-    serverKey,
     storage: storageMode,
   } = useStore();
 
@@ -102,26 +101,6 @@ export default function InformationPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 medium:px-6 expanded:px-8">
         <div className="measure flex flex-col gap-5">
-          {/* ------------------------------------------------ the model */}
-          <Card>
-            <h2 className="md-title-lg mb-4">Model</h2>
-            <dl className="grid grid-cols-1 gap-3 medium:grid-cols-2">
-              <Fact label="Model" value={settings.model} />
-              <Fact label="Effort" value={settings.effort} />
-              <Fact
-                label="Extended thinking"
-                value={settings.model === "claude-haiku-4-5" ? "no" : "yes"}
-              />
-              <Fact
-                label="API key"
-                value={
-                  serverKey ? "on the server" : settings.apiKey ? "in this browser" : "not set"
-                }
-                tone={serverKey || settings.apiKey ? undefined : "error"}
-              />
-            </dl>
-          </Card>
-
           {/* ------------------------------------------------ caching */}
           <Card>
             <h2 className="md-title-lg mb-1">Caching</h2>

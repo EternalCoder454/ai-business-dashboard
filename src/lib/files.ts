@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { MAX_UPLOAD_BYTES } from "./workspace";
 import { AttachmentError, fileToAttachment } from "./images";
 import { COMPANY_ID } from "./seed";
 import type { Attachment, AttachmentKind, LibraryFile } from "./types";
@@ -15,8 +16,11 @@ export const ACCEPTED_FILE_TYPES = [
   "text/csv",
 ];
 
-/** The API caps a request at 32MB, and base64 adds a third on top of the bytes. */
-const MAX_PDF_BYTES = 15 * 1024 * 1024;
+/**
+ * Whatever survives base64 inside one write request, rather than a round number
+ * chosen independently of it.
+ */
+const MAX_PDF_BYTES = MAX_UPLOAD_BYTES;
 const MAX_DOC_BYTES = 10 * 1024 * 1024;
 
 const DOCX_TYPE =
@@ -107,7 +111,8 @@ export async function fileToAttachmentAny(file: File): Promise<Attachment> {
   if (kind === "pdf") {
     if (file.size > MAX_PDF_BYTES) {
       throw new AttachmentError(
-        `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)}MB. Keep PDFs under 15MB.`,
+        `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)}MB. Keep PDFs under ` +
+          `${Math.floor(MAX_PDF_BYTES / 1024 / 1024)}MB.`,
       );
     }
     return {

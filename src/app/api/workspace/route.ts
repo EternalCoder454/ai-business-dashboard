@@ -1,28 +1,10 @@
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { applyMutations, loadWorkspace, type MutationOp } from "@/db/repo";
+// The compiler-checked list, so it cannot fall behind MutationOp the way a
+// hand-written copy of it here did.
+import { MAX_WRITE_BYTES, WRITABLE_TABLES } from "@/lib/workspace";
 import { readJsonWithin } from "@/lib/guard";
-
-/** Conversations carry base64 attachments, so an upload is legitimately large. */
-const MAX_BODY_BYTES = 20_000_000;
-
-/**
- * The tables applyMutations knows how to write. An op naming anything else
- * falls through its switch silently, which would make a typo look like a
- * successful save.
- */
-const KNOWN_TABLES = new Set([
-  "departments",
-  "projects",
-  "conversations",
-  "skills",
-  "deliverables",
-  "files",
-  "allHands",
-  "profile",
-  "settings",
-  "account",
-]);
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,7 +53,7 @@ export async function POST(request: Request) {
     return Response.json({ error: owner.error }, { status: owner.status });
   }
 
-  const parsed = await readJsonWithin<{ ops?: MutationOp[] }>(request, MAX_BODY_BYTES);
+  const parsed = await readJsonWithin<{ ops?: MutationOp[] }>(request, MAX_WRITE_BYTES);
   if (!parsed.ok) {
     return Response.json({ error: parsed.error }, { status: parsed.status });
   }
@@ -85,7 +67,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Too many operations in one request." }, { status: 400 });
   }
 
-  if (!ops.every((op) => op && typeof op === "object" && KNOWN_TABLES.has(op.table))) {
+  if (!ops.every((op) => op && typeof op === "object" && WRITABLE_TABLES.has(op.table))) {
     return Response.json({ error: "Unrecognised operation." }, { status: 400 });
   }
 

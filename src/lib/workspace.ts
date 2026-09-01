@@ -74,6 +74,46 @@ export type MutationOp =
   | { table: "settings"; action: "upsert"; row: Partial<StoredSettings> }
   | { table: "account"; action: "upsert"; row: Partial<UserAccount> };
 
+/**
+ * Every table a mutation is allowed to name.
+ *
+ * A record rather than a set, because a record is checked: adding a table to
+ * MutationOp without adding it here is a type error. The API used to keep its
+ * own hand-written list, that list fell behind, and for as long as it did,
+ * recording a decision, moving a task, and editing the wiki were all rejected
+ * with a 400 that the client turned into a silent revert.
+ */
+const WRITABLE: Record<MutationOp["table"], true> = {
+  departments: true,
+  projects: true,
+  conversations: true,
+  skills: true,
+  wikiPages: true,
+  tasks: true,
+  memory: true,
+  deliverables: true,
+  files: true,
+  allHands: true,
+  profile: true,
+  settings: true,
+  account: true,
+};
+
+export const WRITABLE_TABLES: ReadonlySet<string> = new Set(Object.keys(WRITABLE));
+
+/** The largest write request the API will read. */
+export const MAX_WRITE_BYTES = 20_000_000;
+
+/**
+ * The largest raw file that still fits in one of those requests.
+ *
+ * Base64 adds a third, so the two numbers have to be derived from each other
+ * rather than picked separately. They were picked separately: PDFs were
+ * accepted up to 15MB, which encodes to 21MB, which the API rejected with a
+ * 413 that nothing surfaced. The slack covers the rest of the JSON.
+ */
+export const MAX_UPLOAD_BYTES = Math.floor((MAX_WRITE_BYTES / 4) * 3) - 100_000;
+
 export function emptyWorkspace(
   settings: StoredSettings,
   profile: CompanyProfile,

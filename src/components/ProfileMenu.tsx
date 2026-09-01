@@ -115,7 +115,10 @@ export function ProfileMenu() {
           className={cx(
             "pointer-events-none absolute -right-1 -top-1 grid h-[1.125rem] min-w-[1.125rem]",
             "place-items-center rounded-full px-1 text-[0.6875rem] font-semibold leading-none",
-            "ring-2 ring-surface",
+            // The ring is meant to read as the page showing through, so it has
+            // to be whatever is actually behind it. Most headers sit on the
+            // surface; the top app bar does not, and sets the variable.
+            "ring-2 ring-[color:var(--badge-ring,var(--md-surface))]",
             urgent > 0
               ? "bg-error text-on-error"
               : "bg-primary text-on-primary",

@@ -10,6 +10,7 @@ import { useKeyboardInset } from "@/lib/viewport";
 import { PRIMARY_LINKS, Sidebar, SidebarContent, isActive } from "./Sidebar";
 import { CompanyMark } from "./CompanyMark";
 import { ProfileMenu } from "./ProfileMenu";
+import { WriteError } from "./WriteError";
 import { setNavCollapsed, useNavCollapsed } from "@/lib/navCollapsed";
 import { ChevronIcon, CloseIcon, NavBadge, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
@@ -139,6 +140,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           />
         )}
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</main>
+        {/* Above the bottom bar rather than over it. Fixed to the viewport, it
+            landed exactly on the navigation. */}
+        <WriteError />
         {isConversation ? null : (
           <BottomBar pathname={pathname} onOpenDrawer={() => setDrawerOpen(true)} />
         )}
@@ -253,7 +257,7 @@ function TopAppBar({
       {/* The account menu belongs up here on a phone rather than in the page
           header, where it had to wrap onto a line of its own behind whatever
           buttons the page already had. */}
-      <div className="mr-2 flex-none">
+      <div className="mr-2 flex-none [--badge-ring:var(--md-container-low)]">
         <ProfileMenu />
       </div>
     </header>

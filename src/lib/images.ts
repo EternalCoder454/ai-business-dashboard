@@ -100,6 +100,7 @@ export async function fileToAttachment(file: File): Promise<Attachment> {
       data: dataUrl.slice(dataUrl.indexOf(",") + 1),
       width: 0,
       height: 0,
+      size: file.size,
     };
   }
 
@@ -131,15 +132,27 @@ export async function fileToAttachment(file: File): Promise<Attachment> {
   // smaller wins rather than assuming the re-encode is an improvement.
   const useOriginal = scale === 1 && original.length <= rewritten.length;
 
+  const data = useOriginal ? original : rewritten;
+
   return {
     id: `att_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
     kind: "image",
     mediaType: useOriginal ? file.type : type,
     name: file.name || "pasted image",
-    data: useOriginal ? original : rewritten,
+    data,
     width,
     height,
+    // Recorded rather than derived later. A hosted workspace does not carry the
+    // bytes in its snapshot, so anything measuring them there measures nothing,
+    // and every image in the Library read as 0 B.
+    size: base64Bytes(data),
   };
+}
+
+/** Decoded length of a base64 string, without decoding it. */
+function base64Bytes(data: string): number {
+  const padding = data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((data.length * 3) / 4) - padding);
 }
 
 /** For rendering a stored attachment back into an <img>. */

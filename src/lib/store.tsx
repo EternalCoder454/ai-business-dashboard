@@ -72,6 +72,17 @@ import type {
 
 export interface StoreValue {
   ready: boolean;
+  /**
+   * Why the last write to the account failed, if it did.
+   *
+   * A hosted write is optimistic: the change appears at once, then the server
+   * either takes it or the snapshot is refetched and the change disappears
+   * again. That refetch used to happen in silence, so a rejected save looked
+   * exactly like a save that worked and then forgot. Whatever went wrong is
+   * said out loud instead.
+   */
+  writeError: string | null;
+  dismissWriteError: () => void;
   /** Where this browser is reading and writing: the account, or this device. */
   storage: StorageMode;
   /** The signed-in address when the workspace is hosted. */
@@ -675,10 +686,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const fileList = hosted ? (remote?.files ?? NONE) : (files ?? NONE);
   const runList = hosted ? (remote?.allHandsRuns ?? NONE) : (allHandsRuns ?? NONE);
 
+  const [writeError, setWriteError] = useState<string | null>(null);
+
   /**
    * Sends one change to the account and applies it locally at once, so the
    * interface never waits on a round trip. A failed write refetches rather than
-   * leaving the screen showing something the database refused.
+   * leaving the screen showing something the database refused, and says so.
    */
   const push = useCallback(
     async (op: MutationOp) => {
@@ -691,9 +704,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ops: [op] }),
         });
-        if (!response.ok) throw new Error(String(response.status));
+        if (!response.ok) {
+          // The server says why. Carrying that through is the difference
+          // between "could not save" and "that file is too large to upload".
+          const said = await response
+            .json()
+            .then((body: { error?: string }) => body?.error)
+            .catch(() => undefined);
+          throw new Error(said || `The server refused the change (${response.status}).`);
+        }
+        setWriteError(null);
       } catch (error) {
         console.error("[workspace] write failed, reloading", error);
+        setWriteError(
+          error instanceof Error && error.message
+            ? error.message
+            : "That change could not be saved.",
+        );
         const fresh = await fetch("/api/workspace")
           .then((r) => (r.ok ? (r.json() as Promise<Workspace>) : null))
           .catch(() => null);
@@ -711,6 +738,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     return {
       ready: hosted ? remote !== null : seeded && allDepartments !== undefined,
+      writeError,
+      dismissWriteError: () => setWriteError(null),
       storage: mode,
       accountEmail: signedInEmail,
       serverKey,
@@ -1391,6 +1420,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [
     hosted,
     commitRemote,
+    writeError,
     memoryList,
     taskList,
     wikiList,

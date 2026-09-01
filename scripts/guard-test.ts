@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 
 import { readJsonWithin, withinRate } from "../src/lib/guard";
 import { safeDestination } from "../src/app/signin/page";
-import { applyOp, emptyWorkspace } from "../src/lib/workspace";
+import { WRITABLE_TABLES, applyOp, emptyWorkspace } from "../src/lib/workspace";
 import { filesForDepartment } from "../src/lib/files";
 import {
   COACH_ID,
@@ -254,6 +254,37 @@ console.log("\na write immediately after a create can see it");
       "every accent is a token defined in both themes",
       dangling.length === 0,
       dangling.map((a) => a.key).join(","),
+    );
+  }
+
+  /*
+   * The write path, end to end.
+   *
+   * MutationOp, the API's allow-list, and the server's switch all have to name
+   * the same tables. The compiler covers the first two. This covers the third,
+   * which is the pair that actually drifted: the API rejected memory, tasks,
+   * and wikiPages with a 400 while the server was perfectly able to write
+   * them, and the client turned that 400 into a silent revert.
+   */
+  console.log("\nevery table can be written end to end");
+  {
+    const repo = readFileSync("src/db/repo.ts", "utf8");
+    const applied = new Set(
+      [...repo.matchAll(/^ {8}case "([a-zA-Z]+)": \{$/gm)].map((match) => match[1]),
+    );
+    const notAccepted = [...applied].filter((table) => !WRITABLE_TABLES.has(table));
+    const notApplied = [...WRITABLE_TABLES].filter((table) => !applied.has(table));
+
+    check("the server's table cases were found", applied.size > 5, `${applied.size} cases`);
+    check(
+      "every table the server writes is one the API accepts",
+      notAccepted.length === 0,
+      notAccepted.join(","),
+    );
+    check(
+      "every table the API accepts is one the server writes",
+      notApplied.length === 0,
+      notApplied.join(","),
     );
   }
 
