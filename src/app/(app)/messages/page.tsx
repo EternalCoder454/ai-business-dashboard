@@ -13,6 +13,7 @@ import {
 import { createRipple } from "@/components/ui/ripple";
 import { useMessages, useThread } from "@/lib/messages";
 import { formatRelativeTime } from "@/lib/routes";
+import { useStore } from "@/lib/store";
 import type { Colleague, DirectMessage } from "@/lib/types";
 
 /**
@@ -229,6 +230,8 @@ function Thread({
   onSent: () => void;
 }) {
   const { messages, sending, error, send } = useThread(other, self);
+  // Own picture and name, so a run of your own messages is headed like theirs.
+  const { account } = useStore();
   const [draft, setDraft] = useState("");
   const bottom = useRef<HTMLDivElement | null>(null);
   const box = useRef<HTMLTextAreaElement | null>(null);
@@ -288,16 +291,24 @@ function Thread({
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 medium:px-6">
         {messages.length === 0 ? (
           <p className="md-body py-10 text-center text-on-variant">
-            Nothing here yet. Say something.
+            No messages yet.
           </p>
         ) : (
-          <ul className="measure-read flex flex-col gap-1.5">
+          <ul className="measure-read flex flex-col pb-2">
             {messages.map((message, index) => (
-              <Bubble
+              <MessageRow
                 key={message.id}
                 message={message}
                 self={self}
                 previous={messages[index - 1]}
+                sender={
+                  message.fromEmail === self
+                    ? { displayName: account.displayName || "You", avatarUrl: account.avatarUrl }
+                    : {
+                        displayName: person?.displayName || other,
+                        avatarUrl: person?.avatarUrl,
+                      }
+                }
               />
             ))}
           </ul>
@@ -350,50 +361,54 @@ function Thread({
 }
 
 /**
- * One message.
+ * One message, laid out the way a chat app lays them out.
  *
- * Yours sit right in the primary container, theirs left in the surface
- * container, which is the ordinary chat convention and also the M3 guidance for
- * distinguishing an emphasised element from a neutral one. Consecutive messages
- * from the same person lose the gap and square the adjoining corner, so a run
- * of three reads as one block rather than three separate statements.
+ * Not left and right bubbles. A run of messages from one person shows their
+ * picture and name once and then indents the rest under it, so a back and
+ * forth reads as a conversation rather than as alternating blocks.
  */
-function Bubble({
+function MessageRow({
   message,
   self,
   previous,
+  sender,
 }: {
   message: DirectMessage;
   self?: string;
   previous?: DirectMessage;
+  sender: { displayName: string; avatarUrl?: string };
 }) {
   const mine = message.fromEmail === self;
+  // A new run starts on a different sender, or after five quiet minutes.
   const runOn =
     previous?.fromEmail === message.fromEmail &&
     message.sentAt - previous.sentAt < 5 * 60_000;
   const pending = message.id.startsWith("pending:");
 
   return (
-    <li className={cx("flex", mine ? "justify-end" : "justify-start", !runOn && "mt-2.5")}>
-      <div
-        className={cx(
-          "max-w-[85%] rounded-2xl px-3.5 py-2 medium:max-w-[70%]",
-          mine
-            ? "bg-primary-container text-on-primary-container"
-            : "bg-container text-on-surface",
-          // Squaring the inner corner is what visually joins a run together.
-          runOn && (mine ? "rounded-tr-md" : "rounded-tl-md"),
-          pending && "opacity-60",
+    <li className={cx("flex gap-3 px-1", runOn ? "mt-0.5" : "mt-4", pending && "opacity-60")}>
+      <div className="w-10 flex-none">
+        {runOn ? null : (
+          <Avatar
+            person={{ displayName: sender.displayName, avatarUrl: sender.avatarUrl } as Colleague}
+            email={message.fromEmail}
+          />
         )}
-      >
-        <p className="md-body whitespace-pre-wrap break-words">{message.body}</p>
-        <p
-          className={cx(
-            "md-label-sm mt-1 text-right",
-            mine ? "text-on-primary-container/75" : "text-on-variant/75",
-          )}
-        >
-          {pending ? "Sending…" : formatRelativeTime(message.sentAt)}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        {runOn ? null : (
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className={cx("md-label", mine ? "text-primary" : "text-on-surface")}>
+              {sender.displayName || message.fromEmail}
+            </span>
+            <span className="md-label-sm text-on-variant/70">
+              {pending ? "Sending…" : formatRelativeTime(message.sentAt)}
+            </span>
+          </div>
+        )}
+        <p className="md-body whitespace-pre-wrap break-words text-on-surface">
+          {message.body}
         </p>
       </div>
     </li>

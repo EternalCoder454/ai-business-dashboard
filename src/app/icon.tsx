@@ -1,10 +1,33 @@
 import { ImageResponse } from "next/og";
+import { loadBranding } from "@/lib/branding";
 
 export const size = { width: 512, height: 512 };
 export const contentType = "image/png";
 
-/** Generated at build time, so the app ships no binary icon assets. */
-export default function Icon() {
+/**
+ * Rendered per request rather than baked at build time, so the icon follows
+ * the logo set in Settings instead of shipping whatever was there at deploy.
+ */
+export const dynamic = "force-dynamic";
+
+export default async function Icon() {
+  const { mark, logo } = await loadBranding();
+
+  if (logo) {
+    return new ImageResponse(
+      (
+        // Stored as a data URL, already downsized on upload.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={logo}
+          alt=""
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      ),
+      size,
+    );
+  }
+
   return new ImageResponse(
     (
       <div
@@ -14,14 +37,14 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#004f58",
-          color: "#97f0ff",
+          background: "#1d525d",
+          color: "#c2ecf5",
           fontSize: 220,
           fontWeight: 600,
           letterSpacing: -8,
         }}
       >
-        HQ
+        {mark}
       </div>
     ),
     size,

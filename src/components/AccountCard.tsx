@@ -1,102 +1,56 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { signOutAction } from "@/app/auth-actions";
+import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { Button, Card } from "./ui";
 
-interface AccountState {
-  enabled: boolean;
-  email: string | null;
-}
-
 /**
- * Only rendered as anything once auth is configured. A local checkout with no
- * OAuth client has no account to show, and a sign out button there would be a
- * button that does nothing.
+ * Moving a workspace that started in one browser into the signed-in account.
+ *
+ * This card used to also print the signed-in address, explain the allowlist,
+ * describe where the workspace is stored, and offer a sign out button. The
+ * Account page above it shows the address and the storage mode, and sign out
+ * is in the account menu, so all that was left is the one thing that actually
+ * does something.
  */
 export function AccountCard() {
-  const { storage, accountEmail, uploadLocalWorkspace } = useStore();
-  const [state, setState] = useState<AccountState | null>(null);
+  const { storage, uploadLocalWorkspace } = useStore();
   const [uploading, setUploading] = useState(false);
-  const [uploadNote, setUploadNote] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/account")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (!cancelled) setState(data);
-      })
-      .catch(() => {
-        if (!cancelled) setState({ enabled: false, email: null });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (!state?.enabled) return null;
+  if (storage !== "hosted") return null;
 
   return (
     <Card>
-      <h2 className="md-title-lg mb-1">Account</h2>
+      <h2 className="md-title-lg mb-1">Local data</h2>
       <p className="md-body mb-4 text-on-variant">
-        Signed in as <strong>{accountEmail ?? state.email ?? "unknown"}</strong>. Only
-        allowlisted Google accounts can reach this workspace.
+        Copies anything still held in this browser into your account. Running it twice
+        changes nothing the second time.
       </p>
 
-      <p className="md-body mb-4 text-on-variant">
-        {storage === "hosted" ? (
-          <>
-            This workspace is stored on the server, so it follows you between devices.
-          </>
-        ) : (
-          <>
-            This workspace is stored in <strong>this browser only</strong>. Set DATABASE_URL
-            to move it to your account.
-          </>
-        )}
-      </p>
+      <Button
+        variant="outlined"
+        disabled={uploading}
+        onClick={async () => {
+          setUploading(true);
+          setNote(null);
+          try {
+            const { pushed } = await uploadLocalWorkspace();
+            setNote(
+              pushed === 0
+                ? "Nothing left to upload."
+                : `Uploaded ${pushed} records.`,
+            );
+          } catch {
+            setNote("Upload failed. Nothing was changed.");
+          }
+          setUploading(false);
+        }}
+      >
+        {uploading ? "Uploading…" : "Upload this browser's data"}
+      </Button>
 
-      {storage === "hosted" ? (
-        <div className="mb-4">
-          <Button
-            variant="outlined"
-            disabled={uploading}
-            onClick={async () => {
-              setUploading(true);
-              setUploadNote(null);
-              try {
-                const { pushed } = await uploadLocalWorkspace();
-                setUploadNote(
-                  pushed === 0
-                    ? "This browser had nothing left to upload."
-                    : `Uploaded ${pushed} records into your account.`,
-                );
-              } catch {
-                setUploadNote("The upload failed. Nothing was changed.");
-              }
-              setUploading(false);
-            }}
-          >
-            {uploading ? "Uploading\u2026" : "Upload this browser's data"}
-          </Button>
-          <p className="md-label-sm mt-2 text-on-variant/75">
-            Copies anything still held in this browser into the account. Rows with the same
-            id are overwritten, so running it twice changes nothing the second time.
-          </p>
-          {uploadNote ? (
-            <p className="md-label mt-2 text-on-variant">{uploadNote}</p>
-          ) : null}
-        </div>
-      ) : null}
-
-      <form action={signOutAction}>
-        <Button type="submit" variant="outlined">
-          Sign out
-        </Button>
-      </form>
+      {note ? <p className="md-label mt-2 text-on-variant">{note}</p> : null}
     </Card>
   );
 }

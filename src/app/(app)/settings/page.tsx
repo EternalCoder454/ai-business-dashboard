@@ -16,13 +16,11 @@ import {
   PlusIcon,
   STATUS_LABEL,
   Select,
-  StatusDot,
   TextArea,
   TextInput,
   TrashIcon,
   cx,
 } from "@/components/ui";
-import { AccountCard } from "@/components/AccountCard";
 import { WorkspacePicker } from "@/components/WorkspacePicker";
 import { exportAll, importAll, resetAll, restoreDefaultDepartments } from "@/lib/db";
 import { EFFORT_OPTIONS, MODEL_OPTIONS, WRITING_RULES } from "@/lib/seed";
@@ -373,10 +371,6 @@ export default function SettingsPage() {
                       {department.roleTitle} · {ownSkillsFor(department.id).length} skills
                     </p>
                   </div>
-                  <span className="md-label-sm flex items-center gap-1.5 text-on-variant">
-                    <StatusDot status={department.status} animate={false} />
-                    {STATUS_LABEL[department.status]}
-                  </span>
                   <button
                     onClick={() => setDraft({ ...department })}
                     title="Edit"
@@ -430,8 +424,6 @@ export default function SettingsPage() {
               className="font-mono text-[0.8125rem]"
             />
           </Card>
-
-          <AccountCard />
 
           <Card>
             <h2 className="md-title-lg mb-1">Data</h2>

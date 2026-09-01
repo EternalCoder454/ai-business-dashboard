@@ -1,7 +1,8 @@
 "use client";
 
+import { AccountCard } from "@/components/AccountCard";
 import { PageHeader } from "@/components/PageHeader";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Card,
@@ -12,7 +13,7 @@ import {
   TextInput,
   cx,
 } from "@/components/ui";
-import { signOutAction } from "@/app/auth-actions";
+import { ACCEPTED_IMAGE_TYPES, fileToAvatar } from "@/lib/images";
 import { buildUserContext } from "@/lib/prompts";
 import { useStore } from "@/lib/store";
 import type { UserAccount } from "@/lib/types";
@@ -37,6 +38,8 @@ export default function AccountPage() {
 
   const [local, setLocal] = useState<UserAccount>(account);
   const [saved, setSaved] = useState(false);
+  const [pictureError, setPictureError] = useState<string | null>(null);
+  const pictureInput = useRef<HTMLInputElement | null>(null);
   const [dirty, setDirty] = useState(false);
 
   // Adopt store values until the first edit, so the initial load fills in.
@@ -126,34 +129,58 @@ export default function AccountPage() {
                 </p>
               </div>
 
-              <div className="flex flex-none items-center gap-2">
-                <Chip tone={storage === "hosted" ? "success" : "neutral"}>
-                  {storage === "hosted" ? "Synced" : "This browser"}
-                </Chip>
-                {storage === "hosted" ? (
-                  <form action={signOutAction}>
-                    <Button type="submit" size="sm" variant="outlined">
-                      Sign out
-                    </Button>
-                  </form>
-                ) : null}
-              </div>
+              <Chip tone={storage === "hosted" ? "success" : "neutral"}>
+                {storage === "hosted" ? "Synced" : "This browser"}
+              </Chip>
             </div>
 
-            {storage !== "hosted" ? (
-              <p className="md-label-sm mt-4 text-on-variant/75">
-                Signing in with Google fills the name, address, and picture in
-                automatically, and moves this workspace off this one browser.
-              </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outlined" onClick={() => pictureInput.current?.click()}>
+                {account.avatarUrl ? "Change picture" : "Upload picture"}
+              </Button>
+              {account.avatarUrl ? (
+                <Button
+                  size="sm"
+                  variant="text"
+                  onClick={() => void updateAccount({ avatarUrl: undefined })}
+                >
+                  Remove
+                </Button>
+              ) : null}
+              <input
+                ref={pictureInput}
+                type="file"
+                accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                hidden
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (!file) return;
+                  try {
+                    // Downsized and re-encoded before storing, so a phone photo
+                    // does not become a megabyte in every workspace payload.
+                    await updateAccount({ avatarUrl: await fileToAvatar(file) });
+                    setPictureError(null);
+                  } catch (error) {
+                    setPictureError(
+                      error instanceof Error ? error.message : "That image could not be read.",
+                    );
+                  }
+                }}
+              />
+            </div>
+            {pictureError ? (
+              <p className="md-label mt-2 text-error">{pictureError}</p>
             ) : null}
           </Card>
+
+          <AccountCard />
 
           {/* ------------------------------------------------ how you are addressed */}
           <Card>
             <h2 className="md-title-lg mb-1">How you are addressed</h2>
             <p className="md-body mb-5 text-on-variant">
               Sent with every conversation.
-              you and default to writing about &ldquo;the user&rdquo;.
             </p>
 
             <div className="grid gap-4 medium:grid-cols-2">
@@ -269,13 +296,13 @@ export default function AccountPage() {
 
           {/* ------------------------------------------------ oversight */}
           {storage === "hosted" ? (
-            <Card elevated={false}>
-              <h2 className="md-label-sm mb-2 text-on-variant">Disclaimer</h2>
-              <p className="md-body text-on-variant">
+            <div className="rounded-2xl border border-error/40 bg-error-container/20 p-4">
+              <h2 className="md-label-sm mb-2 text-error">Disclaimer</h2>
+              <p className="md-body text-on-surface">
                 All conversations and internal messaging are recorded, for your safety
                 and the company&apos;s.
               </p>
-            </Card>
+            </div>
           ) : null}
 
           {/* ------------------------------------------------ what gets sent */}
