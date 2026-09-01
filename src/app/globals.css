@@ -431,10 +431,18 @@
   max-width: 68ch;
 }
 
+/*
+ * A cap on how wide a column of cards gets, flush with the page gutter.
+ *
+ * It used to centre itself. Every header, tab strip, and filter bar above it
+ * runs the full width, so on a wide monitor the content sat hundreds of pixels
+ * to the right of the heading it belonged to and read as a fragment of some
+ * other page. A reading column still centres, because there the text is the
+ * whole page rather than one band inside it.
+ */
 .measure {
   width: 100%;
   max-width: 64rem;
-  margin-inline: auto;
 }
 
 .measure-read {
@@ -443,11 +451,11 @@
   margin-inline: auto;
 }
 
-/* Two-pane layouts, which need room for a list and its supporting column. */
+/* Two-pane layouts, which need room for a list and its supporting column.
+   Flush with the gutter for the same reason .measure is. */
 .measure-wide {
   width: 100%;
   max-width: 76rem;
-  margin-inline: auto;
 }
 
 /*

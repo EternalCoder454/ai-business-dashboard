@@ -209,7 +209,7 @@ export default function LibraryPage() {
       >
         <div className="measure">
           {notice ? (
-            <p className="md-label mb-4 rounded-xl bg-low px-4 py-2.5 text-on-variant">
+            <p className="md-label mb-4 inline-block rounded-full bg-low px-4 py-2 text-on-variant">
               {notice}
             </p>
           ) : null}
@@ -507,7 +507,7 @@ function FileList({
 
   if (view === "compact") {
     return (
-      <ul className="grid grid-cols-1 gap-2 medium:grid-cols-2 expanded:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-2 medium:grid-cols-2 expanded:grid-cols-3 large:grid-cols-4">
         {files.map((file) => (
           <li key={file.id}>
             <div className="flex items-center gap-2.5 rounded-xl bg-container p-2.5 shadow-e1">
@@ -529,7 +529,9 @@ function FileList({
   }
 
   return (
-    <ul className="grid grid-cols-1 gap-3 medium:grid-cols-2">
+    // A card holds two selects, so it needs more room than a compact row: two
+    // across from medium, and only past 1200 is there space for a third.
+    <ul className="grid grid-cols-1 gap-3 medium:grid-cols-2 large:grid-cols-3">
       {files.map((file) => (
         <li key={file.id}>
           <FileCard
