@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useParams, useRouter } from "next/navigation";
@@ -14,7 +15,6 @@ import {
   Field,
   EditIcon,
   EmptyState,
-  PageHeader,
   TextInput,
   TrashIcon,
   cx,

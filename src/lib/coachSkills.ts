@@ -269,6 +269,9 @@ export function promptFingerprint(value: string): string {
 export const SHIPPED_WRITING_RULES = new Set([
   // Before the rule against volunteering a scope disclaimer.
   "18qujx9",
+  // Thirty-three numbered prohibitions, which read as a rulebook and produced
+  // writing that sounded like one.
+  "8b7iw7",
 ]);
 
 export const SHIPPED_COACH_PROMPTS = new Set([

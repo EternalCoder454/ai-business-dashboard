@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { CompanyMark } from "@/components/CompanyMark";
 import { ACCEPTED_IMAGE_TYPES, fileToAvatar } from "@/lib/images";
@@ -12,7 +13,6 @@ import {
   DownloadIcon,
   EditIcon,
   Field,
-  PageHeader,
   PlusIcon,
   STATUS_LABEL,
   Select,
@@ -117,11 +117,6 @@ export default function SettingsPage() {
       <PageHeader
         eyebrow="Configuration"
         title="Settings"
-        description={
-          storage === "hosted"
-            ? "Departments, conversations, and deliverables sync to your account. Your API key is the exception: it stays in this browser and is never written to the database."
-            : "Everything here lives in this browser only. Departments, conversations, and your API key are stored on this machine."
-        }
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 expanded:px-8 py-6">
@@ -132,28 +127,13 @@ export default function SettingsPage() {
             {serverKey ? (
               <>
                 <p className="md-body text-on-variant">
-                  The server holds the key, so there is nothing to enter here. Every
-                  device signed into this workspace can chat straight away, including
-                  this one, and the key never reaches a browser.
-                </p>
-                <p className="md-label-sm mt-3 text-on-variant/75">
-                  It is set as{" "}
-                  <code className="font-mono text-[0.85em]">ANTHROPIC_API_KEY</code> in
-                  the deployment&apos;s environment. A key typed into a browser is ignored
-                  while that is true, which is why this field is hidden rather than empty.
+                  Connected. No key needed on this device.
                 </p>
               </>
             ) : (
               <>
                 <p className="md-body mb-5 text-on-variant">
-                  Your key is kept in this browser and sent with each request to this
-                  app&apos;s own{" "}
-                  <code className="font-mono text-[0.85em]">/api/chat</code> route, which
-                  calls Anthropic server-side. It is never written to the database, which
-                  is also why it does not follow you to another device. Setting{" "}
-                  <code className="font-mono text-[0.85em]">ANTHROPIC_API_KEY</code> on
-                  the server instead covers every device at once and takes precedence over
-                  anything entered here.
+                  Stored on this device only.
                 </p>
 
             <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
@@ -194,7 +174,7 @@ export default function SettingsPage() {
             )}
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <Field label="Model" hint="Applies to every department.">
+              <Field label="Model">
                 <Select
                   value={settings.model}
                   onChange={(event) => void updateSettings({ model: event.target.value })}
@@ -208,7 +188,6 @@ export default function SettingsPage() {
               </Field>
               <Field
                 label="Reasoning effort"
-                hint="Higher effort thinks longer and costs more per reply."
               >
                 <Select
                   value={settings.effort}
@@ -229,9 +208,7 @@ export default function SettingsPage() {
           {/* ------------------------------------------------ appearance */}
           <Card>
             <h2 className="md-title-lg mb-1">Appearance</h2>
-            <p className="md-body mb-5 text-on-variant">
-              Yours alone. Nobody else signing in sees these choices.
-            </p>
+
 
             <div className="flex items-center gap-4">
               <CompanyMark size={56} />
@@ -273,7 +250,7 @@ export default function SettingsPage() {
             {markError ? <p className="md-label mt-2 text-error">{markError}</p> : null}
 
             <div className="mt-5 grid gap-4 medium:grid-cols-3">
-              <Field label="Letters" hint="Shown when there is no logo. Two is the most that fits.">
+              <Field label="Letters">
                 <TextInput
                   value={settings.companyMark}
                   maxLength={2}
@@ -284,7 +261,7 @@ export default function SettingsPage() {
                 />
               </Field>
 
-              <Field label="Navigation side" hint="Which edge the menu sits on.">
+              <Field label="Navigation side">
                 <Select
                   value={settings.sidebarSide}
                   onChange={(event) =>
@@ -298,7 +275,6 @@ export default function SettingsPage() {
 
               <Field
                 label="Search key"
-                hint="Ctrl or Cmd with K always works. This is the single key."
               >
                 <Select
                   value={settings.searchShortcut}
@@ -327,7 +303,7 @@ export default function SettingsPage() {
                   }
                 />
               </Field>
-              <Field label="Subtitle" hint="Shown under the name in the sidebar.">
+              <Field label="Subtitle">
                 <TextInput
                   value={settings.companySubtitle}
                   onChange={(event) =>
@@ -459,10 +435,7 @@ export default function SettingsPage() {
 
           <Card>
             <h2 className="md-title-lg mb-1">Data</h2>
-            <p className="md-body mb-5 text-on-variant">
-              Exports include departments, conversations, deliverables, and your company
-              profile. The API key is deliberately left out of the file.
-            </p>
+
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outlined"
@@ -601,7 +574,6 @@ export default function SettingsPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Field
                 label="Role title"
-                hint="Skill count is no longer typed in. It comes from the SKILL.md files on the Skills page."
               >
                 <TextInput
                   value={draft.roleTitle ?? ""}
@@ -627,9 +599,7 @@ export default function SettingsPage() {
               </Field>
             </div>
 
-            <Field
-              label="Personality"
-              hint="Temperament and voice. This is injected ahead of the system prompt, so it colours how they write rather than what they know."
+            <Field label="Personality"
             >
               <TextArea
                 rows={4}
@@ -639,9 +609,7 @@ export default function SettingsPage() {
               />
             </Field>
 
-            <Field
-              label="System prompt"
-              hint="Scope it tightly. The Company Profile and the shared house rules are appended automatically."
+            <Field label="System prompt"
             >
               <TextArea
                 rows={14}

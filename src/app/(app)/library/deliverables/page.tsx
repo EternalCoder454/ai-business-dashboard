@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useMemo, useState } from "react";
@@ -12,7 +13,6 @@ import {
   EditIcon,
   EmptyState,
   Field,
-  PageHeader,
   PlusIcon,
   Select,
   TextArea,

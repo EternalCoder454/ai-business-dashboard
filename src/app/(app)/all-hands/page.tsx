@@ -18,6 +18,7 @@ import {
   UsersIcon,
   cx,
 } from "@/components/ui";
+import { ProfileMenu } from "@/components/ProfileMenu";
 import { createRipple } from "@/components/ui/ripple";
 import { ROOM_BUDGET, runAllHandsRound, runUsage } from "@/lib/allHands";
 import { deriveConversationTitle } from "@/lib/prompts";
@@ -161,8 +162,9 @@ export default function AllHandsPage() {
             ) : null}
           </div>
           <p className="md-label-sm truncate text-on-variant">
-            <span className="hidden medium:inline">{departments.length} departments · </span>
-            {thread ? ` · ${thread.rounds.length} question${thread.rounds.length === 1 ? "" : "s"}` : ""}
+            {thread
+              ? `${thread.rounds.length} question${thread.rounds.length === 1 ? "" : "s"}`
+              : ""}
             {usage && usage.output > 0
               ? ` · ${usage.output.toLocaleString()} tokens out${
                   usage.cacheRead > 0 ? `, ${usage.cacheRead.toLocaleString()} cached` : ""
@@ -199,6 +201,7 @@ export default function AllHandsPage() {
         >
           <span className="hidden medium:inline">New thread</span>
         </Button>
+        <ProfileMenu />
       </header>
 
       {showThreads ? (
@@ -459,11 +462,7 @@ export default function AllHandsPage() {
                 </Link>
                 .
               </span>
-            ) : (
-              <span className="md-label-sm text-on-variant/75">
-                {departments.length} calls per question, four at a time, on {settings.model}
-              </span>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
@@ -525,12 +524,7 @@ function Opening({
           />
         ))}
       </div>
-      <h2 className="md-title-lg">The whole room is here</h2>
-      <p className="md-body mx-auto mt-2 max-w-md text-on-variant">
-        Ask once and every head answers from their own remit, in their own voice.
-        {ceoName ? ` ${ceoName} then reads across the answers and calls it.` : ""} Follow ups
-        stay in the same thread, so the room keeps its memory.
-      </p>
+      <h2 className="md-title-lg">Ask every department at once</h2>
     </div>
   );
 }

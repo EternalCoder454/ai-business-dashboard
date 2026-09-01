@@ -1,11 +1,11 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Chip,
   EmptyState,
-  PageHeader,
   SendIcon,
   TextArea,
   cx,

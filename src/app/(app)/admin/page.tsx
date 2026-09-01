@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import { useCallback, useEffect, useState } from "react";
 import {
   Button,
@@ -8,7 +9,6 @@ import {
   Dialog,
   EmptyState,
   Field,
-  PageHeader,
   PersonIcon,
   TextInput,
   TrashIcon,

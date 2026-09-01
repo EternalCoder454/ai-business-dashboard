@@ -20,7 +20,6 @@ const STORE_KEY = "eterneon.nav.layout.v1";
 export const NAV_SECTIONS = [
   "work",
   "workspace",
-  "setup",
   "departments",
   "personal",
   "recent",

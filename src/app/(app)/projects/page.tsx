@@ -1,11 +1,19 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useMemo, useState } from "react";
 import { PROJECT_DEFAULT_ICON, ProjectMeter } from "@/components/ProjectBits";
 import { PROJECT_STATUS_LABEL, ProjectDialog } from "@/components/ProjectDialog";
-import { Button, Card, Chip, EmptyState, PageHeader, PlusIcon, cx } from "@/components/ui";
+import {
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  PlusIcon,
+  cx,
+} from "@/components/ui";
 import { formatRelativeTime } from "@/lib/routes";
 import { projectAccent } from "@/lib/seed";
 import { useStore } from "@/lib/store";
@@ -205,7 +213,7 @@ export default function ProjectsPage() {
                                 </span>
                               ) : null}
                               {total === 0 ? (
-                                <span className="md-label-sm text-on-variant/75">Empty so far</span>
+                                <span className="md-label-sm text-on-variant/75">No items</span>
                               ) : null}
                               <span className="md-label-sm text-on-variant/75">
                                 {formatRelativeTime(project.updatedAt)}

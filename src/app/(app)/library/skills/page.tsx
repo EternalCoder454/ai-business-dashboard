@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -12,7 +13,6 @@ import {
   EditIcon,
   EmptyState,
   Field,
-  PageHeader,
   PlusIcon,
   Select,
   SparkIcon,

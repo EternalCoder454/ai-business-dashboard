@@ -1,12 +1,12 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Card,
   Chip,
   Field,
-  PageHeader,
   Select,
   TextArea,
   TextInput,
@@ -152,12 +152,12 @@ export default function AccountPage() {
           <Card>
             <h2 className="md-title-lg mb-1">How you are addressed</h2>
             <p className="md-body mb-5 text-on-variant">
-              This goes into every head&apos;s prompt. Without it they have nothing to call
+              Sent with every conversation.
               you and default to writing about &ldquo;the user&rdquo;.
             </p>
 
             <div className="grid gap-4 medium:grid-cols-2">
-              <Field label="Name" hint="What they call you. A first name is usually right.">
+              <Field label="Name">
                 <TextInput
                   value={local.displayName}
                   placeholder="Zachary"
@@ -165,7 +165,7 @@ export default function AccountPage() {
                 />
               </Field>
 
-              <Field label="Your role" hint="So they know who is asking.">
+              <Field label="Your role">
                 <TextInput
                   value={local.roleTitle}
                   placeholder="Founder"
@@ -175,7 +175,6 @@ export default function AccountPage() {
 
               <Field
                 label="Pronouns"
-                hint="Optional, used exactly as written. Left blank, pronouns are avoided rather than guessed."
               >
                 <TextInput
                   value={local.pronouns}
@@ -186,7 +185,6 @@ export default function AccountPage() {
 
               <Field
                 label="Timezone"
-                hint="Supplies today's date, so a deadline means something."
               >
                 <Select
                   value={local.timezone}
@@ -227,7 +225,6 @@ export default function AccountPage() {
             <div className="flex flex-col gap-4">
               <Field
                 label="What you know"
-                hint="What you are strong on, and what you would rather have explained rather than assumed."
               >
                 <TextArea
                   rows={2}
@@ -239,7 +236,6 @@ export default function AccountPage() {
 
               <Field
                 label="How you like answers"
-                hint="Length, directness, format. They are already told to explain their reasoning."
               >
                 <TextArea
                   rows={2}
@@ -251,7 +247,6 @@ export default function AccountPage() {
 
               <Field
                 label="What you are working on"
-                hint="The current thing, so answers land on it. Worth updating when it changes."
               >
                 <TextArea
                   rows={2}
@@ -261,7 +256,7 @@ export default function AccountPage() {
                 />
               </Field>
 
-              <Field label="Anything else" hint="Whatever does not fit above.">
+              <Field label="Anything else">
                 <TextArea
                   rows={2}
                   value={local.notes}
@@ -275,19 +270,17 @@ export default function AccountPage() {
           {/* ------------------------------------------------ oversight */}
           {storage === "hosted" ? (
             <Card elevated={false}>
-              <h2 className="md-label-sm mb-2 text-on-variant">Who can see this</h2>
+              <h2 className="md-label-sm mb-2 text-on-variant">Disclaimer</h2>
               <p className="md-body text-on-variant">
-                These conversations are company records, and an administrator can review
-                them. Direct messages between people are not.
+                All conversations and internal messaging are recorded, for your safety
+                and the company&apos;s.
               </p>
             </Card>
           ) : null}
 
           {/* ------------------------------------------------ what gets sent */}
           <Card elevated={false}>
-            <h2 className="md-label-sm mb-2 text-on-variant">
-              What every head receives about you
-            </h2>
+            <h2 className="md-label-sm mb-2 text-on-variant">User prompt</h2>
             {preview ? (
               <pre
                 className={cx(
@@ -299,7 +292,7 @@ export default function AccountPage() {
               </pre>
             ) : (
               <p className="md-body text-on-variant">
-                Nothing yet. Fill in your name or timezone and the heads stop guessing.
+                Nothing set.
               </p>
             )}
           </Card>

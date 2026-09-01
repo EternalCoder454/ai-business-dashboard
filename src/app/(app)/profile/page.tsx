@@ -1,12 +1,12 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import { useEffect, useRef, useState } from "react";
 import {
   Card,
   CheckIcon,
   ChevronIcon,
   Field,
-  PageHeader,
   TextArea,
   cx,
 } from "@/components/ui";
@@ -18,14 +18,12 @@ const FIELDS: {
   key: keyof CompanyProfile;
   label: string;
   placeholder: string;
-  hint: string;
   rows: number;
 }[] = [
   {
     key: "mission",
     label: "Mission",
     placeholder: "What the business does, for whom, and why it exists.",
-    hint: "One or two sentences. Every department opens with this.",
     rows: 3,
   },
   {
@@ -33,7 +31,6 @@ const FIELDS: {
     label: "What you make",
     placeholder:
       "The actual things you sell. Name them, say what each one is, and roughly what it costs.",
-    hint: "Stops every department guessing at the product from the mission alone.",
     rows: 4,
   },
   {
@@ -41,7 +38,6 @@ const FIELDS: {
     label: "Audience",
     placeholder:
       "Who buys, who uses, what they are doing today instead, and what they care about.",
-    hint: "The more specific this is, the less generic every answer becomes.",
     rows: 4,
   },
   {
@@ -49,7 +45,6 @@ const FIELDS: {
     label: "Brand voice",
     placeholder:
       "How the company sounds, and what it never sounds like. Include a phrase you would and would not say.",
-    hint: "Marketing, Social, and Design lean on this hardest.",
     rows: 4,
   },
   {
@@ -57,14 +52,12 @@ const FIELDS: {
     label: "Where the business is",
     placeholder:
       "How long it has run, how many people, roughly what it turns over, and whether it is your main income.",
-    hint: "Advice for a two-person studio and a thirty-person company is not the same advice.",
     rows: 3,
   },
   {
     key: "goals",
     label: "What you are aiming at",
     placeholder: "What has to be true in six months, and what would count as it going well.",
-    hint: "The CEO uses this to say which of five things matters this month.",
     rows: 3,
   },
   {
@@ -72,7 +65,6 @@ const FIELDS: {
     label: "Competition",
     placeholder:
       "Who else does this, and the honest reason someone picks you instead. Include who you lose to.",
-    hint: "Marketing cannot position anything without it.",
     rows: 3,
   },
   {
@@ -80,7 +72,6 @@ const FIELDS: {
     label: "Constraints",
     placeholder:
       "Budget, hours, skills you do not have, anything off the table. Say what you will not do.",
-    hint: "Stops plans arriving that were never affordable.",
     rows: 3,
   },
   {
@@ -88,7 +79,6 @@ const FIELDS: {
     label: "Key facts",
     placeholder:
       "Pricing, headcount, launch dates, current numbers, tools you run on, constraints, anything you are tired of repeating.",
-    hint: "One fact per line. Finance and Operations use these directly.",
     rows: 8,
   },
 ];
@@ -143,7 +133,7 @@ export default function CompanyProfilePage() {
                   : ""
               }
             >
-              <Field label={field.label} hint={field.hint}>
+              <Field label={field.label}>
                 <TextArea
                   rows={field.rows}
                   value={local[field.key]}
@@ -165,7 +155,7 @@ export default function CompanyProfilePage() {
               <ChevronIcon
                 className={cx("h-4 w-4 transition-transform", showPreview && "rotate-90")}
               />
-              {showPreview ? "Hide" : "Show"} what every department actually receives
+              {showPreview ? "Hide" : "Show"} system prompt
             </button>
 
             {showPreview ? (

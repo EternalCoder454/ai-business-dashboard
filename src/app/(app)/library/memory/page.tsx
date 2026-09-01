@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useMemo, useState } from "react";
@@ -9,7 +10,6 @@ import {
   Dialog,
   EmptyState,
   Field,
-  PageHeader,
   PlusIcon,
   Select,
   SparkIcon,
@@ -79,7 +79,6 @@ export default function MemoryPage() {
   const decisions = visible.filter((entry) => entry.kind === "decision");
   const figures = visible.filter((entry) => entry.kind === "figure");
   const series = figureSeries(figures);
-  const live = memory.filter((entry) => !entry.archived).length;
 
   const openNew = (kind: MemoryKind) =>
     setDraft({
@@ -129,7 +128,7 @@ export default function MemoryPage() {
       <PageHeader
         eyebrow="Library"
         title="Memory"
-        description="What the studio has decided, and what it has measured. Every head reads this before answering, so it is the difference between advice about businesses in general and advice about yours."
+        description="Decisions and figures every department reads before answering."
         actions={
           <>
             <Button variant="outlined" icon={<PlusIcon className="h-4 w-4" />} onClick={() => openNew("figure")}>
@@ -164,8 +163,8 @@ export default function MemoryPage() {
           {ready && memory.length === 0 ? (
             <EmptyState
               icon={<SparkIcon className="h-6 w-6" />}
-              title="Nothing written down yet"
-              description="Record a decision so the heads stop reopening it, or a figure so they stop asking you for it. Both go into every prompt, so keep them short and keep them true."
+              title="No entries"
+              description="Record a decision or a figure. Every department reads these before answering."
               action={<Button onClick={() => openNew("decision")}>Record a decision</Button>}
             />
           ) : null}
@@ -250,13 +249,6 @@ export default function MemoryPage() {
             </section>
           ) : null}
 
-          {live > 0 ? (
-            <p className="md-label-sm pb-4 text-on-variant">
-              {live} live entr{live === 1 ? "y is" : "ies are"} injected into every head&apos;s
-              prompt. Archive anything that has been overtaken rather than deleting it, so the
-              history survives.
-            </p>
-          ) : null}
         </div>
       </div>
 
@@ -283,14 +275,7 @@ export default function MemoryPage() {
       >
         {draft ? (
           <div className="space-y-4">
-            <Field
-              label={draft.kind === "figure" ? "What it measures" : "The decision"}
-              hint={
-                draft.kind === "figure"
-                  ? "Write it the same way every time. Readings that share a name read as a trend."
-                  : "One line, in the past tense. What was settled."
-              }
-            >
+            <Field label={draft.kind === "figure" ? "Measure" : "Decision"}>
               <TextInput
                 autoFocus
                 value={draft.label}
@@ -304,7 +289,7 @@ export default function MemoryPage() {
             </Field>
 
             {draft.kind === "figure" ? (
-              <Field label="Reading" hint="Include the unit, so nobody has to guess.">
+              <Field label="Value">
                 <TextInput
                   value={draft.value}
                   onChange={(e) => setDraft({ ...draft, value: e.target.value })}
@@ -313,7 +298,7 @@ export default function MemoryPage() {
               </Field>
             ) : (
               <>
-                <Field label="Why" hint="The reasoning worth keeping, so it is not argued again.">
+                <Field label="Reasoning">
                   <TextArea
                     rows={3}
                     value={draft.detail}
@@ -321,10 +306,7 @@ export default function MemoryPage() {
                     placeholder="Client work pays now but the game is the thing with upside, and splitting attention was costing both."
                   />
                 </Field>
-                <Field
-                  label="Revisit when"
-                  hint="What would reopen this. A decision with no trigger is permanent."
-                >
+                <Field label="Review trigger">
                   <TextInput
                     value={draft.revisitWhen}
                     onChange={(e) => setDraft({ ...draft, revisitWhen: e.target.value })}
@@ -335,12 +317,12 @@ export default function MemoryPage() {
             )}
 
             <div className="grid gap-4 medium:grid-cols-2">
-              <Field label="Who reads it" hint="Company-wide reaches every head.">
+              <Field label="Applies to">
                 <Select
                   value={draft.departmentId}
                   onChange={(e) => setDraft({ ...draft, departmentId: e.target.value })}
                 >
-                  <option value={COMPANY_ID}>Every head</option>
+                  <option value={COMPANY_ID}>All departments</option>
                   {allDepartments.map((department) => (
                     <option key={department.id} value={department.id}>
                       {department.name}
@@ -348,10 +330,7 @@ export default function MemoryPage() {
                   ))}
                 </Select>
               </Field>
-              <Field
-                label={draft.kind === "figure" ? "Measured on" : "Decided on"}
-                hint="Not when you typed it."
-              >
+              <Field label={draft.kind === "figure" ? "Measured on" : "Decided on"}>
                 <TextInput
                   type="date"
                   value={draft.occurredOn}
@@ -405,7 +384,7 @@ function EntryCard({
                 {department.name}
               </span>
             ) : (
-              <span className="md-label-sm text-on-variant">Every head</span>
+              <span className="md-label-sm text-on-variant">All departments</span>
             )}
             {entry.sourceConversationId ? (
               <Link

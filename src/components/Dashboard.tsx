@@ -83,75 +83,19 @@ export function Dashboard() {
   // which is the right trade for a dashboard.
   const [now] = useState(() => Date.now());
 
-  const gaps = useMemo(() => {
-    const items: { label: string; href: string }[] = [];
-    // Before the workspace has loaded every one of these reads as missing, so
-    // announcing them then means claiming they are empty on every refresh.
-    if (!ready) return items;
-    if (!serverKey && !settings.apiKey) {
-      items.push({ label: "No API key yet, nothing can reply", href: "/settings" });
-    }
-    if (!hasProfileContent(profile)) {
-      items.push({ label: "Company Profile is empty", href: "/profile" });
-    }
-    if (memory.filter((entry) => !entry.archived).length === 0) {
-      items.push({
-        label: "Nothing in Memory, so every head is working from generic advice",
-        href: "/library/memory",
-      });
-    }
-    // Counted here rather than outside, so the memo's inputs are values it can
-    // actually track. A dependency on something derived above it is a
-    // memoization the compiler has to throw away.
-    const overdue = tasks.filter(
-      (task) => task.status !== "done" && task.dueAt && task.dueAt < now,
-    ).length;
-    if (overdue > 0) {
-      items.push({
-        label: `${overdue} task${overdue === 1 ? "" : "s"} past ${overdue === 1 ? "its" : "their"} date`,
-        href: "/tasks",
-      });
-    }
-    const bare = departments.filter((d) => !skills.some((s) => s.departmentId === d.id));
-    if (bare.length > 0) {
-      items.push({
-        label: `${bare.length} ${bare.length === 1 ? "department has" : "departments have"} no skills`,
-        href: "/library/skills",
-      });
-    }
-    return items;
-  }, [ready, serverKey, settings.apiKey, profile, memory, tasks, now, departments, skills]);
-
   const activeProjects = projects.filter((p) => p.status === "active").length;
   const threads = conversations.filter((c) => c.messages.length > 0).length;
 
   return (
     <div className="page-x space-y-5 py-5">
-      {gaps.length > 0 ? (
-        <section className="rounded-2xl border border-warning/25 bg-warning/10 p-4">
-          <h2 className="md-label-sm mb-2 text-warning">Needs attention</h2>
-          <ul className="grid gap-1.5 medium:grid-cols-2">
-            {gaps.map((gap) => (
-              <li key={gap.href}>
-                <Link
-                  href={gap.href}
-                  className="md-label flex items-center gap-1.5 text-warning underline decoration-warning/40 underline-offset-2"
-                >
-                  {gap.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
 
       {/* The business's own numbers lead, because they are the only thing here
           this app did not make up about itself. */}
       <section>
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="md-label-sm text-on-variant">The numbers</h2>
+          <h2 className="md-label-sm text-on-variant">Key figures</h2>
           <Link href="/library/memory" className="md-label-sm text-primary">
-            {figures.length ? "Record a reading" : "Record the first one"}
+            {figures.length ? "Add reading" : "Add figure"}
           </Link>
         </div>
         {figures.length > 0 ? (
@@ -172,11 +116,7 @@ export function Dashboard() {
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-outline-variant p-5">
-            <p className="md-body text-on-variant">
-              No figures recorded. Wishlists, downloads, invoices, hours: whatever you would
-              otherwise retype into a conversation. Every head reads them, so Desmond stops
-              asking you for the same numbers every time.
-            </p>
+            <p className="md-body text-on-variant">No figures recorded.</p>
           </div>
         )}
       </section>
@@ -203,7 +143,7 @@ export function Dashboard() {
           title="Open tasks"
           icon={<CheckIcon className="h-3.5 w-3.5" />}
           href="/tasks"
-          empty="Nothing outstanding."
+          empty="No open tasks."
           items={openTasks.slice(0, 5).map((task) => ({
             key: task.id,
             href: "/tasks",
@@ -217,10 +157,10 @@ export function Dashboard() {
         />
 
         <PaneList
-          title="Standing decisions"
+          title="Decisions"
           icon={<SparkIcon className="h-3.5 w-3.5" />}
           href="/library/memory"
-          empty="Nothing settled yet. Record one so it stops being reopened."
+          empty="No decisions recorded."
           items={decisions.map((entry) => ({
             key: entry.id,
             href: "/library/memory",
@@ -230,10 +170,10 @@ export function Dashboard() {
         />
 
         <PaneList
-          title="Recent output"
+          title="Deliverables"
           icon={<DocIcon className="h-3.5 w-3.5" />}
           href="/library/deliverables"
-          empty="Nothing saved yet. Hit Save on any reply."
+          empty="No deliverables saved."
           items={deliverables.slice(0, 4).map((item) => ({
             key: item.id,
             href: "/library/deliverables",
@@ -243,10 +183,10 @@ export function Dashboard() {
         />
 
         <PaneList
-          title="Pick up where you left off"
+          title="Recent conversations"
           icon={<ChevronIcon className="h-3.5 w-3.5" />}
           href="/ceo"
-          empty="No conversations yet."
+          empty="No conversations."
           items={conversations
             .filter((c) => c.messages.length > 0)
             .slice(0, 4)
@@ -261,10 +201,10 @@ export function Dashboard() {
         />
 
         <PaneList
-          title="Recent rooms"
+          title="Ask Everyone"
           icon={<UsersIcon className="h-3.5 w-3.5" />}
           href="/all-hands"
-          empty="You have not put anything to everyone yet."
+          empty="No threads."
           items={allHandsRuns.slice(0, 3).map((run) => ({
             key: run.id,
             href: "/all-hands",
@@ -279,7 +219,7 @@ export function Dashboard() {
           title="Projects"
           icon={<FolderIcon className="h-3.5 w-3.5" />}
           href="/projects"
-          empty="No projects yet."
+          empty="No projects."
           items={projects.slice(0, 3).map((project) => ({
             key: project.id,
             href: `/projects/${project.id}`,

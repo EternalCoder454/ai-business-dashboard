@@ -1,9 +1,14 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useMemo } from "react";
-import { Card, Chip, PageHeader, cx } from "@/components/ui";
+import {
+  Card,
+  Chip,
+  cx,
+} from "@/components/ui";
 import { estimateAttachmentTokens, formatBytes } from "@/lib/files";
 import { buildCompanyContext, hasProfileContent } from "@/lib/prompts";
 import { COMPANY_ID, SHARED_OPERATING_RULES } from "@/lib/seed";

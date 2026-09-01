@@ -21,6 +21,7 @@ import { buildSystemPrompt, deriveConversationTitle, hasProfileContent } from "@
 import { conversationHref, departmentHrefById } from "@/lib/routes";
 import { STATUS_MEANING, setDepartmentActivity, useDepartmentStatus } from "@/lib/presence";
 import { useStore } from "@/lib/store";
+import { ProfileMenu } from "./ProfileMenu";
 import { ProjectPicker } from "./ProjectBits";
 import type { Attachment, Conversation, Message, TokenUsage, WireContent } from "@/lib/types";
 import { streamChat } from "@/lib/chatClient";
@@ -517,6 +518,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               <TrashIcon className="h-4 w-4" />
             </button>
           ) : null}
+          <ProfileMenu />
         </div>
       </header>
 
@@ -650,12 +652,14 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           ) : null}
 
           {attachError ? <p className="md-label mb-2 text-error">{attachError}</p> : null}
-          <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-lowest py-2 pl-4 pr-2 transition-colors focus-within:border-primary">
+          {/* items-end, so every control has to be the same height as one line
+              of the composer or its icon sits low against the text. */}
+          <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-lowest py-2 pl-3 pr-2 transition-colors focus-within:border-primary">
             <button
               onClick={() => fileRef.current?.click()}
               aria-label="Attach a file"
               title="Attach an image, PDF, Word document, or text file. Images can be pasted straight in."
-              className="md-state md-target grid h-9 w-9 flex-none place-items-center self-end rounded-full text-on-variant"
+              className="md-state md-target grid h-10 w-10 flex-none place-items-center self-end rounded-full text-on-variant"
             >
               <PaperclipIcon className="h-5 w-5" />
             </button>
@@ -664,7 +668,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
                 onClick={() => setPickerOpen(true)}
                 aria-label="Attach from the Library"
                 title={`${shared.length} file${shared.length === 1 ? "" : "s"} shared with this department`}
-                className="md-state md-target grid h-9 w-9 flex-none place-items-center self-end rounded-full text-on-variant"
+                className="md-state md-target grid h-10 w-10 flex-none place-items-center self-end rounded-full text-on-variant"
               >
                 <DocIcon className="h-5 w-5" />
               </button>

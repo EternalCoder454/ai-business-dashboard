@@ -218,7 +218,6 @@ export function SidebarContent({
   // whether a request could actually succeed, and whether one is in flight.
   const statusOf = useDepartmentStatus(Boolean(serverKey || settings.apiKey));
 
-  const setupLinks = isAdmin ? [...SETUP_LINKS, ADMIN_LINK] : SETUP_LINKS;
 
   const [subtitle, setSubtitle] = useState(settings.companySubtitle);
 
@@ -368,29 +367,6 @@ export function SidebarContent({
         <>
                 <ul className="mb-5 space-y-0.5">
                   {WORKSPACE_LINKS.map((link) => (
-                    <li key={link.href}>
-                      <NavRow
-                        href={link.href}
-                        active={isActive(pathname, link.href)}
-                        onNavigate={onNavigate}
-                      >
-                        <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
-                          {link.icon}
-                        </span>
-                        <span className="md-body truncate">{link.label}</span>
-                      </NavRow>
-                    </li>
-                  ))}
-                </ul>
-        </>
-      ),
-    },
-    setup: {
-      label: "Setup",
-      content: (
-        <>
-                <ul className="mb-5 space-y-0.5">
-                  {setupLinks.map((link) => (
                     <li key={link.href}>
                       <NavRow
                         href={link.href}

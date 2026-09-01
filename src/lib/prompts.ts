@@ -208,12 +208,56 @@ export function buildSystemPrompt(
   return sections.join("\n\n");
 }
 
-/** First user message, trimmed into something that reads well in the sidebar. */
+/**
+ * Words that carry no meaning in a title, only in a sentence.
+ *
+ * A title made by truncating the first message reads like half a sentence,
+ * because it keeps the scaffolding: "I need pricing for websites to sell"
+ * rather than "Website Pricing". Stripping the framing and the grammar leaves
+ * the subject, which is the only part worth putting in a list.
+ */
+const TITLE_NOISE = new Set([
+  // Openings people type before getting to the point.
+  "i", "we", "you", "need", "want", "would", "like", "could", "can", "should",
+  "please", "help", "me", "us", "my", "our", "your", "give", "get", "make",
+  "write", "draft", "do", "let", "just", "quick", "question", "about",
+  "think", "know", "find", "tell", "show", "explain", "look", "check", "going",
+  // Grammar that is not the subject.
+  "a", "an", "the", "of", "for", "to", "in", "on", "at", "with", "and", "or",
+  "is", "are", "be", "it", "that", "this", "some", "any", "how", "what",
+]);
+
+const TITLE_WORDS = 5;
+
+/**
+ * A short label for a conversation, taken from its first message.
+ *
+ * Deliberately not a model call: a title is worth about nothing and a request
+ * costs real money, so this is done from the text. It reads the subject rather
+ * than the sentence, so "I need pricing for websites to sell" files itself as
+ * "Pricing Websites Sell" rather than as the whole sentence with an ellipsis.
+ */
 export function deriveConversationTitle(text: string): string {
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (!cleaned) return "New conversation";
-  if (cleaned.length <= 48) return cleaned;
-  const cut = cleaned.slice(0, 48);
-  const lastSpace = cut.lastIndexOf(" ");
-  return `${(lastSpace > 24 ? cut.slice(0, lastSpace) : cut).trim()}…`;
+
+  // Only the first sentence, since anything after it is detail.
+  const first = cleaned.split(/(?<=[.!?])\s/)[0] ?? cleaned;
+
+  const words = first
+    .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const kept = words.filter((word) => !TITLE_NOISE.has(word.toLowerCase()));
+  // Everything was filler, so the original is more use than nothing.
+  const chosen = (kept.length ? kept : words).slice(0, TITLE_WORDS);
+  if (!chosen.length) return "New conversation";
+
+  return chosen
+    .map((word) =>
+      // A word already carrying capitals is a name or an acronym: UE5, NeoForge.
+      /[A-Z]/.test(word.slice(1)) ? word : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+    )
+    .join(" ");
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useMemo, useState } from "react";
 import {
@@ -9,7 +10,6 @@ import {
   EmptyState,
   Field,
   FolderIcon,
-  PageHeader,
   PlusIcon,
   Select,
   TextArea,
@@ -157,10 +157,8 @@ export default function TasksPage() {
         eyebrow="Work"
         title="Tasks"
         description={
-          ready
-            ? open === 0
-              ? "Nothing outstanding. Anything you add here is read by the head whose area it sits in."
-              : `${open} open${overdue ? `, ${overdue} past its date` : ""}. Every head sees the open work in its own area before answering.`
+          ready && open > 0
+            ? `${open} open${overdue ? `, ${overdue} overdue` : ""}`
             : " "
         }
         actions={
@@ -198,8 +196,8 @@ export default function TasksPage() {
         {ready && tasks.length === 0 ? (
           <EmptyState
             icon={<FolderIcon className="h-6 w-6" />}
-            title="Nothing on the list"
-            description="Write down what is actually outstanding. Every head reads the open work in its own area, so asking one what to focus on gets answered against this rather than against nothing."
+            title="No tasks"
+            description="Open tasks are shared with the department they belong to."
             action={<Button onClick={() => openNew()}>Add the first one</Button>}
           />
         ) : (
@@ -369,7 +367,7 @@ export default function TasksPage() {
       >
         {draft ? (
           <div className="space-y-4">
-            <Field label="What needs doing" hint="One thing. Two things is two tasks.">
+            <Field label="Task">
               <TextInput
                 autoFocus
                 value={draft.title}
@@ -377,7 +375,7 @@ export default function TasksPage() {
                 placeholder="Write the Steam short description"
               />
             </Field>
-            <Field label="Notes" hint="Links, constraints, what finished looks like.">
+            <Field label="Notes">
               <TextArea
                 rows={3}
                 value={draft.notes}
@@ -385,12 +383,12 @@ export default function TasksPage() {
               />
             </Field>
             <div className="grid gap-4 medium:grid-cols-2">
-              <Field label="Whose area" hint="The head that reads it before answering.">
+              <Field label="Department">
                 <Select
                   value={draft.departmentId}
                   onChange={(e) => setDraft({ ...draft, departmentId: e.target.value })}
                 >
-                  <option value={COMPANY_ID}>Everyone</option>
+                  <option value={COMPANY_ID}>All departments</option>
                   {allDepartments.map((department) => (
                     <option key={department.id} value={department.id}>
                       {department.name}
@@ -412,7 +410,7 @@ export default function TasksPage() {
                   ))}
                 </Select>
               </Field>
-              <Field label="Project" hint="Optional.">
+              <Field label="Project">
                 <Select
                   value={draft.projectId}
                   onChange={(e) => setDraft({ ...draft, projectId: e.target.value })}
@@ -425,7 +423,7 @@ export default function TasksPage() {
                   ))}
                 </Select>
               </Field>
-              <Field label="Due" hint="Leave empty if there is no real date.">
+              <Field label="Due date">
                 <TextInput
                   type="date"
                   value={draft.dueOn}

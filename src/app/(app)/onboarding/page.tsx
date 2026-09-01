@@ -1,8 +1,13 @@
 "use client";
 
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { Card, Chip, PageHeader, cx } from "@/components/ui";
+import {
+  Card,
+  Chip,
+  cx,
+} from "@/components/ui";
 import { createRipple } from "@/components/ui/ripple";
 import { useStore } from "@/lib/store";
 
@@ -30,7 +35,7 @@ type ChapterId =
 
 const CHAPTERS: { id: ChapterId; label: string; blurb: string }[] = [
   { id: "onboarding", label: "Onboarding", blurb: "Start here on day one" },
-  { id: "heads", label: "The heads", blurb: "Who owns what" },
+  { id: "heads", label: "Departments", blurb: "Who owns what" },
   { id: "memory", label: "Memory", blurb: "Decisions and figures" },
   { id: "tasks", label: "Tasks", blurb: "What is outstanding" },
   { id: "skills", label: "Skills", blurb: "The playbooks they follow" },
@@ -67,7 +72,7 @@ export default function WikiPage() {
         title={`Working with ${company}`}
         description={
           chapter === "onboarding"
-            ? "10 minute read · Highly recommended"
+            ? "2 minute read"
             : current.blurb
         }
       />
