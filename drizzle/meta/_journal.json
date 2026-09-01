@@ -106,6 +106,13 @@
       "when": 1788230666428,
       "tag": "0014_complete_stellaris",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1788236857710,
+      "tag": "0015_chilly_kitty_pryde",
+      "breakpoints": true
     }
   ]
 }

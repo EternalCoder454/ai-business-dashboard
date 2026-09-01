@@ -10,7 +10,12 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
-import type { AllHandsResponse, Attachment, ToolCallRecord } from "@/lib/types";
+import type {
+  AllHandsResponse,
+  Attachment,
+  ToolCallRecord,
+  WikiBlock,
+} from "@/lib/types";
 
 /**
  * Every row is scoped by the signed-in email.
@@ -388,6 +393,7 @@ export const wikiPages = pgTable(
     title: text("title").notNull(),
     blurb: text("blurb").notNull().default(""),
     body: text("body").notNull().default(""),
+    blocks: jsonb("blocks").$type<WikiBlock[]>(),
     sortOrder: integer("sort_order").notNull().default(0),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: created(),

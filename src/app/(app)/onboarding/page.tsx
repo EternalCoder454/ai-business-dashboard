@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Markdown } from "@/components/ChatView";
 import { BookIcon, EmptyState, cx } from "@/components/ui";
 import { createRipple } from "@/components/ui/ripple";
+import { blocksOf } from "@/lib/seedWiki";
 import { useStore } from "@/lib/store";
 
 /**
@@ -91,12 +92,33 @@ export default function WikiPage() {
             </nav>
 
             <div className="measure-read flex flex-col gap-5 expanded:mx-0">
-              {current ? (
-                <article className="rounded-2xl bg-container p-5 shadow-e1">
-                  <h1 className="md-title-lg mb-3">{current.title}</h1>
-                  <Markdown>{current.body}</Markdown>
-                </article>
-              ) : null}
+              {current
+                ? blocksOf(current).map((block) => (
+                    <article
+                      key={block.id}
+                      className={cx(
+                        "rounded-2xl p-5",
+                        block.tone === "warning"
+                          ? "border border-warning/25 bg-warning/10"
+                          : block.tone === "note"
+                            ? "border border-outline-variant"
+                            : "bg-container shadow-e1",
+                      )}
+                    >
+                      {block.title ? (
+                        <h2
+                          className={cx(
+                            "md-title-lg mb-3",
+                            block.tone === "warning" && "text-warning",
+                          )}
+                        >
+                          {block.title}
+                        </h2>
+                      ) : null}
+                      <Markdown>{block.body}</Markdown>
+                    </article>
+                  ))
+                : null}
 
               {next ? (
                 <button

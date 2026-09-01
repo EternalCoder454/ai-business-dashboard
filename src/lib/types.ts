@@ -315,13 +315,37 @@ export interface Task {
  * needs to say. The shipped pages describe the panel itself and nothing about
  * whoever built it, which is what makes it sellable as a product.
  */
+/**
+ * How a card is drawn. Tone is the only styling anyone gets: a wiki where
+ * every card can be any colour stops meaning anything after the third page.
+ */
+export type WikiBlockTone = "default" | "warning" | "note";
+
+/** One card on a page. */
+export interface WikiBlock {
+  id: string;
+  /** Optional. A card with no heading is a plain run of text. */
+  title: string;
+  /** Markdown. */
+  body: string;
+  tone: WikiBlockTone;
+}
+
 export interface WikiPage {
   id: string;
   title: string;
   /** One line under the title in the contents list. */
   blurb: string;
-  /** Markdown. */
-  body: string;
+  /**
+   * The cards on this page.
+   *
+   * Pages were one markdown body first. That made a page a wall of text where
+   * the old hardcoded wiki had separate cards, so the structure came back as
+   * data rather than as components.
+   */
+  blocks: WikiBlock[];
+  /** The single body a page had before it held cards. Migrated on load. */
+  body?: string;
   order: number;
   /** A page can be put away without deleting what it said. */
   enabled: boolean;
