@@ -45,7 +45,14 @@ async function resolveOwner(): Promise<
    * for them would quietly separate a colleague from the company they were
    * meant to join.
    */
-  if (!OPERATOR_EMAILS.includes(email)) {
+  /*
+   * The same two cases sign-in allows: an operator, or the first person into
+   * an install that has nobody. Both have to land in a workspace, or they are
+   * signed in to a door that opens onto nothing.
+   */
+  const { nobodyHasAccess } = await import("@/db/access");
+  const firstRun = OPERATOR_EMAILS.length === 0 && (await nobodyHasAccess());
+  if (!OPERATOR_EMAILS.includes(email) && !firstRun) {
     return { error: "This account is not in a workspace yet.", status: 403 };
   }
 
