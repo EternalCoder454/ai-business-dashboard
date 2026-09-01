@@ -311,5 +311,73 @@ console.log("\nthe task reducer");
 }
 
 
+console.log("\ncompany-wide entries are never crowded out by a cap");
+{
+  const shared = entry({
+    kind: "decision",
+    label: "No new client sites",
+    occurredAt: T0 - 400 * DAY,
+  });
+  const crowd = Array.from({ length: 30 }, (_, i) =>
+    entry({
+      kind: "decision",
+      label: `finance call ${i}`,
+      departmentId: "finance",
+      occurredAt: T0 - i * DAY,
+    }),
+  );
+
+  // The failure this guards against: the company-wide entry passes the filter,
+  // then sorts oldest and falls off the end of the cap, so it silently never
+  // reaches the department it was written for.
+  const block = buildMemoryBlock([shared, ...crowd], "finance");
+  check("an old company-wide decision still reaches the prompt", block.includes("No new client sites"));
+  check("and is marked as applying to everyone", block.includes("[company-wide]"));
+  check("the department's own newest still gets in", block.includes("finance call 0"));
+  check("and what did not fit is admitted to", /older decision\(s\) not listed/.test(block));
+
+  // Figures were grouped into a Map and sliced in insertion order, so whether a
+  // company-wide one survived depended on where it happened to be added.
+  const figures = [
+    ...Array.from({ length: 25 }, (_, i) =>
+      entry({ kind: "figure", label: `metric ${i}`, value: String(i), departmentId: "finance" }),
+    ),
+    entry({ kind: "figure", label: "Runway", value: "4 months" }),
+  ];
+  check(
+    "a company-wide figure added last still reaches the prompt",
+    buildMemoryBlock(figures, "finance").includes("Runway"),
+  );
+
+  const tasks: Task[] = [
+    {
+      id: "shared",
+      title: "Freeze new client work",
+      notes: "",
+      status: "todo",
+      departmentId: COMPANY_ID,
+      order: 0,
+      createdAt: T0,
+      updatedAt: T0,
+    },
+    ...Array.from({ length: 20 }, (_, i) => ({
+      id: `own_${i}`,
+      title: `finance task ${i}`,
+      notes: "",
+      status: "todo" as const,
+      departmentId: "finance",
+      order: i,
+      dueAt: T0 + i * DAY,
+      createdAt: T0,
+      updatedAt: T0,
+    })),
+  ];
+  // Dated work sorts first, so an undated company-wide task was cut every time.
+  const taskBlock = buildTasksBlock(tasks, "finance");
+  check("an undated company-wide task still reaches the prompt", taskBlock.includes("Freeze new client work"));
+  check("and is marked company-wide", taskBlock.includes("company-wide"));
+}
+
+
 console.log(failures ? "\nFAILURES ABOVE" : "\nall checks passed");
 process.exit(failures ? 1 : 0);

@@ -132,31 +132,41 @@ const MAX_TASKS = 15;
  * reply.
  */
 export function buildTasksBlock(tasks: Task[], departmentId: string): string {
-  const mine = tasks
-    .filter(
-      (task) =>
-        task.status !== "done" &&
-        (task.departmentId === departmentId || task.departmentId === COMPANY_ID),
-    )
-    .sort((a, b) => {
-      // Dated work first, soonest first, then whatever has been ordered by hand.
-      if (a.dueAt && b.dueAt) return a.dueAt - b.dueAt;
-      if (a.dueAt) return -1;
-      if (b.dueAt) return 1;
-      return a.order - b.order;
-    });
+  const open = tasks.filter(
+    (task) =>
+      task.status !== "done" &&
+      (task.departmentId === departmentId || task.departmentId === COMPANY_ID),
+  );
+  if (!open.length) return "";
 
-  if (!mine.length) return "";
+  // Dated work first, soonest first, then whatever has been ordered by hand.
+  const byUrgency = (a: Task, b: Task) => {
+    if (a.dueAt && b.dueAt) return a.dueAt - b.dueAt;
+    if (a.dueAt) return -1;
+    if (b.dueAt) return 1;
+    return a.order - b.order;
+  };
+
+  /**
+   * Company-wide work is guaranteed a place, the same as company-wide memory.
+   * Sorting everything together and slicing dropped an undated company-wide
+   * task behind twenty dated department ones, so it never reached the prompt.
+   */
+  const shared = open.filter((t) => t.departmentId === COMPANY_ID).sort(byUrgency);
+  const own = open.filter((t) => t.departmentId !== COMPANY_ID).sort(byUrgency);
+  const taken = [...shared.slice(0, MAX_TASKS)];
+  taken.push(...own.slice(0, Math.max(0, MAX_TASKS - taken.length)));
 
   const lines = ["=== OPEN WORK IN YOUR AREA ==="];
-  for (const task of mine.slice(0, MAX_TASKS)) {
+  for (const task of taken) {
     const bits = [task.status === "doing" ? "in progress" : "not started"];
     if (task.dueAt) bits.push(`due ${new Date(task.dueAt).toISOString().slice(0, 10)}`);
+    if (task.departmentId === COMPANY_ID) bits.push("company-wide");
     lines.push(`- ${task.title.trim()} (${bits.join(", ")})`);
     if (task.notes.trim()) lines.push(`  ${task.notes.trim().slice(0, 200)}`);
   }
-  if (mine.length > MAX_TASKS) {
-    lines.push(`- and ${mine.length - MAX_TASKS} more not listed here.`);
+  if (open.length > taken.length) {
+    lines.push(`- and ${open.length - taken.length} more not listed here.`);
   }
 
   lines.push(

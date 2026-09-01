@@ -44,9 +44,10 @@ console.log("nothing that existed before changed");
     "no seeded department pins a model",
     seedDepartments().every((d) => d.model === undefined),
   );
+  const departmentModel: string | undefined = undefined;
   check(
     "a department with no model falls back to the workspace default",
-    providerOf(undefined || DEFAULT_SETTINGS.model) === "anthropic",
+    providerOf(departmentModel ?? DEFAULT_SETTINGS.model) === "anthropic",
   );
   // An older client sends no provider field at all, and the server reads it
   // off the model id instead.

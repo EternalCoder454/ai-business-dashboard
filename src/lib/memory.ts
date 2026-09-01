@@ -56,6 +56,27 @@ export function figureSeries(entries: MemoryEntry[]): Map<string, MemoryEntry[]>
 }
 
 /**
+ * Company-wide first, then this department's, up to a cap.
+ *
+ * A company-wide entry is by definition meant to reach every department, so it
+ * cannot be the thing a cap drops. Sorting the two groups together and slicing
+ * did exactly that: an important decision from a year ago fell off the end
+ * behind thirty newer department ones and silently never reached the prompt.
+ */
+function prioritised<T extends { departmentId: string; occurredAt: number }>(
+  entries: T[],
+  cap: number,
+): { taken: T[]; dropped: number } {
+  const newestFirst = (a: T, b: T) => b.occurredAt - a.occurredAt;
+  const shared = entries.filter((e) => e.departmentId === COMPANY_ID).sort(newestFirst);
+  const own = entries.filter((e) => e.departmentId !== COMPANY_ID).sort(newestFirst);
+
+  const taken = [...shared.slice(0, cap)];
+  taken.push(...own.slice(0, Math.max(0, cap - taken.length)));
+  return { taken, dropped: entries.length - taken.length };
+}
+
+/**
  * The prompt block, or an empty string when there is nothing to say.
  *
  * Placed late in the system prompt on purpose. The whole prompt is one cached
@@ -68,36 +89,58 @@ export function buildMemoryBlock(entries: MemoryEntry[], departmentId: string): 
 
   const lines: string[] = ["=== WHAT THIS STUDIO HAS DECIDED AND MEASURED ==="];
 
-  const decisions = mine
-    .filter((entry) => entry.kind === "decision")
-    .sort((a, b) => b.occurredAt - a.occurredAt)
-    .slice(0, MAX_DECISIONS);
+  const decisions = prioritised(
+    mine.filter((entry) => entry.kind === "decision"),
+    MAX_DECISIONS,
+  );
 
-  if (decisions.length) {
+  if (decisions.taken.length) {
     lines.push("", "Standing decisions. These are settled: work from them rather than reopening them.");
-    for (const entry of decisions) {
-      const parts = [`- ${on(entry.occurredAt)}: ${entry.label.trim()}`];
-      if (entry.detail.trim()) parts.push(`  Why: ${entry.detail.trim()}`);
-      if (entry.revisitWhen.trim()) parts.push(`  Revisit when: ${entry.revisitWhen.trim()}`);
-      lines.push(...parts);
+    for (const entry of decisions.taken) {
+      const scope = entry.departmentId === COMPANY_ID ? " [company-wide]" : "";
+      lines.push(`- ${on(entry.occurredAt)}${scope}: ${entry.label.trim()}`);
+      if (entry.detail.trim()) lines.push(`  Why: ${entry.detail.trim()}`);
+      if (entry.revisitWhen.trim()) lines.push(`  Revisit when: ${entry.revisitWhen.trim()}`);
+    }
+    if (decisions.dropped > 0) {
+      lines.push(`- ${decisions.dropped} older decision(s) not listed here.`);
     }
   }
 
-  const series = figureSeries(mine);
-  if (series.size) {
+  /**
+   * Figures are grouped into series before the cap, and a series is ranked by
+   * its newest reading. Slicing the Map directly took whichever twenty
+   * happened to be inserted first, which is not a decision anyone made.
+   */
+  const series = figureSeries(mine.filter((entry) => entry.kind === "figure"));
+  const ranked = prioritised(
+    [...series].map(([label, readings]) => ({
+      label,
+      readings,
+      departmentId: readings[0].departmentId,
+      occurredAt: readings[0].occurredAt,
+    })),
+    MAX_SERIES,
+  );
+
+  if (ranked.taken.length) {
     lines.push("", "Figures, most recent first. Use these instead of asking for them.");
-    for (const [label, readings] of [...series].slice(0, MAX_SERIES)) {
+    for (const { label, readings, departmentId: scope } of ranked.taken) {
       const shown = readings
         .slice(0, MAX_READINGS)
         .map((entry) => `${entry.value.trim()} (${on(entry.occurredAt)})`)
         .join(", then ");
-      lines.push(`- ${label.trim()}: ${shown}`);
+      lines.push(`- ${label.trim()}${scope === COMPANY_ID ? " [company-wide]" : ""}: ${shown}`);
+    }
+    if (ranked.dropped > 0) {
+      lines.push(`- ${ranked.dropped} other figure(s) not listed here.`);
     }
   }
 
   lines.push(
     "",
     "Everything above is established fact about this business, written down by the person you are talking to.",
+    "Anything marked company-wide applies to every department, including yours.",
     "Do not contradict it and do not ask them to restate it.",
     "A figure with only one reading is a snapshot, not a trend, so do not describe it as rising or falling.",
     "If something here looks stale or wrong for the question, say so plainly rather than quietly working around it.",
