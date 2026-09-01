@@ -2,6 +2,8 @@ import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { isEmpty } from "@/db/repo";
 import { isAdminAccount, isOwnerEmail } from "@/lib/admin";
+import { NO_KEYS, keySummaries } from "@/db/keys";
+import { membershipFor } from "@/db/tenancy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,6 +78,12 @@ export async function GET() {
   const isAdmin = await isAdminAccount(email);
   const isOwner = isOwnerEmail(email);
 
+  // Whether the business holds a key, and its last four characters. Never the
+  // key: nothing returns that, to an administrator or anyone else.
+  const membership = await membershipFor(email);
+  const workspaceRole = membership?.role ?? null;
+  const workspaceKeys = membership ? await keySummaries(membership.workspaceId) : NO_KEYS;
+
   const identity = {
     name: session.user?.name ?? undefined,
     givenName: session.user?.name?.split(" ")[0] ?? undefined,
@@ -88,6 +96,8 @@ export async function GET() {
       signedIn: true,
       serverKey,
       serverKeys: serverKeys(),
+      workspaceKeys,
+      workspaceRole,
       isAdmin,
       isOwner,
       email,
@@ -101,6 +111,8 @@ export async function GET() {
       signedIn: true,
       serverKey,
       serverKeys: serverKeys(),
+      workspaceKeys,
+      workspaceRole,
       isAdmin,
       isOwner,
       email,

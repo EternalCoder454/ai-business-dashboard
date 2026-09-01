@@ -93,6 +93,18 @@ export interface StoreValue {
   serverKey: boolean;
   /** One flag per provider, for the API card in Settings. */
   serverKeys: { anthropic: boolean; openai: boolean; google: boolean };
+  /**
+   * Whether the business holds a key for each provider, and its last four
+   * characters. Never the key itself: nothing returns that to a browser.
+   */
+  workspaceKeys: Record<"anthropic" | "openai" | "google", { set: boolean; tail: string }>;
+  /** Admin of this workspace, which is what lets someone change its keys. */
+  workspaceRole: "member" | "admin" | null;
+  /** Sets or clears the business's key. Administrators only, enforced server side. */
+  setWorkspaceKey: (
+    provider: "anthropic" | "openai" | "google",
+    key: string,
+  ) => Promise<string | null>;
   /** Whether this account may review other people's conversations. */
   isAdmin: boolean;
   /** Pushes everything in this browser into the signed-in account. */
@@ -217,6 +229,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Whether the server has its own Anthropic key, so Settings can stop asking
   // for one that would be ignored anyway.
   const [serverKey, setServerKey] = useState(false);
+  const [workspaceKeys, setWorkspaceKeys] = useState({
+    anthropic: { set: false, tail: "" },
+    openai: { set: false, tail: "" },
+    google: { set: false, tail: "" },
+  });
+  const [workspaceRole, setWorkspaceRole] = useState<"member" | "admin" | null>(null);
   const [serverKeys, setServerKeys] = useState({
     anthropic: false,
     openai: false,
@@ -272,6 +290,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
         setServerKey(Boolean(status?.serverKey));
         if (status?.serverKeys) setServerKeys(status.serverKeys);
+        if (status?.workspaceKeys) setWorkspaceKeys(status.workspaceKeys);
+        setWorkspaceRole(status?.workspaceRole ?? null);
         setIsAdmin(Boolean(status?.isAdmin));
         setIsOwner(Boolean(status?.isOwner));
         setMode(status?.hosted && status.signedIn ? "hosted" : "local");
@@ -743,6 +763,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       accountEmail: signedInEmail,
       serverKey,
       serverKeys,
+      workspaceKeys,
+      workspaceRole,
+      setWorkspaceKey: async (provider, key) => {
+        const response = await fetch("/api/workspace/keys", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ provider, key }),
+        });
+        const body = (await response.json().catch(() => null)) as
+          | { error?: string; keys?: typeof workspaceKeys }
+          | null;
+        if (!response.ok) return body?.error ?? "Could not save that key.";
+        if (body?.keys) setWorkspaceKeys(body.keys);
+        return null;
+      },
       isAdmin,
       allDepartments: departmentList,
       departments: departmentList.filter((d) => !d.isCeo && !d.personal),
@@ -1424,6 +1459,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     taskList,
     wikiList,
     serverKeys,
+    workspaceKeys,
+    workspaceRole,
     mode,
     signedInEmail,
     serverKey,

@@ -198,6 +198,9 @@ CREATE TABLE "projects" (
 --> statement-breakpoint
 CREATE TABLE "settings" (
 	"workspace_id" text PRIMARY KEY NOT NULL,
+	"anthropic_key" text DEFAULT '' NOT NULL,
+	"openai_key" text DEFAULT '' NOT NULL,
+	"google_key" text DEFAULT '' NOT NULL,
 	"model" text DEFAULT 'claude-sonnet-5' NOT NULL,
 	"effort" text DEFAULT 'medium' NOT NULL,
 	"theme" text DEFAULT 'dark' NOT NULL,

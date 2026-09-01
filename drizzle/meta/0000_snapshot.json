@@ -1,5 +1,5 @@
 {
-  "id": "9968b4cc-b77b-460b-a792-09abb366ec8f",
+  "id": "be04f3be-f1a8-489b-a8eb-fc6893e93ee7",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1557,6 +1557,27 @@
           "type": "text",
           "primaryKey": true,
           "notNull": true
+        },
+        "anthropic_key": {
+          "name": "anthropic_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "openai_key": {
+          "name": "openai_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "google_key": {
+          "name": "google_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
         },
         "model": {
           "name": "model",

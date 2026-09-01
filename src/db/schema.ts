@@ -310,12 +310,27 @@ export const profiles = pgTable("profiles", {
 });
 
 /**
- * Deliberately has no api key column. The key is a server environment variable
- * now, so a database dump cannot leak it and a second device cannot pick up a
- * key that was typed into the first.
+ * Settings for one business, including its model keys.
+ *
+ * The keys used to be refused a column here on the grounds that a credential
+ * in a database is a credential in a database dump. That was right when a
+ * workspace was one person: the key lived in their browser and rode along as a
+ * request header. It stops being right when a workspace is a company. The
+ * owner buys the capacity and the staff use it, so a key in each employee's
+ * browser means every one of them holds the company's billing credential, on
+ * every device they sign in from, and losing one is a rotation.
+ *
+ * So they live here, and the trade is paid for rather than ignored: these
+ * columns are never read into the workspace snapshot, only ever a boolean and
+ * the last four characters, and only an admin can write them. The key itself
+ * goes from this table to the model and nowhere else, which also takes it out
+ * of the request headers it used to travel in.
  */
 export const settings = pgTable("settings", {
   workspaceId: text("workspace_id").primaryKey(),
+  anthropicKey: text("anthropic_key").notNull().default(""),
+  openaiKey: text("openai_key").notNull().default(""),
+  googleKey: text("google_key").notNull().default(""),
   model: text("model").notNull().default("claude-sonnet-5"),
   effort: text("effort").notNull().default("medium"),
   theme: text("theme").notNull().default("dark"),
