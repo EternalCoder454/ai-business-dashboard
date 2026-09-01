@@ -114,7 +114,7 @@ function SkillsView() {
     URL.revokeObjectURL(url);
   };
 
-  const upload = async (files: FileList) => {
+  const upload = async (files: FileList | File[]) => {
     const target = filter === "all" ? allDepartments[0]?.id ?? CEO_ID : filter;
     let added = 0;
     for (const file of Array.from(files)) {
@@ -322,9 +322,12 @@ function SkillsView() {
         multiple
         className="hidden"
         onChange={(event) => {
-          const files = event.target.files;
+          // Copied before the input is cleared. `files` is a live view of the
+          // input, so resetting the value empties the very list being passed
+          // on, and the picker silently did nothing at all.
+          const files = Array.from(event.target.files ?? []);
           event.target.value = "";
-          if (files?.length) void upload(files);
+          if (files.length) void upload(files);
         }}
       />
 

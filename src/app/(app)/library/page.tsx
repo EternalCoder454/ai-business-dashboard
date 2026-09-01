@@ -278,9 +278,12 @@ export default function LibraryPage() {
         multiple
         className="hidden"
         onChange={(event) => {
-          const list = event.target.files;
+          // Copied before the input is cleared. `files` is a live view of the
+          // input, so resetting the value empties the very list being passed
+          // on, and the picker silently did nothing at all.
+          const list = Array.from(event.target.files ?? []);
           event.target.value = "";
-          if (list?.length) void ingest(list);
+          if (list.length) void ingest(list);
         }}
       />
 

@@ -288,6 +288,35 @@ console.log("\na write immediately after a create can see it");
     );
   }
 
+  /*
+   * File pickers hand on a copy, not the input's own list.
+   *
+   * `input.files` is live. Every one of these handlers clears the input so the
+   * same file can be picked twice in a row, and three of them held the list
+   * across that clear, which emptied it: choosing a file did nothing at all,
+   * with no error to show for it. Reading a single File out first is fine, so
+   * only a handler that keeps the list is a finding.
+   */
+  console.log("\nfile pickers copy the list before clearing the input");
+  {
+    const sources = [
+      "src/app/(app)/library/page.tsx",
+      "src/app/(app)/library/skills/page.tsx",
+      "src/app/(app)/settings/page.tsx",
+      "src/app/(app)/account/page.tsx",
+      "src/components/ChatView.tsx",
+    ];
+    const offenders: string[] = [];
+    for (const file of sources) {
+      const text = readFileSync(file, "utf8");
+      // The list bound whole, then the input cleared, with no copy in between.
+      const pattern =
+        /=\s*event\.target\.files\s*(?:\?\?[^;]*)?;\s*\n\s*event\.target\.value\s*=\s*""/g;
+      if (pattern.test(text)) offenders.push(file);
+    }
+    check("no handler clears the input while still holding its list", offenders.length === 0, offenders.join(", "));
+  }
+
   console.log(failures ? "\nFAILURES ABOVE" : "\nall checks passed");
   process.exit(failures ? 1 : 0);
 }

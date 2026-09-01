@@ -940,9 +940,12 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             multiple
             className="hidden"
             onChange={(event) => {
-              const files = event.target.files;
+              // Copied before the input is cleared. `files` is a live view of
+              // the input, so resetting the value empties the very list being
+              // passed on, and the picker silently did nothing at all.
+              const files = Array.from(event.target.files ?? []);
               event.target.value = "";
-              if (files?.length) void attach(files);
+              if (files.length) void attach(files);
             }}
           />
         </div>
