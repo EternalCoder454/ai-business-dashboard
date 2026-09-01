@@ -121,14 +121,16 @@ export interface Project {
    */
   sharedWith?: string[];
   /** Set when this project belongs to someone else and was shared with you. */
-  ownerEmail?: string;
+  /** Set when this row came from another workspace: that workspace's name. */
+  sharedFrom?: string;
 }
 
 export interface Conversation {
   id: string;
   departmentId: string;
   /** Set when the conversation belongs to someone else, through a shared project. */
-  ownerEmail?: string;
+  /** Set when this row came from another workspace: that workspace's name. */
+  sharedFrom?: string;
   /** The project this belongs to, when it belongs to one. */
   projectId?: string;
   title: string;

@@ -9,7 +9,8 @@ import {
   overview,
   readConversation,
 } from "@/db/admin";
-import { ADMIN_EMAILS, isAdminEmail } from "@/lib/admin";
+import { ADMIN_EMAILS, isAdminAccount } from "@/lib/admin";
+import { grantAccess, listAccess, revokeAccess } from "@/db/access";
 import { ALLOWED_EMAILS } from "@/auth";
 import { readJsonWithin } from "@/lib/guard";
 
@@ -36,7 +37,7 @@ async function requireAdmin(): Promise<
 
   // A plain 404 rather than a 403: someone who is not an administrator has no
   // business learning that this route exists.
-  if (!isAdminEmail(email)) return { ok: false, status: 404, error: "Not found." };
+  if (!(await isAdminAccount(email))) return { ok: false, status: 404, error: "Not found." };
 
   return { ok: true, email };
 }
@@ -75,9 +76,14 @@ export async function GET(request: Request) {
       people,
       overview: totals,
       self: admin.email,
-      // Both lists come from the environment, so they are shown rather than
-      // edited here. Saying who is allowed beats making it guessable.
-      access: { allowed: ALLOWED_EMAILS, admins: ADMIN_EMAILS },
+      // The environment lists are shown as well as the table, because they
+      // still grant access and an administrator reading this page needs to
+      // know why someone can sign in who is not on the list they can edit.
+      access: {
+        allowed: ALLOWED_EMAILS,
+        admins: ADMIN_EMAILS,
+        invited: await listAccess(),
+      },
     });
   } catch (error) {
     console.error("[api/admin]", error);
@@ -130,5 +136,81 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error("[api/admin] delete", error);
     return Response.json({ error: "Could not delete that workspace." }, { status: 500 });
+  }
+}
+
+/**
+ * Inviting and revoking.
+ *
+ * This is the whole point of the access table: adding a person used to be an
+ * environment variable and a redeploy, which is not something you do for one
+ * beta tester and not something you do at all in a hurry.
+ *
+ * Revoking only stops the sign-in. Their workspace is left where it is, and
+ * removing that is the DELETE above, typed twice. Those are different
+ * decisions and should never share a button.
+ */
+export async function POST(request: Request) {
+  const admin = await requireAdmin();
+  if (!admin.ok) {
+    return Response.json({ error: admin.error }, { status: admin.status });
+  }
+
+  const parsed = await readJsonWithin<{
+    action?: string;
+    email?: string;
+    workspaceId?: string;
+    role?: string;
+    note?: string;
+  }>(request, 4_000);
+  if (!parsed.ok) {
+    return Response.json({ error: parsed.error }, { status: parsed.status });
+  }
+
+  const { action, note } = parsed.body;
+  const email = parsed.body.email?.trim().toLowerCase();
+  if (!email) return Response.json({ error: "No address given." }, { status: 400 });
+
+  // Not a full RFC check, just enough that a typo does not become a row.
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return Response.json({ error: "That is not an address." }, { status: 400 });
+  }
+
+  try {
+    if (action === "revoke") {
+      if (email === admin.email) {
+        return Response.json(
+          { error: "You cannot revoke your own access." },
+          { status: 400 },
+        );
+      }
+      // An address in the environment keeps working whatever this table says,
+      // so revoking it here would report success and change nothing.
+      if (ALLOWED_EMAILS.includes(email)) {
+        return Response.json(
+          { error: "That address is in ALLOWED_EMAILS. Remove it there." },
+          { status: 400 },
+        );
+      }
+      console.warn(`[admin] ${admin.email} revoked ${email}`);
+      await revokeAccess(email);
+      return Response.json({ ok: true, access: await listAccess() });
+    }
+
+    if (action === "grant") {
+      const role = parsed.body.role === "admin" ? "admin" : "member";
+      const workspaceId = parsed.body.workspaceId?.trim();
+      if (!workspaceId) {
+        return Response.json({ error: "No workspace named." }, { status: 400 });
+      }
+      console.log(`[admin] ${admin.email} invited ${email} to ${workspaceId} as ${role}`);
+      await grantAccess({ email, workspaceId, role, note, invitedBy: admin.email });
+      return Response.json({ ok: true, access: await listAccess() });
+    }
+
+    return Response.json({ error: "Unknown action." }, { status: 400 });
+  } catch (error) {
+    console.error("[api/admin] access", error);
+    return Response.json({ error: "Could not change access." }, { status: 500 });
   }
 }

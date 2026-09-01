@@ -24,8 +24,8 @@ function check(label: string, condition: boolean, detail = "") {
 }
 
 async function wipe() {
-  const current = await loadWorkspace(USER);
-  await applyMutations(USER, [
+  const current = await loadWorkspace(USER, USER);
+  await applyMutations(USER, USER, [
     { table: "conversations", action: "delete", ids: current.conversations.map((c) => c.id) },
     { table: "departments", action: "delete", ids: current.departments.map((d) => d.id) },
     { table: "skills", action: "delete", ids: current.skills.map((s) => s.id) },
@@ -42,7 +42,7 @@ async function main() {
   check("account reads as empty", await isEmpty(USER));
 
   console.log("\nseeding");
-  await applyMutations(USER, [
+  await applyMutations(USER, USER, [
     { table: "departments", action: "upsert", rows: seedDepartments() },
     { table: "skills", action: "upsert", rows: seedSkills() },
     {
@@ -67,7 +67,7 @@ async function main() {
     },
   ]);
 
-  const seeded = await loadWorkspace(USER);
+  const seeded = await loadWorkspace(USER, USER);
   check("departments round trip", seeded.departments.length === 8, `${seeded.departments.length}`);
   check("ceo flag survives", Boolean(seeded.departments.find((d) => d.isCeo)));
   check("order preserved", seeded.departments[0]?.order === 0);
@@ -120,9 +120,9 @@ async function main() {
       },
     ],
   };
-  await applyMutations(USER, [{ table: "conversations", action: "upsert", rows: [conversation] }]);
+  await applyMutations(USER, USER, [{ table: "conversations", action: "upsert", rows: [conversation] }]);
 
-  const withConv = await loadWorkspace(USER);
+  const withConv = await loadWorkspace(USER, USER);
   const loaded = withConv.conversations.find((c) => c.id === "conv_smoke");
   check("conversation stored", Boolean(loaded));
   check(
@@ -144,7 +144,7 @@ async function main() {
   );
 
   console.log("\nappending a turn does not duplicate the earlier ones");
-  await applyMutations(USER, [
+  await applyMutations(USER, USER, [
     {
       table: "conversations",
       action: "upsert",
@@ -164,12 +164,12 @@ async function main() {
       ],
     },
   ]);
-  const appended = await loadWorkspace(USER);
+  const appended = await loadWorkspace(USER, USER);
   const appendedCount = appended.conversations.find((c) => c.id === "conv_smoke")?.messages.length;
   check("three messages, not five", appendedCount === 3, String(appendedCount));
 
   console.log("\nall hands round trip");
-  await applyMutations(USER, [
+  await applyMutations(USER, USER, [
     {
       table: "allHands",
       action: "upsert",
@@ -196,14 +196,14 @@ async function main() {
       ],
     },
   ]);
-  const rooms = await loadWorkspace(USER);
+  const rooms = await loadWorkspace(USER, USER);
   const room = rooms.allHandsRuns.find((r) => r.id === "room_smoke");
   check("run stored", Boolean(room));
   check("round responses survive as json", room?.rounds[0]?.responses.length === 2);
   check("synthesis survives", room?.rounds[0]?.synthesis === "Hold for now.");
 
   console.log("\nlibrary file round trip");
-  await applyMutations(USER, [
+  await applyMutations(USER, USER, [
     {
       table: "files",
       action: "upsert",
@@ -225,14 +225,14 @@ async function main() {
       ],
     },
   ]);
-  const withFile = await loadWorkspace(USER);
+  const withFile = await loadWorkspace(USER, USER);
   const file = withFile.files.find((f) => f.id === "file_smoke");
   check("library file stored", Boolean(file));
   check("extracted text survives", file?.text === "Payment terms are net 30.");
   check("note survives", file?.note === "client A");
 
   console.log("\nprojects group work across departments");
-  await applyMutations(USER, [
+  await applyMutations(USER, USER, [
     {
       table: "projects",
       action: "upsert",
@@ -253,7 +253,7 @@ async function main() {
 
   // The fixture has no deliverable of its own, and a check that passes because
   // there was nothing to check is worse than no check at all.
-  await applyMutations(USER, [
+  await applyMutations(USER, USER, [
     {
       table: "deliverables",
       action: "upsert",
@@ -273,8 +273,8 @@ async function main() {
 
   // File work from more than one department under the one project, which is
   // the whole reason projects exist.
-  const beforeFiling = await loadWorkspace(USER);
-  await applyMutations(USER, [
+  const beforeFiling = await loadWorkspace(USER, USER);
+  await applyMutations(USER, USER, [
     {
       table: "conversations",
       action: "upsert",
@@ -292,7 +292,7 @@ async function main() {
     },
   ]);
 
-  const filed = await loadWorkspace(USER);
+  const filed = await loadWorkspace(USER, USER);
   const project = filed.projects.find((p) => p.id === "proj_smoke");
   check("project stored", Boolean(project));
   check("project summary survives", project?.summary === "Modpack and client site together.");
@@ -309,8 +309,8 @@ async function main() {
   const conversationCount = filed.conversations.length;
   const deliverableCount = filed.deliverables.length;
   const fileCount = filed.files.length;
-  await applyMutations(USER, [{ table: "projects", action: "delete", ids: ["proj_smoke"] }]);
-  const released = await loadWorkspace(USER);
+  await applyMutations(USER, USER, [{ table: "projects", action: "delete", ids: ["proj_smoke"] }]);
+  const released = await loadWorkspace(USER, USER);
   check("project gone", !released.projects.some((p) => p.id === "proj_smoke"));
   check(
     "conversations survived",
@@ -333,7 +333,7 @@ async function main() {
   console.log("\nthe studio record survives a round trip");
   {
     const now = Date.now();
-    await applyMutations(USER, [
+    await applyMutations(USER, USER, [
       {
         table: "memory",
         action: "upsert",
@@ -368,7 +368,7 @@ async function main() {
       },
     ]);
 
-    const back = await loadWorkspace(USER);
+    const back = await loadWorkspace(USER, USER);
     check("both entries came back", back.memory.length === 2, `${back.memory.length}`);
     const decision = back.memory.find((entry) => entry.id === "mem_smoke_1");
     check("the kind survived", decision?.kind === "decision");
@@ -382,16 +382,16 @@ async function main() {
     check("the reading survived", figure?.value === "1,240");
     check("newest first", back.memory[0]?.id === "mem_smoke_2", back.memory[0]?.id);
 
-    await applyMutations(USER, [
+    await applyMutations(USER, USER, [
       { table: "memory", action: "delete", ids: ["mem_smoke_1", "mem_smoke_2"] },
     ]);
-    check("and they delete", (await loadWorkspace(USER)).memory.length === 0);
+    check("and they delete", (await loadWorkspace(USER, USER)).memory.length === 0);
   }
 
   console.log("\ntasks survive a round trip");
   {
     const now = Date.now();
-    await applyMutations(USER, [
+    await applyMutations(USER, USER, [
       {
         table: "tasks",
         action: "upsert",
@@ -411,7 +411,7 @@ async function main() {
       },
     ]);
 
-    const back = await loadWorkspace(USER);
+    const back = await loadWorkspace(USER, USER);
     const task = back.tasks.find((row) => row.id === "task_smoke_1");
     check("it came back", Boolean(task));
     check("the status survived", task?.status === "doing");
@@ -422,8 +422,8 @@ async function main() {
     check("hand ordering survived, negatives included", task?.order === -3);
     check("nothing invented a completedAt", task?.completedAt === undefined);
 
-    await applyMutations(USER, [{ table: "tasks", action: "delete", ids: ["task_smoke_1"] }]);
-    check("and it deletes", (await loadWorkspace(USER)).tasks.length === 0);
+    await applyMutations(USER, USER, [{ table: "tasks", action: "delete", ids: ["task_smoke_1"] }]);
+    check("and it deletes", (await loadWorkspace(USER, USER)).tasks.length === 0);
   }
 
   console.log("\nfile bytes stay in the database and out of the snapshot");
@@ -431,7 +431,7 @@ async function main() {
     const now = Date.now();
     // Big enough that carrying it in the snapshot would be obvious.
     const data = "A".repeat(200_000);
-    await applyMutations(USER, [
+    await applyMutations(USER, USER, [
       {
         table: "files",
         action: "upsert",
@@ -452,7 +452,7 @@ async function main() {
       },
     ]);
 
-    const back = await loadWorkspace(USER);
+    const back = await loadWorkspace(USER, USER);
     const file = back.files.find((row) => row.id === "file_payload_1");
     check("the file is listed", Boolean(file));
     check("its name survived", file?.name === "screenshot.png");
@@ -471,12 +471,12 @@ async function main() {
     const [row] = await requireDb()
       .select()
       .from(schema.files)
-      .where(and(eq(schema.files.userEmail, USER), eq(schema.files.id, "file_payload_1")))
+      .where(and(eq(schema.files.workspaceId, USER), eq(schema.files.id, "file_payload_1")))
       .limit(1);
     check("the bytes are still in the database", row?.data.length === data.length);
 
-    await applyMutations(USER, [{ table: "files", action: "delete", ids: ["file_payload_1"] }]);
-    const after = await loadWorkspace(USER);
+    await applyMutations(USER, USER, [{ table: "files", action: "delete", ids: ["file_payload_1"] }]);
+    const after = await loadWorkspace(USER, USER);
     check(
       "and it deletes",
       !after.files.some((row) => row.id === "file_payload_1"),
@@ -485,8 +485,8 @@ async function main() {
   }
 
   console.log("\ndeleting a head takes its conversations with it");
-  await applyMutations(USER, [{ table: "departments", action: "delete", ids: ["design"] }]);
-  const afterDelete = await loadWorkspace(USER);
+  await applyMutations(USER, USER, [{ table: "departments", action: "delete", ids: ["design"] }]);
+  const afterDelete = await loadWorkspace(USER, USER);
   check("department gone", !afterDelete.departments.some((d) => d.id === "design"));
   check(
     "its conversation went too",

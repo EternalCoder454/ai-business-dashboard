@@ -40,11 +40,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   pages: { signIn: "/signin", error: "/signin" },
   callbacks: {
-    signIn({ profile }) {
+    /**
+     * Two allowlists, and the environment one wins.
+     *
+     * The table is how people are actually invited, from Admin, without a
+     * redeploy. ALLOWED_EMAILS stays because it is the way back in: if the
+     * table is empty, someone revokes the wrong row, or Neon is unreachable at
+     * the moment you try to sign in, an address in the environment still gets
+     * through. Checking it first also means the owner's sign-in never waits on
+     * a query.
+     *
+     * The database module is imported here rather than at the top of the file
+     * so that the proxy, which imports this on every request, does not pull a
+     * Postgres client into a check it never performs.
+     */
+    async signIn({ profile }) {
       const email = profile?.email?.toLowerCase();
       // Google verifies the address; an unverified one is not an identity.
       if (!email || profile?.email_verified === false) return false;
-      return ALLOWED_EMAILS.includes(email);
+      if (ALLOWED_EMAILS.includes(email)) return true;
+
+      const { isAllowed, markSignedIn } = await import("@/db/access");
+      if (!(await isAllowed(email))) return false;
+      await markSignedIn(email);
+      return true;
     },
     jwt({ token, profile }) {
       if (profile?.email) token.email = profile.email;

@@ -1,1 +1,0 @@
-ALTER TABLE "departments" DROP COLUMN "emoji";

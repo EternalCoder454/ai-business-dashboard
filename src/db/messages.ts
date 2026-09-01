@@ -170,6 +170,8 @@ export async function unreadTotal(self: string): Promise<number> {
 }
 
 export async function sendMessage(
+  /** The workspace both people are in, so a thread cannot cross businesses. */
+  workspaceId: string,
   from: string,
   to: string,
   body: string,
@@ -178,6 +180,7 @@ export async function sendMessage(
   const db = requireDb();
   const message = {
     id,
+    workspaceId,
     threadKey: threadKeyFor(from, to),
     fromEmail: normalise(from),
     toEmail: normalise(to),

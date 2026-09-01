@@ -17,8 +17,8 @@ const USER = "payload-check@example.invalid";
 const ONE_MB_AS_BASE64 = "A".repeat(1_400_000);
 
 async function wipe() {
-  const current = await loadWorkspace(USER);
-  await applyMutations(USER, [
+  const current = await loadWorkspace(USER, USER);
+  await applyMutations(USER, USER, [
     { table: "conversations", action: "delete", ids: current.conversations.map((c) => c.id) },
     { table: "files", action: "delete", ids: current.files.map((f) => f.id) },
   ]);
@@ -33,11 +33,11 @@ function weigh(label: string, workspace: unknown) {
 async function main() {
   await wipe();
 
-  const empty = await loadWorkspace(USER);
+  const empty = await loadWorkspace(USER, USER);
   const baseline = weigh("empty workspace", empty);
 
   const screenshots = 8;
-  await applyMutations(USER, [
+  await applyMutations(USER, USER, [
     {
       table: "files",
       action: "upsert",
@@ -56,7 +56,7 @@ async function main() {
     },
   ]);
 
-  const loaded = await loadWorkspace(USER);
+  const loaded = await loadWorkspace(USER, USER);
   const withFiles = weigh(`after ${screenshots} one-megabyte screenshots`, loaded);
 
   console.log(
@@ -67,7 +67,7 @@ async function main() {
   );
 
   await wipe();
-  const after = await loadWorkspace(USER);
+  const after = await loadWorkspace(USER, USER);
   console.log(`\n  cleaned up: ${after.files.length} files left`);
   process.exit(0);
 }

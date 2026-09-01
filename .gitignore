@@ -13,3 +13,6 @@ next-env.d.ts
 
 # Next.js build output for the second dev instance
 .next-authtest
+
+# Workspace exports. Business data, and nothing the app needs to build.
+*-export-*.json

@@ -138,10 +138,10 @@ export default function ProjectPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 medium:px-6 expanded:px-8">
         <div className="measure flex flex-col gap-5">
-          {project.ownerEmail ? (
+          {project.sharedFrom ? (
             <Card elevated={false}>
               <p className="md-label-sm text-on-variant">
-                Shared with you by {project.ownerEmail}. Anything written here is
+                Shared with you by {project.sharedFrom}. Anything written here is
                 visible to everyone on it.
               </p>
             </Card>

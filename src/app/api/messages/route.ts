@@ -10,6 +10,7 @@ import {
   unreadTotal,
 } from "@/db/messages";
 import { readJsonWithin, withinRate } from "@/lib/guard";
+import { membershipFor } from "@/db/tenancy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -148,7 +149,19 @@ export async function POST(request: Request) {
       return Response.json({ error: "Slow down a moment." }, { status: 429 });
     }
 
-    const message = await sendMessage(sender.email, recipient, text, randomUUID());
+    // A thread belongs to the workspace both people are in, so a message can
+    // never cross from one business into another.
+    const mine = await membershipFor(sender.email);
+    if (!mine) {
+      return Response.json({ error: "You are not in a workspace." }, { status: 403 });
+    }
+    const message = await sendMessage(
+      mine.workspaceId,
+      sender.email,
+      recipient,
+      text,
+      randomUUID(),
+    );
     return Response.json({ message });
   } catch (error) {
     console.error("[api/messages] write", error);

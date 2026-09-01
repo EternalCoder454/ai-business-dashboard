@@ -43,7 +43,7 @@ function toAttachment(row: typeof t.files.$inferSelect): Attachment {
   };
 }
 
-export async function loadWorkspace(userEmail: string): Promise<Workspace> {
+export async function loadWorkspace(workspaceId: string, email: string): Promise<Workspace> {
   const db = requireDb();
 
   const [
@@ -63,21 +63,23 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
     profileRow,
     settingsRow,
   ] = await Promise.all([
-    db.select().from(t.departments).where(eq(t.departments.userEmail, userEmail)).orderBy(asc(t.departments.sortOrder)),
-    db.select().from(t.projects).where(eq(t.projects.userEmail, userEmail)).orderBy(desc(t.projects.updatedAt)),
-    db.select().from(t.conversations).where(eq(t.conversations.userEmail, userEmail)).orderBy(desc(t.conversations.updatedAt)),
-    db.select().from(t.messages).where(eq(t.messages.userEmail, userEmail)).orderBy(asc(t.messages.sentAt)),
-    db.select().from(t.skills).where(eq(t.skills.userEmail, userEmail)).orderBy(desc(t.skills.updatedAt)),
-    db.select().from(t.deliverables).where(eq(t.deliverables.userEmail, userEmail)).orderBy(desc(t.deliverables.updatedAt)),
-    db.select().from(t.memory).where(eq(t.memory.userEmail, userEmail)).orderBy(desc(t.memory.occurredAt)),
-    db.select().from(t.tasks).where(eq(t.tasks.userEmail, userEmail)).orderBy(asc(t.tasks.sortOrder)),
-    db.select().from(t.wikiPages).where(eq(t.wikiPages.userEmail, userEmail)).orderBy(asc(t.wikiPages.sortOrder)),
-    db.select().from(t.files).where(eq(t.files.userEmail, userEmail)).orderBy(desc(t.files.updatedAt)),
-    db.select().from(t.allHandsRuns).where(eq(t.allHandsRuns.userEmail, userEmail)).orderBy(desc(t.allHandsRuns.updatedAt)),
-    db.select().from(t.allHandsRounds).where(eq(t.allHandsRounds.userEmail, userEmail)).orderBy(asc(t.allHandsRounds.sortOrder)),
-    db.select().from(t.accounts).where(eq(t.accounts.userEmail, userEmail)).limit(1),
-    db.select().from(t.profiles).where(eq(t.profiles.userEmail, userEmail)).limit(1),
-    db.select().from(t.settings).where(eq(t.settings.userEmail, userEmail)).limit(1),
+    db.select().from(t.departments).where(eq(t.departments.workspaceId, workspaceId)).orderBy(asc(t.departments.sortOrder)),
+    db.select().from(t.projects).where(eq(t.projects.workspaceId, workspaceId)).orderBy(desc(t.projects.updatedAt)),
+    db.select().from(t.conversations).where(eq(t.conversations.workspaceId, workspaceId)).orderBy(desc(t.conversations.updatedAt)),
+    db.select().from(t.messages).where(eq(t.messages.workspaceId, workspaceId)).orderBy(asc(t.messages.sentAt)),
+    db.select().from(t.skills).where(eq(t.skills.workspaceId, workspaceId)).orderBy(desc(t.skills.updatedAt)),
+    db.select().from(t.deliverables).where(eq(t.deliverables.workspaceId, workspaceId)).orderBy(desc(t.deliverables.updatedAt)),
+    db.select().from(t.memory).where(eq(t.memory.workspaceId, workspaceId)).orderBy(desc(t.memory.occurredAt)),
+    db.select().from(t.tasks).where(eq(t.tasks.workspaceId, workspaceId)).orderBy(asc(t.tasks.sortOrder)),
+    db.select().from(t.wikiPages).where(eq(t.wikiPages.workspaceId, workspaceId)).orderBy(asc(t.wikiPages.sortOrder)),
+    db.select().from(t.files).where(eq(t.files.workspaceId, workspaceId)).orderBy(desc(t.files.updatedAt)),
+    db.select().from(t.allHandsRuns).where(eq(t.allHandsRuns.workspaceId, workspaceId)).orderBy(desc(t.allHandsRuns.updatedAt)),
+    db.select().from(t.allHandsRounds).where(eq(t.allHandsRounds.workspaceId, workspaceId)).orderBy(asc(t.allHandsRounds.sortOrder)),
+    // The account is who you are, not where you work: still keyed by address,
+    // so moving between workspaces does not change your name or your notes.
+    db.select().from(t.accounts).where(eq(t.accounts.userEmail, email)).limit(1),
+    db.select().from(t.profiles).where(eq(t.profiles.workspaceId, workspaceId)).limit(1),
+    db.select().from(t.settings).where(eq(t.settings.workspaceId, workspaceId)).limit(1),
   ]);
 
   const filesById = new Map(fileRows.map((row) => [row.id, toAttachment(row)]));
@@ -85,8 +87,8 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
   // Projects shared with this account, and their conversations, folded in
   // alongside their own. Everything downstream treats them the same way.
   const [shared, shares] = await Promise.all([
-    loadSharedInto(userEmail),
-    sharesByProject(userEmail),
+    loadSharedInto(email),
+    sharesByProject(email),
   ]);
 
   const messagesByConversation = new Map<string, Message[]>();
@@ -268,7 +270,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       currentFocus: accountRow[0]?.currentFocus ?? "",
       notes: accountRow[0]?.notes ?? "",
       avatarUrl: accountRow[0]?.avatarUrl ?? undefined,
-      email: userEmail,
+      email: email,
       updatedAt: accountRow[0]?.updatedAt ? ms(accountRow[0].updatedAt) : 0,
     },
 
@@ -310,7 +312,11 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
  * Applies a batch in one transaction, so a half-written conversation cannot
  * survive a failure partway through.
  */
-export async function applyMutations(userEmail: string, ops: MutationOp[]): Promise<void> {
+export async function applyMutations(
+  workspaceId: string,
+  email: string,
+  ops: MutationOp[],
+): Promise<void> {
   const db = requireDb();
   const now = new Date();
 
@@ -328,7 +334,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
     if (op.table !== "conversations" || op.action !== "upsert") continue;
     for (const row of op.rows) {
       if (owners.has(row.id)) continue;
-      owners.set(row.id, (await resolveConversationOwner(userEmail, row.id)) ?? userEmail);
+      owners.set(row.id, (await resolveConversationOwner(workspaceId, row.id)) ?? workspaceId);
     }
   }
 
@@ -346,7 +352,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
                 .from(t.conversations)
                 .where(
                   and(
-                    eq(t.conversations.userEmail, userEmail),
+                    eq(t.conversations.workspaceId, workspaceId),
                     inArray(t.conversations.departmentId, op.ids),
                   ),
                 );
@@ -357,7 +363,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
                   .delete(t.messages)
                   .where(
                     and(
-                      eq(t.messages.userEmail, userEmail),
+                      eq(t.messages.workspaceId, workspaceId),
                       inArray(t.messages.conversationId, orphanIds),
                     ),
                   );
@@ -365,7 +371,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
                   .delete(t.conversations)
                   .where(
                     and(
-                      eq(t.conversations.userEmail, userEmail),
+                      eq(t.conversations.workspaceId, workspaceId),
                       inArray(t.conversations.id, orphanIds),
                     ),
                   );
@@ -373,14 +379,14 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
 
               await tx
                 .delete(t.departments)
-                .where(and(eq(t.departments.userEmail, userEmail), inArray(t.departments.id, op.ids)));
+                .where(and(eq(t.departments.workspaceId, workspaceId), inArray(t.departments.id, op.ids)));
             }
             break;
           }
           for (const row of op.rows) {
             const values = {
               id: row.id,
-              userEmail,
+              workspaceId,
               name: row.name,
               avatarUrl: row.avatarUrl ?? null,
               personal: Boolean(row.personal),
@@ -398,7 +404,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               .insert(t.departments)
               .values(values)
               .onConflictDoUpdate({
-                target: [t.departments.userEmail, t.departments.id],
+                target: [t.departments.workspaceId, t.departments.id],
                 set: values,
               });
           }
@@ -412,7 +418,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               // reducer does exactly this, and a project vanishing must never
               // take a conversation with it.
               const owned = and(
-                eq(t.conversations.userEmail, userEmail),
+                eq(t.conversations.workspaceId, workspaceId),
                 inArray(t.conversations.projectId, op.ids),
               );
               await tx.update(t.conversations).set({ projectId: null }).where(owned);
@@ -421,7 +427,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
                 .set({ projectId: null })
                 .where(
                   and(
-                    eq(t.deliverables.userEmail, userEmail),
+                    eq(t.deliverables.workspaceId, workspaceId),
                     inArray(t.deliverables.projectId, op.ids),
                   ),
                 );
@@ -429,23 +435,23 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
                 .update(t.files)
                 .set({ projectId: null })
                 .where(
-                  and(eq(t.files.userEmail, userEmail), inArray(t.files.projectId, op.ids)),
+                  and(eq(t.files.workspaceId, workspaceId), inArray(t.files.projectId, op.ids)),
                 );
               await tx
                 .update(t.memory)
                 .set({ projectId: null })
                 .where(
-                  and(eq(t.memory.userEmail, userEmail), inArray(t.memory.projectId, op.ids)),
+                  and(eq(t.memory.workspaceId, workspaceId), inArray(t.memory.projectId, op.ids)),
                 );
               await tx
                 .update(t.tasks)
                 .set({ projectId: null })
                 .where(
-                  and(eq(t.tasks.userEmail, userEmail), inArray(t.tasks.projectId, op.ids)),
+                  and(eq(t.tasks.workspaceId, workspaceId), inArray(t.tasks.projectId, op.ids)),
                 );
               await tx
                 .delete(t.projects)
-                .where(and(eq(t.projects.userEmail, userEmail), inArray(t.projects.id, op.ids)));
+                .where(and(eq(t.projects.workspaceId, workspaceId), inArray(t.projects.id, op.ids)));
             }
             break;
           }
@@ -453,7 +459,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
           for (const row of op.rows) {
             const values = {
               id: row.id,
-              userEmail,
+              workspaceId,
               name: row.name,
               summary: row.summary,
               status: row.status,
@@ -465,7 +471,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               .insert(t.projects)
               .values(values)
               .onConflictDoUpdate({
-                target: [t.projects.userEmail, t.projects.id],
+                target: [t.projects.workspaceId, t.projects.id],
                 set: values,
               });
           }
@@ -477,10 +483,10 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
             if (op.ids.length) {
               await tx
                 .delete(t.messages)
-                .where(and(eq(t.messages.userEmail, userEmail), inArray(t.messages.conversationId, op.ids)));
+                .where(and(eq(t.messages.workspaceId, workspaceId), inArray(t.messages.conversationId, op.ids)));
               await tx
                 .delete(t.conversations)
-                .where(and(eq(t.conversations.userEmail, userEmail), inArray(t.conversations.id, op.ids)));
+                .where(and(eq(t.conversations.workspaceId, workspaceId), inArray(t.conversations.id, op.ids)));
             }
             break;
           }
@@ -495,11 +501,11 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
              * neither theirs nor in a project shared with them, and for one
              * they are creating; both belong to the caller.
              */
-            const owner = owners.get(row.id) ?? userEmail;
+            const owner = owners.get(row.id) ?? workspaceId;
 
             const values = {
               id: row.id,
-              userEmail: owner,
+              workspaceId: owner,
               departmentId: row.departmentId,
               projectId: row.projectId ?? null,
               title: row.title,
@@ -509,7 +515,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               .insert(t.conversations)
               .values(values)
               .onConflictDoUpdate({
-                target: [t.conversations.userEmail, t.conversations.id],
+                target: [t.conversations.workspaceId, t.conversations.id],
                 set: values,
               });
 
@@ -518,7 +524,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               for (const attachment of message.attachments ?? []) {
                 const fileValues = {
                   id: attachment.id,
-                  userEmail: owner,
+                  workspaceId: owner,
                   kind: attachment.kind,
                   mediaType: attachment.mediaType,
                   name: attachment.name,
@@ -536,16 +542,16 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
                   .insert(t.files)
                   .values(fileValues)
                   // Already stored means already uploaded; do not rewrite the bytes.
-                  .onConflictDoNothing({ target: [t.files.userEmail, t.files.id] });
+                  .onConflictDoNothing({ target: [t.files.workspaceId, t.files.id] });
               }
 
               const messageValues = {
                 id: message.id,
-                userEmail: owner,
+                workspaceId: owner,
                 // Who actually wrote it, recorded only when it differs, so an
                 // ordinary single-person conversation stores nothing extra.
                 authorEmail:
-                  message.authorEmail ?? (owner === userEmail ? null : userEmail),
+                  message.authorEmail ?? (owner === workspaceId ? null : workspaceId),
                 conversationId: row.id,
                 role: message.role,
                 content: message.content,
@@ -564,7 +570,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
                 .insert(t.messages)
                 .values(messageValues)
                 .onConflictDoUpdate({
-                  target: [t.messages.userEmail, t.messages.id],
+                  target: [t.messages.workspaceId, t.messages.id],
                   // Authorship is set once, on insert. Saving a shared thread
                   // re-sends every message in it, so updating this too would
                   // stamp whoever saved last onto everyone else's messages.
@@ -580,14 +586,14 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
             if (op.ids.length) {
               await tx
                 .delete(t.skills)
-                .where(and(eq(t.skills.userEmail, userEmail), inArray(t.skills.id, op.ids)));
+                .where(and(eq(t.skills.workspaceId, workspaceId), inArray(t.skills.id, op.ids)));
             }
             break;
           }
           for (const row of op.rows) {
             const values = {
               id: row.id,
-              userEmail,
+              workspaceId,
               departmentId: row.departmentId,
               name: row.name,
               description: row.description,
@@ -598,7 +604,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
             await tx
               .insert(t.skills)
               .values(values)
-              .onConflictDoUpdate({ target: [t.skills.userEmail, t.skills.id], set: values });
+              .onConflictDoUpdate({ target: [t.skills.workspaceId, t.skills.id], set: values });
           }
           break;
         }
@@ -608,14 +614,14 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
             if (op.ids.length) {
               await tx
                 .delete(t.deliverables)
-                .where(and(eq(t.deliverables.userEmail, userEmail), inArray(t.deliverables.id, op.ids)));
+                .where(and(eq(t.deliverables.workspaceId, workspaceId), inArray(t.deliverables.id, op.ids)));
             }
             break;
           }
           for (const row of op.rows) {
             const values = {
               id: row.id,
-              userEmail,
+              workspaceId,
               title: row.title,
               body: row.body,
               departmentId: row.departmentId,
@@ -628,7 +634,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               .insert(t.deliverables)
               .values(values)
               .onConflictDoUpdate({
-                target: [t.deliverables.userEmail, t.deliverables.id],
+                target: [t.deliverables.workspaceId, t.deliverables.id],
                 set: values,
               });
           }
@@ -640,14 +646,14 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
             if (op.ids.length) {
               await tx
                 .delete(t.wikiPages)
-                .where(and(eq(t.wikiPages.userEmail, userEmail), inArray(t.wikiPages.id, op.ids)));
+                .where(and(eq(t.wikiPages.workspaceId, workspaceId), inArray(t.wikiPages.id, op.ids)));
             }
             break;
           }
           for (const row of op.rows) {
             const values = {
               id: row.id,
-              userEmail,
+              workspaceId,
               title: row.title,
               blurb: row.blurb,
               body: row.body,
@@ -660,7 +666,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               .insert(t.wikiPages)
               .values(values)
               .onConflictDoUpdate({
-                target: [t.wikiPages.userEmail, t.wikiPages.id],
+                target: [t.wikiPages.workspaceId, t.wikiPages.id],
                 set: values,
               });
           }
@@ -672,14 +678,14 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
             if (op.ids.length) {
               await tx
                 .delete(t.tasks)
-                .where(and(eq(t.tasks.userEmail, userEmail), inArray(t.tasks.id, op.ids)));
+                .where(and(eq(t.tasks.workspaceId, workspaceId), inArray(t.tasks.id, op.ids)));
             }
             break;
           }
           for (const row of op.rows) {
             const values = {
               id: row.id,
-              userEmail,
+              workspaceId,
               title: row.title,
               notes: row.notes,
               status: row.status,
@@ -695,7 +701,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               .insert(t.tasks)
               .values(values)
               .onConflictDoUpdate({
-                target: [t.tasks.userEmail, t.tasks.id],
+                target: [t.tasks.workspaceId, t.tasks.id],
                 set: values,
               });
           }
@@ -707,14 +713,14 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
             if (op.ids.length) {
               await tx
                 .delete(t.memory)
-                .where(and(eq(t.memory.userEmail, userEmail), inArray(t.memory.id, op.ids)));
+                .where(and(eq(t.memory.workspaceId, workspaceId), inArray(t.memory.id, op.ids)));
             }
             break;
           }
           for (const row of op.rows) {
             const values = {
               id: row.id,
-              userEmail,
+              workspaceId,
               kind: row.kind,
               label: row.label,
               value: row.value,
@@ -731,7 +737,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               .insert(t.memory)
               .values(values)
               .onConflictDoUpdate({
-                target: [t.memory.userEmail, t.memory.id],
+                target: [t.memory.workspaceId, t.memory.id],
                 set: values,
               });
           }
@@ -743,14 +749,14 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
             if (op.ids.length) {
               await tx
                 .delete(t.files)
-                .where(and(eq(t.files.userEmail, userEmail), inArray(t.files.id, op.ids)));
+                .where(and(eq(t.files.workspaceId, workspaceId), inArray(t.files.id, op.ids)));
             }
             break;
           }
           for (const row of op.rows) {
             const values = {
               id: row.id,
-              userEmail,
+              workspaceId,
               kind: row.kind,
               mediaType: row.mediaType,
               name: row.name,
@@ -768,7 +774,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
             await tx
               .insert(t.files)
               .values(values)
-              .onConflictDoUpdate({ target: [t.files.userEmail, t.files.id], set: values });
+              .onConflictDoUpdate({ target: [t.files.workspaceId, t.files.id], set: values });
           }
           break;
         }
@@ -778,17 +784,17 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
             if (op.ids.length) {
               await tx
                 .delete(t.allHandsRounds)
-                .where(and(eq(t.allHandsRounds.userEmail, userEmail), inArray(t.allHandsRounds.runId, op.ids)));
+                .where(and(eq(t.allHandsRounds.workspaceId, workspaceId), inArray(t.allHandsRounds.runId, op.ids)));
               await tx
                 .delete(t.allHandsRuns)
-                .where(and(eq(t.allHandsRuns.userEmail, userEmail), inArray(t.allHandsRuns.id, op.ids)));
+                .where(and(eq(t.allHandsRuns.workspaceId, workspaceId), inArray(t.allHandsRuns.id, op.ids)));
             }
             break;
           }
           for (const row of op.rows) {
             const values = {
               id: row.id,
-              userEmail,
+              workspaceId,
               title: row.title,
               status: row.status,
               updatedAt: now,
@@ -797,14 +803,14 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
               .insert(t.allHandsRuns)
               .values(values)
               .onConflictDoUpdate({
-                target: [t.allHandsRuns.userEmail, t.allHandsRuns.id],
+                target: [t.allHandsRuns.workspaceId, t.allHandsRuns.id],
                 set: values,
               });
 
             for (const [index, round] of row.rounds.entries()) {
               const roundValues = {
                 id: round.id,
-                userEmail,
+                workspaceId,
                 runId: row.id,
                 question: round.question,
                 responses: round.responses,
@@ -816,7 +822,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
                 .insert(t.allHandsRounds)
                 .values(roundValues)
                 .onConflictDoUpdate({
-                  target: [t.allHandsRounds.userEmail, t.allHandsRounds.id],
+                  target: [t.allHandsRounds.workspaceId, t.allHandsRounds.id],
                   set: roundValues,
                 });
             }
@@ -825,27 +831,27 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
         }
 
         case "profile": {
-          const values = { userEmail, ...op.row, updatedAt: now };
+          const values = { workspaceId, ...op.row, updatedAt: now };
           await tx
             .insert(t.profiles)
             .values(values)
-            .onConflictDoUpdate({ target: t.profiles.userEmail, set: values });
+            .onConflictDoUpdate({ target: t.profiles.workspaceId, set: values });
           break;
         }
 
         case "settings": {
-          const values = { userEmail, ...op.row, updatedAt: now };
+          const values = { workspaceId, ...op.row, updatedAt: now };
           await tx
             .insert(t.settings)
             .values(values)
-            .onConflictDoUpdate({ target: t.settings.userEmail, set: values });
+            .onConflictDoUpdate({ target: t.settings.workspaceId, set: values });
           break;
         }
 
         case "account": {
           // email and updatedAt are derived, never taken from the client.
           const { email: _email, updatedAt: _updated, ...editable } = op.row;
-          const values = { userEmail, ...editable, updatedAt: now };
+          const values = { userEmail: email, ...editable, updatedAt: now };
           await tx
             .insert(t.accounts)
             .values(values)
@@ -858,12 +864,12 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
 }
 
 /** True when the account has never been written to, so it needs seeding or an import. */
-export async function isEmpty(userEmail: string): Promise<boolean> {
+export async function isEmpty(workspaceId: string): Promise<boolean> {
   const db = requireDb();
   const rows = await db
     .select({ id: t.departments.id })
     .from(t.departments)
-    .where(eq(t.departments.userEmail, userEmail))
+    .where(eq(t.departments.workspaceId, workspaceId))
     .limit(1);
   return rows.length === 0;
 }
