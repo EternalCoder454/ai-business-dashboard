@@ -168,8 +168,8 @@ export default function AdminPage() {
         <div className="page-x py-6">
           <EmptyState
             icon={<PersonIcon className="h-8 w-8" />}
-            title="Not available on this account"
-            description="Needs the hosted workspace and an address listed in ADMIN_EMAILS."
+            title="No admin access"
+            description="Requires an address listed in ADMIN_EMAILS."
           />
         </div>
       </div>
@@ -258,9 +258,9 @@ export default function AdminPage() {
         }
       >
         <p className="md-body text-on-variant">
-          This removes their conversations, deliverables, projects, files, skills,
-          departments, settings, and messages. It cannot be undone, and they keep
-          access unless you also take them off ALLOWED_EMAILS.
+          Deletes their conversations, deliverables, projects, files, skills,
+          departments, settings, and messages. This cannot be undone. They keep access
+          unless you also remove them from ALLOWED_EMAILS.
         </p>
         <Field label="Type the address to confirm" className="mt-4">
           <TextInput
@@ -299,16 +299,13 @@ function OverviewTab({ overview }: { overview: Overview | null }) {
         <Stat label="Attachments" value={compact(overview.files)} hint={bytes(overview.storageBytes)} />
         <Stat label="Deliverables" value={compact(overview.deliverables)} />
         <Stat label="Projects" value={compact(overview.projects)} />
-        <Stat label="Output tokens" value={compact(u.output)} hint="What replies cost" />
+        <Stat label="Output tokens" value={compact(u.output)} />
       </div>
 
       <Card>
         <h2 className="md-title-lg mb-1">Tokens</h2>
         <p className="md-body mb-4 text-on-variant">
-          Counted from replies as they arrive, so this covers everything since
-          usage started being recorded, not the whole history. No dollar figure
-          here on purpose: prices change per model and inventing one would be
-          worse than leaving it out. Anthropic&apos;s console has the billing.
+          Recorded since usage tracking began. Billing is in the Anthropic console.
         </p>
         <dl className="grid gap-3 medium:grid-cols-4">
           {[
@@ -348,8 +345,8 @@ function PeopleTable({
     return (
       <EmptyState
         icon={<PersonIcon className="h-8 w-8" />}
-        title="Nobody else yet"
-        description="Add an address to ALLOWED_EMAILS and they appear once they sign in."
+        title="No other accounts"
+        description="Addresses appear here once they sign in."
       />
     );
   }
@@ -473,7 +470,7 @@ function PersonDetail({
           <Card>
             <h2 className="md-title-lg mb-3">Conversations</h2>
             {heads.length === 0 ? (
-              <p className="md-body text-on-variant">Nothing here yet.</p>
+              <p className="md-body text-on-variant">No conversations.</p>
             ) : (
               <ul className="-mx-2 flex flex-col gap-0.5">
                 {heads.map((head) => (
@@ -519,10 +516,7 @@ function AccessTab({
       <Card>
         <h2 className="md-title-lg mb-1">Who can sign in</h2>
         <p className="md-body mb-4 text-on-variant">
-          Set as ALLOWED_EMAILS in the deployment&apos;s environment, separated by
-          commas or one per line. Changing it takes a redeploy, which is why it is
-          shown here rather than edited here: a list that gates access should not
-          be editable by whoever happens to be looking at it.
+          Set as ALLOWED_EMAILS. Changes require a redeploy.
         </p>
         <ul className="flex flex-col gap-1.5">
           {access.allowed.map((email) => (
@@ -541,8 +535,7 @@ function AccessTab({
         <h2 className="md-title-lg mb-1">Administrators</h2>
         <p className="md-body text-on-variant">
           Set as ADMIN_EMAILS, defaulting to the first address on the allowlist.
-          Administrators can read everyone&apos;s conversations and delete a
-          workspace, so this is deliberately separate from being allowed in.
+          Administrators can read all conversations and delete a workspace.
         </p>
       </Card>
     </div>

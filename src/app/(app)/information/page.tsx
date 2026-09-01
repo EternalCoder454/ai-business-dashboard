@@ -48,7 +48,6 @@ const SEGMENT_COLOURS = [
 export default function InformationPage() {
   const {
     allDepartments,
-    departments,
     skills,
     files,
     conversations,
@@ -98,28 +97,23 @@ export default function InformationPage() {
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader
         eyebrow="Information"
-        title="Current systems"
+        title="System"
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 medium:px-6 expanded:px-8">
         <div className="measure flex flex-col gap-5">
           {/* ------------------------------------------------ the model */}
           <Card>
-            <h2 className="md-title-lg mb-1">The model</h2>
-            <p className="md-body mb-4 text-on-variant">
-              Which model answers, and how hard it is told to think before it does. A
-              more capable model costs more per reply, and higher effort makes it
-              slower and dearer. Both are changed in Settings.
-            </p>
+            <h2 className="md-title-lg mb-4">Model</h2>
             <dl className="grid gap-3 medium:grid-cols-2">
               <Fact label="Model" value={settings.model} />
               <Fact label="Effort" value={settings.effort} />
               <Fact
-                label="Thinks first"
+                label="Extended thinking"
                 value={settings.model === "claude-haiku-4-5" ? "no" : "yes"}
               />
               <Fact
-                label="Billing key"
+                label="API key"
                 value={
                   serverKey ? "on the server" : settings.apiKey ? "in this browser" : "not set"
                 }
@@ -132,12 +126,7 @@ export default function InformationPage() {
           <Card>
             <h2 className="md-title-lg mb-1">Caching</h2>
             <p className="md-body mb-4 text-on-variant">
-              Every message re-sends the same background: who the department is, the
-              company profile, its skills. Paying full price for that each time would be
-              the biggest cost here, so it is held for an hour and re-read at roughly a
-              tenth of the price. It only kicks in above{" "}
-              <strong>{minimum.toLocaleString()} words of background</strong>, which is
-              why each department is listed below with its own total.
+              Cached above {minimum.toLocaleString()} tokens of context.
             </p>
             <div className="flex flex-wrap gap-2">
               {anatomy.map(({ department, total }) => (
@@ -146,8 +135,8 @@ export default function InformationPage() {
                   tone={total >= minimum ? "success" : "warning"}
                   title={
                     total >= minimum
-                      ? "Enough background to be cached, so repeat questions are cheap"
-                      : "Not enough background to cache, so every message pays full price"
+                      ? "Cached"
+                      : "Below the cache threshold"
                   }
                 >
                   <DepartmentAvatar department={department} size={18} />
@@ -160,11 +149,7 @@ export default function InformationPage() {
 
           {/* ------------------------------------------------ anatomy */}
           <Card>
-            <h2 className="md-title-lg mb-1">Each department</h2>
-            <p className="md-body mb-4 text-on-variant">
-              What each one is told before it sees your question. The house writing rules
-              come last, so where they disagree with anything else, they win.
-            </p>
+            <h2 className="md-title-lg mb-4">Context per department</h2>
 
             <ul className="flex flex-col gap-4">
               {anatomy.map(({ department, segments, total, skillCount }) => (
@@ -214,11 +199,8 @@ export default function InformationPage() {
 
           {/* ------------------------------------------------ shared context */}
           <Card>
-            <h2 className="md-title-lg mb-1">Shared context</h2>
-            <p className="md-body text-on-variant">
-              Given to all of them, so nothing has to be explained twice.
-            </p>
-            <dl className="mt-3 grid gap-3 medium:grid-cols-2">
+            <h2 className="md-title-lg mb-4">Shared context</h2>
+            <dl className="grid gap-3 medium:grid-cols-2">
               <Fact
                 label="Company Profile"
                 value={hasProfileContent(profile) ? "filled in" : "empty"}
@@ -226,8 +208,8 @@ export default function InformationPage() {
                 href="/profile"
               />
               <Fact
-                label="Skills everyone gets"
-                value={`${companySkills.length}, given to all ${allDepartments.length}`}
+                label="Shared skills"
+                value={`${companySkills.length}`}
                 href="/library/skills"
               />
               <Fact
@@ -236,7 +218,7 @@ export default function InformationPage() {
                 href="/settings"
               />
               <Fact
-                label="Ask Everyone reply length"
+                label="Room reply length"
                 value={`${settings.roomBrevity === "standard" ? "140" : "60"} words each`}
                 href="/all-hands"
               />
@@ -247,9 +229,7 @@ export default function InformationPage() {
           <Card>
             <h2 className="md-title-lg mb-1">Storage</h2>
             <p className="md-body mb-4 text-on-variant">
-              {storageMode === "hosted"
-                ? "Saved to your account, so it follows you to any device you sign in on. Your API key is the exception and stays in this browser."
-                : "Saved in this browser only, and it does not follow you to another device. Clearing site data deletes all of it, so export from Settings if it matters."}
+              {storageMode === "hosted" ? "Synced to your account." : "This browser only."}
             </p>
             <dl className="grid grid-cols-2 gap-3 medium:grid-cols-4">
               {storage.map((item) => (
@@ -261,38 +241,12 @@ export default function InformationPage() {
             </dl>
             {files.length > 0 ? (
               <p className="md-label-sm mt-3 text-on-variant/75">
-                Library files take {formatBytes(fileBytes)} and would cost about{" "}
-                {fileTokens.toLocaleString()} tokens if every one were attached to a single
-                message.
+                Library files: {formatBytes(fileBytes)}, about{" "}
+                {fileTokens.toLocaleString()} tokens in total.
               </p>
             ) : null}
           </Card>
 
-          {/* ------------------------------------------------ heads */}
-          <Card>
-            <h2 className="md-title-lg mb-3">Who you can ask</h2>
-            <ul className="divide-y divide-[var(--md-outline-variant)]">
-              {departments.map((department) => (
-                <li key={department.id} className="flex items-center gap-3 py-2.5">
-                  <DepartmentAvatar department={department} size={24} />
-                  <span className="min-w-0 flex-1">
-                    <span className="md-body block truncate">
-                      {department.personaName}, {department.roleTitle}
-                    </span>
-                    <span className="md-label-sm block truncate text-on-variant/75">
-                      {department.persona?.split(".")[0] ?? ""}.
-                    </span>
-                  </span>
-                  <Link
-                    href={`/library/skills?dept=${encodeURIComponent(department.id)}`}
-                    className="md-label-sm flex-none text-primary"
-                  >
-                    skills
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </Card>
         </div>
       </div>
     </div>

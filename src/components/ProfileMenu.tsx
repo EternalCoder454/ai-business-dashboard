@@ -7,7 +7,6 @@ import {
   BookIcon,
   BuildingIcon,
   GearIcon,
-  PersonIcon,
   ShieldIcon,
   cx,
 } from "./ui";
@@ -30,7 +29,6 @@ import { useStore } from "@/lib/store";
  */
 const LINKS = [
   { href: "/profile", label: "Company profile", icon: <BuildingIcon className="h-4 w-4" /> },
-  { href: "/account", label: "Account", icon: <PersonIcon className="h-4 w-4" /> },
   { href: "/settings", label: "Settings", icon: <GearIcon className="h-4 w-4" /> },
   { href: "/onboarding", label: "Internal wiki", icon: <BookIcon className="h-4 w-4" /> },
 ];
@@ -41,11 +39,16 @@ export function ProfileMenu() {
   const pathname = usePathname();
 
   const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const wrapper = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!open) setConfirming(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -101,21 +104,26 @@ export function ProfileMenu() {
           <span className="md-label text-on-variant">{initial}</span>
         )}
 
-        {notifications.length > 0 ? (
-          <span
-            aria-hidden
-            className={cx(
-              "absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full px-1",
-              "text-[0.625rem] font-semibold leading-none",
-              urgent > 0
-                ? "bg-error text-on-error"
-                : "bg-primary-container text-on-primary-container",
-            )}
-          >
-            {notifications.length}
-          </span>
-        ) : null}
       </button>
+
+      {/* Outside the button on purpose. md-state clips to its own bounds so a
+          ripple stays inside the circle, which cut the badge into a wedge. The
+          ring is the page behind it, so the badge reads as sitting on top. */}
+      {notifications.length > 0 ? (
+        <span
+          aria-hidden
+          className={cx(
+            "pointer-events-none absolute -right-1 -top-1 grid h-[1.125rem] min-w-[1.125rem]",
+            "place-items-center rounded-full px-1 text-[0.6875rem] font-semibold leading-none",
+            "ring-2 ring-surface",
+            urgent > 0
+              ? "bg-error text-on-error"
+              : "bg-primary text-on-primary",
+          )}
+        >
+          {notifications.length}
+        </span>
+      ) : null}
 
       {open ? (
         <div
@@ -125,12 +133,19 @@ export function ProfileMenu() {
             "border border-outline-variant bg-container shadow-e3",
           )}
         >
-          <div className="border-b border-outline-variant px-4 py-3">
+          {/* The name is the way into the account page, so the menu does not
+              print who you are and then offer a row saying the same thing. */}
+          <Link
+            href="/account"
+            onClick={createRipple}
+            role="menuitem"
+            className="md-state block border-b border-outline-variant px-4 py-3"
+          >
             <p className="md-label truncate">{name}</p>
             {accountEmail ? (
               <p className="md-label-sm truncate text-on-variant/75">{accountEmail}</p>
             ) : null}
-          </div>
+          </Link>
 
           <div className="border-b border-outline-variant px-2 py-2">
             <p className="md-label-sm px-2 pb-1 text-on-variant/75">Notifications</p>
@@ -177,15 +192,45 @@ export function ProfileMenu() {
           </nav>
 
           {accountEmail ? (
-            <form action={signOutAction} className="border-t border-outline-variant p-2">
-              <button
-                type="submit"
-                role="menuitem"
-                className="md-state w-full rounded-lg px-2 py-2 text-left text-on-variant"
-              >
-                <span className="md-body">Sign out</span>
-              </button>
-            </form>
+            <div className="border-t border-outline-variant p-2">
+              {confirming ? (
+                // Signing out on a shared machine is the point of the button, and
+                // signing out by accident on your own is the cost of it, so it
+                // asks once rather than doing it on the first click.
+                <div className="rounded-lg bg-error-container/40 p-2">
+                  <p className="md-body mb-2 text-on-surface">
+                    Sign out on this device?
+                  </p>
+                  <div className="flex gap-2">
+                    <form action={signOutAction} className="flex-1">
+                      <button
+                        type="submit"
+                        className="md-state w-full rounded-lg bg-error px-3 py-1.5 text-on-error"
+                      >
+                        <span className="md-label">Yes</span>
+                      </button>
+                    </form>
+                    <button
+                      onClick={() => setConfirming(false)}
+                      className="md-state flex-1 rounded-lg border border-outline-variant px-3 py-1.5"
+                    >
+                      <span className="md-label">No</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={(event) => {
+                    createRipple(event);
+                    setConfirming(true);
+                  }}
+                  role="menuitem"
+                  className="md-state w-full rounded-lg px-2 py-2 text-left text-error"
+                >
+                  <span className="md-body">Sign out</span>
+                </button>
+              )}
+            </div>
           ) : null}
         </div>
       ) : null}
