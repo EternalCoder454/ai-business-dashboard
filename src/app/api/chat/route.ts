@@ -536,6 +536,7 @@ function streamThroughAdapter({
           system: body.system,
           messages: body.messages ?? [],
           effort: body.effort || ("medium" as const),
+          tools: body.tools,
           emit,
           stopped: () => clientGone,
           onOpen: (handle: { abort: () => void }) => {

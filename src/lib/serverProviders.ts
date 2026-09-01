@@ -18,6 +18,8 @@ export interface StreamArgs {
   system: string;
   messages: { role: Role; content: string | WireContent[] }[];
   effort: Effort;
+  /** What this department may do beyond replying. Empty means reply only. */
+  tools?: { name: string; description: string; schema: unknown }[];
   /** Called for every text or thinking fragment, and once for usage. */
   emit: (event: ChatStreamEvent) => void;
   /** True once the browser has hung up, so the loop can stop generating. */
@@ -65,6 +67,19 @@ export async function streamOpenAi(args: StreamArgs): Promise<void> {
       input: input as any,
       stream: true,
       reasoning: { effort: args.effort, summary: "auto" },
+      // strict: false, because the schemas allow optional fields and strict
+      // mode requires every property to be required.
+      ...(args.tools?.length
+        ? {
+            tools: args.tools.map((tool) => ({
+              type: "function" as const,
+              name: tool.name,
+              description: tool.description,
+              parameters: tool.schema as Record<string, unknown>,
+              strict: false,
+            })),
+          }
+        : {}),
     },
     { signal: controller.signal },
   );
@@ -76,6 +91,23 @@ export async function streamOpenAi(args: StreamArgs): Promise<void> {
       args.emit({ type: "text", text: event.delta });
     } else if (event.type === "response.reasoning_summary_text.delta") {
       args.emit({ type: "thinking", text: event.delta });
+    } else if (event.type === "response.output_item.done") {
+      // Arguments arrive as a JSON string once the item is finished, rather
+      // than as usable values, so they are parsed here and a malformed one is
+      // dropped rather than handed on as a broken call.
+      const item = event.item;
+      if (item.type === "function_call") {
+        let parsed: Record<string, unknown> = {};
+        try {
+          parsed = JSON.parse(item.arguments || "{}") as Record<string, unknown>;
+        } catch {
+          parsed = {};
+        }
+        args.emit({
+          type: "tool",
+          call: { id: item.call_id, name: item.name, input: parsed },
+        });
+      }
     } else if (event.type === "response.completed") {
       const usage = event.response.usage;
       if (usage) {
@@ -132,17 +164,44 @@ export async function streamGemini(args: StreamArgs): Promise<void> {
         thinkingBudget: geminiThinkingBudget(args.effort),
         includeThoughts: true,
       },
+      ...(args.tools?.length
+        ? {
+            tools: [
+              {
+                functionDeclarations: args.tools.map((tool) => ({
+                  name: tool.name,
+                  description: tool.description,
+                  parametersJsonSchema: tool.schema,
+                })),
+              },
+            ],
+          }
+        : {}),
     },
   });
 
   let input = 0;
   let output = 0;
   let cacheRead = 0;
+  let calls = 0;
 
   for await (const chunk of stream) {
     if (cancelled || args.stopped()) break;
 
     for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
+      if (part.functionCall?.name) {
+        args.emit({
+          type: "tool",
+          call: {
+            // Gemini only sometimes returns an id, and the client needs one to
+            // tell two proposals apart in the same reply.
+            id: part.functionCall.id ?? `${part.functionCall.name}_${calls++}`,
+            name: part.functionCall.name,
+            input: (part.functionCall.args ?? {}) as Record<string, unknown>,
+          },
+        });
+        continue;
+      }
       if (!part.text) continue;
       // The same field carries both, distinguished by a flag.
       args.emit({ type: part.thought ? "thinking" : "text", text: part.text });

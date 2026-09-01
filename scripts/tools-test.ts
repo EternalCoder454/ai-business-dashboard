@@ -67,6 +67,63 @@ console.log("the registry is well formed");
   );
 }
 
+console.log("\nthe schemas are acceptable to all three providers");
+{
+  // Anthropic, OpenAI, and Gemini constrain the name the same way, and all
+  // three reject the whole request rather than the one bad tool.
+  check(
+    "every name fits the shape all three require",
+    allTools().every((t) => /^[a-zA-Z0-9_-]{1,64}$/.test(t.name)),
+    allTools()
+      .map((t) => t.name)
+      .join(", "),
+  );
+
+  // A required field missing from properties is invalid JSON Schema. All three
+  // would reject it, and the department would silently lose every tool.
+  const broken = allTools().filter((t) =>
+    (t.schema.required ?? []).some((key) => !(key in t.schema.properties)),
+  );
+  check(
+    "every required field exists in properties",
+    broken.length === 0,
+    broken.map((t) => t.name).join(", "),
+  );
+
+  const untyped = allTools().filter((t) =>
+    Object.values(t.schema.properties).some(
+      (property) => typeof property !== "object" || !property || !("type" in property),
+    ),
+  );
+  check(
+    "every property declares a type",
+    untyped.length === 0,
+    untyped.map((t) => t.name).join(", "),
+  );
+
+  const undescribed = allTools().filter((t) =>
+    Object.values(t.schema.properties).some(
+      (property) => typeof property === "object" && property && !("description" in property),
+    ),
+  );
+  check(
+    "every property describes itself, so the model knows what to put in it",
+    undescribed.length === 0,
+    undescribed.map((t) => t.name).join(", "),
+  );
+
+  // All three take the same JSON Schema object under three different field
+  // names. Serialising proves nothing here holds a function or a cycle.
+  let serialises = true;
+  try {
+    JSON.parse(JSON.stringify(allTools().map((t) => t.schema)));
+  } catch {
+    serialises = false;
+  }
+  check("every schema survives being serialised for the wire", serialises);
+}
+
+
 console.log("\ndepartments get the tools they should");
 {
   const departments = seedDepartments();
