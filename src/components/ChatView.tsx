@@ -17,6 +17,8 @@ import {
 } from "@/lib/files";
 import { AttachmentError, MAX_ATTACHMENTS_PER_MESSAGE, attachmentSrc } from "@/lib/images";
 import { providerOf } from "@/lib/providers";
+import { runTool } from "@/lib/runTool";
+import { findTool, toolsFor } from "@/lib/tools";
 import { COMPANY_ID } from "@/lib/seed";
 import { buildSystemPrompt, deriveConversationTitle, hasProfileContent } from "@/lib/prompts";
 import { conversationHref, departmentHrefById } from "@/lib/routes";
@@ -24,7 +26,14 @@ import { STATUS_MEANING, setDepartmentActivity, useDepartmentStatus } from "@/li
 import { useStore } from "@/lib/store";
 import { ProfileMenu } from "./ProfileMenu";
 import { ProjectPicker } from "./ProjectBits";
-import type { Attachment, Conversation, Message, TokenUsage, WireContent } from "@/lib/types";
+import type {
+  Attachment,
+  Conversation,
+  Message,
+  TokenUsage,
+  ToolCallRecord,
+  WireContent,
+} from "@/lib/types";
 import { streamChat } from "@/lib/chatClient";
 import {
   BookmarkIcon,
@@ -143,6 +152,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     settings,
     account,
   } = useStore();
+  const store = useStore();
 
   const department = getDepartment(departmentId);
   const liveStatus = useDepartmentStatus(Boolean(serverKey || settings.apiKey))(departmentId);
@@ -334,6 +344,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           account,
           memory,
           tasks,
+          toolsFor(departmentId),
         ),
         messages: history.map((m) => ({
           role: m.role,
@@ -345,6 +356,12 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         model: department.model || settings.model,
         provider: providerOf(department.model || settings.model),
         effort: settings.effort,
+        // Only this department's, so nothing can act outside its own area.
+        tools: toolsFor(departmentId).map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          schema: tool.schema,
+        })),
       },
       settings.apiKey,
       settings.workspaceId,
@@ -373,6 +390,10 @@ export function ChatView({ departmentId }: { departmentId: string }) {
       // spend can still be attributed to a person and a head months later.
       usage: result.usage,
       model: result.usage ? settings.model : undefined,
+      // Proposed, not run. Each one waits on the card in the transcript.
+      toolCalls: result.toolCalls.length
+        ? result.toolCalls.map((call) => ({ ...call, state: "pending" as const }))
+        : undefined,
     };
 
     // A trailing error after partial text is appended so it is not lost.
@@ -580,6 +601,36 @@ export function ChatView({ departmentId }: { departmentId: string }) {
                 });
               }}
               onRecordDecision={() => setCapture(splitForCapture(message.content))}
+              onDecideTool={async (callId, approve) => {
+                const call = message.toolCalls?.find((entry) => entry.id === callId);
+                if (!call || call.state !== "pending" || !active) return;
+
+                let next: ToolCallRecord = { ...call, state: "declined" };
+                if (approve) {
+                  try {
+                    const result = await runTool(call, departmentId, store);
+                    next = { ...call, state: "approved", result };
+                  } catch (error) {
+                    next = {
+                      ...call,
+                      state: "failed",
+                      result: error instanceof Error ? error.message : "It did not run.",
+                    };
+                  }
+                }
+
+                await setMessages(
+                  active.id,
+                  active.messages.map((entry) =>
+                    entry.id === message.id
+                      ? {
+                          ...entry,
+                          toolCalls: entry.toolCalls?.map((c) => (c.id === callId ? next : c)),
+                        }
+                      : entry,
+                  ),
+                );
+              }}
             />
           ))}
 
@@ -954,10 +1005,12 @@ function MessageBubble({
   message,
   onSaveDeliverable,
   onRecordDecision,
+  onDecideTool,
 }: {
   message: Message;
   onSaveDeliverable: () => Promise<void>;
   onRecordDecision: () => void;
+  onDecideTool: (callId: string, approve: boolean) => Promise<void>;
 }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1026,6 +1079,16 @@ function MessageBubble({
       >
         <Markdown>{message.content}</Markdown>
       </div>
+
+      {message.toolCalls?.length ? (
+        <ul className="mt-2 flex flex-col gap-2">
+          {message.toolCalls.map((call) => (
+            <li key={call.id}>
+              <ToolCard call={call} onDecide={onDecideTool} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {!message.error ? (
         <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
           <IconAction
@@ -1164,6 +1227,88 @@ export function Markdown({ children }: { children: string }) {
       >
         {children}
       </ReactMarkdown>
+    </div>
+  );
+}
+
+/**
+ * One action a department has proposed.
+ *
+ * Nothing runs until it is approved here. A model that has misread the room
+ * proposing a task is a card to dismiss; the same model creating one silently
+ * is a record in the workspace nobody asked for.
+ */
+function ToolCard({
+  call,
+  onDecide,
+}: {
+  call: NonNullable<Message["toolCalls"]>[number];
+  onDecide: (callId: string, approve: boolean) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const tool = findTool(call.name);
+  const summary = tool ? tool.summarise(call.input) : call.name;
+
+  const settled = call.state !== "pending";
+
+  return (
+    <div
+      className={cx(
+        "rounded-2xl border px-4 py-3",
+        call.state === "approved"
+          ? "border-success/40 bg-success/10"
+          : call.state === "failed"
+            ? "border-error/40 bg-error-container/20"
+            : call.state === "declined"
+              ? "border-outline-variant opacity-60"
+              : "border-primary/40 bg-primary-container/20",
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="md-label-sm text-on-variant">
+          {settled ? "Action" : "Proposed action"}
+        </span>
+        <span className="md-body flex-1">{summary}</span>
+      </div>
+
+      {call.result ? (
+        <p
+          className={cx(
+            "md-label-sm mt-1",
+            call.state === "failed" ? "text-error" : "text-on-variant",
+          )}
+        >
+          {call.result}
+        </p>
+      ) : null}
+
+      {settled ? (
+        <p className="md-label-sm mt-1 text-on-variant/75">
+          {call.state === "declined" ? "Not run." : null}
+        </p>
+      ) : (
+        <div className="mt-3 flex gap-2">
+          <Button
+            size="sm"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              await onDecide(call.id, true);
+              setBusy(false);
+            }}
+          >
+            {busy ? "Running…" : "Approve"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outlined"
+            disabled={busy}
+            onClick={() => void onDecide(call.id, false)}
+          >
+            Dismiss
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

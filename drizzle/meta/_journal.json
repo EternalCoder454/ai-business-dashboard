@@ -92,6 +92,13 @@
       "when": 1788226313325,
       "tag": "0012_stale_outlaw_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788228223446,
+      "tag": "0013_cynical_pride",
+      "breakpoints": true
     }
   ]
 }

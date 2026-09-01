@@ -178,6 +178,25 @@ export function buildTasksBlock(tasks: Task[], departmentId: string): string {
 }
 
 /**
+ * What a department can do besides reply, spelled out in the prompt.
+ *
+ * The schemas are already sent, but a model given tools and no guidance either
+ * ignores them or reaches for one on every message. This says when.
+ */
+export function buildToolsBlock(tools: { name: string }[]): string {
+  if (!tools.length) return "";
+  return [
+    "=== WHAT YOU CAN DO ===",
+    `Besides replying, you can call: ${tools.map((t) => t.name).join(", ")}.`,
+    "",
+    "Nothing you call happens on its own. It is shown to the user as something to approve, so a call they did not want costs them a glance rather than a wrong record.",
+    "Call one when the user has agreed to the thing, or asked you to write it down. Do not call one to show willing, and never call one instead of answering the question.",
+    "Say what you did in the reply as well, in a clause, so the transcript reads on its own.",
+    "=== END ===",
+  ].join("\n");
+}
+
+/**
  * Composes the full system prompt sent to the API: department identity, shared
  * company context, and the house rules every department follows.
  */
@@ -190,6 +209,7 @@ export function buildSystemPrompt(
   account?: UserAccount,
   memory: MemoryEntry[] = [],
   tasks: Task[] = [],
+  tools: { name: string }[] = [],
 ): string {
   const context = buildCompanyContext(profile, companyName);
 
@@ -211,6 +231,7 @@ export function buildSystemPrompt(
     // leaves everything above it cached, and the record is what changes most.
     buildMemoryBlock(memory, department.id),
     buildTasksBlock(tasks, department.id),
+    buildToolsBlock(tools),
     SHARED_OPERATING_RULES,
     writingRules.trim(),
   ].filter(Boolean);

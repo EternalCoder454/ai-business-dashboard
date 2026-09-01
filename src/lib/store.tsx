@@ -68,7 +68,7 @@ import type {
   UserAccount,
 } from "./types";
 
-interface StoreValue {
+export interface StoreValue {
   ready: boolean;
   /** Where this browser is reading and writing: the account, or this device. */
   storage: StorageMode;

@@ -250,6 +250,20 @@ export async function POST(request: NextRequest) {
     return {
       model,
       max_tokens: MAX_TOKENS[model] ?? DEFAULT_MAX_TOKENS,
+      /**
+       * Tools render before the system block, so they sit inside the same
+       * cached prefix rather than in front of it. A department's tool list is
+       * as stable as its prompt, so this costs nothing after the first message.
+       */
+      ...(body.tools?.length
+        ? {
+            tools: body.tools.map((tool) => ({
+              name: tool.name,
+              description: tool.description,
+              input_schema: tool.schema,
+            })),
+          }
+        : {}),
       system: cached
         ? [
             {
@@ -328,7 +342,31 @@ export async function POST(request: NextRequest) {
 
         if (clientGone) return;
 
+        if (clientGone) return;
+
         const final = await messageStream.finalMessage();
+
+        /**
+         * Tool calls arrive complete rather than as deltas, so they are read
+         * off the finished message. Nothing runs here: the browser owns the
+         * workspace, and a write has to be approved by the person reading
+         * before it happens.
+         */
+        for (const block of final.content) {
+          if (block.type !== "tool_use") continue;
+          wroteContent = true;
+          controller.enqueue(
+            frame({
+              type: "tool",
+              call: {
+                id: block.id,
+                name: block.name,
+                input: (block.input ?? {}) as Record<string, unknown>,
+              },
+            }),
+          );
+        }
+
         const usage = final.usage as Anthropic.Usage & {
           cache_creation_input_tokens?: number | null;
           cache_read_input_tokens?: number | null;

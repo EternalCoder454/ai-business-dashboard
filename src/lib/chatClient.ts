@@ -1,4 +1,9 @@
-import type { ChatRequestBody, ChatStreamEvent, TokenUsage } from "./types";
+import type {
+  ChatRequestBody,
+  ChatStreamEvent,
+  ProposedToolCall,
+  TokenUsage,
+} from "./types";
 
 export interface StreamHandlers {
   /** Called with the delta and the text so far, on every text chunk. */
@@ -11,6 +16,8 @@ export interface StreamResult {
   text: string;
   thinking: string;
   usage?: TokenUsage;
+  /** Actions the reply proposed. Nothing has run: they await approval. */
+  toolCalls: ProposedToolCall[];
   /** Set when the model never produced usable text, or stopped early. */
   error?: string;
 }
@@ -36,6 +43,7 @@ export async function streamChat(
   let thinking = "";
   let usage: TokenUsage | undefined;
   let error: string | undefined;
+  const toolCalls: ProposedToolCall[] = [];
 
   try {
     const response = await fetch("/api/chat", {
@@ -58,6 +66,7 @@ export async function streamChat(
       return {
         text,
         thinking,
+        toolCalls,
         error: detail?.error ?? `Request failed with status ${response.status}.`,
       };
     }
@@ -92,6 +101,8 @@ export async function streamChat(
         } else if (event.type === "usage") {
           usage = event.usage;
           handlers.onUsage?.(event.usage);
+        } else if (event.type === "tool") {
+          toolCalls.push(event.call);
         } else if (event.type === "error") {
           error = event.message;
         }
@@ -105,7 +116,7 @@ export async function streamChat(
     }
   }
 
-  return { text, thinking, usage, error };
+  return { text, thinking, usage, error, toolCalls };
 }
 
 /**

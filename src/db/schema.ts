@@ -10,7 +10,7 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
-import type { AllHandsResponse, Attachment } from "@/lib/types";
+import type { AllHandsResponse, Attachment, ToolCallRecord } from "@/lib/types";
 
 /**
  * Every row is scoped by the signed-in email.
@@ -123,6 +123,14 @@ export const messages = pgTable(
      * and without this every message would appear to be the owner's.
      */
     authorEmail: text("author_email"),
+    /**
+     * Actions this reply proposed, and what became of each.
+     *
+     * On the message rather than in its own table: they are only ever read
+     * back with the message they belong to, and a card that has been approved
+     * is part of the transcript rather than a record in its own right.
+     */
+    toolCalls: jsonb("tool_calls").$type<ToolCallRecord[]>(),
     /**
      * What the reply cost, on assistant rows only.
      *

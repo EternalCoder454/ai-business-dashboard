@@ -68,6 +68,23 @@ export interface Message {
   authorEmail?: string;
   /** The model that produced it, since the setting can change between replies. */
   model?: string;
+  /**
+   * Actions this reply proposed, and what became of them.
+   *
+   * Kept on the message rather than run and forgotten, so the transcript shows
+   * what was offered as well as what was approved.
+   */
+  toolCalls?: ToolCallRecord[];
+}
+
+export interface ToolCallRecord {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+  /** Pending until someone decides, then whichever they chose. */
+  state: "pending" | "approved" | "declined" | "failed";
+  /** What happened, once it has run. */
+  result?: string;
 }
 
 /**
@@ -392,6 +409,11 @@ export interface ChatRequestBody {
   messages: { role: Role; content: string | WireContent[] }[];
   model: string;
   effort: Effort;
+  /**
+   * What this department may do beyond replying. Omitted by a caller that does
+   * not use tools, and the provider is then asked for a plain reply.
+   */
+  tools?: { name: string; description: string; schema: unknown }[];
 }
 
 export interface TokenUsage {
@@ -404,8 +426,16 @@ export interface TokenUsage {
 }
 
 /** One newline-delimited JSON frame streamed back from POST /api/chat. */
+/** One action a department has proposed, waiting on approval. */
+export interface ProposedToolCall {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}
+
 export type ChatStreamEvent =
   | { type: "thinking"; text: string }
+  | { type: "tool"; call: ProposedToolCall }
   | { type: "text"; text: string }
   | { type: "usage"; usage: TokenUsage }
   | { type: "error"; message: string }

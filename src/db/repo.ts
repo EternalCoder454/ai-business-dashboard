@@ -90,6 +90,7 @@ export async function loadWorkspace(userEmail: string): Promise<Workspace> {
       error: row.isError || undefined,
       timestamp: row.sentAt,
       authorEmail: row.authorEmail ?? undefined,
+      toolCalls: row.toolCalls ?? undefined,
       model: row.model ?? undefined,
       usage:
         row.inputTokens || row.outputTokens || row.cacheReadTokens || row.cacheWriteTokens
@@ -524,6 +525,7 @@ export async function applyMutations(userEmail: string, ops: MutationOp[]): Prom
                 content: message.content,
                 thinking: message.thinking ?? null,
                 isError: Boolean(message.error),
+                toolCalls: message.toolCalls ?? null,
                 attachmentIds: (message.attachments ?? []).map((a) => a.id),
                 model: message.model ?? null,
                 inputTokens: message.usage?.input ?? 0,
