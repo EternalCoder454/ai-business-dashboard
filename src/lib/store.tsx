@@ -79,6 +79,8 @@ interface StoreValue {
    * is ignored while this is true, so the field is pointless rather than empty.
    */
   serverKey: boolean;
+  /** One flag per provider, for the API card in Settings. */
+  serverKeys: { anthropic: boolean; openai: boolean; google: boolean };
   /** Whether this account may review other people's conversations. */
   isAdmin: boolean;
   /** Pushes everything in this browser into the signed-in account. */
@@ -198,6 +200,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Whether the server has its own Anthropic key, so Settings can stop asking
   // for one that would be ignored anyway.
   const [serverKey, setServerKey] = useState(false);
+  const [serverKeys, setServerKeys] = useState({
+    anthropic: false,
+    openai: false,
+    google: false,
+  });
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [remote, setRemote] = useState<Workspace | null>(null);
@@ -247,6 +254,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           });
         }
         setServerKey(Boolean(status?.serverKey));
+        if (status?.serverKeys) setServerKeys(status.serverKeys);
         setIsAdmin(Boolean(status?.isAdmin));
         setIsOwner(Boolean(status?.isOwner));
         setMode(status?.hosted && status.signedIn ? "hosted" : "local");
@@ -684,6 +692,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       storage: mode,
       accountEmail: signedInEmail,
       serverKey,
+      serverKeys,
       isAdmin,
       allDepartments: departmentList,
       departments: departmentList.filter((d) => !d.isCeo && !d.personal),
@@ -725,13 +734,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateSettings: async (patch) => {
         // The credentials branch off here in both modes. They are the only
         // settings that belong to the browser rather than to the workspace.
-        const { apiKey, workspaceId, ...rest } = { ...patch } as Partial<Settings>;
+        const { apiKey, workspaceId, openaiKey, googleKey, ...rest } = {
+          ...patch,
+        } as Partial<Settings>;
 
-        if (apiKey !== undefined || workspaceId !== undefined) {
+        if (
+          apiKey !== undefined ||
+          workspaceId !== undefined ||
+          openaiKey !== undefined ||
+          googleKey !== undefined
+        ) {
           setCredentials(
             writeCredentials({
               ...(apiKey !== undefined ? { apiKey } : {}),
               ...(workspaceId !== undefined ? { workspaceId } : {}),
+              ...(openaiKey !== undefined ? { openaiKey } : {}),
+              ...(googleKey !== undefined ? { googleKey } : {}),
             }),
           );
           setCredentialsReady(true);
@@ -1311,6 +1329,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     commitRemote,
     memoryList,
     taskList,
+    serverKeys,
     mode,
     signedInEmail,
     serverKey,

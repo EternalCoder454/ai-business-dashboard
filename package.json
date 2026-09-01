@@ -16,6 +16,7 @@
     "skills-test": "tsx scripts/skills-test.ts",
     "memory-test": "tsx scripts/memory-test.ts",
     "contrast-test": "tsx scripts/contrast-test.ts",
+    "providers-test": "tsx scripts/providers-test.ts",
     "skills-fingerprint": "tsx scripts/shipped-skills.ts",
     "lint": "eslint .",
     "payload-check": "tsx --env-file=.env.local scripts/payload-check.ts",
@@ -25,6 +26,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",
+    "@google/genai": "^2.20.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "dexie": "^4.0.11",
@@ -33,6 +35,7 @@
     "jszip": "^3.10.1",
     "next": "^16.3.3",
     "next-auth": "5.0.0-beta.32",
+    "openai": "^7.8.0",
     "postgres": "^3.4.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

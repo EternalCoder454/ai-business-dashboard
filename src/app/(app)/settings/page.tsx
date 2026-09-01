@@ -1,6 +1,8 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
+import { ProviderKey } from "@/components/ProviderKey";
+import { MODELS, PROVIDERS, modelsFor } from "@/lib/providers";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { CompanyMark } from "@/components/CompanyMark";
 import { ACCEPTED_IMAGE_TYPES, fileToAvatar } from "@/lib/images";
@@ -21,13 +23,17 @@ import {
   TrashIcon,
   cx,
 } from "@/components/ui";
-import { WorkspacePicker } from "@/components/WorkspacePicker";
 import { exportAll, importAll, resetAll, restoreDefaultDepartments } from "@/lib/db";
-import { EFFORT_OPTIONS, MODEL_OPTIONS, WRITING_RULES } from "@/lib/seed";
+import { EFFORT_OPTIONS, WRITING_RULES } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import type { Department, DepartmentStatus, Effort, SearchShortcut, SidebarSide, ThemeMode } from "@/lib/types";
 
 type DeptDraft = Partial<Department> & { isNew?: boolean };
+
+/** The friendly name for a model id, falling back to the id itself. */
+function modelLabel(id: string): string {
+  return MODELS.find((model) => model.id === id)?.label ?? id;
+}
 
 export default function SettingsPage() {
   const {
@@ -77,6 +83,7 @@ export default function SettingsPage() {
         personaName: draft.personaName?.trim() ?? "",
         persona: draft.persona ?? "",
         systemPrompt: draft.systemPrompt ?? "",
+        model: draft.model,
         status: draft.status ?? "online",
       });
     }
@@ -119,74 +126,30 @@ export default function SettingsPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 expanded:px-8 py-6">
         <div className="measure-wide grid items-start gap-5 expanded:grid-cols-2">
-          <Card>
-            <h2 className="md-title-lg mb-1">Anthropic API</h2>
+          <Card className="expanded:col-span-2">
+            <h2 className="md-title-lg mb-1">API</h2>
+            <p className="md-body mb-5 text-on-variant">
+              The default every department uses. One can be pointed elsewhere below.
+            </p>
 
-            {serverKey ? (
-              <>
-                <p className="md-body text-on-variant">
-                  Connected. No key needed on this device.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="md-body mb-5 text-on-variant">
-                  Stored on this device only.
-                </p>
-
-            <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
-              <Field label="API key">
-                <TextInput
-                  type={keyVisible ? "text" : "password"}
-                  value={keyDraft}
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder="sk-ant-…"
-                  onChange={(event) => {
-                    setKeyDraft(event.target.value);
-                    setKeyTouched(true);
-                  }}
-                />
-              </Field>
-              <div className="flex items-end gap-2">
-                <Button
-                  variant="outlined"
-                  onClick={() => setKeyVisible((value) => !value)}
-                >
-                  {keyVisible ? "Hide" : "Show"}
-                </Button>
-                <Button
-                  disabled={!keyTouched}
-                  onClick={async () => {
-                    await updateSettings({ apiKey: keyDraft.trim() });
-                    setKeyTouched(false);
-                  }}
-                >
-                  Save key
-                </Button>
-              </div>
-            </div>
-
-                <WorkspacePicker />
-              </>
-            )}
-
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <Field label="Model">
+            <div className="mb-5 grid gap-4 sm:grid-cols-2">
+              <Field label="Default model">
                 <Select
                   value={settings.model}
                   onChange={(event) => void updateSettings({ model: event.target.value })}
                 >
-                  {MODEL_OPTIONS.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.label} ({model.hint})
-                    </option>
+                  {PROVIDERS.map((provider) => (
+                    <optgroup key={provider.id} label={provider.label}>
+                      {modelsFor(provider.id).map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.label} ({model.hint})
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </Select>
               </Field>
-              <Field
-                label="Reasoning effort"
-              >
+              <Field label="Reasoning effort">
                 <Select
                   value={settings.effort}
                   onChange={(event) =>
@@ -201,6 +164,12 @@ export default function SettingsPage() {
                 </Select>
               </Field>
             </div>
+
+            <ul className="flex flex-col gap-3">
+              {PROVIDERS.map((provider) => (
+                <ProviderKey key={provider.id} provider={provider} />
+              ))}
+            </ul>
           </Card>
 
           {/* ------------------------------------------------ appearance */}
@@ -371,6 +340,11 @@ export default function SettingsPage() {
                       {department.roleTitle} · {ownSkillsFor(department.id).length} skills
                     </p>
                   </div>
+                  {department.model ? (
+                    <Chip title={`Uses ${modelLabel(department.model)} rather than the default`}>
+                      {modelLabel(department.model)}
+                    </Chip>
+                  ) : null}
                   <button
                     onClick={() => setDraft({ ...department })}
                     title="Edit"
@@ -586,6 +560,29 @@ export default function SettingsPage() {
                     <option key={status} value={status}>
                       {STATUS_LABEL[status]}
                     </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Model">
+                <Select
+                  value={draft.model ?? ""}
+                  onChange={(event) =>
+                    // Empty means follow the workspace default rather than
+                    // pinning this department to whatever it happens to be now.
+                    setDraft({ ...draft, model: event.target.value || undefined })
+                  }
+                >
+                  <option value="">
+                    Workspace default ({modelLabel(settings.model)})
+                  </option>
+                  {PROVIDERS.map((provider) => (
+                    <optgroup key={provider.id} label={provider.label}>
+                      {modelsFor(provider.id).map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.label}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </Select>
               </Field>

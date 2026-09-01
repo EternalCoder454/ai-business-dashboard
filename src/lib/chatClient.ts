@@ -29,6 +29,8 @@ export async function streamChat(
   workspaceId: string,
   handlers: StreamHandlers = {},
   signal?: AbortSignal,
+  /** Browser-held keys for the other providers, when the server has none. */
+  otherKeys: { openai?: string; google?: string } = {},
 ): Promise<StreamResult> {
   let text = "";
   let thinking = "";
@@ -45,6 +47,8 @@ export async function streamChat(
         // Only meaningful alongside a browser-held key. A server key brings its
         // own workspace from the environment.
         ...(workspaceId ? { "x-anthropic-workspace": workspaceId } : {}),
+        ...(otherKeys.openai ? { "x-openai-key": otherKeys.openai } : {}),
+        ...(otherKeys.google ? { "x-google-key": otherKeys.google } : {}),
       },
       body: JSON.stringify(body),
     });

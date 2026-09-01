@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
 import { readJsonWithin, requireSession, withinRate } from "@/lib/guard";
+import { DEFAULT_PROVIDER, providerInfo, providerOf, type Provider } from "@/lib/providers";
+import { droppedAttachments, streamGemini, streamOpenAi } from "@/lib/serverProviders";
 import type { ChatRequestBody, ChatStreamEvent, WireContent } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -121,17 +123,23 @@ export async function POST(request: NextRequest) {
    * spending tied to one key held on the server; the browser field stays
    * available only for a local checkout that has no env var.
    */
-  const serverKey = process.env.ANTHROPIC_API_KEY?.trim();
-  const apiKey = serverKey || request.headers.get("x-anthropic-key")?.trim();
+  const provider: Provider = body.provider ?? providerOf(body.model);
+  const info = providerInfo(provider);
+
+  const serverKey = process.env[info.envVar]?.trim();
+  const apiKey = serverKey || request.headers.get(info.header)?.trim();
 
   /**
    * An identity-linked key refuses any request that does not say which
    * workspace it is acting in. The workspace follows whichever key is in use,
    * so a server key never picks up a workspace typed into a browser.
    */
-  const workspaceId = serverKey
-    ? process.env.ANTHROPIC_WORKSPACE_ID?.trim()
-    : request.headers.get("x-anthropic-workspace")?.trim();
+  const workspaceId =
+    provider !== "anthropic"
+      ? undefined
+      : serverKey
+        ? process.env.ANTHROPIC_WORKSPACE_ID?.trim()
+        : request.headers.get("x-anthropic-workspace")?.trim();
 
   if (!apiKey) {
     // Which server is answering matters here. The deployment holds the key in
@@ -141,8 +149,8 @@ export async function POST(request: NextRequest) {
     return Response.json(
       {
         error: local
-          ? "No API key on this development server. ANTHROPIC_API_KEY is not in .env.local, and the key set on the deployment does not reach localhost. Either add it to .env.local and restart, or paste one into Settings for this browser."
-          : "No API key on the server. Set ANTHROPIC_API_KEY in the deployment's environment variables and redeploy.",
+          ? `No ${info.label} key on this development server. Add ${info.envVar} to .env.local and restart, or paste one into Settings for this browser.`
+          : `No ${info.label} key on the server. Set ${info.envVar} in the deployment's environment variables and redeploy.`,
       },
       { status: 401 },
     );
@@ -157,6 +165,17 @@ export async function POST(request: NextRequest) {
   }
 
   const model = body.model || "claude-sonnet-5";
+
+  /**
+   * Anything that is not Anthropic streams through its own adapter and returns
+   * here. Anthropic keeps the path below because prompt caching, server-side
+   * fallbacks, and adaptive thinking have no equivalent in the others, and a
+   * shared abstraction would end up shaped like Anthropic anyway.
+   */
+  if (provider === "openai" || provider === "google") {
+    return streamThroughAdapter({ provider, model, apiKey, body, request });
+  }
+
   const client = new Anthropic({
     apiKey,
     maxRetries: 2,
@@ -425,4 +444,121 @@ export async function POST(request: NextRequest) {
       Connection: "keep-alive",
     },
   });
+}
+
+/**
+ * The streaming response for OpenAI and Gemini.
+ *
+ * Same NDJSON frames as the Anthropic path, so the client cannot tell which
+ * provider answered except by what the reply says.
+ */
+function streamThroughAdapter({
+  provider,
+  model,
+  apiKey,
+  body,
+  request,
+}: {
+  provider: Exclude<Provider, "anthropic">;
+  model: string;
+  apiKey: string;
+  body: ChatRequestBody;
+  request: NextRequest;
+}): Response {
+  let upstream: { abort: () => void } | null = null;
+  let clientGone = false;
+
+  const stopUpstream = () => {
+    clientGone = true;
+    try {
+      upstream?.abort();
+    } catch {
+      // Already finished or already torn down.
+    }
+    upstream = null;
+  };
+
+  request.signal.addEventListener("abort", stopUpstream, { once: true });
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const emit = (event: ChatStreamEvent) => {
+        if (!clientGone) controller.enqueue(frame(event));
+      };
+
+      try {
+        // Said before the answer, so a missing attachment is not discovered by
+        // wondering why the reply ignored it.
+        const dropped = droppedAttachments(body.messages ?? [], provider);
+        if (dropped) emit({ type: "error", message: dropped });
+
+        const args = {
+          apiKey,
+          model,
+          system: body.system,
+          messages: body.messages ?? [],
+          effort: body.effort || ("medium" as const),
+          emit,
+          stopped: () => clientGone,
+          onOpen: (handle: { abort: () => void }) => {
+            upstream = handle;
+            if (clientGone) stopUpstream();
+          },
+        };
+
+        if (provider === "openai") await streamOpenAi(args);
+        else await streamGemini(args);
+
+        if (!clientGone) controller.enqueue(frame({ type: "done" }));
+      } catch (error) {
+        if (!clientGone) {
+          console.error(`[api/chat] ${provider}`, error);
+          emit({ type: "error", message: describeProviderError(provider, error) });
+        }
+      } finally {
+        request.signal.removeEventListener("abort", stopUpstream);
+        upstream = null;
+        try {
+          controller.close();
+        } catch {
+          // Already closed by the cancel handler below.
+        }
+      }
+    },
+
+    cancel() {
+      stopUpstream();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store, no-transform",
+      Connection: "keep-alive",
+    },
+  });
+}
+
+/** Reads the status off whatever the provider threw, without pretending to know its shape. */
+function describeProviderError(provider: Provider, error: unknown): string {
+  const info = providerInfo(provider);
+  const status =
+    typeof error === "object" && error && "status" in error
+      ? Number((error as { status: unknown }).status)
+      : undefined;
+
+  if (status === 401 || status === 403) {
+    return `That ${info.label} key was rejected. Check it in Settings.`;
+  }
+  if (status === 404) {
+    return "That model was not found on this account. Pick a different one in Settings.";
+  }
+  if (status === 429) {
+    return `${info.label} is rate limiting this key. Wait a moment and try again.`;
+  }
+  if (status && status >= 500) {
+    return `${info.label} had a problem at their end. Try again in a moment.`;
+  }
+  return error instanceof Error ? error.message : `${info.label} could not be reached.`;
 }

@@ -14,8 +14,11 @@
 const STORE_KEY = "eterneon.credentials.v1";
 
 export interface Credentials {
+  /** The Anthropic key. Named without a provider because it predates the others. */
   apiKey: string;
   workspaceId: string;
+  openaiKey?: string;
+  googleKey?: string;
 }
 
 export const EMPTY_CREDENTIALS: Credentials = { apiKey: "", workspaceId: "" };
@@ -30,6 +33,8 @@ export function readCredentials(): Credentials | null {
     return {
       apiKey: typeof parsed.apiKey === "string" ? parsed.apiKey : "",
       workspaceId: typeof parsed.workspaceId === "string" ? parsed.workspaceId : "",
+      openaiKey: typeof parsed.openaiKey === "string" ? parsed.openaiKey : "",
+      googleKey: typeof parsed.googleKey === "string" ? parsed.googleKey : "",
     };
   } catch {
     // Private browsing, a disabled store, or a value someone hand edited.

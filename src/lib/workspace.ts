@@ -14,7 +14,17 @@ import type {
 } from "./types";
 
 /** Settings as they are stored per account. The API key is server side only. */
-export type StoredSettings = Omit<Settings, "id" | "apiKey" | "workspaceId">;
+/**
+ * Settings as they are stored per account.
+ *
+ * Every API key is left out deliberately. A hosted workspace syncs between
+ * machines, and a credential that follows you between machines is a credential
+ * sitting in a database waiting to leak, so they live in the browser instead.
+ */
+export type StoredSettings = Omit<
+  Settings,
+  "id" | "apiKey" | "workspaceId" | "openaiKey" | "googleKey"
+>;
 
 /**
  * One account's entire workspace.
@@ -231,6 +241,8 @@ export interface WorkspaceStatus {
    * typed into a browser is ignored and asking for one is misleading.
    */
   serverKey?: boolean;
+  /** One flag per provider, so Settings can say which are ready to use. */
+  serverKeys?: { anthropic: boolean; openai: boolean; google: boolean };
   /** Whether this account may review other people's conversations. */
   isAdmin?: boolean;
   /** The single account the workspace belongs to. */

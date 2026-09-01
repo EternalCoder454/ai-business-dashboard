@@ -1,6 +1,7 @@
 import { mapWithConcurrency, streamChat } from "./chatClient";
 import { newId } from "./db";
 import { buildSystemPrompt, deriveConversationTitle } from "./prompts";
+import { providerOf } from "./providers";
 import type {
   AllHandsRound,
   AllHandsRun,
@@ -196,7 +197,8 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
           tasks,
         ),
         messages: buildHeadHistory(priorRounds, department.id, question, budget),
-        model: settings.model,
+        model: department.model || settings.model,
+        provider: providerOf(department.model || settings.model),
         effort: settings.effort,
       },
       settings.apiKey,
@@ -208,6 +210,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
         },
       },
       signal,
+      { openai: settings.openaiKey, google: settings.googleKey },
     );
 
     round.responses[index] = {
@@ -260,7 +263,8 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
             content: `I put this to every department head:\n\n"${question}"\n\nHere is what each of them said:\n\n${transcript}\n\nGive me your read. Where do they actually agree, where do they genuinely conflict, and what is the one thing I should do first? Name the heads you are agreeing and disagreeing with. Keep it short.`,
           },
         ],
-        model: settings.model,
+        model: ceo.model || settings.model,
+        provider: providerOf(ceo.model || settings.model),
         effort: settings.effort,
       },
       settings.apiKey,
@@ -272,6 +276,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
         },
       },
       signal,
+      { openai: settings.openaiKey, google: settings.googleKey },
     );
 
     if (!result.text && result.error) {

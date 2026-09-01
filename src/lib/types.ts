@@ -1,3 +1,7 @@
+import type { Provider } from "./providers";
+
+export type { Provider };
+
 export type Role = "user" | "assistant";
 
 export type AttachmentKind = "image" | "pdf" | "document";
@@ -124,6 +128,14 @@ export interface Department {
   /** Temperament and voice, injected ahead of the scoped system prompt. */
   persona: string;
   systemPrompt: string;
+  /**
+   * Which model answers for this department, and therefore which provider.
+   *
+   * Undefined means the workspace default, which is what every department has
+   * until someone changes one, so a workspace that predates this needs no
+   * migration and behaves exactly as before.
+   */
+  model?: string;
   /** Legacy seed value. The real count is derived from the skills table. */
   skillCount?: number;
   status: DepartmentStatus;
@@ -307,6 +319,10 @@ export interface Settings {
    * that does not name the workspace it acts in. Ordinary keys ignore it.
    */
   workspaceId: string;
+  /** Held in this browser like the Anthropic key, never written to the database. */
+  openaiKey?: string;
+  googleKey?: string;
+  /** The workspace default. A department with no model of its own uses this. */
   model: string;
   effort: Effort;
   theme: ThemeMode;
@@ -366,6 +382,12 @@ export interface AllHandsRun {
 /** Wire format for POST /api/chat. */
 export interface ChatRequestBody {
   system: string;
+  /**
+   * Which service answers. Omitted by anything written before providers were
+   * a choice, and the server then reads it off the model id, so an old client
+   * naming a Claude model still reaches Anthropic.
+   */
+  provider?: Provider;
   /** Content is a plain string unless the turn carries images. */
   messages: { role: Role; content: string | WireContent[] }[];
   model: string;

@@ -35,6 +35,9 @@ export const departments = pgTable(
     roleTitle: text("role_title").notNull(),
     persona: text("persona").notNull().default(""),
     systemPrompt: text("system_prompt").notNull().default(""),
+    // Null means the workspace default, which is every department until one is
+    // pointed somewhere else.
+    model: text("model"),
     status: text("status").notNull().default("online"),
     sortOrder: integer("sort_order").notNull().default(0),
     isCeo: boolean("is_ceo").notNull().default(false),

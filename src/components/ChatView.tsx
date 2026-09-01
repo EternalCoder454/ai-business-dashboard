@@ -16,6 +16,7 @@ import {
   formatBytes,
 } from "@/lib/files";
 import { AttachmentError, MAX_ATTACHMENTS_PER_MESSAGE, attachmentSrc } from "@/lib/images";
+import { providerOf } from "@/lib/providers";
 import { COMPANY_ID } from "@/lib/seed";
 import { buildSystemPrompt, deriveConversationTitle, hasProfileContent } from "@/lib/prompts";
 import { conversationHref, departmentHrefById } from "@/lib/routes";
@@ -338,7 +339,11 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           role: m.role,
           content: toWire(m),
         })),
-        model: settings.model,
+        // A department pointed at its own model wins; otherwise the
+        // workspace default, which is what every department has until one is
+        // changed.
+        model: department.model || settings.model,
+        provider: providerOf(department.model || settings.model),
         effort: settings.effort,
       },
       settings.apiKey,
@@ -350,6 +355,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         onUsage: setLastUsage,
       },
       controller.signal,
+      { openai: settings.openaiKey, google: settings.googleKey },
     );
 
     const collectedText = result.text;
