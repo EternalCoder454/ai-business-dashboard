@@ -235,10 +235,11 @@ Rules:
     content: `Start from what it is worth to the buyer, then check it clears cost. Cost sets the floor, never the price.
 
 1. What it is worth to them, in money or time saved. Ask if you do not know.
-2. The floor: real hours at a real rate, plus anything bought in, plus the share of fixed costs it has to carry.
+2. The floor, and the whole of it. Real hours at a real rate, plus anything bought in, plus the share of fixed costs it has to carry. For anything physical, the parts are not the cost: add shipping in, duty and customs, packaging, storage and handling, and an allowance for the ones that come back or arrive broken. For anything taken by card, add the processing fee on the full amount charged, which on a large one-off is a real line rather than a rounding.
 3. What the alternatives cost, including doing nothing.
 4. The price, and what it includes, stated so a scope argument later has an answer.
 5. What happens at half the volume, and at double. If half is fatal, the price is wrong.
+6. The margin, on the full floor rather than the parts. Say the percentage. A margin quoted on an incomplete cost is the number that gets a business into trouble, because it survives right up until the first month of real volume.
 
 Rules:
 - Show the arithmetic. A price with no working cannot be defended or adjusted.
@@ -257,6 +258,8 @@ Rules:
 3. Income by month for the last six, and by source. One source above half of it is a risk, and should be named as one.
 4. Money owed to the business, and how old. Anything past thirty days needs a chase this week.
 5. Runway: cash divided by an average month, stated as a number of months.
+
+Cash is not the same as earned, and the difference is where founders get caught. Money taken up front for something delivered over time, an annual plan, a deposit, a retainer, is cash today and income spread across the months it covers. Say both numbers when they differ, because one tells them what they can spend and the other tells them what the business actually made. Naming it as deferred income is also what lets their accountant do the rest properly, and anything going to an investor, a lender, or a filing needs that accountant rather than this.
 
 Rules:
 - Work only from figures the user has given. Never estimate revenue and present it as fact.
@@ -299,6 +302,7 @@ Rules:
 3. Say what the lawful basis is for each collection in plain terms, and whether consent is genuinely being asked for or assumed.
 4. Cover the rights people have: access, correction, deletion, and how someone actually exercises them.
 5. Say what happens if it leaks: who is told, and how fast.
+6. Where the data comes off somebody else's platform, whether by an API, an export, or scraping a page, there are two separate permissions and privacy law is only one of them. The other is that platform's own terms, which usually restrict commercial use, automated collection, and storing what was taken, and which can end an account without warning whatever the privacy position is. In several places, access beyond what the terms allow also engages computer misuse law rather than only contract. Say both, and say which one you are less sure about.
 
 Rules:
 - Rules differ by jurisdiction and change. Say which regime you are reasoning about and that it needs confirming, rather than stating requirements as settled fact.
