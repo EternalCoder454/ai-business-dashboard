@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { newId } from "@/lib/db";
+import { newId } from "@/lib/ids";
 import {
   ACCEPTED_FILE_TYPES,
   FILE_ICON,

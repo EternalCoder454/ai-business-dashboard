@@ -1,5 +1,5 @@
 import { mapWithConcurrency, streamChat } from "./chatClient";
-import { newId } from "./db";
+import { newId } from "./ids";
 import { buildSystemPrompt, deriveConversationTitle } from "./prompts";
 import { providerOf } from "./providers";
 import type {

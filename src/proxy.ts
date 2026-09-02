@@ -33,7 +33,15 @@ export const config = {
      * in" is its entire job. Redirecting it meant the store fetched the
      * sign-in page as JSON, failed, and fell back by accident rather than by
      * being told. It checks auth itself and reveals nothing else.
+     *
+     * api/v1 is excluded because it authenticates with a bearer token rather
+     * than a session cookie. Left in, every call from an addon would be
+     * answered with a 307 to the sign-in page: an HTML body, a redirect a
+     * curl follows silently, and no way for the caller to tell a bad key from
+     * a wrong URL. Every route under it calls `authorize` for itself, which is
+     * a stricter gate than this one — it checks the key, the scope, and the
+     * rate limit, where the proxy only checks that somebody is signed in.
      */
-    "/((?!api/auth|api/workspace/status|signin|_next/static|_next/image|icon|apple-icon|manifest.webmanifest|opengraph-image|twitter-image|robots.txt|favicon.ico).*)",
+    "/((?!api/auth|api/v1|api/workspace/status|signin|_next/static|_next/image|icon|apple-icon|manifest.webmanifest|opengraph-image|twitter-image|robots.txt|favicon.ico).*)",
   ],
 };

@@ -1,6 +1,5 @@
 "use client";
 
-import { useLiveQuery } from "dexie-react-hooks";
 import {
   createContext,
   useCallback,
@@ -17,7 +16,7 @@ import {
   writeCredentials,
   type Credentials,
 } from "./credentials";
-import { db, ensureSeeded, newId } from "./db";
+import { newId } from "./ids";
 import {
   applyOp,
   type MutationOp,
@@ -98,8 +97,6 @@ export interface StoreValue {
   ) => Promise<string | null>;
   /** Whether this account may review other people's conversations. */
   isOperator: boolean;
-  /** Pushes everything in this browser into the signed-in account. */
-  uploadLocalWorkspace: () => Promise<{ pushed: number }>;
   /** Department heads only. The CEO is excluded. */
   departments: Department[];
   /** Yours alone: outside the org chart and out of All Hands. */
@@ -424,9 +421,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [credentialsReady]);
 
   /**
-   * Reads come from whichever storage is in use. Hosted keeps its snapshot in
-   * state; local keeps the live Dexie queries. Everything below this line is
-   * written against these names and never has to know which one it got.
+   * Reads come from the hosted snapshot held in state. There was a second
+   * source once — a workspace in the browser's own IndexedDB — and everything
+   * below this line was written to not know which one it got. Only one is left,
+   * but the indirection stays useful: it is still the single place where "what
+   * the screen shows" is assembled from "what the server said".
    */
   const settings: Settings = useMemo(() => {
     const base = { ...DEFAULT_SETTINGS, ...(remote?.settings ?? {}) };
@@ -536,11 +535,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<StoreValue>(() => {
-    const requireDb = () => {
-      if (!db) throw new Error("Database is only available in the browser.");
-      return db;
-    };
-
     return {
       ready: remote !== null,
       writeError,
@@ -601,7 +595,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
        *
        * Each one builds the finished row, then hands it to whichever storage
        * is in use. Hosted mode needs the whole row rather than a patch, since
-       * the server upserts; local mode can keep using Dexie's partial update.
+       * the server upserts.
        * ---------------------------------------------------------------- */
 
       updateSettings: async (patch) => {
@@ -812,43 +806,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
 
       deleteProject: async (id) => {
+        // The server unlinks the conversations, deliverables, and files that
+        // pointed at this project. There used to be a second copy of that
+        // unlinking here, written by hand against the browser's own IndexedDB
+        // for the days when a workspace could live there. It stayed after the
+        // move and ran a whole transaction against an empty database on every
+        // delete: no effect, and a round trip to IndexedDB to have none.
         await push({ table: "projects", action: "delete", ids: [id] });
-        // Local mode has no server to mirror, so the unlinking that applyOp
-        // does for a hosted workspace has to be written out by hand here.
-        const database = requireDb();
-        await database.transaction(
-          "rw",
-          database.projects,
-          database.conversations,
-          database.deliverables,
-          database.files,
-          async () => {
-            await database.projects.delete(id);
-
-            // Written out per table rather than looped: Dexie types each table
-            // separately, and a loop over all three collapses bulkPut into a
-            // union with no callable signature.
-            const release = async <T extends { projectId?: string }>(
-              rows: T[],
-              put: (next: T[]) => Promise<unknown>,
-            ) => {
-              if (rows.length) await put(rows.map((row) => ({ ...row, projectId: undefined })));
-            };
-
-            await release(
-              await database.conversations.where("projectId").equals(id).toArray(),
-              (rows) => database.conversations.bulkPut(rows),
-            );
-            await release(
-              await database.deliverables.where("projectId").equals(id).toArray(),
-              (rows) => database.deliverables.bulkPut(rows),
-            );
-            await release(
-              await database.files.where("projectId").equals(id).toArray(),
-              (rows) => database.files.bulkPut(rows),
-            );
-          },
-        );
       },
 
       getProject: (id) => projectList.find((row) => row.id === id),
@@ -1070,73 +1034,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteMemory: async (id) => {
         await push({ table: "memory", action: "delete", ids: [id] });
       },
-
-      /**
-       * Moves everything in this browser into the signed-in account, in one
-       * batch. Existing rows with the same id are overwritten, so running it
-       * twice is safe and the second run is a no-op.
-       */
-      uploadLocalWorkspace: async () => {
-        if (!hosted || !db) return { pushed: 0 };
-
-        const [depts, convs, skls, dels, mems, tsks, projs, fls, runs, prof, sets] = await Promise.all([
-          db.departments.toArray(),
-          db.conversations.toArray(),
-          db.skills.toArray(),
-          db.deliverables.toArray(),
-          db.memory.toArray(),
-          db.tasks.toArray(),
-          db.projects.toArray(),
-          db.files.toArray(),
-          db.allHands.toArray(),
-          db.profile.get("profile"),
-          db.settings.get("app"),
-        ]);
-
-        const ops: MutationOp[] = [];
-        if (depts.length) ops.push({ table: "departments", action: "upsert", rows: depts });
-        // Projects go before the work that references them, so a half applied
-        // batch never leaves a conversation pointing at a project that is not
-        // there yet.
-        if (projs.length) ops.push({ table: "projects", action: "upsert", rows: projs });
-        if (skls.length) ops.push({ table: "skills", action: "upsert", rows: skls });
-        if (dels.length) ops.push({ table: "deliverables", action: "upsert", rows: dels });
-        if (mems.length) ops.push({ table: "memory", action: "upsert", rows: mems });
-        if (tsks.length) ops.push({ table: "tasks", action: "upsert", rows: tsks });
-        if (fls.length) ops.push({ table: "files", action: "upsert", rows: fls });
-        if (runs.length) ops.push({ table: "allHands", action: "upsert", rows: runs });
-        // Conversations carry their messages and attachments, so they go last
-        // and in their own operation to keep any single request manageable.
-        if (convs.length) ops.push({ table: "conversations", action: "upsert", rows: convs });
-        if (prof) {
-          const { id: _id, ...rest } = prof;
-          ops.push({ table: "profile", action: "upsert", row: rest });
-        }
-        if (sets) {
-          const { id: _id, apiKey: _key, ...rest } = sets;
-          ops.push({ table: "settings", action: "upsert", row: rest });
-        }
-
-        if (ops.length === 0) return { pushed: 0 };
-
-        const response = await fetch("/api/workspace", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ops }),
-        });
-        if (!response.ok) throw new Error("The upload was refused.");
-
-        const fresh = await fetch("/api/workspace").then((r) => r.json() as Promise<Workspace>);
-        commitRemote(fresh);
-
-        return {
-          pushed:
-            depts.length + convs.length + skls.length + dels.length + fls.length + runs.length,
-        };
-      },
     };
   }, [
-    hosted,
     commitRemote,
     writeError,
     memoryList,

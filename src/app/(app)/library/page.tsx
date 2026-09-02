@@ -26,7 +26,7 @@ import {
   useLibraryView,
   type LibraryView,
 } from "@/lib/libraryView";
-import { newId } from "@/lib/db";
+import { newId } from "@/lib/ids";
 import {
   ACCEPTED_FILE_TYPES,
   FILE_ICON,

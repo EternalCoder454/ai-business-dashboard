@@ -23,7 +23,6 @@ import {
   TrashIcon,
   cx,
 } from "@/components/ui";
-import { exportAll, importAll, resetAll, restoreDefaultDepartments } from "@/lib/db";
 import { EFFORT_OPTIONS, WRITING_RULES } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import type { Department, DepartmentStatus, Effort, SearchShortcut, SidebarSide, ThemeMode } from "@/lib/types";
@@ -53,10 +52,8 @@ export default function SettingsPage() {
   const [keyVisible, setKeyVisible] = useState(false);
   const [keyTouched, setKeyTouched] = useState(false);
   const [draft, setDraft] = useState<DeptDraft | null>(null);
-  const [confirmReset, setConfirmReset] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Department | null>(null);
   const [dataNotice, setDataNotice] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement | null>(null);
   const avatarInput = useRef<HTMLInputElement | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const markInput = useRef<HTMLInputElement | null>(null);
@@ -90,30 +87,33 @@ export default function SettingsPage() {
     setDraft(null);
   };
 
+  /**
+   * The export comes from the server now.
+   *
+   * It used to be built from this browser's own IndexedDB, which stopped
+   * holding anything when workspaces moved to the server — so the button went
+   * on producing a file, and the file was empty. Anybody who pressed it walked
+   * away thinking they had a backup.
+   */
   const download = async () => {
-    const payload = await exportAll();
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `eterneon-export-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    setDataNotice("Exported.");
-  };
-
-  const upload = async (file: File) => {
+    setDataNotice("Building the export…");
     try {
-      const counts = await importAll(JSON.parse(await file.text()));
-      setDataNotice(
-        `Imported ${counts.departments} departments, ${counts.conversations} conversations, ${counts.deliverables} deliverables.`,
-      );
-    } catch (error) {
-      setDataNotice(
-        error instanceof Error ? `Import failed. ${error.message}` : "Import failed.",
-      );
+      const response = await fetch("/api/workspace/export");
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        setDataNotice(body?.error ?? "Could not build the export.");
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `eterneon-export-${new Date().toISOString().slice(0, 10)}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setDataNotice("Exported.");
+    } catch {
+      setDataNotice("Could not reach the server.");
     }
   };
 
@@ -411,6 +411,11 @@ export default function SettingsPage() {
           <Card>
             <h2 className="md-title-lg mb-1">Data</h2>
 
+            <p className="md-body mb-3 text-on-variant">
+              Everything this business has written, as one file: heads, conversations,
+              deliverables, the wiki, the profile. The model keys are left out.
+            </p>
+
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outlined"
@@ -419,34 +424,14 @@ export default function SettingsPage() {
               >
                 Export data
               </Button>
-              <Button variant="outlined" onClick={() => fileRef.current?.click()}>
-                Import data
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={async () => {
-                  await restoreDefaultDepartments();
-                  setDataNotice("Built-in departments restored to their shipped prompts.");
-                }}
-              >
-                Restore default departments
-              </Button>
-              <Button variant="danger" onClick={() => setConfirmReset(true)}>
-                Reset everything
-              </Button>
             </div>
 
-            <input
-              ref={fileRef}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (file) void upload(file);
-              }}
-            />
+            {/* Import, restore-defaults, and reset used to live here. All three
+                wrote to this browser's own IndexedDB, which stopped being where
+                the workspace lived; they went on succeeding and changing
+                nothing, and the reset dialog said "this cannot be undone" about
+                an action that did not happen. A button that lies is worse than
+                a button that is missing. */}
 
             {dataNotice ? (
               <p className="md-label mt-4 text-on-variant">{dataNotice}</p>
@@ -651,34 +636,6 @@ export default function SettingsPage() {
         </p>
       </Dialog>
 
-      <Dialog
-        open={confirmReset}
-        title="Reset everything?"
-        onClose={() => setConfirmReset(false)}
-        width="max-w-md"
-        footer={
-          <>
-            <Button variant="text" onClick={() => setConfirmReset(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              onClick={async () => {
-                await resetAll();
-                setConfirmReset(false);
-                window.location.href = "/";
-              }}
-            >
-              Erase and re-seed
-            </Button>
-          </>
-        }
-      >
-        <p className={cx("md-body text-on-variant")}>
-          Every department, conversation, deliverable, and profile field goes back to the
-          defaults. Export first if you want a copy. This cannot be undone.
-        </p>
-      </Dialog>
     </div>
   );
 }

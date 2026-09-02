@@ -1,6 +1,5 @@
 "use client";
 
-import { AccountCard } from "@/components/AccountCard";
 import { PageHeader } from "@/components/PageHeader";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -174,7 +173,6 @@ export default function AccountPage() {
             ) : null}
           </Card>
 
-          <AccountCard />
 
           {/* ------------------------------------------------ how you are addressed */}
           <Card>
