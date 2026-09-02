@@ -1,5 +1,6 @@
 "use client";
 
+import { CalendarCard } from "./CalendarCard";
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import {
@@ -139,6 +140,9 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-3">
+        {/* First, and only when there is one. "What should I focus on" is
+            usually answered by "you have four hours of meetings". */}
+        <CalendarCard />
         <PaneList
           title="Open tasks"
           icon={<CheckIcon className="h-3.5 w-3.5" />}

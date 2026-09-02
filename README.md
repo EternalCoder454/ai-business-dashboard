@@ -30,6 +30,7 @@ and people sign up at the address it is deployed to rather than installing anyth
 | **Inbox** | Direct messages between colleagues, with presence. |
 | **Your people** | An administrator adds colleagues, sets what each can do, and holds the model keys. |
 | **Integrations** | API keys for the developer API. The addon catalogue is still being built. |
+| **Google Calendar** | Connected per person from Settings, read only, shown on the dashboard. Asked for separately from signing in, and never visible to anybody else in the business. |
 
 ### For whoever runs the deployment
 
@@ -267,7 +268,7 @@ src/
       v1/                 The developer API
       reports/            The conduct reviewer
   db/
-    schema.ts             23 tables. The source of truth for every type below it.
+    schema.ts             26 tables. The source of truth for every type below it.
     repo.ts               loadWorkspace, loadConversationMessages, applyMutations
     tenancy.ts            membershipFor, and everything that decides who sees what
     apiKeys.ts            Bearer tokens, stored as hashes

@@ -767,3 +767,33 @@ export const briefings = pgTable(
   },
   (table) => [index("briefings_ws_idx").on(table.workspaceId, table.createdAt)],
 );
+
+/**
+ * One person's connection to their own Google Calendar.
+ *
+ * Keyed by the person rather than the business, because it is their calendar.
+ * Two people in the same company connect separately and see their own, and
+ * somebody leaving takes their connection with them.
+ *
+ * The refresh token is encrypted with the same master key the model keys use.
+ * It is the more dangerous of the two: a model key spends money, and this reads
+ * somebody's diary until it is revoked.
+ *
+ * Deliberately not part of signing in. Asking every new person for calendar
+ * access at the door, to use a panel that mostly has nothing to do with their
+ * calendar, is how a consent screen teaches people to click through consent
+ * screens.
+ */
+export const googleConnections = pgTable("google_connections", {
+  userEmail: text("user_email").primaryKey(),
+  workspaceId: workspace(),
+  /** Encrypted. There is no route that returns it. */
+  refreshToken: text("refresh_token").notNull(),
+  /** What Google actually granted, which can be less than was asked for. */
+  scope: text("scope").notNull().default(""),
+  /** The Google account that was connected, which need not be the sign-in one. */
+  googleEmail: text("google_email").notNull().default(""),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  createdAt: created(),
+  updatedAt: updated(),
+});

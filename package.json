@@ -30,7 +30,8 @@
     "keys-encrypt": "tsx --env-file=.env.local scripts/keys-encrypt.ts",
     "keys-status": "tsx --env-file=.env.local scripts/keys-status.ts",
     "export-test": "tsx scripts/export-test.ts",
-    "schedules-test": "tsx scripts/schedules-test.ts"
+    "schedules-test": "tsx scripts/schedules-test.ts",
+    "google-test": "tsx scripts/google-test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",
