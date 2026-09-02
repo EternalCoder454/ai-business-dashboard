@@ -6,6 +6,7 @@ import {
   listThread,
   listThreads,
   markThreadRead,
+  seenThrough,
   sendMessage,
   touchPresence,
   unreadTotal,
@@ -91,8 +92,14 @@ export async function GET(request: Request) {
       }
       const rawSince = Number(url.searchParams.get("since") ?? "");
       const since = Number.isFinite(rawSince) && rawSince > 0 ? rawSince : undefined;
-      const messages = await listThread(mine.workspaceId, sender.email, other, since);
-      return Response.json({ messages });
+      // Both every time, including on the polling call. `since` bounds the
+      // messages, but the watermark has to come back unbounded or a tick on
+      // something sent earlier would never reach the screen.
+      const [messages, seen] = await Promise.all([
+        listThread(mine.workspaceId, sender.email, other, since),
+        seenThrough(mine.workspaceId, sender.email, other),
+      ]);
+      return Response.json({ messages, seenThrough: seen });
     }
 
     const workspace = await membershipFor(sender.email);

@@ -131,6 +131,10 @@ interface ThreadState {
   sending: boolean;
   error?: string;
   send: (body: string) => Promise<void>;
+  /** Sends a failed one again. Its text lives nowhere else by then. */
+  retry: (message: DirectMessage) => Promise<void>;
+  /** The newest thing of mine the other person has read, as a timestamp. */
+  seenThrough: number;
 }
 
 /**
@@ -145,6 +149,7 @@ export function useThread(other: string | undefined, self: string | undefined): 
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string>();
+  const [seenThrough, setSeenThrough] = useState(0);
 
   // Held in a ref rather than state: the poll reads it, and putting it in the
   // effect's dependencies would restart the timer on every new message.
@@ -153,6 +158,7 @@ export function useThread(other: string | undefined, self: string | undefined): 
   useEffect(() => {
     setMessages([]);
     setError(undefined);
+    setSeenThrough(0);
     newest.current = 0;
   }, [other]);
 
@@ -173,7 +179,19 @@ export function useThread(other: string | undefined, self: string | undefined): 
         );
         if (!response.ok || cancelled) return;
 
-        const body = (await response.json()) as { messages: DirectMessage[] };
+        const body = (await response.json()) as {
+          messages: DirectMessage[];
+          seenThrough?: number;
+        };
+
+        // Above the early return below. A tick is the one thing that arrives
+        // when nothing new has been said, which is exactly when the poll would
+        // otherwise have nothing to do.
+        if (body.seenThrough) {
+          const mark = body.seenThrough;
+          setSeenThrough((current) => Math.max(current, mark));
+        }
+
         const incoming = body.messages ?? [];
         if (!incoming.length || cancelled) return;
 
@@ -209,22 +227,23 @@ export function useThread(other: string | undefined, self: string | undefined): 
     };
   }, [other]);
 
-  const send = useCallback(
-    async (body: string) => {
-      const text = body.trim();
-      if (!other || !self || !text || sending) return;
-
-      setSending(true);
+  /**
+   * The write itself, against a message already on screen.
+   *
+   * A failure used to delete that message and put the reason in a banner. The
+   * draft box is cleared the moment you press send, so the only copy of what
+   * you wrote was the one being removed: a blip on the train took the text with
+   * it. It stays now, marked, with a way to send it again.
+   */
+  const deliver = useCallback(
+    async (text: string, localId: string) => {
+      if (!other) return;
       setError(undefined);
-
-      const optimistic: DirectMessage = {
-        id: `pending:${Date.now()}`,
-        fromEmail: self,
-        toEmail: other,
-        body: text,
-        sentAt: Date.now(),
-      };
-      setMessages((current) => [...current, optimistic]);
+      const mark = (state: "sending" | "failed") =>
+        setMessages((current) =>
+          current.map((m) => (m.id === localId ? { ...m, local: state } : m)),
+        );
+      mark("sending");
 
       try {
         const response = await fetch("/api/messages", {
@@ -232,33 +251,71 @@ export function useThread(other: string | undefined, self: string | undefined): 
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ to: other, body: text }),
         });
-        const payload = (await response.json()) as {
+        const payload = (await response.json().catch(() => null)) as {
           message?: DirectMessage;
           error?: string;
-        };
+        } | null;
 
-        if (!response.ok || !payload.message) {
-          setMessages((current) => current.filter((m) => m.id !== optimistic.id));
-          setError(payload.error ?? "That did not send.");
+        if (!response.ok || !payload?.message) {
+          mark("failed");
+          // The banner carries the reason and nothing else. The row already
+          // says it did not send, so repeating that here as a fallback is one
+          // sentence saying one thing twice; a rate limit or a recipient who
+          // left the business is something the row cannot say.
+          setError(payload?.error);
           return;
         }
 
         const saved = payload.message;
         newest.current = Math.max(newest.current, saved.sentAt);
         setMessages((current) =>
-          [...current.filter((m) => m.id !== optimistic.id), saved].sort(
+          [...current.filter((m) => m.id !== localId), saved].sort(
             (a, b) => a.sentAt - b.sentAt,
           ),
         );
       } catch {
-        setMessages((current) => current.filter((m) => m.id !== optimistic.id));
-        setError("That did not send.");
+        // Nothing came back to explain it. The row says what happened.
+        mark("failed");
+      }
+    },
+    [other],
+  );
+
+  const send = useCallback(
+    async (body: string) => {
+      const text = body.trim();
+      if (!other || !self || !text || sending) return;
+
+      const localId = `pending:${Date.now()}`;
+      setMessages((current) => [
+        ...current,
+        {
+          id: localId,
+          fromEmail: self,
+          toEmail: other,
+          body: text,
+          sentAt: Date.now(),
+          local: "sending",
+        },
+      ]);
+
+      setSending(true);
+      try {
+        await deliver(text, localId);
       } finally {
         setSending(false);
       }
     },
-    [other, self, sending],
+    [other, self, sending, deliver],
   );
 
-  return { messages, sending, error, send };
+  const retry = useCallback(
+    async (message: DirectMessage) => {
+      if (message.local !== "failed") return;
+      await deliver(message.body, message.id);
+    },
+    [deliver],
+  );
+
+  return { messages, sending, error, send, retry, seenThrough };
 }

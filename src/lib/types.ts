@@ -536,6 +536,44 @@ export interface DirectMessage {
   sentAt: number;
   /** Set once the recipient has opened the thread. */
   readAt?: number;
+  /**
+   * Client only, and never on anything the server returned: where a send of
+   * mine has got to. A failed one keeps this and stays on screen, because the
+   * draft box was already cleared and the text exists nowhere else.
+   */
+  local?: "sending" | "failed";
+}
+
+/**
+ * How far one of my own messages has got. Shown on mine only: what I have read
+ * of theirs is not news to me.
+ *
+ * "sent" and "not seen" are the same fact, so they are one state. It arrived,
+ * and nobody has opened it.
+ */
+export type Delivery = "sending" | "failed" | "sent" | "seen";
+
+export const DELIVERY_LABEL: Record<Delivery, string> = {
+  sending: "Sending",
+  failed: "Not sent",
+  sent: "Not seen",
+  seen: "Seen",
+};
+
+/**
+ * @param seenThrough the newest thing of mine the other person has read, as a
+ *   timestamp. Read state moves forwards only, so anything at or before it has
+ *   been seen.
+ */
+export function deliveryOf(
+  message: DirectMessage,
+  self: string | undefined,
+  seenThrough: number,
+): Delivery | undefined {
+  if (!self || message.fromEmail !== self) return undefined;
+  if (message.local) return message.local === "failed" ? "failed" : "sending";
+  if (message.readAt != null || message.sentAt <= seenThrough) return "seen";
+  return "sent";
 }
 
 /** One row in the message list: who, the last thing said, and what is unread. */
@@ -545,6 +583,8 @@ export interface MessageThread {
   lastBody: string;
   lastSentAt: number;
   lastFromSelf: boolean;
+  /** Whether that last message has been read. Only meaningful if it was mine. */
+  lastSeen: boolean;
   unread: number;
 }
 

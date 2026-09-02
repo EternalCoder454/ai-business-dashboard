@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
 import type { Colleague, DirectMessage, MessageThread, PresenceStatus } from "@/lib/types";
@@ -160,8 +160,9 @@ export async function listThreads(
     to_email: string;
     body: string;
     sent_at: string | number;
+    read_at: string | number | null;
   }>(sql`
-    SELECT DISTINCT ON (thread_key) thread_key, from_email, to_email, body, sent_at
+    SELECT DISTINCT ON (thread_key) thread_key, from_email, to_email, body, sent_at, read_at
     FROM direct_messages
     WHERE workspace_id = ${workspaceId} AND (from_email = ${me} OR to_email = ${me})
     ORDER BY thread_key, sent_at DESC
@@ -189,6 +190,9 @@ export async function listThreads(
         lastBody: row.body,
         lastSentAt: Number(row.sent_at),
         lastFromSelf: normalise(row.from_email) === me,
+        // Only meaningful on a row I sent. Free: the query above already had to
+        // pick this exact row out to get the preview text.
+        lastSeen: row.read_at != null,
         unread: unreadBy.get(other) ?? 0,
       };
     })
@@ -299,6 +303,39 @@ export async function markThreadRead(
         isNull(t.directMessages.readAt),
       ),
     );
+}
+
+/**
+ * The newest thing I sent in this thread that the other person has read.
+ *
+ * A watermark rather than a flag per message, because markThreadRead clears the
+ * whole thread in one statement: read state only ever moves forwards, so one
+ * number settles every message in the thread and the poll carries eight bytes
+ * instead of a row each.
+ *
+ * It exists at all because the thread poll asks for `sent_at > since`. A
+ * message that was already fetched and is then read never appears in that
+ * answer again, so without this the tick would never arrive and everything you
+ * sent would read as unseen forever.
+ */
+export async function seenThrough(
+  workspaceId: string,
+  self: string,
+  other: string,
+): Promise<number> {
+  const db = requireDb();
+  const [row] = await db
+    .select({ at: sql<number | null>`max(${t.directMessages.sentAt})` })
+    .from(t.directMessages)
+    .where(
+      and(
+        eq(t.directMessages.workspaceId, workspaceId),
+        eq(t.directMessages.threadKey, threadKeyFor(self, other)),
+        eq(t.directMessages.fromEmail, normalise(self)),
+        isNotNull(t.directMessages.readAt),
+      ),
+    );
+  return Number(row?.at ?? 0);
 }
 
 /** Used by the test cleanup, and by nothing in the app. */

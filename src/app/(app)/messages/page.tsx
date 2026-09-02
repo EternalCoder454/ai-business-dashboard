@@ -7,6 +7,8 @@ import {
   ChevronIcon,
   Chip,
   EmptyState,
+  EyeIcon,
+  EyeOffIcon,
   SendIcon,
   StatusDot,
   TextArea,
@@ -16,7 +18,15 @@ import { createRipple } from "@/components/ui/ripple";
 import { useMessages, useThread } from "@/lib/messages";
 import { formatRelativeTime } from "@/lib/routes";
 import { useStore } from "@/lib/store";
-import { PRESENCE_LABEL, type Colleague, type DirectMessage, type PresenceStatus } from "@/lib/types";
+import {
+  DELIVERY_LABEL,
+  PRESENCE_LABEL,
+  deliveryOf,
+  type Colleague,
+  type Delivery,
+  type DirectMessage,
+  type PresenceStatus,
+} from "@/lib/types";
 
 /**
  * Presence borrows the department dot rather than inventing a second set of
@@ -47,6 +57,8 @@ export default function MessagesPage() {
       person: byEmail.get(thread.email),
       preview: thread.lastFromSelf ? `You: ${thread.lastBody}` : thread.lastBody,
       at: thread.lastSentAt,
+      lastFromSelf: thread.lastFromSelf,
+      lastSeen: thread.lastSeen,
       unread: thread.unread,
     }));
     const known = new Set(threads.map((t) => t.email));
@@ -57,6 +69,8 @@ export default function MessagesPage() {
         person,
         preview: "No messages yet",
         at: 0,
+        lastFromSelf: false,
+        lastSeen: false,
         unread: 0,
       }));
     return [...withHistory, ...rest];
@@ -156,11 +170,27 @@ export default function MessagesPage() {
                       </span>
                       <span
                         className={cx(
-                          "md-label-sm mt-0.5 block truncate",
+                          "md-label-sm mt-0.5 flex items-center gap-1.5",
                           row.unread > 0 ? "text-on-surface" : "text-on-variant/75",
                         )}
                       >
-                        {row.preview}
+                        {/* Only on a row I sent last. On theirs the question
+                            is whether I have read it, and I am the one
+                            looking. */}
+                        {row.lastFromSelf ? (
+                          <span
+                            role="img"
+                            aria-label={row.lastSeen ? "Seen" : "Not seen"}
+                            className="flex-none"
+                          >
+                            {row.lastSeen ? (
+                              <EyeIcon className="h-3.5 w-3.5" />
+                            ) : (
+                              <EyeOffIcon className="h-3.5 w-3.5" />
+                            )}
+                          </span>
+                        ) : null}
+                        <span className="truncate">{row.preview}</span>
                       </span>
                     </span>
 
@@ -241,7 +271,7 @@ function Thread({
   onBack: () => void;
   onSent: () => void;
 }) {
-  const { messages, sending, error, send } = useThread(other, self);
+  const { messages, sending, error, send, retry, seenThrough } = useThread(other, self);
   // Own picture and name, so a run of your own messages is headed like theirs.
   const { account } = useStore();
   const [draft, setDraft] = useState("");
@@ -305,6 +335,9 @@ function Thread({
                 message={message}
                 self={self}
                 previous={messages[index - 1]}
+                next={messages[index + 1]}
+                delivery={deliveryOf(message, self, seenThrough)}
+                onRetry={retry}
                 sender={
                   message.fromEmail === self
                     ? { displayName: account.displayName || "You", avatarUrl: account.avatarUrl }
@@ -375,22 +408,39 @@ function MessageRow({
   message,
   self,
   previous,
+  next,
   sender,
+  delivery,
+  onRetry,
 }: {
   message: DirectMessage;
   self?: string;
   previous?: DirectMessage;
+  next?: DirectMessage;
   sender: { displayName: string; avatarUrl?: string };
+  delivery?: Delivery;
+  onRetry: (message: DirectMessage) => Promise<void>;
 }) {
   const mine = message.fromEmail === self;
   // A new run starts on a different sender, or after five quiet minutes.
   const runOn =
     previous?.fromEmail === message.fromEmail &&
     message.sentAt - previous.sentAt < 5 * 60_000;
-  const pending = message.id.startsWith("pending:");
+  const sendingNow = message.local === "sending";
+
+  /*
+   * Once per run of mine, not once per message. The watermark means everything
+   * before the last one is settled too, so an eye on all six lines of a
+   * paragraph says the same thing six times.
+   *
+   * A failure is the exception and always shows: burying one in the middle of
+   * a run is how a message goes missing without anybody noticing.
+   */
+  const endsRun = !next || next.fromEmail !== message.fromEmail;
+  const showDelivery = delivery && (delivery === "failed" || endsRun);
 
   return (
-    <li className={cx("flex gap-3 px-1", runOn ? "mt-0.5" : "mt-4", pending && "opacity-60")}>
+    <li className={cx("flex gap-3 px-1", runOn ? "mt-0.5" : "mt-4", sendingNow && "opacity-60")}>
       <div className="w-10 flex-none">
         {runOn ? null : (
           <Avatar
@@ -407,13 +457,46 @@ function MessageRow({
               {sender.displayName || message.fromEmail}
             </span>
             <span className="md-label-sm text-on-variant/70">
-              {pending ? "Sending…" : formatRelativeTime(message.sentAt)}
+              {formatRelativeTime(message.sentAt)}
             </span>
           </div>
         )}
         <p className="md-body whitespace-pre-wrap break-words text-on-surface">
           {message.body}
         </p>
+
+        {showDelivery && delivery ? (
+          <div className="mt-1 flex items-center justify-end gap-2">
+            {delivery === "failed" ? (
+              <>
+                <span className="md-label-sm text-error">{DELIVERY_LABEL.failed}</span>
+                {/* Bigger than the label beside it, and padded out past the
+                    text, because it is the one thing here somebody has to be
+                    able to hit with a thumb. */}
+                <button
+                  type="button"
+                  onClick={() => void onRetry(message)}
+                  className="md-state md-label -mr-2 rounded-full px-2 py-1 text-primary"
+                >
+                  Retry
+                </button>
+              </>
+            ) : delivery === "sending" ? (
+              <span className="md-label-sm text-on-variant/60">
+                {DELIVERY_LABEL.sending}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-on-variant/60">
+                {delivery === "seen" ? (
+                  <EyeIcon className="h-3.5 w-3.5" />
+                ) : (
+                  <EyeOffIcon className="h-3.5 w-3.5" />
+                )}
+                <span className="md-label-sm">{DELIVERY_LABEL[delivery]}</span>
+              </span>
+            )}
+          </div>
+        ) : null}
       </div>
     </li>
   );
