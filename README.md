@@ -193,6 +193,7 @@ npm run db:studio
 | | |
 |---|---|
 | `npm run typecheck` · `lint` · `build` | the usual |
+| `npm run keys-test` | plants a real key and searches every payload for it |
 | `npm run tenancy-test` | a saved row cannot choose which business it lands in |
 | `npm run api-test` | the developer API end to end, including cross-tenant isolation (needs `npm run dev`) |
 | `npm run admin-test` | operator reads stay inside the business they name |

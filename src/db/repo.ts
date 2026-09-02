@@ -111,7 +111,35 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
     // so moving between workspaces does not change your name or your notes.
     db.select().from(t.accounts).where(eq(t.accounts.userEmail, email)).limit(1),
     db.select().from(t.profiles).where(eq(t.profiles.workspaceId, workspaceId)).limit(1),
-    db.select().from(t.settings).where(eq(t.settings.workspaceId, workspaceId)).limit(1),
+    /*
+     * Named columns, and deliberately not the three key ones.
+     *
+     * The mapping below already field-lists what it returns, so nothing leaked.
+     * But a bare select() pulls the keys into this function's memory and leaves
+     * one edit away from a leak: somebody spreads the row instead of naming
+     * fields, and the workspace's credentials go out in the snapshot every
+     * member of the business receives. Not fetching them at all means that edit
+     * cannot be written.
+     */
+    db
+      .select({
+        model: t.settings.model,
+        effort: t.settings.effort,
+        theme: t.settings.theme,
+        companyName: t.settings.companyName,
+        companySubtitle: t.settings.companySubtitle,
+        writingRules: t.settings.writingRules,
+        roomBrevity: t.settings.roomBrevity,
+        companyMark: t.settings.companyMark,
+        companyLogoUrl: t.settings.companyLogoUrl,
+        sidebarSide: t.settings.sidebarSide,
+        searchShortcut: t.settings.searchShortcut,
+        wikiTitle: t.settings.wikiTitle,
+        wikiSubtitle: t.settings.wikiSubtitle,
+      })
+      .from(t.settings)
+      .where(eq(t.settings.workspaceId, workspaceId))
+      .limit(1),
   ]);
 
   const filesById = new Map(fileRows.map((row) => [row.id, toAttachment(row)]));

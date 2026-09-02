@@ -632,5 +632,16 @@ function describeProviderError(provider: Provider, error: unknown): string {
   if (status && status >= 500) {
     return `${info.label} had a problem at their end. Try again in a moment.`;
   }
-  return error instanceof Error ? error.message : `${info.label} could not be reached.`;
+  /*
+   * Anything unrecognised is described, not forwarded.
+   *
+   * This used to return `error.message` straight through to the browser. That
+   * string comes from a third party's SDK and nobody here decides what is in
+   * it: a request URL, an internal hostname, whatever a future version starts
+   * including. None of that is the customer's to see, and the one case where
+   * it would have helped is already covered by the statuses above. The real
+   * error is logged where it is caught, which is where somebody debugging
+   * would look anyway.
+   */
+  return `${info.label} could not be reached.`;
 }
