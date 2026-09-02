@@ -566,6 +566,9 @@ function streamThroughAdapter({
           system: body.system,
           messages: body.messages ?? [],
           effort: body.effort || ("medium" as const),
+          // The same ceiling Anthropic gets, from the same table, so a reply
+          // costs the same at most whichever provider answers it.
+          maxTokens: MAX_TOKENS[model] ?? DEFAULT_MAX_TOKENS,
           tools: body.tools,
           emit,
           stopped: () => clientGone,

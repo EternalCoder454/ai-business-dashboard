@@ -18,6 +18,14 @@ export interface StreamArgs {
   system: string;
   messages: { role: Role; content: string | WireContent[] }[];
   effort: Effort;
+  /**
+   * The ceiling on a single reply.
+   *
+   * Anthropic has always had one. These two did not, which meant a reply here
+   * was as long as the model felt like, billed by the token, with no way to
+   * say otherwise.
+   */
+  maxTokens: number;
   /** What this department may do beyond replying. Empty means reply only. */
   tools?: { name: string; description: string; schema: unknown }[];
   /** Called for every text or thinking fragment, and once for usage. */
@@ -62,6 +70,7 @@ export async function streamOpenAi(args: StreamArgs): Promise<void> {
   const stream = await client.responses.create(
     {
       model: args.model,
+      max_output_tokens: args.maxTokens,
       instructions: args.system,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       input: input as any,
@@ -159,6 +168,7 @@ export async function streamGemini(args: StreamArgs): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     contents: contents as any,
     config: {
+      maxOutputTokens: args.maxTokens,
       systemInstruction: args.system,
       thinkingConfig: {
         thinkingBudget: geminiThinkingBudget(args.effort),

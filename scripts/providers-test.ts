@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 /**
  * Checks the provider routing, and that adding it changed nothing for a
  * workspace that was here before it.
@@ -120,6 +121,19 @@ console.log("\nkeys stay out of the database");
   for (const field of stripped) {
     check(`${field} is omitted from StoredSettings`, source.includes(`"${field}"`), field);
   }
+}
+
+console.log("\nevery provider caps a single reply");
+{
+  // Anthropic has always had a ceiling and the other two did not, so a reply
+  // on them was as long as the model felt like, billed by the token.
+  const chat = readFileSync("src/app/api/chat/route.ts", "utf8");
+  const adapters = readFileSync("src/lib/serverProviders.ts", "utf8");
+
+  check("anthropic sends one", chat.includes("max_tokens: MAX_TOKENS[model]"));
+  check("and it is handed to the adapters", chat.includes("maxTokens: MAX_TOKENS[model]"));
+  check("openai sends one", adapters.includes("max_output_tokens: args.maxTokens"));
+  check("gemini sends one", adapters.includes("maxOutputTokens: args.maxTokens"));
 }
 
 console.log(failures ? "\nFAILURES ABOVE" : "\nall checks passed");
