@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { databaseEnabled, db, requireDb } from "./client";
 import * as t from "./schema";
 import type { Provider } from "@/lib/providers";
+import { decryptSecret, encryptSecret } from "./secrets";
 
 /**
  * The model keys a business holds.
@@ -9,6 +10,11 @@ import type { Provider } from "@/lib/providers";
  * Kept apart from the rest of the settings so that the difference between the
  * two is visible in the imports: everything in `repo.ts` is read into a
  * snapshot the browser gets, and nothing in this file ever is.
+ *
+ * At rest they are encrypted, so what the settings table holds is ciphertext
+ * and the master key lives in the environment. This module is the only place
+ * that crosses that line, which is why the encrypt and decrypt calls are all
+ * here rather than spread across the callers.
  */
 
 /**
@@ -63,7 +69,7 @@ export async function workspaceKey(
       .from(t.settings)
       .where(eq(t.settings.workspaceId, workspaceId))
       .limit(1);
-    return row?.key?.trim() ?? "";
+    return decryptSecret(row?.key, workspaceId, FIELD[provider]);
   } catch (error) {
     // A key that cannot be read is a reply that cannot be sent, which the
     // route reports as a missing key. Failing loudly here would turn a brief
@@ -87,10 +93,13 @@ export async function keySummaries(workspaceId: string): Promise<KeySummaries> {
       .where(eq(t.settings.workspaceId, workspaceId))
       .limit(1);
     if (!row) return NO_KEYS;
+    // Decrypted only to count the last four characters, which is the whole of
+    // what the interface is allowed to know. The plaintext does not leave this
+    // expression.
     return {
-      anthropic: summarise(row.anthropic),
-      openai: summarise(row.openai),
-      google: summarise(row.google),
+      anthropic: summarise(decryptSecret(row.anthropic, workspaceId, FIELD.anthropic)),
+      openai: summarise(decryptSecret(row.openai, workspaceId, FIELD.openai)),
+      google: summarise(decryptSecret(row.google, workspaceId, FIELD.google)),
     };
   } catch (error) {
     console.error("[keys] could not read the key summary", error);
@@ -103,6 +112,10 @@ export async function keySummaries(workspaceId: string): Promise<KeySummaries> {
  *
  * An empty string clears it, which is the only way to take one away: there is
  * no read-back, so an administrator who wants to be sure has to replace it.
+ *
+ * The value is encrypted on the way in, bound to this workspace and this
+ * column, so the row that comes out of a database dump is ciphertext and
+ * ciphertext moved to another workspace's row will not decrypt.
  */
 export async function setWorkspaceKey(
   workspaceId: string,
@@ -110,8 +123,8 @@ export async function setWorkspaceKey(
   key: string,
 ): Promise<void> {
   const database = requireDb();
-  const value = key.trim();
   const column = FIELD[provider];
+  const value = encryptSecret(key.trim(), workspaceId, column);
 
   await database
     .insert(t.settings)

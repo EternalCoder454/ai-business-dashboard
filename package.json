@@ -26,7 +26,8 @@
     "tenancy-test": "tsx --env-file=.env.local scripts/tenancy-test.ts",
     "api-test": "tsx --env-file=.env.local scripts/api-test.ts",
     "email-preview": "tsx scripts/email-preview.ts",
-    "keys-test": "tsx --env-file=.env.local scripts/keys-test.ts"
+    "keys-test": "tsx --env-file=.env.local scripts/keys-test.ts",
+    "keys-encrypt": "tsx --env-file=.env.local scripts/keys-encrypt.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

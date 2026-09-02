@@ -161,6 +161,7 @@ npm run dev
 | `AUTH_SECRET` | yes | `npx auth secret`. |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | yes | Google OAuth client. Auth turns itself on only when all three `AUTH_` values are present. |
 | `OPERATOR_EMAILS` | yes | Whoever runs the deployment. Comma, space, semicolon, or newline separated. Leave it empty on a fresh install and the first person to sign in becomes the operator; that window closes the moment a row exists. |
+| `KEY_ENCRYPTION_KEY` | yes | 32 bytes of base64. What the businesses' own model keys are encrypted with. See below. |
 | `NEXT_PUBLIC_SITE_URL` | deploys | The canonical origin, so invitation links never point at a preview. |
 | `RESEND_API_KEY` | invites | [Resend](https://resend.com). Without it access still works, because the row is what grants entry, but nobody is told. |
 | `INVITE_FROM` | invites | An address on a domain verified in Resend. Falls back to Resend's shared sender, which only delivers to the key's owner. |
@@ -179,6 +180,17 @@ Businesses set their own under **Settings**, and only an administrator can. They
 write-only: nothing returns a key, to an administrator or anyone else, only whether one
 exists and its last four characters.
 
+At rest they are encrypted with AES-256-GCM under `KEY_ENCRYPTION_KEY`, which lives in the
+environment and not the database, so a leaked connection string or a stolen backup is a
+file of ciphertext. Each value is bound to its workspace and its column, so one lifted into
+another business's row does not decrypt. `npm run keys-encrypt` sweeps up anything stored
+before encryption was switched on, verifying every row round trips before it writes.
+
+This is not protection against somebody who has the running server: they can read the
+master key out of its environment, which is what it is there for. What it buys is that the
+database alone is no longer enough, and the database is the thing that gets copied.
+`npm run keys-test` plants real keys and searches every payload for them.
+
 ### Database
 
 Migrations are plain SQL in [`drizzle/`](drizzle). `drizzle-kit generate` wants a TTY for
@@ -194,6 +206,7 @@ npm run db:studio
 |---|---|
 | `npm run typecheck` · `lint` · `build` | the usual |
 | `npm run keys-test` | plants a real key and searches every payload for it |
+| `npm run keys-encrypt` | encrypts credentials stored before encryption was switched on |
 | `npm run tenancy-test` | a saved row cannot choose which business it lands in |
 | `npm run api-test` | the developer API end to end, including cross-tenant isolation (needs `npm run dev`) |
 | `npm run admin-test` | operator reads stay inside the business they name |

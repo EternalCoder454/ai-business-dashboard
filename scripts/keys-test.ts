@@ -19,6 +19,12 @@ import { keySummaries, workspaceKey, setWorkspaceKey } from "../src/db/keys";
 import { detailFor, listPeople, overview } from "../src/db/admin";
 import { listMembers } from "../src/db/tenancy";
 import { listKeys, createKey, resolveBearer } from "../src/db/apiKeys";
+import {
+  decryptSecret,
+  encryptSecret,
+  encryptionEnabled,
+  isEncrypted,
+} from "../src/db/secrets";
 
 const WS = "keys-test-workspace";
 const WHO = "keys-test@example.invalid";
@@ -112,6 +118,64 @@ async function main() {
   check("and it still authenticates", (await resolveBearer(minted.token))?.workspaceId === WS);
   check("while a near miss does not", (await resolveBearer(minted.token + "x")) === null);
   clean("the key list", await listKeys(WS));
+
+  console.log("\nat rest the row holds ciphertext, not the key");
+  if (!encryptionEnabled()) {
+    console.log("  ..   skipped: KEY_ENCRYPTION_KEY is not set on this machine");
+  } else {
+    const [stored] = await db
+      .select({
+        anthropicKey: t.settings.anthropicKey,
+        openaiKey: t.settings.openaiKey,
+        googleKey: t.settings.googleKey,
+      })
+      .from(t.settings)
+      .where(eq(t.settings.workspaceId, WS));
+
+    check("the stored value is in the new format", isEncrypted(stored.anthropicKey));
+    clean("and the raw row itself", stored);
+    check(
+      "it decrypts back to the key",
+      decryptSecret(stored.anthropicKey, WS, "anthropicKey") === ANTHROPIC,
+    );
+
+    // A ciphertext is bound to its workspace and its column, so lifting one
+    // into another business's row buys nothing.
+    check(
+      "it will not decrypt for another workspace",
+      decryptSecret(stored.anthropicKey, "some-other-workspace", "anthropicKey") === "",
+    );
+    check("nor in another column", decryptSecret(stored.anthropicKey, WS, "openaiKey") === "");
+
+    // GCM authenticates, so a changed byte fails rather than decrypting to
+    // something else.
+    const parts = stored.anthropicKey.split(".");
+    const body = Buffer.from(parts[3], "base64url");
+    body[0] ^= 0xff;
+    parts[3] = body.toString("base64url");
+    check("a tampered value fails", decryptSecret(parts.join("."), WS, "anthropicKey") === "");
+
+    // Anything written before encryption was switched on still reads.
+    await db
+      .update(t.settings)
+      .set({ openaiKey: "sk-proj-LEGACY-plaintext" })
+      .where(eq(t.settings.workspaceId, WS));
+    check(
+      "a legacy plaintext value still reads",
+      (await workspaceKey(WS, "openai")) === "sk-proj-LEGACY-plaintext",
+    );
+
+    // And is replaced by ciphertext the next time it is set.
+    await setWorkspaceKey(WS, "openai", OPENAI);
+    const [again] = await db
+      .select({ openaiKey: t.settings.openaiKey })
+      .from(t.settings)
+      .where(eq(t.settings.workspaceId, WS));
+    check("and is encrypted once it is set again", isEncrypted(again.openaiKey));
+    check("still reading correctly", (await workspaceKey(WS, "openai")) === OPENAI);
+
+    check("an empty key stays empty rather than encrypting", encryptSecret("", WS, "x") === "");
+  }
 
   console.log("\ncleaning up");
   await db.delete(t.apiKeys).where(eq(t.apiKeys.workspaceId, WS));

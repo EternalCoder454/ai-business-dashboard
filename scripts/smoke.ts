@@ -497,6 +497,26 @@ async function main() {
   await wipe();
   check("account empty again", await isEmpty(USER));
 
+  /*
+   * The settings and profile rows go too.
+   *
+   * `wipe` runs through applyMutations, which has no delete for either of them:
+   * a business always has exactly one of each, so there was never a reason to
+   * remove one. That left this test writing two rows into the real database on
+   * every run and never taking them back, scoped to an address rather than a
+   * workspace id, where they sat looking like a tenant nobody could account
+   * for. A test that leaves litter in production is a test that teaches you to
+   * ignore litter in production.
+   */
+  const db = requireDb();
+  await db.delete(schema.settings).where(eq(schema.settings.workspaceId, USER));
+  await db.delete(schema.profiles).where(eq(schema.profiles.workspaceId, USER));
+  const strays = await db
+    .select({ id: schema.settings.workspaceId })
+    .from(schema.settings)
+    .where(eq(schema.settings.workspaceId, USER));
+  check("no settings row left behind", strays.length === 0);
+
   console.log(process.exitCode ? "\nFAILURES ABOVE" : "\nall checks passed");
   process.exit(process.exitCode ?? 0);
 }
