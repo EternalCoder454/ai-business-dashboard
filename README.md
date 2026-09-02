@@ -22,7 +22,7 @@ and people sign up at the address it is deployed to rather than installing anyth
 | **Departments** | A lead plus a head for each area, each with its own prompt, model, skills, and threads. Personal heads sit outside the org chart and out of everything shared. |
 | **Ask Everyone** | One question to the whole room. Each head answers from their own area, then the lead reads across the answers and says what to do. |
 | **Company Profile** | Mission, products, audience, voice, constraints. Written once and injected into every head, so they all argue from the same facts. |
-| **Library** | Skills, deliverables, recorded decisions, and uploaded files, in card, compact, or list view. |
+| **Library** | Skills, deliverables, recorded decisions, and uploaded files, in card, compact, or list view. Deliverables export as Word, Markdown, or plain text. |
 | **Projects** | A thread, its outputs, its files, and its tasks kept together. |
 | **Tasks** | A board fed by hand, by a head capturing something out of a reply, or by the API. |
 | **Internal Wiki** | The business's own written record, edited in place by anyone with permission. |

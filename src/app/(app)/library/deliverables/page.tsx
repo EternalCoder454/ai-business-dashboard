@@ -10,6 +10,7 @@ import {
   Chip,
   Dialog,
   DocIcon,
+  DownloadIcon,
   EditIcon,
   EmptyState,
   Field,
@@ -207,6 +208,7 @@ export default function DeliverablesPage() {
                             <ChevronIcon className="h-3.5 w-3.5" />
                           </IconButton>
                           <span className="flex-1" />
+                          <ExportMenu deliverable={item} />
                           <IconButton
                             label="Edit"
                             onClick={() =>
@@ -352,5 +354,75 @@ function IconButton({
     >
       {children}
     </button>
+  );
+}
+
+
+/**
+ * Taking a deliverable out of the panel.
+ *
+ * Word first, because the thing somebody does next with a campaign brief is
+ * send it to a person who will comment on it. Markdown for anyone keeping it
+ * with the rest of their notes, and plain text for pasting into a box that
+ * would show the markers.
+ *
+ * There is no PDF here on purpose. The browser already makes a better one than
+ * anything worth writing by hand, and Word exports one in a click. A worse PDF
+ * generated here would be a worse PDF that also needed maintaining.
+ */
+function ExportMenu({ deliverable }: { deliverable: Deliverable }) {
+  const [open, setOpen] = useState(false);
+
+  const take = (format: "docx" | "md" | "txt") => {
+    setOpen(false);
+    // A plain navigation. The response carries Content-Disposition, so the
+    // browser saves it and the page does not move.
+    window.location.href = `/api/workspace/deliverable?id=${encodeURIComponent(
+      deliverable.id,
+    )}&format=${format}`;
+  };
+
+  return (
+    <span className="relative">
+      <IconButton label="Export" onClick={() => setOpen((value) => !value)}>
+        <DownloadIcon className="h-3.5 w-3.5" />
+      </IconButton>
+
+      {open ? (
+        <>
+          {/* Closes on the next click anywhere, which is what a menu should do
+              and what a stack of listeners per card should not. */}
+          <span
+            className="fixed inset-0 z-40"
+            onClick={() => setOpen(false)}
+            aria-hidden
+          />
+          <span
+            role="menu"
+            className={cx(
+              "absolute right-0 top-8 z-50 flex w-40 flex-col overflow-hidden rounded-xl",
+              "border border-outline-variant bg-container shadow-e3",
+            )}
+          >
+            {(
+              [
+                ["docx", "Word document"],
+                ["md", "Markdown"],
+                ["txt", "Plain text"],
+              ] as const
+            ).map(([format, label]) => (
+              <button
+                key={format}
+                role="menuitem"
+                onClick={() => take(format)}
+                className="md-state md-body px-3 py-2 text-left"
+              >
+                {label}
+              </button>
+            ))}
+          </span>
+        </>
+      ) : null}
+    </span>
   );
 }

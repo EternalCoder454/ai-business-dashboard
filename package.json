@@ -28,7 +28,8 @@
     "email-preview": "tsx scripts/email-preview.ts",
     "keys-test": "tsx --env-file=.env.local scripts/keys-test.ts",
     "keys-encrypt": "tsx --env-file=.env.local scripts/keys-encrypt.ts",
-    "keys-status": "tsx --env-file=.env.local scripts/keys-status.ts"
+    "keys-status": "tsx --env-file=.env.local scripts/keys-status.ts",
+    "export-test": "tsx scripts/export-test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",
