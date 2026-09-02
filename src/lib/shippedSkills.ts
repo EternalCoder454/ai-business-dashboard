@@ -141,3 +141,36 @@ export function skillReconciliation(
 
   return ops;
 }
+
+/**
+ * Writing rules bodies that have shipped, so an improvement can reach a
+ * workspace that already exists.
+ *
+ * The rules are a stored column rather than a constant assembled at prompt
+ * time, which means a change to the shipped text reaches new businesses and
+ * nobody else. Every improvement to how the heads write was therefore stranded
+ * the moment somebody had a workspace, and the only way out was a button in
+ * Settings that nobody has a reason to look for.
+ *
+ * Same shape as the skills: replace only a copy nobody has touched. A business
+ * that rewrote its own house style keeps it, for good.
+ */
+const SHIPPED_WRITING_RULES = new Set([
+  // Before the dash rule was hoisted out of a bullet list and copy stopped
+  // being exempt from it.
+  "3zctam",
+]);
+
+/**
+ * Whether the stored writing rules are ours to replace.
+ *
+ * Empty counts. That is the column default, so it means the rules were never
+ * written rather than that somebody chose to have none, and a workspace running
+ * with no house style at all is the state this is most worth fixing.
+ */
+export function writingRulesReplaceable(stored: string, shipped: string): boolean {
+  const theirs = stored.trim();
+  if (!theirs) return true;
+  if (theirs === shipped.trim()) return false;
+  return SHIPPED_WRITING_RULES.has(promptFingerprint(stored));
+}

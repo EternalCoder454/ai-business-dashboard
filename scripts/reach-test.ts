@@ -10,9 +10,11 @@
  *
  * Run with: npm run reach-test
  */
-import { skillReconciliation } from "../src/lib/shippedSkills";
+import { skillReconciliation, writingRulesReplaceable } from "../src/lib/shippedSkills";
+import { WRITING_RULES } from "../src/lib/seed";
 import { seedSkills } from "../src/lib/seedSkills";
 import type { Skill } from "../src/lib/types";
+import { readFileSync } from "node:fs";
 
 let failures = 0;
 function check(label: string, condition: boolean, detail = "") {
@@ -73,6 +75,28 @@ const current = skillReconciliation([asStored(pricing.content)], shipped, []).fl
   op.table === "skills" && op.action === "upsert" ? op.rows : [],
 );
 check("nothing to do", !current.some((s) => s.id === pricing.id));
+
+console.log("\nthe house writing rules reach an existing workspace too");
+/*
+ * They live in a stored column rather than in the prompt builder, so an
+ * improvement reached new businesses and nobody else. Every existing workspace
+ * kept whatever it was created with, and the only way back was a button in
+ * Settings that nobody has a reason to go looking for.
+ */
+const PREVIOUS = readFileSync("scripts/fixtures/writing-rules-v1.txt", "utf8");
+
+check(
+  "a workspace on the previous version is updated",
+  writingRulesReplaceable(PREVIOUS, WRITING_RULES),
+);
+check("a workspace with none at all is filled in", writingRulesReplaceable("", WRITING_RULES));
+check("and whitespace counts as none", writingRulesReplaceable("   ", WRITING_RULES));
+check(
+  "a workspace that wrote its own keeps it",
+  !writingRulesReplaceable("Our house style. Short sentences.", WRITING_RULES),
+  "the whole reason this is not a blanket overwrite",
+);
+check("one already current is left alone", !writingRulesReplaceable(WRITING_RULES, WRITING_RULES));
 
 console.log(failures ? "\nFAILURES ABOVE" : "\nall checks passed");
 process.exit(failures ? 1 : 0);

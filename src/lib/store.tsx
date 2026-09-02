@@ -33,9 +33,10 @@ import {
   DEFAULT_SETTINGS,
   PROJECT_ACCENTS,
   seedDepartments,
+  WRITING_RULES,
 } from "./seed";
 import { memoryFor as liveMemoryFor } from "./memory";
-import { skillReconciliation } from "./shippedSkills";
+import { skillReconciliation, writingRulesReplaceable } from "./shippedSkills";
 import { seedSkills } from "./seedSkills";
 import { seedWikiPages } from "./seedWiki";
 import type {
@@ -491,6 +492,24 @@ export function StoreProvider({
         // none at all, so a page someone deleted stays deleted.
         if (snapshot.wikiPages.length === 0) {
           ops.push({ table: "wikiPages", action: "upsert", rows: seedWikiPages() });
+        }
+
+        /*
+         * The house writing rules, when the workspace is still on a version we
+         * shipped.
+         *
+         * They live in a column rather than in the prompt builder, so improving
+         * them reached new businesses and nobody else, and every existing
+         * workspace kept whatever it was created with for good. A copy somebody
+         * has edited is theirs and is never touched; an empty one means the
+         * rules were never written rather than that anybody chose to have none.
+         */
+        if (writingRulesReplaceable(snapshot.settings.writingRules, WRITING_RULES)) {
+          ops.push({
+            table: "settings",
+            action: "upsert",
+            row: { writingRules: WRITING_RULES },
+          });
         }
         if (ops.length) {
           await fetch("/api/workspace", {
