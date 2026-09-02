@@ -168,6 +168,19 @@ export async function loadConversationMessages(
   return { messages: kept.map((row) => toMessage(row, filesById)), hasMore };
 }
 
+/** One deliverable's full text, which the snapshot deliberately truncates. */
+export async function loadDeliverableBody(
+  workspaceId: string,
+  id: string,
+): Promise<string | null> {
+  const [row] = await requireDb()
+    .select({ body: t.deliverables.body })
+    .from(t.deliverables)
+    .where(and(eq(t.deliverables.workspaceId, workspaceId), eq(t.deliverables.id, id)))
+    .limit(1);
+  return row?.body ?? null;
+}
+
 export async function loadWorkspace(workspaceId: string, email: string): Promise<Workspace> {
   const db = requireDb();
 
@@ -209,7 +222,30 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       .where(eq(t.messages.workspaceId, workspaceId))
       .groupBy(t.messages.conversationId),
     db.select().from(t.skills).where(eq(t.skills.workspaceId, workspaceId)).orderBy(desc(t.skills.updatedAt)),
-    db.select().from(t.deliverables).where(eq(t.deliverables.workspaceId, workspaceId)).orderBy(desc(t.deliverables.updatedAt)),
+    /*
+     * The opening of each document, not all of it.
+     *
+     * The Library card shows about 180 characters. Everything past that was
+     * being read out of Postgres, sent to the browser, and held there on every
+     * page load of every screen, growing with the business. `left` does the
+     * truncation in the database so the bytes never leave it.
+     */
+    db
+      .select({
+        id: t.deliverables.id,
+        title: t.deliverables.title,
+        body: sql<string>`left(${t.deliverables.body}, 240)`,
+        departmentId: t.deliverables.departmentId,
+        projectId: t.deliverables.projectId,
+        status: t.deliverables.status,
+        sourceConversationId: t.deliverables.sourceConversationId,
+        createdAt: t.deliverables.createdAt,
+        updatedAt: t.deliverables.updatedAt,
+        whole: sql<boolean>`length(${t.deliverables.body}) <= 240`,
+      })
+      .from(t.deliverables)
+      .where(eq(t.deliverables.workspaceId, workspaceId))
+      .orderBy(desc(t.deliverables.updatedAt)),
     db.select().from(t.memory).where(eq(t.memory.workspaceId, workspaceId)).orderBy(desc(t.memory.occurredAt)),
     db.select().from(t.tasks).where(eq(t.tasks.workspaceId, workspaceId)).orderBy(asc(t.tasks.sortOrder)),
     db.select().from(t.wikiPages).where(eq(t.wikiPages.workspaceId, workspaceId)).orderBy(asc(t.wikiPages.sortOrder)),
@@ -354,6 +390,8 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       id: row.id,
       title: row.title,
       body: row.body,
+      // A short one arrived whole, so nothing needs fetching when it is opened.
+      bodyLoaded: row.whole,
       departmentId: row.departmentId,
       projectId: row.projectId ?? undefined,
       status: row.status as Deliverable["status"],
@@ -629,9 +667,49 @@ export async function applyMutations(
         case "conversations": {
           if (op.action === "delete") {
             if (op.ids.length) {
+              /*
+               * The attachments go with the messages that carried them.
+               *
+               * A file attached in a chat is stored with `origin: "chat"` and
+               * is deliberately left out of the Library, which is the right
+               * call: it is part of a conversation, not a document somebody
+               * filed. The consequence nobody noticed is that nothing listed it
+               * and nothing deleted it, so every image and PDF ever attached to
+               * a chat stayed in the database for good, including after the
+               * conversation was deleted. They are the largest rows there are,
+               * and there was no way to reclaim one.
+               *
+               * Only chat-origin files. A Library upload can be referenced by a
+               * message too, and it belongs to the Library rather than to the
+               * conversation that happened to mention it.
+               */
+              const carried = await tx
+                .select({ ids: t.messages.attachmentIds })
+                .from(t.messages)
+                .where(
+                  and(
+                    eq(t.messages.workspaceId, workspaceId),
+                    inArray(t.messages.conversationId, op.ids),
+                  ),
+                );
+              const attachmentIds = [...new Set(carried.flatMap((row) => row.ids))];
+
               await tx
                 .delete(t.messages)
                 .where(and(eq(t.messages.workspaceId, workspaceId), inArray(t.messages.conversationId, op.ids)));
+
+              if (attachmentIds.length) {
+                await tx
+                  .delete(t.files)
+                  .where(
+                    and(
+                      eq(t.files.workspaceId, workspaceId),
+                      eq(t.files.origin, "chat"),
+                      inArray(t.files.id, attachmentIds),
+                    ),
+                  );
+              }
+
               await tx
                 .delete(t.conversations)
                 .where(and(eq(t.conversations.workspaceId, workspaceId), inArray(t.conversations.id, op.ids)));

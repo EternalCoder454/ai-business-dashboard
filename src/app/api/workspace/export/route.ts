@@ -2,6 +2,7 @@ import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { loadWorkspace } from "@/db/repo";
 import { membershipFor } from "@/db/tenancy";
+import { withinRate } from "@/lib/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,16 @@ export async function GET() {
   const membership = await membershipFor(email);
   if (!membership) {
     return Response.json({ error: "You are not in a workspace." }, { status: 403 });
+  }
+
+  // An export reads the whole business. It is a thing somebody presses once in
+  // a while, so a ceiling costs nobody anything and stops one stuck client
+  // from reading everything over and over.
+  if (!withinRate(`export:${email}`, 5, 10 * 60_000)) {
+    return Response.json(
+      { error: "That is a few exports in a row. Try again shortly." },
+      { status: 429 },
+    );
   }
 
   try {

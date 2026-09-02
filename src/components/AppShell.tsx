@@ -10,6 +10,7 @@ import { useKeyboardInset } from "@/lib/viewport";
 import { PRIMARY_LINKS, Sidebar, SidebarContent, isActive } from "./Sidebar";
 import { CompanyMark } from "./CompanyMark";
 import { ProfileMenu } from "./ProfileMenu";
+import { LoadFailed } from "./LoadFailed";
 import { WriteError } from "./WriteError";
 import { setNavCollapsed, useNavCollapsed } from "@/lib/navCollapsed";
 import { ChevronIcon, CloseIcon, NavBadge, cx } from "./ui";
@@ -143,6 +144,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* Above the bottom bar rather than over it. Fixed to the viewport, it
             landed exactly on the navigation. */}
         <WriteError />
+        <LoadFailed />
         {isConversation ? null : (
           <BottomBar pathname={pathname} onOpenDrawer={() => setDrawerOpen(true)} />
         )}

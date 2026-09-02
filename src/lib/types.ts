@@ -376,7 +376,17 @@ export interface WikiPage {
 export interface Deliverable {
   id: string;
   title: string;
+  /**
+   * What has been fetched, not what exists.
+   *
+   * The snapshot carries the first couple of hundred characters, which is all
+   * the card shows. The whole thing arrives when one is opened. Measured at 120
+   * deliverables, the bodies were half a megabyte on every page load of every
+   * screen, and they grow for as long as somebody uses the product.
+   */
   body: string;
+  /** True when `body` is the whole document rather than the opening of it. */
+  bodyLoaded?: boolean;
   departmentId: string;
   projectId?: string;
   status: DeliverableStatus;

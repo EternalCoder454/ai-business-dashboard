@@ -73,6 +73,34 @@ const EMPTY_STREAM: StreamState = { text: "", thinking: "" };
  */
 const byteCache = new Map<string, string>();
 
+/*
+ * A ceiling on the cache, in characters of base64.
+ *
+ * Roughly 24 MB of held bytes, which is a long conversation's worth of images
+ * and nowhere near enough to matter. Without it this grew for the life of the
+ * tab: every attachment ever re-sent stayed in memory, so somebody working
+ * through a thread full of screenshots would watch the tab get heavier all
+ * afternoon and never lighter.
+ */
+const MAX_CACHED_CHARS = 32_000_000;
+let cachedChars = 0;
+
+function remember(id: string, data: string): void {
+  // Nothing to gain from caching something that would evict everything else.
+  if (data.length > MAX_CACHED_CHARS / 2) return;
+
+  // Oldest first, which is insertion order in a Map and close enough to least
+  // recently useful: a conversation re-sends its history in order.
+  while (cachedChars + data.length > MAX_CACHED_CHARS && byteCache.size > 0) {
+    const oldest = byteCache.keys().next().value as string;
+    cachedChars -= byteCache.get(oldest)?.length ?? 0;
+    byteCache.delete(oldest);
+  }
+
+  byteCache.set(id, data);
+  cachedChars += data.length;
+}
+
 async function bytesFor(attachment: Attachment): Promise<string> {
   if (attachment.data) return attachment.data;
   const cached = byteCache.get(attachment.id);
@@ -82,7 +110,7 @@ async function bytesFor(attachment: Attachment): Promise<string> {
     if (!response.ok) return "";
     const body = (await response.json()) as { data?: string };
     const data = body.data ?? "";
-    byteCache.set(attachment.id, data);
+    remember(attachment.id, data);
     return data;
   } catch {
     // An attachment that will not load is better than a turn that will not send.

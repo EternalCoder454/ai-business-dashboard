@@ -120,6 +120,7 @@ export function rateState(key: string, limit: number, windowMs: number): RateSta
 
   hits.push(now);
   windows.set(key, hits);
+  prune(cutoff);
   return { allowed: true, limit, remaining: Math.max(0, limit - hits.length), resetAt };
 }
 
@@ -136,12 +137,21 @@ export function withinRate(key: string, limit: number, windowMs: number): boolea
   hits.push(now);
   windows.set(key, hits);
 
-  // Keep the map from growing without bound on a long-lived instance.
-  if (windows.size > 500) {
-    for (const [entry, times] of windows) {
-      if (!times.some((at) => at > cutoff)) windows.delete(entry);
-    }
-  }
-
+  prune(cutoff);
   return true;
+}
+
+/**
+ * Drops keys whose window has passed.
+ *
+ * Called from both limiters, because they share one map. It used to live inside
+ * `withinRate` alone, so an instance serving only the developer API, which uses
+ * `rateState`, never pruned at all and kept one entry per key for the life of
+ * the process.
+ */
+function prune(cutoff: number): void {
+  if (windows.size <= 500) return;
+  for (const [entry, times] of windows) {
+    if (!times.some((at) => at > cutoff)) windows.delete(entry);
+  }
 }

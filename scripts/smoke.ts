@@ -506,6 +506,37 @@ async function main() {
     );
   }
 
+  console.log("\ndeleting a conversation takes its attachments with it");
+  /*
+   * The leak this was written for.
+   *
+   * A chat attachment is stored with origin "chat" and left out of the Library
+   * on purpose. Nothing else listed it either, and nothing deleted it, so every
+   * image ever attached to a chat stayed in the database for good, including
+   * after the conversation was gone. They are the largest rows there are.
+   */
+  const beforeDelete = await requireDb()
+    .select({ id: schema.files.id })
+    .from(schema.files)
+    .where(and(eq(schema.files.workspaceId, USER), eq(schema.files.origin, "chat")));
+  check("the chat attachment is there", beforeDelete.length > 0, String(beforeDelete.length));
+
+  await applyMutations(USER, USER, [
+    { table: "conversations", action: "delete", ids: ["conv_smoke"] },
+  ]);
+
+  const attachmentsLeft = await requireDb()
+    .select({ id: schema.files.id })
+    .from(schema.files)
+    .where(and(eq(schema.files.workspaceId, USER), eq(schema.files.origin, "chat")));
+  check("and it went with the conversation", attachmentsLeft.length === 0, String(attachmentsLeft.length));
+
+  const uploads = await requireDb()
+    .select({ id: schema.files.id })
+    .from(schema.files)
+    .where(and(eq(schema.files.workspaceId, USER), eq(schema.files.origin, "upload")));
+  check("a Library upload is untouched by that", uploads.length >= 0);
+
   console.log("\ndeleting a head takes its conversations with it");
   await applyMutations(USER, USER, [{ table: "departments", action: "delete", ids: ["design"] }]);
   const afterDelete = await loadWorkspace(USER, USER);

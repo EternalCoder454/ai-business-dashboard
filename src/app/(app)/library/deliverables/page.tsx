@@ -42,7 +42,8 @@ export default function DeliverablesPage() {
     createDeliverable,
     updateDeliverable,
     deleteDeliverable,
-  } = useStore();
+    openDeliverable,
+} = useStore();
 
   const [filter, setFilter] = useState<string>("all");
   const [draft, setDraft] = useState<DraftDeliverable | null>(null);
@@ -163,7 +164,17 @@ export default function DeliverablesPage() {
                         )}
                       >
                         <button
-                          onClick={() => setReading(item)}
+                          onClick={async () => {
+                            // Shown at once from the opening the snapshot
+                            // carried, then filled in. Waiting on the fetch
+                            // before opening would make a click feel slow to
+                            // save a flicker nobody would notice.
+                            setReading(item);
+                            const body = await openDeliverable(item.id);
+                            setReading((current) =>
+                              current?.id === item.id ? { ...current, body } : current,
+                            );
+                          }}
                           className="block w-full text-left"
                         >
                           <p className="md-title line-clamp-2">{item.title}</p>
@@ -211,15 +222,20 @@ export default function DeliverablesPage() {
                           <ExportMenu deliverable={item} />
                           <IconButton
                             label="Edit"
-                            onClick={() =>
+                            onClick={async () => {
+                              // Awaited, unlike the reader above. A draft built
+                              // from the truncated opening and then saved would
+                              // replace the document with its own first
+                              // paragraph, and nothing would say so.
+                              const body = await openDeliverable(item.id);
                               setDraft({
                                 id: item.id,
                                 title: item.title,
-                                body: item.body,
+                                body,
                                 departmentId: item.departmentId,
                                 status: item.status,
-                              })
-                            }
+                              });
+                            }}
                           >
                             <EditIcon className="h-3.5 w-3.5" />
                           </IconButton>

@@ -4,6 +4,7 @@ import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { membershipFor } from "@/db/tenancy";
 import { buildDocx } from "@/lib/export/docx";
+import { withinRate } from "@/lib/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,6 +65,12 @@ export async function GET(request: Request) {
   try {
     const mine = await membershipFor(email);
     if (!mine) return Response.json({ error: "Not found." }, { status: 404 });
+
+    // Building a .docx is a zip and a compress, which is the only real CPU work
+    // this deployment does on a request. Downloads are occasional by nature.
+    if (!withinRate(`doc:${email}`, 30, 60_000)) {
+      return Response.json({ error: "Too many at once." }, { status: 429 });
+    }
 
     // Keyed by workspace and id together, so an id from another business simply
     // does not match rather than matching and then being refused.

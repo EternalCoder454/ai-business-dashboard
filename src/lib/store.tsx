@@ -60,6 +60,10 @@ import type {
 
 export interface StoreValue {
   ready: boolean;
+  /** The workspace could not be read, after three tries. */
+  loadFailed: boolean;
+  /** Try the whole load again, from a button. */
+  retryLoad: () => void;
   /**
    * Why the last write to the account failed, if it did.
    *
@@ -198,6 +202,13 @@ export interface StoreValue {
    * empty until this is called. Calling it twice is free.
    */
   openConversation: (conversationId: string) => Promise<Message[]>;
+  /**
+   * One deliverable's full text.
+   *
+   * The snapshot carries the opening of each, which is what the card shows.
+   * Returns the whole thing and caches it, so opening one twice asks once.
+   */
+  openDeliverable: (id: string) => Promise<string>;
   pullShared: (conversationId: string) => Promise<number>;
 
   createDeliverable: (input: Partial<Deliverable>) => Promise<Deliverable>;
@@ -261,6 +272,16 @@ export function StoreProvider({
     openai: false,
     google: false,
   });
+  /**
+   * The workspace could not be read, after retrying.
+   *
+   * Distinct from not having loaded yet, which is `ready`. One is a moment and
+   * the other is a dead end, and the screen has to be able to tell them apart
+   * to offer the right thing.
+   */
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Bumped by `retryLoad` to send the effect round again.
+  const [reloadKey, setReloadKey] = useState(0);
   const [calendar, setCalendar] = useState<PromptCalendarEvent[]>([]);
   const [isOperator, setIsOperator] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
@@ -449,18 +470,46 @@ export function StoreProvider({
       return snapshot;
     };
 
-    load()
-      .then((snapshot) => {
-        if (!cancelled && snapshot) commitRemote(snapshot);
-      })
-      .catch(() => {
-        // Leaving remote null keeps the app in its loading state rather
-        // than showing an empty workspace that is not really empty.
-      });
+    /*
+     * Try again, then say so.
+     *
+     * This used to catch the failure and do nothing, on the grounds that a
+     * loading state beats an empty workspace that is not really empty. That is
+     * true and it was still the wrong end of the trade: one dropped request, a
+     * cold start that timed out, a Neon blip, and the app sat on a blank screen
+     * for the rest of the session with nothing to say and nothing to press.
+     * Somebody who does not think to refresh concludes it is broken.
+     *
+     * Three attempts with a widening gap, which covers the transient case,
+     * then a state the shell can offer a retry from.
+     */
+    const attempt = async (left: number): Promise<void> => {
+      try {
+        const snapshot = await load();
+        if (cancelled) return;
+        if (snapshot) {
+          commitRemote(snapshot);
+          setLoadFailed(false);
+          return;
+        }
+        throw new Error("the workspace came back empty");
+      } catch {
+        if (cancelled) return;
+        if (left > 0) {
+          await new Promise((resolve) => setTimeout(resolve, (4 - left) * 1200));
+          if (!cancelled) await attempt(left - 1);
+          return;
+        }
+        setLoadFailed(true);
+      }
+    };
+
+    void attempt(3);
+
     return () => {
       cancelled = true;
     };
-  }, [hosted, isOwner, commitRemote]);
+  }, [hosted, isOwner, commitRemote, reloadKey]);
 
 
   /**
@@ -602,6 +651,11 @@ export function StoreProvider({
   const value = useMemo<StoreValue>(() => {
     return {
       ready: remote !== null,
+      loadFailed,
+      retryLoad: () => {
+        setLoadFailed(false);
+        setReloadKey((n) => n + 1);
+      },
       writeError,
       dismissWriteError: () => setWriteError(null),
       storage: mode,
@@ -968,6 +1022,32 @@ export function StoreProvider({
         return merged;
       },
 
+      openDeliverable: async (id) => {
+        const current = remoteRef.current?.deliverables.find((d) => d.id === id);
+        if (!current) return "";
+        if (current.bodyLoaded) return current.body;
+
+        const response = await fetch(
+          `/api/workspace/deliverable-body?id=${encodeURIComponent(id)}`,
+        );
+        // The truncated opening is a worse answer than the whole document and a
+        // better one than an empty dialog, so a failure keeps what it had.
+        if (!response.ok) return current.body;
+
+        const body = ((await response.json()) as { body?: string }).body ?? "";
+        const latest = remoteRef.current?.deliverables.find((d) => d.id === id);
+        if (!latest) return body;
+
+        commitRemote(
+          applyOp(remoteRef.current!, {
+            table: "deliverables",
+            action: "upsert",
+            rows: [{ ...latest, body, bodyLoaded: true }],
+          }),
+        );
+        return body;
+      },
+
       pullShared: async (conversationId) => {
         const current = remoteRef.current?.conversations.find((c) => c.id === conversationId);
         if (!current) return 0;
@@ -1179,6 +1259,7 @@ export function StoreProvider({
     serverKey,
     isOperator,
     calendar,
+    loadFailed,
     remote,
     push,
     departmentList,
