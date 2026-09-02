@@ -176,39 +176,13 @@ export default function InformationPage() {
             </ul>
           </Card>
 
-          {/* ------------------------------------------------ shared context */}
-          <Card>
-            <h2 className="md-title-lg mb-4">Shared context</h2>
-            <dl className="grid grid-cols-1 gap-3 medium:grid-cols-2">
-              <Fact
-                label="Company Profile"
-                value={hasProfileContent(profile) ? "filled in" : "empty"}
-                tone={hasProfileContent(profile) ? undefined : "warning"}
-                href="/profile"
-              />
-              <Fact
-                label="Shared skills"
-                value={`${companySkills.length}`}
-                href="/library/skills"
-              />
-              <Fact
-                label="House writing rules"
-                value={settings.writingRules.trim() ? "on" : "off"}
-                href="/settings"
-              />
-              <Fact
-                label="Room reply length"
-                value={`${settings.roomBrevity === "standard" ? "140" : "60"} words each`}
-                href="/all-hands"
-              />
-            </dl>
-          </Card>
-
           {/* ------------------------------------------------ storage */}
           <Card>
             <h2 className="md-title-lg mb-1">Storage</h2>
             <p className="md-body mb-4 text-on-variant">
-              {storageMode === "hosted" ? "Synced to your account." : "This browser only."}
+              {storageMode === "hosted"
+                ? "Synced to your account, and to everyone else in this business."
+                : "Waiting for your account."}
             </p>
             <dl className="grid grid-cols-2 gap-3 medium:grid-cols-4">
               {storage.map((item) => (

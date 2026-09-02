@@ -22,39 +22,27 @@ import { createRipple } from "@/components/ui/ripple";
 import { formatRelativeTime } from "@/lib/routes";
 import { useStore } from "@/lib/store";
 import type { Message } from "@/lib/types";
+import type {
+  AdminConversation,
+  AdminOverview,
+  AdminPerson,
+  AdminUsage,
+} from "@/db/admin";
 
-interface Usage {
-  input: number;
-  output: number;
-  cacheRead: number;
-  cacheWrite: number;
-}
-
-interface Person {
-  /** A workspace id. The Clients tab reviews businesses, not addresses. */
-  workspaceId: string;
-  name?: string;
-  people?: number;
-  createdAt?: number;
-  displayName?: string;
-  roleTitle?: string;
-  conversations: number;
-  messages: number;
-  lastActive?: number;
-  usage: Usage;
-}
-
-interface Overview {
-  people: number;
-  signedIn: number;
-  conversations: number;
-  messages: number;
-  deliverables: number;
-  projects: number;
-  files: number;
-  storageBytes: number;
-  usage: Usage;
-}
+/*
+ * The server's own shapes, imported rather than restated.
+ *
+ * These were four hand-copied interfaces sitting a directory away from the ones
+ * the API actually sends. They drifted, silently: the Clients tab spent a while
+ * rendering nothing at all because this copy still said `email` where the
+ * server had moved to `workspaceId`. It compiled, every row read `undefined`,
+ * and nothing anywhere said so. `import type` is erased at build time, so this
+ * costs the client bundle nothing and makes the drift a compile error.
+ */
+type Usage = AdminUsage;
+type Person = AdminPerson;
+type Overview = AdminOverview;
+type ConversationHead = AdminConversation;
 
 interface Detail {
   deliverables: number;
@@ -63,14 +51,6 @@ interface Detail {
   skills: number;
   departments: number;
   storageBytes: number;
-}
-
-interface ConversationHead {
-  id: string;
-  departmentId: string;
-  title: string;
-  messageCount: number;
-  updatedAt: number;
 }
 
 interface Thread {
@@ -363,6 +343,29 @@ function PeopleTable({
   );
 }
 
+/**
+ * Whether somebody is in the panel right now.
+ *
+ * The inbox overview poll touches the account row, so this is a real heartbeat
+ * and not a guess from when they last signed in. A status somebody set by hand
+ * wins over it, because they meant it.
+ */
+const ACTIVE_WINDOW = 5 * 60_000;
+
+function presenceOf(member: {
+  presence: string;
+  lastSeenAt: number | null;
+  lastSignedInAt: number | null;
+}): { label: string; tone: "on" | "busy" | "off" } {
+  if (member.presence === "busy") return { label: "Do not disturb", tone: "busy" };
+  if (member.presence === "away") return { label: "Away", tone: "off" };
+  if (member.presence === "online") return { label: "Online", tone: "on" };
+  if (!member.lastSignedInAt) return { label: "Never signed in", tone: "off" };
+  return Date.now() - (member.lastSeenAt ?? 0) < ACTIVE_WINDOW
+    ? { label: "Online", tone: "on" }
+    : { label: "Offline", tone: "off" };
+}
+
 function PersonDetail({
   person,
   detail,
@@ -425,6 +428,44 @@ function PersonDetail({
               <Stat label="Attachments" value={String(detail.files)} hint={bytes(detail.storageBytes)} />
             </div>
           ) : null}
+
+          <Card>
+            <h2 className="md-title-lg mb-1">People</h2>
+            <p className="md-body mb-3 text-on-variant">
+              Who can open this business, and whether they are in it now.
+            </p>
+            {(person.members ?? []).length === 0 ? (
+              <p className="md-body text-on-variant">Nobody has access.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {(person.members ?? []).map((member) => {
+                  const presence = presenceOf(member);
+                  return (
+                    <li
+                      key={member.email}
+                      className="flex flex-wrap items-center gap-x-3 gap-y-1"
+                    >
+                      <span
+                        aria-hidden
+                        className={cx(
+                          "h-2 w-2 flex-none rounded-full",
+                          presence.tone === "on" && "bg-primary",
+                          presence.tone === "busy" && "bg-error",
+                          presence.tone === "off" && "bg-outline-variant",
+                        )}
+                      />
+                      <span className="md-body min-w-0 flex-1 truncate">
+                        {member.displayName ? `${member.displayName} · ` : ""}
+                        {member.email}
+                      </span>
+                      {member.role === "admin" ? <Chip tone="primary">Admin</Chip> : null}
+                      <span className="md-label-sm text-on-variant/75">{presence.label}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Card>
 
           <Card>
             <h2 className="md-title-lg mb-3">Conversations</h2>

@@ -24,12 +24,25 @@ export interface AdminUsage {
   cacheWrite: number;
 }
 
+export interface AdminMember {
+  email: string;
+  role: "member" | "admin";
+  displayName: string;
+  /** What the person set by hand, or "auto" to let the heartbeat decide. */
+  presence: "auto" | "online" | "away" | "busy";
+  /** Last overview poll, which is the heartbeat. Null until they arrive. */
+  lastSeenAt: number | null;
+  lastSignedInAt: number | null;
+}
+
 export interface AdminPerson {
   workspaceId: string;
   /** The business's name. Absent only for a workspace row with no record. */
   name?: string;
   /** How many people can open it. */
   people?: number;
+  /** Who they are, so a client is a list of names rather than a count. */
+  members?: AdminMember[];
   createdAt?: number;
   displayName?: string;
   roleTitle?: string;
@@ -72,8 +85,20 @@ export async function listPeople(): Promise<AdminPerson[]> {
     // client either way, and an empty row is the useful thing to see.
     db.select({ id: t.workspaces.id, name: t.workspaces.name, createdAt: t.workspaces.createdAt })
       .from(t.workspaces),
-    db.select({ workspaceId: t.access.workspaceId, email: t.access.email })
+    // Joined to the account row rather than fetched per person: a client with
+    // twenty people would otherwise be twenty round trips to draw one card.
+    db
+      .select({
+        workspaceId: t.access.workspaceId,
+        email: t.access.email,
+        role: t.access.role,
+        lastSignedInAt: t.access.lastSignedInAt,
+        displayName: t.accounts.displayName,
+        presence: t.accounts.presence,
+        lastSeenAt: t.accounts.lastSeenAt,
+      })
       .from(t.access)
+      .leftJoin(t.accounts, eq(t.accounts.userEmail, t.access.email))
       .where(isNull(t.access.revokedAt)),
     db
       .select({
@@ -134,6 +159,20 @@ export async function listPeople(): Promise<AdminPerson[]> {
   for (const row of members) {
     const client = slot(row.workspaceId);
     client.people = (client.people ?? 0) + 1;
+    client.members = [
+      ...(client.members ?? []),
+      {
+        email: row.email,
+        role: row.role === "admin" ? "admin" : "member",
+        displayName: row.displayName ?? "",
+        presence:
+          row.presence === "online" || row.presence === "away" || row.presence === "busy"
+            ? row.presence
+            : "auto",
+        lastSeenAt: row.lastSeenAt?.getTime() ?? null,
+        lastSignedInAt: row.lastSignedInAt?.getTime() ?? null,
+      },
+    ];
   }
   for (const row of activity) {
     const person = slot(row.email);

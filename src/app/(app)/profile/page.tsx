@@ -31,21 +31,21 @@ const FIELDS: {
     label: "What you make",
     placeholder:
       "The actual things you sell. Name them, say what each one is, and roughly what it costs.",
-    rows: 4,
+    rows: 3,
   },
   {
     key: "audience",
     label: "Audience",
     placeholder:
       "Who buys, who uses, what they are doing today instead, and what they care about.",
-    rows: 4,
+    rows: 3,
   },
   {
     key: "brandVoice",
     label: "Brand voice",
     placeholder:
       "How the company sounds, and what it never sounds like. Include a phrase you would and would not say.",
-    rows: 4,
+    rows: 3,
   },
   {
     key: "stage",
@@ -79,7 +79,7 @@ const FIELDS: {
     label: "Key facts",
     placeholder:
       "Pricing, headcount, launch dates, current numbers, tools you run on, constraints, anything you are tired of repeating.",
-    rows: 8,
+    rows: 6,
   },
 ];
 
@@ -123,15 +123,24 @@ export default function CompanyProfilePage() {
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 expanded:px-8 py-6">
-        <div className="measure grid grid-cols-1 gap-5 medium:grid-cols-2">
+        {/*
+         * Three columns once there is room for them.
+         *
+         * Two columns left seven ordinary fields to fill six slots, so
+         * Constraints sat alone beside an empty half while Key facts waited
+         * below the fold. At three, Mission spans the top, the seven fill two
+         * full rows and one slot, and Key facts takes the two beside it — no
+         * gaps, and the whole profile is on one screen on a desktop instead of
+         * a scroll through mostly empty boxes.
+         */}
+        <div className="measure-wide grid grid-cols-1 gap-5 medium:grid-cols-2 expanded:grid-cols-3">
           {FIELDS.map((field) => (
             <Card
               key={field.key}
-              className={
-                field.key === "mission" || field.key === "keyFacts"
-                  ? "medium:col-span-2"
-                  : ""
-              }
+              className={cx(
+                field.key === "mission" && "medium:col-span-2 expanded:col-span-3",
+                field.key === "keyFacts" && "medium:col-span-2",
+              )}
             >
               <Field label={field.label}>
                 <TextArea
@@ -147,7 +156,7 @@ export default function CompanyProfilePage() {
             </Card>
           ))}
 
-          <div className="medium:col-span-2">
+          <div className="medium:col-span-2 expanded:col-span-3">
             <button
               onClick={() => setShowPreview((value) => !value)}
               className="md-state md-label flex items-center gap-2 rounded-xl px-3 py-2 text-on-variant"
