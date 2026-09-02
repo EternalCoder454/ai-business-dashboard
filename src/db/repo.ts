@@ -78,7 +78,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
      * Every column except `data`.
      *
      * `data` is the base64 of the image or PDF itself, and nothing built from
-     * these rows reads it — `toAttachment` never touches it, and the bytes are
+     * these rows reads it: `toAttachment` never touches it, and the bytes are
      * served on demand from /api/files/[id]. `select()` with no argument took
      * it anyway, so a business with fifty megabytes in its Library pulled fifty
      * megabytes out of Postgres, through the server, and dropped it on the

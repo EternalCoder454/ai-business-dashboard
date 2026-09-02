@@ -24,7 +24,8 @@
     "messages-test": "tsx --env-file=.env.local scripts/messages-test.ts",
     "admin-test": "tsx --env-file=.env.local scripts/admin-test.ts",
     "tenancy-test": "tsx --env-file=.env.local scripts/tenancy-test.ts",
-    "api-test": "tsx --env-file=.env.local scripts/api-test.ts"
+    "api-test": "tsx --env-file=.env.local scripts/api-test.ts",
+    "email-preview": "tsx scripts/email-preview.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

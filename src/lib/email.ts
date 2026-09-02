@@ -11,6 +11,8 @@
  * not roll back the thing that worked.
  */
 
+import { inviteHtml, inviteText, type InviteView } from "./email-invite.html";
+
 const ENDPOINT = "https://api.resend.com/emails";
 
 export const emailEnabled = Boolean(process.env.RESEND_API_KEY?.trim());
@@ -35,14 +37,6 @@ function siteUrl(): string {
 /** Collapses anything that could break out of a header into a single line. */
 function oneLine(value: string | undefined): string {
   return (value ?? "").replace(/\s+/g, " ").trim();
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 async function send(input: {
@@ -82,14 +76,19 @@ async function send(input: {
   }
 }
 
+
 /**
  * Tells someone they have been given access to a workspace.
  *
  * There is no token in the link. Access is the row in the access table, keyed
- * to their address, and they prove the address by signing in with Google. A
- * link carrying a secret would be a second way in to keep safe, and a worse
- * one, since it arrives in an inbox and never expires unless something makes
- * it.
+ * to their email address, and they prove the address by signing in with
+ * Google. A link carrying a secret would be a second way in to keep safe, and
+ * a worse one, since it arrives in an inbox and never expires unless something
+ * makes it.
+ *
+ * The panel's name is looked up rather than passed in when a caller does not
+ * know it, so an invitation always arrives wearing the name of the deployment
+ * it came from instead of the words "the panel".
  */
 export async function sendInvite(input: {
   to: string;
@@ -97,41 +96,34 @@ export async function sendInvite(input: {
   invitedBy: string;
   companyName?: string;
 }): Promise<string | null> {
-  const url = siteUrl();
-  const panel = oneLine(input.companyName) || "the panel";
   // A business name reaches the subject line, and a subject line with a
   // newline in it is how header injection starts. Resend takes JSON rather
   // than raw headers, so this is belt and braces, but the name is operator
   // input reaching an outbound message and it costs nothing to flatten.
   const workspace = oneLine(input.workspaceName) || "your workspace";
 
-  const text = [
-    `${input.invitedBy} has given you access to ${workspace} on ${panel}.`,
-    "",
-    url ? `Sign in here: ${url}` : "Ask them for the address to sign in at.",
-    "",
-    "Sign in with the Google account this was sent to. There is no password",
-    "to set and no code to enter: the address is what grants you access.",
-  ].join("\n");
+  let panel = oneLine(input.companyName);
+  if (!panel) {
+    try {
+      const { loadBranding } = await import("./branding");
+      panel = oneLine((await loadBranding()).name);
+    } catch {
+      panel = "";
+    }
+  }
 
-  const html = `
-    <div style="font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1c1f22">
-      <p><strong>${escapeHtml(input.invitedBy)}</strong> has given you access to
-      <strong>${escapeHtml(workspace)}</strong> on ${escapeHtml(panel)}.</p>
-      ${
-        url
-          ? `<p><a href="${escapeHtml(url)}" style="display:inline-block;background:#156d7f;color:#fff;padding:10px 18px;border-radius:999px;text-decoration:none">Open the panel</a></p>`
-          : "<p>Ask them for the address to sign in at.</p>"
-      }
-      <p style="color:#464d53;font-size:14px">Sign in with the Google account this was
-      sent to. There is no password to set and no code to enter: the address is
-      what grants you access.</p>
-    </div>`;
+  const view: InviteView = {
+    workspace,
+    invitedBy: oneLine(input.invitedBy) || "Somebody",
+    panel: panel || "the panel",
+    url: siteUrl(),
+    to: oneLine(input.to),
+  };
 
   return send({
     to: input.to,
-    subject: `You have been added to ${workspace}`,
-    text,
-    html,
+    subject: `${view.invitedBy} added you to ${workspace}`,
+    text: inviteText(view),
+    html: inviteHtml(view),
   });
 }

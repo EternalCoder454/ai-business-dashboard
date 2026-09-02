@@ -148,7 +148,7 @@ export default function AdminPage() {
           <EmptyState
             icon={<PersonIcon className="h-8 w-8" />}
             title="Not an operator"
-            description="Requires an address listed in OPERATOR_EMAILS."
+            description="Requires an email address listed in OPERATOR_EMAILS."
           />
         </div>
       </div>

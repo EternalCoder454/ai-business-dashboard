@@ -16,3 +16,4 @@ next-env.d.ts
 
 # Workspace exports. Business data, and nothing the app needs to build.
 *-export-*.json
+invite-preview.html

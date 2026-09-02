@@ -134,7 +134,7 @@ export default function IntegrationsPage() {
             <div className="min-w-0">
               <p className="md-title">Addons are being built</p>
               <p className="md-body mt-1 text-on-variant">
-                An addon is one job the panel can do outside itself — posting a video,
+                An addon is one job the panel can do outside itself: posting a video,
                 filing an invoice, updating a listing. They are not here yet. What is
                 here is the API they will all run on, so anything you write today keeps
                 working when the catalogue arrives.
@@ -303,8 +303,8 @@ curl -X PATCH https://business.eterneon.net/api/v1/tasks/TASK_ID \\
         footer={<Button onClick={() => setMinted(null)}>Done</Button>}
       >
         <p className="md-body mb-3 text-on-variant">
-          This is the only time the key is shown. It is stored as a hash, so nobody —
-          including us — can read it back. If it is lost, revoke it and make another.
+          This is the only time the key is shown. It is stored as a hash, so nobody,
+          including us, can read it back. If it is lost, revoke it and make another.
         </p>
         <div className="flex items-center gap-2">
           <code

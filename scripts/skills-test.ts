@@ -70,7 +70,7 @@ console.log("\nthe library is internally consistent");
   check(
     "every shipped body is fingerprinted",
     unknown.length === 0,
-    `${unknown.map((s) => s.name).join(", ")} — run: npm run skills-fingerprint`,
+    `${unknown.map((s) => s.name).join(", ")}. Run: npm run skills-fingerprint`,
   );
 
   // The name beside each retired id records where its content went. It is a
@@ -111,7 +111,7 @@ console.log("\nthe fingerprint set matches what ships now");
   check(
     "every shipped body is in the set",
     missing.length === 0,
-    `${missing.map((skill) => skill.name).join(", ")} — run: npm run skills-fingerprint`,
+    `${missing.map((skill) => skill.name).join(", ")}. Run: npm run skills-fingerprint`,
   );
 }
 

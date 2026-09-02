@@ -463,8 +463,8 @@
  *
  * Wrapping is right wherever there is width for it. On a phone the same set of
  * departments runs to four rows and pushes the thing being filtered off the
- * bottom of the screen, so below medium it scrolls sideways in one row instead
- * — the same move the wiki contents already makes.
+ * bottom of the screen, so below medium it scrolls sideways in one row instead,
+ * the same move the wiki contents already makes.
  */
 .filter-row {
   display: flex;

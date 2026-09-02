@@ -344,7 +344,7 @@ export function StoreProvider({
          * workspace was created, and it carries the name the operator typed.
          * Seeding used to send the whole of DEFAULT_SETTINGS, so the first
          * person to open a new workspace overwrote that with "Your Company" and
-         * "HQ" — and because a settings write also renames the workspace row,
+         * "HQ", and because a settings write also renames the workspace row,
          * the operator's list changed too. Defaults are for the fields nobody
          * has chosen yet; a name somebody chose is not one of them.
          */
@@ -440,7 +440,7 @@ export function StoreProvider({
 
   /**
    * Reads come from the hosted snapshot held in state. There was a second
-   * source once — a workspace in the browser's own IndexedDB — and everything
+   * source once, a workspace in the browser's own IndexedDB, and everything
    * below this line was written to not know which one it got. Only one is left,
    * but the indirection stays useful: it is still the single place where "what
    * the screen shows" is assembled from "what the server said".

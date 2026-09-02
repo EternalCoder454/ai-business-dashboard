@@ -73,13 +73,13 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
     >
       {sent ? (
         <p className="md-body text-on-variant">
-          It went through. Your name, address, and business came with it, so
-          there is no need to follow up with who you are.
+          It went through. Your name, email, and business came with it, so there
+          is no need to follow up with who you are.
         </p>
       ) : (
         <Field
           label="What would you change?"
-          hint="An idea, or something that is broken. Sent with your name and business."
+          hint="An idea, or something that is broken. Sent with your name, email, and business."
         >
           <TextArea
             autoFocus

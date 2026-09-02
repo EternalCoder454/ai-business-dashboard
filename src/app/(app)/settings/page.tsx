@@ -91,7 +91,7 @@ export default function SettingsPage() {
    * The export comes from the server now.
    *
    * It used to be built from this browser's own IndexedDB, which stopped
-   * holding anything when workspaces moved to the server — so the button went
+   * holding anything when workspaces moved to the server, so the button went
    * on producing a file, and the file was empty. Anybody who pressed it walked
    * away thinking they had a backup.
    */

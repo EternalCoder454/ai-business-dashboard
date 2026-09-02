@@ -71,7 +71,7 @@ export async function loadBranding(): Promise<Branding> {
  *
  * It exists to stop a flash of the wrong company. The store starts from
  * DEFAULT_SETTINGS, whose name is "Your Company", and only learns the real one
- * when /api/workspace answers — so every refresh showed somebody else's
+ * when /api/workspace answers, so every refresh showed somebody else's
  * business name for a beat before their own appeared. The theme already has
  * this exact treatment for the same reason.
  *
@@ -91,7 +91,7 @@ export async function loadViewerBranding(): Promise<Branding | null> {
 
     // One join rather than membershipFor followed by a settings read. This sits
     // on the critical path of the HTML for every page in the app, so the second
-    // round trip is worth not making — both halves are single indexed rows.
+    // round trip is worth not making, and both halves are single indexed rows.
     const [row] = await requireDb()
       .select({
         name: t.settings.companyName,

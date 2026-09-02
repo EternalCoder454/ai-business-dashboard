@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  *
  * This used to be read out of the browser's own IndexedDB, which stopped being
  * where anything lived when workspaces moved to the server. The button kept
- * working and kept producing a file — an empty one — so anybody who pressed it
+ * working and kept producing a file, an empty one, so anybody who pressed it
  * came away believing they had a backup of a business whose data was somewhere
  * else entirely. An export that silently exports nothing is worse than no
  * export button at all.

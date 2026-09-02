@@ -129,7 +129,7 @@ export default function CompanyProfilePage() {
          * Two columns left seven ordinary fields to fill six slots, so
          * Constraints sat alone beside an empty half while Key facts waited
          * below the fold. At three, Mission spans the top, the seven fill two
-         * full rows and one slot, and Key facts takes the two beside it — no
+         * full rows and one slot, and Key facts takes the two beside it. No
          * gaps, and the whole profile is on one screen on a desktop instead of
          * a scroll through mostly empty boxes.
          */}

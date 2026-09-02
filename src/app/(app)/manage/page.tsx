@@ -54,7 +54,7 @@ function presenceOf(member: Member): { label: string; tone: "on" | "busy" | "off
 /**
  * The business managing itself: who is in it, and what each of them can do.
  *
- * This is not the operator screen. It shows one business — the caller's own —
+ * This is not the operator screen. It shows one business, the caller's own,
  * and the server never takes a workspace from the page, so there is nothing
  * here that could be pointed at somebody else's company. The two screens were
  * briefly merged, which left every customer's administrator with no way to add
@@ -168,7 +168,7 @@ export default function ManagePage() {
           <EmptyState
             icon={<UsersIcon className="h-8 w-8" />}
             title="Only you so far"
-            description="Add a colleague and they can sign in with the address you use here."
+            description="Add a colleague and they can sign in with the email you use here."
           />
         ) : (
           <ul className="flex flex-col gap-3">
@@ -295,7 +295,7 @@ export default function ManagePage() {
         }
       >
         <Field
-          label="Their work address"
+          label="Their work email"
           hint="They sign in with this Google account. There is no password to set."
         >
           <TextInput
@@ -313,8 +313,8 @@ export default function ManagePage() {
               setDraftRole(event.target.value === "admin" ? "admin" : "member")
             }
           >
-            <option value="member">Member — use the panel</option>
-            <option value="admin">Administrator — also manage people and keys</option>
+            <option value="member">Member: use the panel</option>
+            <option value="admin">Administrator: also manage people and keys</option>
           </Select>
         </Field>
       </Dialog>

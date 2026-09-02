@@ -2,8 +2,8 @@
  * A write stays in the workspace the server resolved, whatever the row says.
  *
  * `applyMutations` takes the workspace id from the session and the row from the
- * client. Two cases used to merge them the wrong way round — `{ workspaceId,
- * ...op.row }` — so a row carrying its own `workspaceId` chose the tenant it
+ * client. Two cases used to merge them the wrong way round, as `{ workspaceId,
+ * ...op.row }`, so a row carrying its own `workspaceId` chose the tenant it
  * landed in. That is the whole tenant boundary, decided by the request body.
  *
  * It was not theoretical: it renamed a real customer's business the first time

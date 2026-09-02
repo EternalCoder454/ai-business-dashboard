@@ -31,7 +31,7 @@ const CATEGORY_LABEL: Record<string, string> = {
  * What the reviewer has raised, for a person to decide about.
  *
  * Nothing here acts on its own. Every row is a prompt to go and look, and the
- * two buttons record that somebody did — which is the point. An automated
+ * two buttons record that somebody did, which is the point. An automated
  * judgement about a real person's conduct should never be the last word, and
  * this screen is built so it cannot be.
  */
@@ -123,7 +123,7 @@ export function ReportsTab() {
               Reads internal messages for harassment, threats, fraud, malware, and
               anyone who may be at risk. It does not look at business secrets, client
               information, or figures, and it does not judge tone. Nothing here happens
-              automatically — every row is a prompt to go and look.
+              automatically. Every row is a prompt to go and look.
             </p>
             <p className="md-label-sm mt-2 text-on-variant/75">
               {lastRunAt ? `Last pass ${formatRelativeTime(lastRunAt)}.` : "Never run."}

@@ -105,7 +105,7 @@ export async function POST(request: Request) {
   const role = parsed.body.role === "admin" ? "admin" : "member";
 
   if (!ADDRESS.test(email)) {
-    return Response.json({ error: "That is not an address." }, { status: 400 });
+    return Response.json({ error: "That is not an email address." }, { status: 400 });
   }
 
   const done = async (extra: Record<string, unknown> = {}) =>
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
         return Response.json(
           {
             error:
-              "That address already belongs to another business on this panel. " +
+              "That email already belongs to another business on this panel. " +
               "They have to leave it before they can join yours.",
           },
           { status: 409 },
@@ -157,7 +157,7 @@ export async function POST(request: Request) {
     // Everything below changes somebody who is already here, so they have to
     // actually be here, and in this business rather than any other.
     if (!existing || existing.workspaceId !== admin.workspaceId) {
-      return Response.json({ error: "Nobody here has that address." }, { status: 404 });
+      return Response.json({ error: "Nobody here has that email." }, { status: 404 });
     }
 
     const lastAdmin = existing.role === "admin" && (await countAdmins(admin.workspaceId)) <= 1;
@@ -193,7 +193,7 @@ export async function POST(request: Request) {
       // removing it here would report success and change nothing.
       if (OPERATOR_EMAILS.includes(email)) {
         return Response.json(
-          { error: "That address runs this deployment and cannot be removed here." },
+          { error: "That email runs this deployment and cannot be removed here." },
           { status: 400 },
         );
       }
