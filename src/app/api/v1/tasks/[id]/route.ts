@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { requireDb } from "@/db/client";
 import * as t from "@/db/schema";
-import { authorize, caught, fail, ok, readBody, str } from "@/lib/api/v1";
+import { authorize, caught, fail, ok, only, readBody, str } from "@/lib/api/v1";
 import { toWire } from "../route";
 
 export const runtime = "nodejs";
@@ -38,12 +38,12 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     const row = await find(caller.workspaceId, id);
     if (!row) {
       return fail("not_found_error", "No task here has that id.", {
-        requestId: caller.requestId,
+        caller,
       });
     }
-    return ok(toWire(row), { requestId: caller.requestId });
+    return ok(toWire(row), { caller });
   } catch (error) {
-    return caught("tasks/id", error, caller.requestId);
+    return caught("tasks/id", error, caller);
   }
 }
 
@@ -59,7 +59,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   if (!auth.ok) return auth.response;
   const { caller } = auth;
 
-  const parsed = await readBody(request, caller.requestId);
+  const parsed = await readBody(request, caller);
   if (!parsed.ok) return parsed.response;
   const body = parsed.body;
 
@@ -68,7 +68,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     const existing = await find(caller.workspaceId, id);
     if (!existing) {
       return fail("not_found_error", "No task here has that id.", {
-        requestId: caller.requestId,
+        caller,
       });
     }
 
@@ -79,7 +79,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       if (!title) {
         return fail("invalid_request_error", "A task needs a title.", {
           param: "title",
-          requestId: caller.requestId,
+          caller,
         });
       }
       patch.title = title;
@@ -92,7 +92,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
         return fail(
           "invalid_request_error",
           "status has to be one of " + STATUSES.join(", ") + ".",
-          { param: "status", requestId: caller.requestId },
+          { param: "status", caller },
         );
       }
       patch.status = body.status;
@@ -105,7 +105,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       if (body.due_at !== null && typeof body.due_at !== "number") {
         return fail("invalid_request_error", "due_at is a millisecond timestamp, or null.", {
           param: "due_at",
-          requestId: caller.requestId,
+          caller,
         });
       }
       patch.dueAt = body.due_at;
@@ -116,7 +116,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       if (!departmentId) {
         return fail("invalid_request_error", "department_id cannot be empty.", {
           param: "department_id",
-          requestId: caller.requestId,
+          caller,
         });
       }
       patch.departmentId = departmentId;
@@ -128,9 +128,9 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       .where(and(eq(t.tasks.workspaceId, caller.workspaceId), eq(t.tasks.id, id)));
 
     const saved = await find(caller.workspaceId, id);
-    return ok(saved ? toWire(saved) : null, { requestId: caller.requestId });
+    return ok(saved ? toWire(saved) : null, { caller });
   } catch (error) {
-    return caught("tasks/id", error, caller.requestId);
+    return caught("tasks/id", error, caller);
   }
 }
 
@@ -148,11 +148,14 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
 
     if (removed.length === 0) {
       return fail("not_found_error", "No task here has that id.", {
-        requestId: caller.requestId,
+        caller,
       });
     }
-    return ok({ id, deleted: true }, { requestId: caller.requestId });
+    return ok({ id, deleted: true }, { caller });
   } catch (error) {
-    return caught("tasks/id", error, caller.requestId);
+    return caught("tasks/id", error, caller);
   }
 }
+
+/** Anything else on this path answers in the envelope rather than an empty 405. */
+export const { POST, PUT } = only("GET", "PATCH", "DELETE");

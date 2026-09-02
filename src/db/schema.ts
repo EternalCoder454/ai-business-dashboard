@@ -669,3 +669,32 @@ export const reviewCursors = pgTable("review_cursors", {
   lastRunAt: timestamp("last_run_at", { withTimezone: true }),
   updatedAt: updated(),
 });
+
+/**
+ * One remembered answer per write somebody promised not to repeat.
+ *
+ * An addon that times out waiting for a reply has no way to know whether the
+ * task was created, so the safe thing for it to do is try again, and the safe
+ * thing for us to do is make the second attempt return the first one's answer
+ * instead of a second task.
+ *
+ * The body is fingerprinted alongside the key, so replaying the same
+ * Idempotency-Key with different content is refused rather than quietly
+ * handed somebody else's result. Rows are keyed per API key, so two
+ * integrations picking the same value never collide.
+ */
+export const idempotency = pgTable(
+  "idempotency",
+  {
+    /** `<api key id>:<the Idempotency-Key header>`. */
+    id: text("id").primaryKey(),
+    workspaceId: workspace(),
+    /** SHA-256 of the request body, so a different body is a conflict. */
+    bodyHash: text("body_hash").notNull(),
+    /** Null while the first attempt is still running. */
+    status: integer("status"),
+    response: jsonb("response").$type<unknown>(),
+    createdAt: created(),
+  },
+  (table) => [index("idempotency_age_idx").on(table.createdAt)],
+);

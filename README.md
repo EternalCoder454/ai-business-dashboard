@@ -110,7 +110,22 @@ curl https://business.eterneon.net/api/v1/tasks?status=todo \
 Conventions: successes are `{ data, request_id }`, failures are
 `{ error: { type, message, param? }, request_id }` with a `type` worth branching on.
 Cursor paging, not offsets, because both a person and an addon write to the task list.
-Every response carries `X-Request-Id`. 120 requests a minute per key.
+Every response carries `X-Request-Id` and the `RateLimit-Limit`, `RateLimit-Remaining`,
+and `RateLimit-Reset` headers, so a client can pace itself instead of discovering the
+ceiling by hitting it. 120 requests a minute per key.
+
+The envelope holds at the edges too. A method a path does not take is a
+`method_not_allowed_error` with an `Allow` header, not an empty 405; an unknown path is a
+`not_found_error` in JSON, not the application's HTML error page. Both were the framework's
+defaults, and both break a client that parses every response, with a parse error rather
+than the typed one it was ready for.
+
+**Retries are safe.** Send `Idempotency-Key` on a POST and a second attempt returns the
+first one's answer with `Idempotency-Replayed: true`, rather than creating a second thing.
+The body is fingerprinted alongside the key, so reusing a key with different content is a
+`conflict_error` rather than a silent hit on somebody else's result, and two identical
+requests racing each other resolve in the database rather than in a check that was true a
+moment ago.
 
 `GET /api/v1` describes every endpoint and needs no key, so the documentation cannot drift
 from the deployment.
@@ -120,6 +135,7 @@ from the deployment.
 | `GET /api/v1` | none |
 | `GET /api/v1/me` | any key |
 | `GET /api/v1/departments` | `departments:read` |
+| `GET /api/v1/memory` | `memory:read` |
 | `GET /api/v1/tasks` | `tasks:read` |
 | `POST /api/v1/tasks` | `tasks:write` |
 | `GET·PATCH·DELETE /api/v1/tasks/{id}` | `tasks:read` · `tasks:write` |

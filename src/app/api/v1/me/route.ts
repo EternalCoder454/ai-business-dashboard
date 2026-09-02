@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { requireDb } from "@/db/client";
 import * as t from "@/db/schema";
-import { authorize, caught, ok } from "@/lib/api/v1";
+import { authorize, caught, ok, only } from "@/lib/api/v1";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,9 +30,12 @@ export async function GET(request: Request) {
         business: { id: caller.workspaceId, name: workspace?.name ?? "" },
         key: { id: caller.keyId, scopes: caller.scopes },
       },
-      { requestId: caller.requestId },
+      { caller },
     );
   } catch (error) {
-    return caught("me", error, caller.requestId);
+    return caught("me", error, caller);
   }
 }
+
+/** Anything else on this path answers in the envelope rather than an empty 405. */
+export const { POST, PUT, PATCH, DELETE } = only("GET");

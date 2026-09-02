@@ -16,12 +16,20 @@ import * as t from "./schema";
 
 /** `ek_` for Eterneon key, then the random part. */
 const PREFIX = "ek_";
+/**
+ * What a key can be given permission to do.
+ *
+ * Every entry has an endpoint behind it. There was a `chat:write` here for a
+ * while with nothing to grant: an administrator could tick it, the key would
+ * carry it, and no route would ever look. A scope that does nothing is worse
+ * than a missing one, because it reads as a capability somebody has decided to
+ * give away.
+ */
 const SCOPES = [
   "tasks:read",
   "tasks:write",
   "departments:read",
   "memory:read",
-  "chat:write",
 ] as const;
 
 export type Scope = (typeof SCOPES)[number];

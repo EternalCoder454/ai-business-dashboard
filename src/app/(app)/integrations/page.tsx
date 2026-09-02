@@ -35,7 +35,6 @@ const SCOPE_LABEL: Record<string, string> = {
   "tasks:write": "Add and change tasks",
   "departments:read": "See the org chart",
   "memory:read": "Read what the business has recorded",
-  "chat:write": "Ask a head a question",
 };
 
 /**

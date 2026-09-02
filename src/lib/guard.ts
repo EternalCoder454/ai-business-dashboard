@@ -90,6 +90,39 @@ export async function readJsonWithin<T>(
  */
 const windows = new Map<string, number[]>();
 
+export interface RateState {
+  allowed: boolean;
+  limit: number;
+  /** Requests left in this window, after counting the one being answered. */
+  remaining: number;
+  /** Unix seconds when the window frees up. */
+  resetAt: number;
+}
+
+/**
+ * The same limiter, but it says where you stand.
+ *
+ * `withinRate` answers yes or no, which is all a page needs. A public API
+ * should say how much is left and when it frees up, so a client can pace
+ * itself instead of discovering the ceiling by hitting it.
+ */
+export function rateState(key: string, limit: number, windowMs: number): RateState {
+  const now = Date.now();
+  const cutoff = now - windowMs;
+  const hits = (windows.get(key) ?? []).filter((at) => at > cutoff);
+  const oldest = hits[0] ?? now;
+  const resetAt = Math.ceil((oldest + windowMs) / 1000);
+
+  if (hits.length >= limit) {
+    windows.set(key, hits);
+    return { allowed: false, limit, remaining: 0, resetAt };
+  }
+
+  hits.push(now);
+  windows.set(key, hits);
+  return { allowed: true, limit, remaining: Math.max(0, limit - hits.length), resetAt };
+}
+
 export function withinRate(key: string, limit: number, windowMs: number): boolean {
   const now = Date.now();
   const cutoff = now - windowMs;

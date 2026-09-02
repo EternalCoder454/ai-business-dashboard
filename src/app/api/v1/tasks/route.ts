@@ -2,7 +2,18 @@ import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, lt } from "drizzle-orm";
 import { requireDb } from "@/db/client";
 import * as t from "@/db/schema";
-import { authorize, caught, fail, page, readBody, str } from "@/lib/api/v1";
+import {
+  authorize,
+  caught,
+  fail,
+  idempotencyFingerprint,
+  ok,
+  only,
+  page,
+  readBody,
+  str,
+} from "@/lib/api/v1";
+import { claim, finish, release, sweep } from "@/db/idempotency";
 import { CEO_ID } from "@/lib/seed";
 
 export const runtime = "nodejs";
@@ -77,7 +88,7 @@ export async function GET(request: Request) {
     if (status && !isStatus(status)) {
       return fail("invalid_request_error", `status has to be one of ${STATUSES.join(", ")}.`, {
         param: "status",
-        requestId: caller.requestId,
+        caller,
       });
     }
 
@@ -86,7 +97,7 @@ export async function GET(request: Request) {
     if (cursor && !Number.isFinite(cursorAt)) {
       return fail("invalid_request_error", "cursor should be one from next_cursor.", {
         param: "cursor",
-        requestId: caller.requestId,
+        caller,
       });
     }
 
@@ -112,9 +123,9 @@ export async function GET(request: Request) {
         ? String(window[window.length - 1].createdAt.getTime())
         : null;
 
-    return page(window.map(toWire), nextCursor, { requestId: caller.requestId });
+    return page(window.map(toWire), nextCursor, { caller });
   } catch (error) {
-    return caught("tasks", error, caller.requestId);
+    return caught("tasks", error, caller);
   }
 }
 
@@ -124,36 +135,77 @@ export async function GET(request: Request) {
  * `title` is the only thing required. Everything else has a sensible place to
  * land, because the common caller is a script that knows what it wants done and
  * not which head owns it.
+ *
+ * Send an `Idempotency-Key` header and a retry is safe. An addon whose
+ * connection dropped before the reply arrived has no way to know whether the
+ * task exists, so retrying is the right thing for it to do; with the header,
+ * the second attempt returns the first one's answer instead of a second task.
+ * The body is fingerprinted alongside the key, so reusing a key with different
+ * content is refused rather than silently handed somebody else's result.
  */
 export async function POST(request: Request) {
   const auth = await authorize(request, "tasks:write");
   if (!auth.ok) return auth.response;
   const { caller } = auth;
 
-  const parsed = await readBody(request, caller.requestId);
+  const parsed = await readBody(request, caller);
   if (!parsed.ok) return parsed.response;
 
+  const stamp = idempotencyFingerprint(request, caller, parsed.body);
+  if (stamp) {
+    sweep();
+    const taken = await claim(stamp.key, caller.workspaceId, stamp.bodyHash);
+    if (taken.state === "replay") {
+      return ok(taken.response, {
+        status: taken.status,
+        caller,
+        headers: { "Idempotency-Replayed": "true" },
+      });
+    }
+    if (taken.state === "running") {
+      return fail(
+        "conflict_error",
+        "A request with that Idempotency-Key is still running. Try again shortly.",
+        { caller, headers: { "Retry-After": "2" } },
+      );
+    }
+    if (taken.state === "conflict") {
+      return fail(
+        "conflict_error",
+        "That Idempotency-Key was already used with a different body.",
+        { caller },
+      );
+    }
+  }
+
   const title = str(parsed.body.title, 300);
+  const giveBack = async () => {
+    if (stamp) await release(stamp.key);
+  };
+
   if (!title) {
+    await giveBack();
     return fail("invalid_request_error", "A task needs a title.", {
       param: "title",
-      requestId: caller.requestId,
+      caller,
     });
   }
 
   const status = parsed.body.status === undefined ? "todo" : parsed.body.status;
   if (!isStatus(status)) {
+    await giveBack();
     return fail("invalid_request_error", `status has to be one of ${STATUSES.join(", ")}.`, {
       param: "status",
-      requestId: caller.requestId,
+      caller,
     });
   }
 
   const dueAt = parsed.body.due_at;
   if (dueAt !== undefined && dueAt !== null && typeof dueAt !== "number") {
+    await giveBack();
     return fail("invalid_request_error", "due_at is a millisecond timestamp, or null.", {
       param: "due_at",
-      requestId: caller.requestId,
+      caller,
     });
   }
 
@@ -175,9 +227,10 @@ export async function POST(request: Request) {
         )
         .limit(1);
       if (!head) {
+        await giveBack();
         return fail("not_found_error", "No department here has that id.", {
           param: "department_id",
-          requestId: caller.requestId,
+          caller,
         });
       }
     }
@@ -211,18 +264,21 @@ export async function POST(request: Request) {
       .where(and(eq(t.tasks.workspaceId, caller.workspaceId), eq(t.tasks.id, row.id)))
       .limit(1);
 
-    return Response.json(
-      { data: toWire(saved), request_id: caller.requestId },
-      {
-        status: 201,
-        headers: {
-          "X-Request-Id": caller.requestId,
-          "Cache-Control": "no-store",
-          Location: `/api/v1/tasks/${row.id}`,
-        },
-      },
-    );
+    const created = toWire(saved);
+    if (stamp) await finish(stamp.key, 201, created);
+
+    return ok(created, {
+      status: 201,
+      caller,
+      headers: { Location: `/api/v1/tasks/${row.id}` },
+    });
   } catch (error) {
-    return caught("tasks", error, caller.requestId);
+    // The claim goes back on a failure, or a caller retrying after a genuine
+    // error is told their attempt is still running and never gets through.
+    await giveBack();
+    return caught("tasks", error, caller);
   }
 }
+
+/** Anything else on this path answers in the envelope rather than an empty 405. */
+export const { PUT, PATCH, DELETE } = only("GET", "POST");

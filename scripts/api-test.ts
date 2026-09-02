@@ -53,7 +53,7 @@ async function main() {
   const full = await createKey({
     workspaceId: WS,
     name: "test",
-    scopes: ["tasks:read", "tasks:write", "departments:read"],
+    scopes: ["tasks:read", "tasks:write", "departments:read", "memory:read"],
     createdBy: "api-test@example.invalid",
   });
   const readOnly = await createKey({
@@ -179,6 +179,103 @@ async function main() {
     !theirList.body?.data?.items?.some((task: WireTask) => task.id === "api-test-foreign"),
   );
 
+  console.log("\nthe envelope holds at the edges");
+  const badMethod = await call("/api/v1/me", { method: "DELETE" }, full.token);
+  check("an unsupported method is 405", badMethod.status === 405, String(badMethod.status));
+  check(
+    "and answers in JSON, not an empty body",
+    badMethod.body?.error?.type === "method_not_allowed_error",
+  );
+  check("with an Allow header", Boolean(badMethod.headers.get("allow")));
+
+  const noSuch = await call("/api/v1/nope", {}, full.token);
+  check("an unknown path is 404", noSuch.status === 404, String(noSuch.status));
+  check(
+    "and is JSON, not an HTML error page",
+    noSuch.body?.error?.type === "not_found_error",
+    String(noSuch.headers.get("content-type")),
+  );
+
+  console.log("\na client can pace itself");
+  const paced = await call("/api/v1/tasks", {}, full.token);
+  check("RateLimit-Limit is on a success", Boolean(paced.headers.get("ratelimit-limit")));
+  check("so is Remaining", Boolean(paced.headers.get("ratelimit-remaining")));
+  check("and Reset", Boolean(paced.headers.get("ratelimit-reset")));
+  const firstLeft = Number(paced.headers.get("ratelimit-remaining"));
+  const secondLeft = Number(
+    (await call("/api/v1/tasks", {}, full.token)).headers.get("ratelimit-remaining"),
+  );
+  check("remaining counts down", secondLeft < firstLeft, `${firstLeft} then ${secondLeft}`);
+
+  console.log("\nretrying a create does not create twice");
+  const idem = { "Idempotency-Key": "retry-me-" + Date.now() };
+  const sameBody = JSON.stringify({ title: "Post the video" });
+  const once = await call(
+    "/api/v1/tasks",
+    { method: "POST", body: sameBody, headers: idem },
+    full.token,
+  );
+  const twice = await call(
+    "/api/v1/tasks",
+    { method: "POST", body: sameBody, headers: idem },
+    full.token,
+  );
+  check("the first attempt creates", once.status === 201, String(once.status));
+  check("the second returns the same task", twice.body?.data?.id === once.body?.data?.id);
+  check("and says it was a replay", twice.headers.get("idempotency-replayed") === "true");
+
+  const listedAfter = await call("/api/v1/tasks?limit=200", {}, full.token);
+  const sameTitle = (listedAfter.body?.data?.items ?? []).filter(
+    (task: { title: string }) => task.title === "Post the video",
+  );
+  check("only one task exists", sameTitle.length === 1, `${sameTitle.length} found`);
+
+  const reused = await call(
+    "/api/v1/tasks",
+    { method: "POST", body: JSON.stringify({ title: "Something else" }), headers: idem },
+    full.token,
+  );
+  check("the key with a different body is 409", reused.status === 409, String(reused.status));
+  check("named as a conflict", reused.body?.error?.type === "conflict_error");
+
+  // Two identical attempts fired at once, which is what a retry storm looks
+  // like. Exactly one may create.
+  const raceKey = { "Idempotency-Key": "race-" + Date.now() };
+  const raceBody = JSON.stringify({ title: "Raced" });
+  const [raceA, raceB] = await Promise.all([
+    call("/api/v1/tasks", { method: "POST", body: raceBody, headers: raceKey }, full.token),
+    call("/api/v1/tasks", { method: "POST", body: raceBody, headers: raceKey }, full.token),
+  ]);
+  const madeIt = [raceA, raceB].filter((r) => r.status === 201);
+  check("a simultaneous retry creates at most one", madeIt.length <= 1, `${madeIt.length}`);
+  const racedList = await call("/api/v1/tasks?limit=200", {}, full.token);
+  const raced = (racedList.body?.data?.items ?? []).filter(
+    (task: { title: string }) => task.title === "Raced",
+  );
+  check("and only one row exists", raced.length <= 1, `${raced.length} found`);
+
+  console.log("\na rejected create gives the key back");
+  const freeAgain = { "Idempotency-Key": "reject-" + Date.now() };
+  const rejected = await call(
+    "/api/v1/tasks",
+    { method: "POST", body: JSON.stringify({}), headers: freeAgain },
+    full.token,
+  );
+  check("a bad body is 400", rejected.status === 400, String(rejected.status));
+  const corrected = await call(
+    "/api/v1/tasks",
+    { method: "POST", body: JSON.stringify({ title: "Fixed" }), headers: freeAgain },
+    full.token,
+  );
+  check("and the same key works once corrected", corrected.status === 201, String(corrected.status));
+
+  console.log("\nmemory reads, and only with the scope");
+  const noScope = await call("/api/v1/memory", {}, readOnly.token);
+  check("a key without memory:read is 403", noScope.status === 403, String(noScope.status));
+  const mem = await call("/api/v1/memory", {}, full.token);
+  check("with it, 200", mem.status === 200, String(mem.status));
+  check("and a page shape", Array.isArray(mem.body?.data?.items));
+
   console.log("\nrevoking");
   await revokeKey(WS, full.key.id);
   const afterRevoke = await call("/api/v1/me", {}, full.token);
@@ -188,6 +285,7 @@ async function main() {
   await revokeKey(WS, readOnly.key.id);
   await db.delete(t.tasks).where(eq(t.tasks.workspaceId, WS));
   await db.delete(t.tasks).where(eq(t.tasks.workspaceId, OTHER));
+  await db.delete(t.idempotency).where(eq(t.idempotency.workspaceId, WS));
   await db.delete(t.apiKeys).where(eq(t.apiKeys.workspaceId, WS));
   await db.delete(t.workspaces).where(eq(t.workspaces.id, WS));
   await db.delete(t.workspaces).where(eq(t.workspaces.id, OTHER));
