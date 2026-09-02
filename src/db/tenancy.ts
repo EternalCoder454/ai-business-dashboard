@@ -287,6 +287,81 @@ export async function renameWorkspace(workspaceId: string, name: string): Promis
 }
 
 /** How many people can open this workspace. */
+export interface MemberRow {
+  email: string;
+  role: "member" | "admin";
+  displayName: string;
+  roleTitle: string;
+  presence: "auto" | "online" | "away" | "busy";
+  lastSeenAt: number | null;
+  lastSignedInAt: number | null;
+  invitedBy: string | null;
+  createdAt: number;
+}
+
+/**
+ * Everyone who can open one business, for that business to manage itself.
+ *
+ * The operator's list is `listWorkspaces`, which spans every customer. This one
+ * is deliberately narrower: it takes the workspace id the caller was resolved
+ * to and never a value from a request, so an administrator of one company sees
+ * their own people and has no way to name anybody else's.
+ *
+ * The account row is joined in rather than fetched per person, because a
+ * business with twenty people would otherwise be twenty round trips to render
+ * one table.
+ */
+export async function listMembers(workspaceId: string): Promise<MemberRow[]> {
+  if (!databaseEnabled || !db) return [];
+  const rows = await db
+    .select({
+      email: t.access.email,
+      role: t.access.role,
+      invitedBy: t.access.invitedBy,
+      createdAt: t.access.createdAt,
+      lastSignedInAt: t.access.lastSignedInAt,
+      displayName: t.accounts.displayName,
+      roleTitle: t.accounts.roleTitle,
+      presence: t.accounts.presence,
+      lastSeenAt: t.accounts.lastSeenAt,
+    })
+    .from(t.access)
+    .leftJoin(t.accounts, eq(t.accounts.userEmail, t.access.email))
+    .where(and(eq(t.access.workspaceId, workspaceId), isNull(t.access.revokedAt)))
+    .orderBy(t.access.createdAt);
+
+  return rows.map((row) => ({
+    email: row.email,
+    role: row.role === "admin" ? "admin" : "member",
+    displayName: row.displayName ?? "",
+    roleTitle: row.roleTitle ?? "",
+    presence:
+      row.presence === "online" || row.presence === "away" || row.presence === "busy"
+        ? row.presence
+        : "auto",
+    lastSeenAt: row.lastSeenAt?.getTime() ?? null,
+    lastSignedInAt: row.lastSignedInAt?.getTime() ?? null,
+    invitedBy: row.invitedBy,
+    createdAt: row.createdAt.getTime(),
+  }));
+}
+
+/** How many administrators a business has, so the last one cannot be demoted. */
+export async function countAdmins(workspaceId: string): Promise<number> {
+  if (!databaseEnabled || !db) return 0;
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(t.access)
+    .where(
+      and(
+        eq(t.access.workspaceId, workspaceId),
+        eq(t.access.role, "admin"),
+        isNull(t.access.revokedAt),
+      ),
+    );
+  return Number(row?.n ?? 0);
+}
+
 export async function countMembers(workspaceId: string): Promise<number> {
   if (!databaseEnabled || !db) return 0;
   try {

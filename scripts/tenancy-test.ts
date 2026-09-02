@@ -87,7 +87,7 @@ async function main() {
 
   console.log("\nthe same holds for the company profile");
   await applyMutations(THEIRS, THEIRS, [
-    { table: "profile", action: "upsert", row: { mission: "Theirs" } },
+    { table: "profile", action: "upsert", row: { mission: "Theirs" } } as never,
   ]);
   await applyMutations(MINE, MINE, [
     {

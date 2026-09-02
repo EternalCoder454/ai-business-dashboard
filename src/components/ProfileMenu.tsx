@@ -8,8 +8,10 @@ import {
   BookIcon,
   BuildingIcon,
   GearIcon,
+  PuzzleIcon,
   ShieldIcon,
   SparkIcon,
+  UsersIcon,
   cx,
 } from "./ui";
 import { createRipple } from "./ui/ripple";
@@ -32,11 +34,27 @@ import { useStore } from "@/lib/store";
 const LINKS = [
   { href: "/profile", label: "Company profile", icon: <BuildingIcon className="h-4 w-4" /> },
   { href: "/settings", label: "Settings", icon: <GearIcon className="h-4 w-4" /> },
+  { href: "/integrations", label: "Integrations", icon: <PuzzleIcon className="h-4 w-4" /> },
   { href: "/onboarding", label: "Internal wiki", icon: <BookIcon className="h-4 w-4" /> },
 ];
 
+/**
+ * Running your own business, which is not the same job as running this
+ * deployment.
+ *
+ * The two were briefly one entry, and since only an operator could see it,
+ * every customer's administrator lost the way to add a colleague or hand over
+ * the keys. They are separate rows now because they lead to separate screens
+ * with separate rules about whose data they can touch.
+ */
+const ADMIN = {
+  href: "/manage",
+  label: "Your people",
+  icon: <UsersIcon className="h-4 w-4" />,
+};
+
 export function ProfileMenu() {
-  const { account, isOperator, accountEmail } = useStore();
+  const { account, isOperator, workspaceRole, accountEmail } = useStore();
   const notifications = useNotifications();
   const pathname = usePathname();
 
@@ -198,7 +216,11 @@ export function ProfileMenu() {
               <span className="md-body">Send feedback</span>
             </button>
 
-            {[...LINKS, ...(isOperator ? [OPERATOR] : [])].map((link) => (
+            {[
+              ...LINKS,
+              ...(workspaceRole === "admin" ? [ADMIN] : []),
+              ...(isOperator ? [OPERATOR] : []),
+            ].map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

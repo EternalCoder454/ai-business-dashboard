@@ -9,6 +9,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import type {
   AllHandsResponse,
@@ -578,3 +579,93 @@ export const feedback = pgTable(
   },
   (table) => [index("feedback_status_idx").on(table.status, table.createdAt)],
 );
+
+/**
+ * A key that lets something outside the panel act as one business.
+ *
+ * Only the SHA-256 of the token is kept. There is no route that returns a key
+ * and no column that could: the plaintext exists once, in the response that
+ * created it, and after that the only things anyone can see are the prefix and
+ * the last four characters. A stolen database dump is a list of hashes.
+ *
+ * Scoped to a workspace rather than to a person on purpose. An addon belongs to
+ * the business and should keep working when the person who set it up leaves,
+ * which is the opposite of how a session behaves.
+ */
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: workspace(),
+    /** What it is for, in the owner's words. */
+    name: text("name").notNull().default(""),
+    /** SHA-256 of the token, hex. Never the token. */
+    tokenHash: text("token_hash").notNull(),
+    /** The visible head of the key, so a row can be told apart at a glance. */
+    prefix: text("prefix").notNull(),
+    last4: text("last4").notNull().default(""),
+    /** Space separated. `tasks:read`, `tasks:write`, and so on. */
+    scopes: text("scopes").notNull().default("tasks:read"),
+    createdBy: text("created_by").notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: created(),
+  },
+  (table) => [
+    uniqueIndex("api_keys_hash_idx").on(table.tokenHash),
+    index("api_keys_ws_idx").on(table.workspaceId, table.createdAt),
+  ],
+);
+
+/**
+ * Something in a business's own writing that a person should look at.
+ *
+ * Written by the reviewer, read only by an operator. It deliberately stores a
+ * short quote and a reason rather than the conversation: the point is to raise
+ * a hand, not to build a searchable copy of everybody's messages somewhere
+ * else. Whoever acts on one can open the original.
+ */
+export const reports = pgTable(
+  "reports",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: workspace(),
+    /** As it was called when this was raised. */
+    workspaceName: text("workspace_name").notNull().default(""),
+    /** `message` or `conversation`. */
+    source: text("source").notNull(),
+    /** The message or conversation row this came from, for opening it. */
+    sourceId: text("source_id").notNull().default(""),
+    /** Who wrote the thing, when the source has an author. */
+    authorEmail: text("author_email").notNull().default(""),
+    /** harassment, malware, threat, and so on. The reviewer's own word. */
+    category: text("category").notNull(),
+    /** low, medium, high. */
+    severity: text("severity").notNull().default("medium"),
+    /** Why this was raised, in a sentence. */
+    reason: text("reason").notNull().default(""),
+    /** A short verbatim quote, so an operator can judge without reading everything. */
+    quote: text("quote").notNull().default(""),
+    /** new, reviewed, or dismissed. */
+    status: text("status").notNull().default("new"),
+    createdAt: created(),
+  },
+  (table) => [
+    index("reports_status_idx").on(table.status, table.createdAt),
+    index("reports_ws_idx").on(table.workspaceId, table.createdAt),
+  ],
+);
+
+/**
+ * How far the reviewer has read, per workspace.
+ *
+ * Without it every run would re-read the whole history and raise the same
+ * report again. Keyed by workspace so one busy business never delays another.
+ */
+export const reviewCursors = pgTable("review_cursors", {
+  workspaceId: text("workspace_id").primaryKey(),
+  /** Newest message timestamp already considered. */
+  messagesThrough: bigint("messages_through", { mode: "number" }).notNull().default(0),
+  lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+  updatedAt: updated(),
+});
