@@ -62,6 +62,8 @@ export interface StoreValue {
   ready: boolean;
   /** The workspace could not be read, after three tries. */
   loadFailed: boolean;
+  /** Signed in, but nobody has added this address to a business. */
+  noWorkspace: boolean;
   /** Try the whole load again, from a button. */
   retryLoad: () => void;
   /**
@@ -280,6 +282,22 @@ export function StoreProvider({
    * to offer the right thing.
    */
   const [loadFailed, setLoadFailed] = useState(false);
+  /**
+   * Signed in, and in no business.
+   *
+   * A different thing from a load that failed: no amount of retrying fixes it,
+   * and the person needs to be told to ask somebody rather than to try again.
+   */
+  const [noWorkspace, setNoWorkspace] = useState(false);
+  /*
+   * The same fact, in a ref.
+   *
+   * The retry loop is a closure that captured its variables when it started,
+   * so it cannot see a state update made by the attempt it is inside. The ref
+   * is what lets it stop as soon as the server says there is no business,
+   * rather than trying twice more for something that cannot change.
+   */
+  const noWorkspaceRef = useRef(false);
   // Bumped by `retryLoad` to send the effect round again.
   const [reloadKey, setReloadKey] = useState(0);
   const [calendar, setCalendar] = useState<PromptCalendarEvent[]>([]);
@@ -383,9 +401,30 @@ export function StoreProvider({
     let cancelled = false;
 
     const load = async () => {
-      const initial = await fetch("/api/workspace").then((r) =>
-        r.ok ? (r.json() as Promise<Workspace>) : null,
-      );
+      const response = await fetch("/api/workspace");
+
+      /*
+       * Being in no workspace is not a failure to retry.
+       *
+       * Somebody signs in with an address nobody has added to a business. The
+       * server refuses, correctly, and before this the client treated that
+       * exactly like a dropped connection: three retries, then "could not load
+       * your workspace, try again". Trying again was never going to work, and
+       * the one thing they needed to be told, that they have to be invited,
+       * was the one thing it did not say.
+       */
+      if (response.status === 403) {
+        const said = (await response.json().catch(() => null)) as
+          | { reason?: string }
+          | null;
+        if (said?.reason === "no-workspace") {
+          noWorkspaceRef.current = true;
+          setNoWorkspace(true);
+          return null;
+        }
+      }
+
+      const initial = response.ok ? ((await response.json()) as Workspace) : null;
       if (cancelled || !initial) return initial;
 
       // Reassigned by the reconciliation steps below, which refetch after
@@ -495,6 +534,8 @@ export function StoreProvider({
         throw new Error("the workspace came back empty");
       } catch {
         if (cancelled) return;
+        // Nothing to retry when the answer is that they have no business.
+        if (noWorkspaceRef.current) return;
         if (left > 0) {
           await new Promise((resolve) => setTimeout(resolve, (4 - left) * 1200));
           if (!cancelled) await attempt(left - 1);
@@ -504,6 +545,8 @@ export function StoreProvider({
       }
     };
 
+    // Read inside the retry, which is holding the value from when it started.
+    noWorkspaceRef.current = false;
     void attempt(3);
 
     return () => {
@@ -652,7 +695,9 @@ export function StoreProvider({
     return {
       ready: remote !== null,
       loadFailed,
+      noWorkspace,
       retryLoad: () => {
+        setNoWorkspace(false);
         setLoadFailed(false);
         setReloadKey((n) => n + 1);
       },
@@ -1260,6 +1305,7 @@ export function StoreProvider({
     isOperator,
     calendar,
     loadFailed,
+    noWorkspace,
     remote,
     push,
     departmentList,

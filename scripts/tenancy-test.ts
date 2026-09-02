@@ -37,6 +37,16 @@ async function settingsFor(workspaceId: string) {
 }
 
 async function main() {
+  // Real workspace rows, so the rename half of a settings write has something
+  // to rename. Without them that assertion passes or fails for the wrong
+  // reason, which is worse than not having it at all.
+  for (const id of [MINE, THEIRS]) {
+    await requireDb()
+      .insert(t.workspaces)
+      .values({ id, name: "Before" })
+      .onConflictDoNothing({ target: t.workspaces.id });
+  }
+
   console.log("a row cannot choose the workspace it lands in");
 
   await applyMutations(THEIRS, THEIRS, [
@@ -70,6 +80,44 @@ async function main() {
   ]);
   check("no row was written to the empty scope", (await settingsFor("")) === null);
   check("mine took the change", (await settingsFor(MINE))?.companyName === "Still Mine");
+  console.log("\na partial save changes only what it sent");
+  /*
+   * The regression this was written for.
+   *
+   * Fixing the tenancy hole above meant naming every column instead of
+   * spreading the client's row. Every column meant every column, so saving
+   * `{ theme: "light" }` also wrote a defaulted companyName of "Your Company"
+   * and, because a settings write renames the business to match, renamed the
+   * company. Two customers lost their name to a theme toggle before anybody
+   * connected the two.
+   */
+  await applyMutations(MINE, MINE, [
+    { table: "settings", action: "upsert", row: { companyName: "Real Name", writingRules: "House style" } },
+  ]);
+  await applyMutations(MINE, MINE, [
+    { table: "settings", action: "upsert", row: { theme: "light" } },
+  ]);
+  const afterTheme = await settingsFor(MINE);
+  check("the theme changed", afterTheme?.theme === "light", afterTheme?.theme);
+  check("the name survived", afterTheme?.companyName === "Real Name", afterTheme?.companyName);
+  check("and so did the writing rules", afterTheme?.writingRules === "House style");
+
+  const [named] = await requireDb()
+    .select({ name: t.workspaces.name })
+    .from(t.workspaces)
+    .where(eq(t.workspaces.id, MINE));
+  check("the business was not renamed by a theme change", named?.name !== "Your Company", named?.name);
+
+  // And a name that is sent still renames the business, which is the feature.
+  await applyMutations(MINE, MINE, [
+    { table: "settings", action: "upsert", row: { companyName: "Renamed Properly" } },
+  ]);
+  const [renamed] = await requireDb()
+    .select({ name: t.workspaces.name })
+    .from(t.workspaces)
+    .where(eq(t.workspaces.id, MINE));
+  check("but a real rename still works", renamed?.name === "Renamed Properly", renamed?.name);
+
 
   console.log("\na settings save cannot touch the model keys");
   await requireDb()
@@ -105,6 +153,7 @@ async function main() {
   for (const scope of [MINE, THEIRS, ""]) {
     await requireDb().delete(t.settings).where(eq(t.settings.workspaceId, scope));
     await requireDb().delete(t.profiles).where(eq(t.profiles.workspaceId, scope));
+    await requireDb().delete(t.workspaces).where(eq(t.workspaces.id, scope));
   }
   check("nothing left", (await settingsFor(MINE)) === null && (await settingsFor(THEIRS)) === null);
 

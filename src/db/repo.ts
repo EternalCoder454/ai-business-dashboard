@@ -1073,51 +1073,73 @@ export async function applyMutations(
 
         case "settings": {
           /*
-           * Named one by one, for two reasons.
+           * Only the fields that were sent, and never the ones that are not
+           * the client's to send.
            *
-           * The scope key is the server's. `{ workspaceId, ...op.row }` let a
-           * client send its own `workspaceId` and land the write in somebody
-           * else's business: that is how a workspace got renamed by the first
-           * person to open it, and the same shape would have let any signed-in
-           * account write into any other company's settings.
+           * Two mistakes have been made here, in opposite directions.
            *
-           * And the three model keys are columns on this table but are not
-           * settings. They are written only by /api/workspace/keys, which never
-           * reads them back. Leaving them out here means a settings save can
-           * neither overwrite a workspace's credentials nor carry one in.
+           * The first was `{ workspaceId, ...op.row }`: the spread came second,
+           * so a row carrying its own `workspaceId` chose the business it
+           * landed in, and any signed-in account could write into any other
+           * company's settings, which is also where the model keys live.
+           *
+           * The fix for that named every column, which introduced the second
+           * mistake and a worse-feeling one. Every column meant every column,
+           * so a partial save like `{ theme: "light" }` also wrote a defaulted
+           * `companyName` of "Your Company" and, because a settings write
+           * renames the business to match, quietly renamed the company every
+           * time somebody changed their theme. Two customers lost their name
+           * that way before anybody connected it to a theme toggle.
+           *
+           * So: an allow list, applied to the keys actually present. The scope
+           * key is still the server's, the three model keys are still refused
+           * because they are written only by /api/workspace/keys, and a field
+           * nobody sent is a field nobody changes.
            */
-          const row = op.row;
-          const text = (value: unknown, fallback = "") =>
-            typeof value === "string" ? value : fallback;
-          const values = {
-            workspaceId,
-            model: text(row.model, "claude-sonnet-5"),
-            effort: text(row.effort, "medium"),
-            theme: text(row.theme, "dark"),
-            companyName: text(row.companyName, "Your Company"),
-            companySubtitle: text(row.companySubtitle),
-            writingRules: text(row.writingRules),
-            roomBrevity: text(row.roomBrevity, "tight"),
-            companyMark: text(row.companyMark, "HQ"),
-            companyLogoUrl: typeof row.companyLogoUrl === "string" ? row.companyLogoUrl : null,
-            sidebarSide: text(row.sidebarSide, "left"),
-            searchShortcut: text(row.searchShortcut, "slash"),
-            wikiTitle: text(row.wikiTitle, "Internal Wiki"),
-            wikiSubtitle: text(row.wikiSubtitle, "2 minute read"),
-            updatedAt: now,
-          };
+          const WRITABLE = [
+            "model",
+            "effort",
+            "theme",
+            "companyName",
+            "companySubtitle",
+            "writingRules",
+            "roomBrevity",
+            "companyMark",
+            "companyLogoUrl",
+            "sidebarSide",
+            "searchShortcut",
+            "wikiTitle",
+            "wikiSubtitle",
+          ] as const;
+
+          const sent: Record<string, unknown> = {};
+          for (const field of WRITABLE) {
+            const value = (op.row as Record<string, unknown>)[field];
+            if (value === undefined) continue;
+            // companyLogoUrl is the one that can be cleared, so null passes.
+            if (value === null) {
+              if (field === "companyLogoUrl") sent[field] = null;
+              continue;
+            }
+            if (typeof value === "string") sent[field] = value;
+          }
+
+          const values = { workspaceId, ...sent, updatedAt: now };
+
           await tx
             .insert(t.settings)
             .values(values)
             .onConflictDoUpdate({ target: t.settings.workspaceId, set: values });
 
-          // The company name and the business name are the same fact. Renaming
-          // the panel renames the business, so the operator's list never shows
-          // a name the customer stopped using months ago.
-          if (values.companyName.trim()) {
+          // The company name and the business name are the same fact, so
+          // renaming the panel renames the business. Only when a name was
+          // actually sent: this is the line that turned a theme change into a
+          // rename.
+          const named = typeof sent.companyName === "string" ? sent.companyName.trim() : "";
+          if (named) {
             await tx
               .update(t.workspaces)
-              .set({ name: values.companyName.trim(), updatedAt: now })
+              .set({ name: named, updatedAt: now })
               .where(eq(t.workspaces.id, workspaceId));
           }
           break;

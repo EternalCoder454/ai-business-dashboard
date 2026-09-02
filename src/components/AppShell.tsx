@@ -11,6 +11,7 @@ import { PRIMARY_LINKS, Sidebar, SidebarContent, isActive } from "./Sidebar";
 import { CompanyMark } from "./CompanyMark";
 import { ProfileMenu } from "./ProfileMenu";
 import { LoadFailed } from "./LoadFailed";
+import { NoWorkspace } from "./NoWorkspace";
 import { WriteError } from "./WriteError";
 import { setNavCollapsed, useNavCollapsed } from "@/lib/navCollapsed";
 import { ChevronIcon, CloseIcon, NavBadge, cx } from "./ui";
@@ -145,6 +146,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             landed exactly on the navigation. */}
         <WriteError />
         <LoadFailed />
+        {/* Before LoadFailed in importance, and after it in the tree only
+            because neither can be showing at once. */}
+        <NoWorkspace />
         {isConversation ? null : (
           <BottomBar pathname={pathname} onOpenDrawer={() => setDrawerOpen(true)} />
         )}

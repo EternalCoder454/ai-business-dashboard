@@ -19,7 +19,8 @@ export const dynamic = "force-dynamic";
  * shared account.
  */
 async function resolveOwner(): Promise<
-  { workspaceId: string; email: string; role: "member" | "admin" } | { error: string; status: number }
+  | { workspaceId: string; email: string; role: "member" | "admin" }
+  | { error: string; status: number; reason?: "no-workspace" }
 > {
   if (!databaseEnabled) {
     return { error: "No DATABASE_URL, so this instance stores everything locally.", status: 501 };
@@ -53,7 +54,13 @@ async function resolveOwner(): Promise<
   const { nobodyHasAccess } = await import("@/db/access");
   const firstRun = OPERATOR_EMAILS.length === 0 && (await nobodyHasAccess());
   if (!OPERATOR_EMAILS.includes(email) && !firstRun) {
-    return { error: "This account is not in a workspace yet.", status: 403 };
+    // Named, so the client can tell this apart from a request that failed.
+    // One is a dead end that retrying cannot fix and the other is a moment.
+    return {
+      error: "This account is not in a workspace yet.",
+      reason: "no-workspace" as const,
+      status: 403,
+    };
   }
 
   const provisioned = await provisionFor(email, "Your Company");
@@ -63,7 +70,10 @@ async function resolveOwner(): Promise<
 export async function GET() {
   const owner = await resolveOwner();
   if ("error" in owner) {
-    return Response.json({ error: owner.error }, { status: owner.status });
+    return Response.json(
+      { error: owner.error, reason: owner.reason },
+      { status: owner.status },
+    );
   }
 
   try {
@@ -77,7 +87,10 @@ export async function GET() {
 export async function POST(request: Request) {
   const owner = await resolveOwner();
   if ("error" in owner) {
-    return Response.json({ error: owner.error }, { status: owner.status });
+    return Response.json(
+      { error: owner.error, reason: owner.reason },
+      { status: owner.status },
+    );
   }
 
   const parsed = await readJsonWithin<{ ops?: MutationOp[] }>(request, MAX_WRITE_BYTES);
