@@ -48,6 +48,8 @@ export function BusinessesTab({
 
   const [invitingTo, setInvitingTo] = useState<WorkspaceRow | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [renaming, setRenaming] = useState<WorkspaceRow | null>(null);
+  const [newName, setNewName] = useState("");
   const [removing, setRemoving] = useState<WorkspaceRow | null>(null);
   const [confirmName, setConfirmName] = useState("");
 
@@ -185,6 +187,16 @@ export function BusinessesTab({
                     </Button>
                     <Button
                       size="sm"
+                      variant="text"
+                      onClick={() => {
+                        setRenaming(workspace);
+                        setNewName(workspace.name);
+                      }}
+                    >
+                      Rename
+                    </Button>
+                    <Button
+                      size="sm"
                       variant="danger"
                       onClick={() => {
                         setRemoving(workspace);
@@ -266,6 +278,43 @@ export function BusinessesTab({
             autoComplete="off"
             placeholder="them@theircompany.com"
             onChange={(event) => setInviteEmail(event.target.value)}
+          />
+        </Field>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(renaming)}
+        title={`Rename ${renaming?.name ?? ""}`}
+        onClose={() => setRenaming(null)}
+        footer={
+          <>
+            <Button variant="text" onClick={() => setRenaming(null)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={busy || !newName.trim()}
+              onClick={async () => {
+                const ok = await post({
+                  action: "renameWorkspace",
+                  workspaceId: renaming?.id,
+                  name: newName,
+                });
+                if (ok) setRenaming(null);
+              }}
+            >
+              Rename
+            </Button>
+          </>
+        }
+      >
+        <Field
+          label="Business name"
+          hint="This is what their panel is called, so it changes there too."
+        >
+          <TextInput
+            autoFocus
+            value={newName}
+            onChange={(event) => setNewName(event.target.value)}
           />
         </Field>
       </Dialog>

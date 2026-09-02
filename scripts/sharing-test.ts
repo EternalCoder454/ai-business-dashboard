@@ -109,15 +109,15 @@ async function main() {
   check("no conversations", outside.conversations.length === 0);
 
   console.log("\\nwrites from a member land under the owner, attributed to the member");
-  const owner = await resolveConversationOwner(MEMBER, "conv_shared");
+  const owner = await resolveConversationOwner(MEMBER, MEMBER, "conv_shared");
   check("resolves to the owner", owner === OWNER, String(owner));
   check(
     "and refuses the private one",
-    (await resolveConversationOwner(MEMBER, "conv_private")) === null,
+    (await resolveConversationOwner(MEMBER, MEMBER, "conv_private")) === null,
   );
   check(
     "and refuses an outsider entirely",
-    (await resolveConversationOwner(OUTSIDER, "conv_shared")) === null,
+    (await resolveConversationOwner(OUTSIDER, OUTSIDER, "conv_shared")) === null,
   );
 
   const shared = after.conversations[0];
@@ -181,7 +181,7 @@ async function main() {
   check("member sees nothing", revoked.projects.length === 0 && revoked.conversations.length === 0);
   check(
     "and can no longer write to it",
-    (await resolveConversationOwner(MEMBER, "conv_shared")) === null,
+    (await resolveConversationOwner(MEMBER, MEMBER, "conv_shared")) === null,
   );
   check(
     "while the owner keeps everything",

@@ -18,6 +18,18 @@ export interface WorkspaceRow {
 
 const clean = (email: string) => email.trim().toLowerCase();
 
+/**
+ * Two letters for the badge in the corner, from the business's own name.
+ *
+ * Initials of the first two words, or the first two letters of a single one.
+ */
+export function markFor(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "HQ";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
 /** Short, readable, and unguessable enough for something that is never a URL. */
 function newWorkspaceId(): string {
   return `ws_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -65,6 +77,10 @@ export async function provisionFor(email: string, name: string): Promise<Members
   const workspaceId = newWorkspaceId();
   await database.transaction(async (tx) => {
     await tx.insert(t.workspaces).values({ id: workspaceId, name, createdBy: address });
+    await tx
+      .insert(t.settings)
+      .values({ workspaceId, companyName: name, companyMark: markFor(name) })
+      .onConflictDoNothing({ target: t.settings.workspaceId });
     await tx
       .insert(t.access)
       .values({ email: address, workspaceId, role: "admin", invitedBy: address })
@@ -148,6 +164,14 @@ export async function createWorkspace(input: {
       note: input.note?.trim() || null,
       createdBy: clean(input.createdBy),
     });
+    // The workspace's name is the panel's name. Two fields holding the same
+    // fact drift, and the customer sees "Your Company" above their own work.
+    await tx.insert(t.settings).values({
+      workspaceId: id,
+      companyName: input.name.trim(),
+      companyMark: markFor(input.name),
+    });
+
     if (input.firstMember) {
       await tx.insert(t.access).values({
         email: clean(input.firstMember),
@@ -214,4 +238,51 @@ export async function workspaceTotals(): Promise<
   return Object.fromEntries(
     rows.map((row) => [row.workspaceId, { conversations: row.conversations, messages: row.messages }]),
   );
+}
+
+/**
+ * Renames a business, and the panel with it.
+ *
+ * Both rows carry the same fact, so both move together. The badge follows only
+ * while it still matches the old name: once somebody has set their own two
+ * letters, a rename should not overwrite them.
+ */
+export async function renameWorkspace(workspaceId: string, name: string): Promise<void> {
+  const database = requireDb();
+  const next = name.trim();
+  if (!next) throw new Error("Name the business.");
+
+  await database.transaction(async (tx) => {
+    const [current] = await tx
+      .select({ name: t.workspaces.name })
+      .from(t.workspaces)
+      .where(eq(t.workspaces.id, workspaceId))
+      .limit(1);
+
+    await tx
+      .update(t.workspaces)
+      .set({ name: next, updatedAt: new Date() })
+      .where(eq(t.workspaces.id, workspaceId));
+
+    const [settings] = await tx
+      .select({ mark: t.settings.companyMark })
+      .from(t.settings)
+      .where(eq(t.settings.workspaceId, workspaceId))
+      .limit(1);
+
+    const untouched = !current || settings?.mark === markFor(current.name);
+    await tx
+      .insert(t.settings)
+      .values({
+        workspaceId,
+        companyName: next,
+        companyMark: markFor(next),
+      })
+      .onConflictDoUpdate({
+        target: t.settings.workspaceId,
+        set: untouched
+          ? { companyName: next, companyMark: markFor(next) }
+          : { companyName: next },
+      });
+  });
 }

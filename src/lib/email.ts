@@ -32,6 +32,11 @@ function siteUrl(): string {
   return vercel ? `https://${vercel}` : "";
 }
 
+/** Collapses anything that could break out of a header into a single line. */
+function oneLine(value: string | undefined): string {
+  return (value ?? "").replace(/\s+/g, " ").trim();
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -93,8 +98,12 @@ export async function sendInvite(input: {
   companyName?: string;
 }): Promise<string | null> {
   const url = siteUrl();
-  const panel = input.companyName?.trim() || "the panel";
-  const workspace = input.workspaceName.trim();
+  const panel = oneLine(input.companyName) || "the panel";
+  // A business name reaches the subject line, and a subject line with a
+  // newline in it is how header injection starts. Resend takes JSON rather
+  // than raw headers, so this is belt and braces, but the name is operator
+  // input reaching an outbound message and it costs nothing to flatten.
+  const workspace = oneLine(input.workspaceName) || "your workspace";
 
   const text = [
     `${input.invitedBy} has given you access to ${workspace} on ${panel}.`,

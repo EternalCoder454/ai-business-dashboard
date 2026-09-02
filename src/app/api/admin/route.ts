@@ -11,9 +11,9 @@ import {
 } from "@/db/admin";
 import { OPERATOR_EMAILS, isOperator } from "@/lib/admin";
 import { grantAccess, listAccess, revokeAccess } from "@/db/access";
-import { createWorkspace, deleteWorkspace, listWorkspaces } from "@/db/tenancy";
+import { createWorkspace, deleteWorkspace, listWorkspaces, renameWorkspace } from "@/db/tenancy";
 import { emailEnabled, sendInvite } from "@/lib/email";
-import { readJsonWithin } from "@/lib/guard";
+import { readJsonWithin, withinRate } from "@/lib/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -174,6 +174,15 @@ export async function POST(request: Request) {
     return Response.json({ error: parsed.error }, { status: parsed.status });
   }
 
+  /*
+   * Operators are trusted, and a stuck client is not. Each of these can send
+   * an email or destroy a workspace, so a runaway loop costs real money or
+   * real data.
+   */
+  if (!withinRate(`operator:${admin.email}`, 30, 60_000)) {
+    return Response.json({ error: "Slow down a moment." }, { status: 429 });
+  }
+
   const { action, note } = parsed.body;
   const email = parsed.body.email?.trim().toLowerCase();
 
@@ -225,6 +234,21 @@ export async function POST(request: Request) {
         { error: said || "Could not create that workspace." },
         { status: 400 },
       );
+    }
+  }
+
+  if (action === "renameWorkspace") {
+    const workspaceId = parsed.body.workspaceId?.trim();
+    const name = parsed.body.name?.trim();
+    if (!workspaceId || !name) {
+      return Response.json({ error: "Name the business." }, { status: 400 });
+    }
+    try {
+      await renameWorkspace(workspaceId, name);
+      return Response.json({ ok: true, workspaces: await listWorkspaces() });
+    } catch (error) {
+      console.error("[api/admin] renameWorkspace", error);
+      return Response.json({ error: "Could not rename that workspace." }, { status: 500 });
     }
   }
 

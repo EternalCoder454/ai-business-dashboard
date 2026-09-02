@@ -10,6 +10,7 @@ import {
   Dialog,
   EmptyState,
   Field,
+  BuildingIcon,
   PersonIcon,
   TextInput,
   TrashIcon,
@@ -28,9 +29,11 @@ interface Usage {
 }
 
 interface Person {
-  /** A workspace id. The People tab reviews businesses, not addresses. */
+  /** A workspace id. The Clients tab reviews businesses, not addresses. */
   workspaceId: string;
   name?: string;
+  people?: number;
+  createdAt?: number;
   displayName?: string;
   roleTitle?: string;
   conversations: number;
@@ -74,12 +77,12 @@ interface Thread {
   messages: Message[];
 }
 
-type Tab = "businesses" | "overview" | "people" | "access";
+type Tab = "businesses" | "overview" | "clients" | "access";
 
 const TAB_LABEL: Record<Tab, string> = {
   businesses: "Businesses",
   overview: "Overview",
-  people: "People",
+  clients: "Clients",
   access: "Access",
 };
 
@@ -176,7 +179,7 @@ export default function AdminPage() {
       />
 
       <div className="flex flex-none items-center gap-2 border-b border-outline-variant page-x py-3">
-        {(["businesses", "overview", "people", "access"] as Tab[]).map((key) => (
+        {(["businesses", "overview", "clients", "access"] as Tab[]).map((key) => (
           <Chip
             key={key}
             selected={tab === key}
@@ -208,7 +211,7 @@ export default function AdminPage() {
           <AccessTab access={access} people={people ?? []} />
         ) : null}
 
-        {tab === "people" ? (
+        {tab === "clients" ? (
           person ? (
             <PersonDetail
               person={person}
@@ -306,9 +309,9 @@ function PeopleTable({
   if (people.length === 0) {
     return (
       <EmptyState
-        icon={<PersonIcon className="h-8 w-8" />}
-        title="No other accounts"
-        description="Addresses appear here once they sign in."
+        icon={<BuildingIcon className="h-8 w-8" />}
+        title="No clients yet"
+        description="Create one on the Businesses tab and it appears here."
       />
     );
   }
@@ -327,14 +330,11 @@ function PeopleTable({
           >
             <span className="min-w-0 flex-1">
               <span className="md-title block truncate">
-                {row.name || row.displayName || row.workspaceId}
-                {false ? (
-                  <span className="md-label-sm ml-2 text-on-variant/75">you</span>
-                ) : null}
+                {row.name || row.workspaceId}
               </span>
               <span className="md-label-sm block truncate text-on-variant">
-                {row.roleTitle ? `${row.roleTitle} · ` : ""}
-                {row.name ? row.workspaceId : ""}
+                {row.people ?? 0} {row.people === 1 ? "person" : "people"}
+                {row.createdAt ? ` · since ${formatRelativeTime(row.createdAt)}` : ""}
               </span>
             </span>
 
@@ -380,7 +380,7 @@ function PersonDetail({
     <div className="measure flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="text" onClick={thread ? onCloseThread : onBack}>
-          {thread ? "Back to conversations" : "Back to people"}
+          {thread ? "Back to conversations" : "Back to clients"}
         </Button>
         <span className="md-label truncate text-on-variant">{person.name ?? person.workspaceId}</span>
         {/* Deleting a business lives on the Businesses tab, where it asks for

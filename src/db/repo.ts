@@ -335,7 +335,7 @@ export async function applyMutations(
     if (op.table !== "conversations" || op.action !== "upsert") continue;
     for (const row of op.rows) {
       if (owners.has(row.id)) continue;
-      owners.set(row.id, (await resolveConversationOwner(workspaceId, row.id)) ?? workspaceId);
+      owners.set(row.id, (await resolveConversationOwner(workspaceId, email, row.id)) ?? workspaceId);
     }
   }
 
@@ -846,6 +846,16 @@ export async function applyMutations(
             .insert(t.settings)
             .values(values)
             .onConflictDoUpdate({ target: t.settings.workspaceId, set: values });
+
+          // The company name and the business name are the same fact. Renaming
+          // the panel renames the business, so the operator's list never shows
+          // a name the customer stopped using months ago.
+          if (typeof op.row.companyName === "string" && op.row.companyName.trim()) {
+            await tx
+              .update(t.workspaces)
+              .set({ name: op.row.companyName.trim(), updatedAt: now })
+              .where(eq(t.workspaces.id, workspaceId));
+          }
           break;
         }
 

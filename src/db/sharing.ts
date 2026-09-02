@@ -169,20 +169,30 @@ export async function loadSharedInto(
  * business touching it at all. Every shared write goes through here.
  */
 export async function resolveConversationOwner(
+  /** The workspace the write is happening in: what ownership is checked against. */
+  workspaceId: string,
+  /** The person doing it: what a share was granted to. */
   email: string,
   conversationId: string,
 ): Promise<string | null> {
-  const me = lower(email);
   const db = requireDb();
 
   const [own] = await db
     .select({ id: t.conversations.id })
     .from(t.conversations)
-    .where(and(eq(t.conversations.workspaceId, me), eq(t.conversations.id, conversationId)))
+    .where(
+      and(eq(t.conversations.workspaceId, workspaceId), eq(t.conversations.id, conversationId)),
+    )
     .limit(1);
-  if (own) return me;
+  if (own) return workspaceId;
 
-  const memberships = await membershipsFor(me);
+  /*
+   * Two different identifiers, which is why they are two arguments now. This
+   * took the workspace id and passed it to membershipsFor, which matches on
+   * member_email, so it never matched anything and a write into a conversation
+   * shared from another workspace quietly landed in the writer's own instead.
+   */
+  const memberships = await membershipsFor(email);
   if (memberships.length === 0) return null;
 
   // One query rather than one per membership. This runs on every message

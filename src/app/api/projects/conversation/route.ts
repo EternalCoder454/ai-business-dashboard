@@ -3,6 +3,7 @@ import { auth, authEnabled } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { resolveConversationOwner } from "@/db/sharing";
+import { membershipFor } from "@/db/tenancy";
 import type { Message } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -38,7 +39,10 @@ export async function GET(request: Request) {
   const since = Number.isFinite(rawSince) && rawSince > 0 ? rawSince : 0;
 
   try {
-    const owner = await resolveConversationOwner(email, conversationId);
+    const mine = await membershipFor(email);
+    if (!mine) return Response.json({ error: "Not found." }, { status: 404 });
+
+    const owner = await resolveConversationOwner(mine.workspaceId, email, conversationId);
     // Also 404 for a conversation that simply does not exist, so this cannot be
     // used to find out which ids other people have.
     if (!owner) return Response.json({ error: "Not found." }, { status: 404 });

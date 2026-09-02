@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
 import type { Message } from "@/lib/types";
@@ -26,6 +26,11 @@ export interface AdminUsage {
 
 export interface AdminPerson {
   workspaceId: string;
+  /** The business's name. Absent only for a workspace row with no record. */
+  name?: string;
+  /** How many people can open it. */
+  people?: number;
+  createdAt?: number;
   displayName?: string;
   roleTitle?: string;
   avatarUrl?: string;
@@ -62,8 +67,14 @@ export interface AdminConversation {
 export async function listPeople(): Promise<AdminPerson[]> {
   const db = requireDb();
 
-  const [accounts, activity] = await Promise.all([
-    db.select().from(t.accounts),
+  const [businesses, members, activity] = await Promise.all([
+    // Every business, so one with no activity yet still appears. It is a
+    // client either way, and an empty row is the useful thing to see.
+    db.select({ id: t.workspaces.id, name: t.workspaces.name, createdAt: t.workspaces.createdAt })
+      .from(t.workspaces),
+    db.select({ workspaceId: t.access.workspaceId, email: t.access.email })
+      .from(t.access)
+      .where(isNull(t.access.revokedAt)),
     db
       .select({
         email: t.conversations.workspaceId,
@@ -100,6 +111,7 @@ export async function listPeople(): Promise<AdminPerson[]> {
     if (found) return found;
     const created: AdminPerson = {
       workspaceId: key,
+      people: 0,
       conversations: 0,
       messages: 0,
       usage: { ...NO_USAGE },
@@ -108,11 +120,20 @@ export async function listPeople(): Promise<AdminPerson[]> {
     return created;
   };
 
-  for (const row of accounts) {
-    const person = slot(row.userEmail);
-    person.displayName = row.displayName || undefined;
-    person.roleTitle = row.roleTitle || undefined;
-    person.avatarUrl = row.avatarUrl ?? undefined;
+  /*
+   * Businesses first, so the list is every client rather than only the ones
+   * that have said something. This loop used to read the accounts table and
+   * key it by address into a map keyed by workspace id, which invented a
+   * client per person and gave the real ones somebody's display name.
+   */
+  for (const row of businesses) {
+    const client = slot(row.id);
+    client.name = row.name;
+    client.createdAt = row.createdAt.getTime();
+  }
+  for (const row of members) {
+    const client = slot(row.workspaceId);
+    client.people = (client.people ?? 0) + 1;
   }
   for (const row of activity) {
     const person = slot(row.email);
