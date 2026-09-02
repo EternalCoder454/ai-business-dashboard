@@ -439,7 +439,7 @@ export default function AllHandsPage() {
             )}
           </div>
 
-          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          <div className="filter-row mt-2.5">
             <Chip
               selected={settings.roomBrevity !== "standard"}
               title="Words each reply gets. Tight is the point of a room: breadth here, depth in a one to one."

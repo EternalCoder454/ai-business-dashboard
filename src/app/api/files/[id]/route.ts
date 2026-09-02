@@ -1,7 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { databaseEnabled, requireDb } from "@/db/client";
-import { membershipsFor } from "@/db/sharing";
 import { membershipFor } from "@/db/tenancy";
 import * as t from "@/db/schema";
 import { requireSession } from "@/lib/guard";
@@ -35,32 +34,19 @@ export async function GET(
 
   const { id } = await context.params;
 
-  /**
-   * Owned first, then anything reachable through a shared project.
-   *
-   * Without the second lookup a file attached to a shared conversation is
-   * visible in the transcript and refuses to load for the person it was
-   * shared with, which reads as the app being broken.
+  /*
+   * One workspace, one lookup. Files used to be searched across every project
+   * shared with this account as well, which is gone: everything in a workspace
+   * is already reachable by everyone in it.
    */
   const mine = await membershipFor(session.email);
   if (!mine) return Response.json({ error: "Not found." }, { status: 404 });
 
-  const shared = await membershipsFor(session.email);
-  const owners = [mine.workspaceId, ...new Set(shared.map((m) => m.workspaceId))];
-
-  const db = requireDb();
-  let row: typeof t.files.$inferSelect | undefined;
-  for (const owner of owners) {
-    const [found] = await db
-      .select()
-      .from(t.files)
-      .where(and(eq(t.files.workspaceId, owner), eq(t.files.id, id)))
-      .limit(1);
-    if (found) {
-      row = found;
-      break;
-    }
-  }
+  const [row] = await requireDb()
+    .select()
+    .from(t.files)
+    .where(and(eq(t.files.workspaceId, mine.workspaceId), eq(t.files.id, id)))
+    .limit(1);
 
   if (!row) return Response.json({ error: "Not found." }, { status: 404 });
 

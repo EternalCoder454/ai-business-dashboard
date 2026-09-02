@@ -1,7 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
-import { loadSharedInto, resolveConversationOwner, sharesByProject } from "./sharing";
 import type { MutationOp, Workspace } from "@/lib/workspace";
 import type {
   AllHandsRun,
@@ -84,13 +83,6 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
 
   const filesById = new Map(fileRows.map((row) => [row.id, toAttachment(row)]));
 
-  // Projects shared with this account, and their conversations, folded in
-  // alongside their own. Everything downstream treats them the same way.
-  const [shared, shares] = await Promise.all([
-    loadSharedInto(email),
-    sharesByProject(email),
-  ]);
-
   const messagesByConversation = new Map<string, Message[]>();
   for (const row of messageRows) {
     const list = messagesByConversation.get(row.conversationId) ?? [];
@@ -161,8 +153,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       dueOn: row.dueOn,
       createdAt: ms(row.createdAt),
       updatedAt: ms(row.updatedAt),
-      sharedWith: shares[row.id] ?? [],
-    })).concat(shared.projects),
+    })),
 
     conversations: conversationRows.map((row): Conversation => ({
       id: row.id,
@@ -172,7 +163,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       messages: messagesByConversation.get(row.id) ?? [],
       createdAt: ms(row.createdAt),
       updatedAt: ms(row.updatedAt),
-    })).concat(shared.conversations),
+    })),
 
     skills: skillRows.map((row) => ({
       id: row.id,
@@ -320,24 +311,6 @@ export async function applyMutations(
 ): Promise<void> {
   const db = requireDb();
   const now = new Date();
-
-  /**
-   * Which address each conversation's rows belong under, resolved before the
-   * transaction opens.
-   *
-   * It has to happen out here: the pool holds a single connection, so a query
-   * issued inside the transaction waits for a connection the transaction is
-   * already holding, and the socket is dropped rather than deadlocking
-   * visibly. Anything absent from this map belongs to the caller.
-   */
-  const owners = new Map<string, string>();
-  for (const op of ops) {
-    if (op.table !== "conversations" || op.action !== "upsert") continue;
-    for (const row of op.rows) {
-      if (owners.has(row.id)) continue;
-      owners.set(row.id, (await resolveConversationOwner(workspaceId, email, row.id)) ?? workspaceId);
-    }
-  }
 
   await db.transaction(async (tx) => {
     for (const op of ops) {
@@ -493,20 +466,9 @@ export async function applyMutations(
           }
 
           for (const row of op.rows) {
-            /**
-             * Rows for a shared conversation stay under its owner's address,
-             * which is the key everything else finds them by. Writing them
-             * under the member's would create a second, invisible copy.
-             *
-             * resolveConversationOwner returns null for a conversation that is
-             * neither theirs nor in a project shared with them, and for one
-             * they are creating; both belong to the caller.
-             */
-            const owner = owners.get(row.id) ?? workspaceId;
-
             const values = {
               id: row.id,
-              workspaceId: owner,
+              workspaceId,
               departmentId: row.departmentId,
               projectId: row.projectId ?? null,
               title: row.title,
@@ -525,7 +487,7 @@ export async function applyMutations(
               for (const attachment of message.attachments ?? []) {
                 const fileValues = {
                   id: attachment.id,
-                  workspaceId: owner,
+                  workspaceId,
                   kind: attachment.kind,
                   mediaType: attachment.mediaType,
                   name: attachment.name,
@@ -548,11 +510,12 @@ export async function applyMutations(
 
               const messageValues = {
                 id: message.id,
-                workspaceId: owner,
-                // Who actually wrote it, recorded only when it differs, so an
-                // ordinary single-person conversation stores nothing extra.
-                authorEmail:
-                  message.authorEmail ?? (owner === workspaceId ? null : workspaceId),
+                workspaceId,
+                // Who wrote it, always. It used to be stored only when it
+                // differed from the owner, which made sense when a workspace
+                // was one person. A workspace is a company now, so an
+                // unattributed message is one nobody can be asked about.
+                authorEmail: message.authorEmail ?? email,
                 conversationId: row.id,
                 role: message.role,
                 content: message.content,

@@ -3,7 +3,7 @@ import { databaseEnabled } from "@/db/client";
 import { isEmpty } from "@/db/repo";
 import { isOperator, isOwnerEmail } from "@/lib/admin";
 import { NO_KEYS, keySummaries } from "@/db/keys";
-import { membershipFor } from "@/db/tenancy";
+import { countMembers, membershipFor } from "@/db/tenancy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,6 +83,9 @@ export async function GET() {
   const membership = await membershipFor(email);
   const workspaceRole = membership?.role ?? null;
   const workspaceKeys = membership ? await keySummaries(membership.workspaceId) : NO_KEYS;
+  // How many people share this workspace. A conversation is worth polling for
+  // somebody else's messages only when there is somebody else.
+  const workspacePeople = membership ? await countMembers(membership.workspaceId) : 0;
 
   const identity = {
     name: session.user?.name ?? undefined,
@@ -98,6 +101,7 @@ export async function GET() {
       serverKeys: serverKeys(),
       workspaceKeys,
       workspaceRole,
+      workspacePeople,
       isOperator: operator,
       isOwner,
       email,
@@ -113,6 +117,7 @@ export async function GET() {
       serverKeys: serverKeys(),
       workspaceKeys,
       workspaceRole,
+      workspacePeople,
       isOperator: operator,
       isOwner,
       email,

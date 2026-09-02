@@ -104,6 +104,17 @@ CREATE TABLE "direct_messages" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "feedback" (
+	"id" text PRIMARY KEY NOT NULL,
+	"workspace_id" text NOT NULL,
+	"workspace_name" text DEFAULT '' NOT NULL,
+	"email" text NOT NULL,
+	"display_name" text DEFAULT '' NOT NULL,
+	"body" text NOT NULL,
+	"status" text DEFAULT 'new' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "files" (
 	"id" text NOT NULL,
 	"workspace_id" text NOT NULL,
@@ -175,14 +186,6 @@ CREATE TABLE "profiles" (
 	"constraints" text DEFAULT '' NOT NULL,
 	"goals" text DEFAULT '' NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "project_members" (
-	"project_id" text NOT NULL,
-	"workspace_id" text NOT NULL,
-	"member_email" text NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "project_members_workspace_id_project_id_member_email_pk" PRIMARY KEY("workspace_id","project_id","member_email")
 );
 --> statement-breakpoint
 CREATE TABLE "projects" (
@@ -282,10 +285,10 @@ CREATE INDEX "departments_ws_idx" ON "departments" USING btree ("workspace_id","
 CREATE INDEX "dm_thread_idx" ON "direct_messages" USING btree ("thread_key","sent_at");--> statement-breakpoint
 CREATE INDEX "dm_unread_idx" ON "direct_messages" USING btree ("to_email","read_at");--> statement-breakpoint
 CREATE INDEX "dm_from_idx" ON "direct_messages" USING btree ("from_email","sent_at");--> statement-breakpoint
+CREATE INDEX "feedback_status_idx" ON "feedback" USING btree ("status","created_at");--> statement-breakpoint
 CREATE INDEX "files_ws_idx" ON "files" USING btree ("workspace_id","kind");--> statement-breakpoint
 CREATE INDEX "memory_ws_idx" ON "memory" USING btree ("workspace_id","archived","occurred_at");--> statement-breakpoint
 CREATE INDEX "messages_conversation_idx" ON "messages" USING btree ("workspace_id","conversation_id","sent_at");--> statement-breakpoint
-CREATE INDEX "project_members_member_idx" ON "project_members" USING btree ("member_email");--> statement-breakpoint
 CREATE INDEX "projects_ws_idx" ON "projects" USING btree ("workspace_id","updated_at");--> statement-breakpoint
 CREATE INDEX "skills_ws_idx" ON "skills" USING btree ("workspace_id","department_id");--> statement-breakpoint
 CREATE INDEX "tasks_ws_idx" ON "tasks" USING btree ("workspace_id","status","sort_order");--> statement-breakpoint

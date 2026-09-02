@@ -89,6 +89,8 @@ export interface StoreValue {
   workspaceKeys: Record<"anthropic" | "openai" | "google", { set: boolean; tail: string }>;
   /** Admin of this workspace, which is what lets someone change its keys. */
   workspaceRole: "member" | "admin" | null;
+  /** How many people share this workspace, including you. */
+  workspacePeople: number;
   /** Sets or clears the business's key. Administrators only, enforced server side. */
   setWorkspaceKey: (
     provider: "anthropic" | "openai" | "google",
@@ -179,8 +181,6 @@ export interface StoreValue {
   };
   /** Files a conversation under a project, or clears it when given undefined. */
   setConversationProject: (conversationId: string, projectId?: string) => Promise<void>;
-  /** Shares a project with a colleague, or takes it back. Owner only. */
-  shareProject: (projectId: string, email: string, remove?: boolean) => Promise<string | null>;
   /**
    * Pulls anything written to a shared conversation by someone else and merges
    * it in. Returns how many arrived, so a caller can decide whether to scroll.
@@ -224,6 +224,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     google: { set: false, tail: "" },
   });
   const [workspaceRole, setWorkspaceRole] = useState<"member" | "admin" | null>(null);
+  const [workspacePeople, setWorkspacePeople] = useState(1);
   const [serverKeys, setServerKeys] = useState({
     anthropic: false,
     openai: false,
@@ -281,6 +282,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (status?.serverKeys) setServerKeys(status.serverKeys);
         if (status?.workspaceKeys) setWorkspaceKeys(status.workspaceKeys);
         setWorkspaceRole(status?.workspaceRole ?? null);
+        setWorkspacePeople(status?.workspacePeople ?? 1);
         setIsOperator(Boolean(status?.isOperator));
         setIsOwner(Boolean(status?.isOwner));
         setMode(status?.hosted && status.signedIn ? "hosted" : "local");
@@ -531,6 +533,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       serverKeys,
       workspaceKeys,
       workspaceRole,
+      workspacePeople,
       setWorkspaceKey: async (provider, key) => {
         const response = await fetch("/api/workspace/keys", {
           method: "POST",
@@ -853,23 +856,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         });
       },
 
-      shareProject: async (projectId, email, remove) => {
-        const response = await fetch("/api/projects/share", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectId, email, remove }),
-        });
-        const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        if (!response.ok) return body?.error ?? "That did not work.";
-
-        // The membership list lives on the project row, so re-read rather than
-        // guessing at what the server now thinks.
-        const fresh = await fetch("/api/workspace")
-          .then((r) => (r.ok ? (r.json() as Promise<Workspace>) : null))
-          .catch(() => null);
-        if (fresh) commitRemote(fresh);
-        return null;
-      },
 
       pullShared: async (conversationId) => {
         const current = remoteRef.current?.conversations.find((c) => c.id === conversationId);
@@ -1141,6 +1127,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     serverKeys,
     workspaceKeys,
     workspaceRole,
+    workspacePeople,
     mode,
     signedInEmail,
     serverKey,

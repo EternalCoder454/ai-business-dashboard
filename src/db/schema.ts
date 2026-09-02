@@ -503,21 +503,6 @@ export const directMessages = pgTable(
  * the project's conversations reachable by more than one account, so it is the
  * single place a sharing decision is recorded.
  */
-export const projectMembers = pgTable(
-  "project_members",
-  {
-    projectId: text("project_id").notNull(),
-    /** The workspace the project lives in, which is its scope key. */
-    workspaceId: text("workspace_id").notNull(),
-    memberEmail: text("member_email").notNull(),
-    addedAt: created(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.workspaceId, table.projectId, table.memberEmail] }),
-    // "Which projects am I in", asked on every workspace load.
-    index("project_members_member_idx").on(table.memberEmail),
-  ],
-);
 
 /**
  * Who is allowed to sign in, and who may review other people's work.
@@ -568,3 +553,28 @@ export const workspaces = pgTable("workspaces", {
   createdAt: created(),
   updatedAt: updated(),
 });
+
+/**
+ * What someone using the panel wanted to say about it.
+ *
+ * The name, address, and business are copied in at the time of writing rather
+ * than joined at read time. A person leaves, a business is renamed, a
+ * workspace is deleted, and the note should still say who sent it and from
+ * where. It is a record of a moment, not a live view of one.
+ */
+export const feedback = pgTable(
+  "feedback",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: workspace(),
+    /** As it was called when this was sent. */
+    workspaceName: text("workspace_name").notNull().default(""),
+    email: text("email").notNull(),
+    displayName: text("display_name").notNull().default(""),
+    body: text("body").notNull(),
+    /** new or done. An operator marks it off once it has been dealt with. */
+    status: text("status").notNull().default("new"),
+    createdAt: created(),
+  },
+  (table) => [index("feedback_status_idx").on(table.status, table.createdAt)],
+);

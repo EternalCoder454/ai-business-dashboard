@@ -2,6 +2,7 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { BusinessesTab, type WorkspaceRow } from "@/components/BusinessesTab";
+import { FeedbackTab } from "@/components/FeedbackTab";
 import { useCallback, useEffect, useState } from "react";
 import {
   Button,
@@ -77,12 +78,13 @@ interface Thread {
   messages: Message[];
 }
 
-type Tab = "businesses" | "overview" | "clients" | "access";
+type Tab = "businesses" | "clients" | "feedback" | "overview" | "access";
 
 const TAB_LABEL: Record<Tab, string> = {
   businesses: "Businesses",
   overview: "Overview",
   clients: "Clients",
+  feedback: "Feedback",
   access: "Access",
 };
 
@@ -179,7 +181,7 @@ export default function AdminPage() {
       />
 
       <div className="flex flex-none items-center gap-2 border-b border-outline-variant page-x py-3">
-        {(["businesses", "overview", "clients", "access"] as Tab[]).map((key) => (
+        {(["businesses", "clients", "feedback", "overview", "access"] as Tab[]).map((key) => (
           <Chip
             key={key}
             selected={tab === key}
@@ -204,6 +206,8 @@ export default function AdminPage() {
             onChanged={(next) => setWorkspaces(next)}
           />
         ) : null}
+
+        {tab === "feedback" ? <FeedbackTab /> : null}
 
         {tab === "overview" ? <OverviewTab overview={overview} /> : null}
 

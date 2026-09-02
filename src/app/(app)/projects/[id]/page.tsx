@@ -36,14 +36,10 @@ export default function ProjectPage() {
     allDepartments,
     deleteProject,
     setConversationProject,
-    shareProject,
   } = useStore();
 
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [invite, setInvite] = useState("");
-  const [shareError, setShareError] = useState<string | null>(null);
-  const [sharing, setSharing] = useState(false);
 
   const project = getProject(projectId);
   const contents = projectContents(projectId);
@@ -78,15 +74,6 @@ export default function ProjectPage() {
       (a, b) => (a.department?.order ?? 999) - (b.department?.order ?? 999),
     );
   }, [contents.conversations, contents.deliverables, allDepartments]);
-
-  const share = async (email: string, remove?: boolean) => {
-    if (!email || sharing) return;
-    setSharing(true);
-    const error = await shareProject(projectId, email, remove);
-    setSharing(false);
-    setShareError(error);
-    if (!error && !remove) setInvite("");
-  };
 
   if (!ready) return <div className="flex-1" />;
 
@@ -138,68 +125,6 @@ export default function ProjectPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 medium:px-6 expanded:px-8">
         <div className="measure flex flex-col gap-5">
-          {project.sharedFrom ? (
-            <Card elevated={false}>
-              <p className="md-label-sm text-on-variant">
-                Shared with you by {project.sharedFrom}. Anything written here is
-                visible to everyone on it.
-              </p>
-            </Card>
-          ) : (
-            <Card elevated={false}>
-              <h2 className="md-label-sm mb-2 text-on-variant">Who can see this</h2>
-
-              {project.sharedWith?.length ? (
-                <ul className="mb-3 flex flex-wrap gap-2">
-                  {project.sharedWith.map((email) => (
-                    <li key={email}>
-                      <Chip
-                        onClick={() => void share(email, true)}
-                        title={`Stop sharing with ${email}`}
-                      >
-                        {email} &times;
-                      </Chip>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="md-body mb-3 text-on-variant">
-                  Only you. Conversations filed here stay private until you add
-                  somebody.
-                </p>
-              )}
-
-              <div className="flex flex-wrap items-end gap-2">
-                <Field label="Add a colleague" className="min-w-56 flex-1">
-                  <TextInput
-                    value={invite}
-                    type="email"
-                    placeholder="them@example.com"
-                    autoComplete="off"
-                    onChange={(event) => setInvite(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") void share(invite.trim());
-                    }}
-                  />
-                </Field>
-                <Button
-                  variant="outlined"
-                  disabled={!invite.trim() || sharing}
-                  onClick={() => void share(invite.trim())}
-                >
-                  Share
-                </Button>
-              </div>
-
-              {shareError ? (
-                <p className="md-label mt-2 text-error">{shareError}</p>
-              ) : null}
-              <p className="md-label-sm mt-2 text-on-variant/75">
-                They must already be approved for this workspace. Sharing gives
-                them the conversations filed here, not the rest of your account.
-              </p>
-            </Card>
-          )}
 
           <div className="flex flex-wrap items-center gap-2">
             <Chip>

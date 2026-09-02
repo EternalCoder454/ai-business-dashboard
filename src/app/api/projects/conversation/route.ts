@@ -2,7 +2,6 @@ import { and, asc, eq, gt } from "drizzle-orm";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
-import { resolveConversationOwner } from "@/db/sharing";
 import { membershipFor } from "@/db/tenancy";
 import type { Message } from "@/lib/types";
 
@@ -41,11 +40,7 @@ export async function GET(request: Request) {
   try {
     const mine = await membershipFor(email);
     if (!mine) return Response.json({ error: "Not found." }, { status: 404 });
-
-    const owner = await resolveConversationOwner(mine.workspaceId, email, conversationId);
-    // Also 404 for a conversation that simply does not exist, so this cannot be
-    // used to find out which ids other people have.
-    if (!owner) return Response.json({ error: "Not found." }, { status: 404 });
+    const owner = mine.workspaceId;
 
     const db = requireDb();
     const rows = await db

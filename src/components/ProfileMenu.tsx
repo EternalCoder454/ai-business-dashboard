@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { FeedbackDialog } from "./FeedbackDialog";
 import {
   BookIcon,
   BuildingIcon,
   GearIcon,
   ShieldIcon,
+  SparkIcon,
   cx,
 } from "./ui";
 import { createRipple } from "./ui/ripple";
@@ -40,6 +42,7 @@ export function ProfileMenu() {
 
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const wrapper = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -180,6 +183,21 @@ export function ProfileMenu() {
           </div>
 
           <nav className="px-2 py-2">
+            {/* A button rather than a link: the form is small enough that a
+                page for it would be a page to navigate back out of. */}
+            <button
+              onClick={(event) => {
+                createRipple(event);
+                setOpen(false);
+                setFeedbackOpen(true);
+              }}
+              role="menuitem"
+              className="md-state flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-on-variant"
+            >
+              <SparkIcon className="h-4 w-4" />
+              <span className="md-body">Send feedback</span>
+            </button>
+
             {[...LINKS, ...(isOperator ? [OPERATOR] : [])].map((link) => (
               <Link
                 key={link.href}
@@ -237,6 +255,8 @@ export function ProfileMenu() {
           ) : null}
         </div>
       ) : null}
+
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   );
 }

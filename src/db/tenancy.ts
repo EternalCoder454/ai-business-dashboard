@@ -210,7 +210,6 @@ export async function deleteWorkspace(workspaceId: string): Promise<void> {
       tx.delete(t.wikiPages).where(eq(t.wikiPages.workspaceId, workspaceId)),
       tx.delete(t.allHandsRounds).where(eq(t.allHandsRounds.workspaceId, workspaceId)),
       tx.delete(t.allHandsRuns).where(eq(t.allHandsRuns.workspaceId, workspaceId)),
-      tx.delete(t.projectMembers).where(eq(t.projectMembers.workspaceId, workspaceId)),
       tx.delete(t.projects).where(eq(t.projects.workspaceId, workspaceId)),
       tx.delete(t.directMessages).where(eq(t.directMessages.workspaceId, workspaceId)),
       tx.delete(t.profiles).where(eq(t.profiles.workspaceId, workspaceId)),
@@ -285,4 +284,18 @@ export async function renameWorkspace(workspaceId: string, name: string): Promis
           : { companyName: next },
       });
   });
+}
+
+/** How many people can open this workspace. */
+export async function countMembers(workspaceId: string): Promise<number> {
+  if (!databaseEnabled || !db) return 0;
+  try {
+    const [row] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(t.access)
+      .where(and(eq(t.access.workspaceId, workspaceId), isNull(t.access.revokedAt)));
+    return Number(row?.n ?? 0);
+  } catch {
+    return 0;
+  }
 }

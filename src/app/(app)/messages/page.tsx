@@ -116,7 +116,7 @@ export default function MessagesPage() {
               <EmptyState
                 icon="👤"
                 title="Nobody else yet"
-                description="Add an address to OPERATOR_EMAILS and they appear here."
+                description="Anyone else in this workspace appears here. An administrator adds them."
               />
             </div>
           ) : (

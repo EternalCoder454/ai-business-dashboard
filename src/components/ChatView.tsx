@@ -179,6 +179,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     profile,
     settings,
     account,
+    workspacePeople,
   } = useStore();
   const store = useStore();
 
@@ -236,12 +237,10 @@ export function ChatView({ departmentId }: { departmentId: string }) {
    * nothing at all on a conversation only one person can reach, which is
    * almost all of them.
    */
-  const sharedProject = active?.projectId
-    ? projects.find((p) => p.id === active.projectId)
-    : undefined;
-  const isShared = Boolean(
-    sharedProject && (sharedProject.sharedFrom || sharedProject.sharedWith?.length),
-  );
+  // Polling used to depend on a project being shared across workspaces, which
+  // is gone. Everyone in a business shares every conversation in it, so the
+  // question is simply whether anyone else could be typing.
+  const isShared = workspacePeople > 1;
 
   useEffect(() => {
     if (!isShared || !active?.id) return;
@@ -545,7 +544,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               {skillsFor(departmentId).length} skills
             </Chip>
           </Link>
-          {active && messages.length > 0 && !active.sharedFrom ? (
+          {active && messages.length > 0 ? (
             <button
               onClick={async (event) => {
                 createRipple(event);
