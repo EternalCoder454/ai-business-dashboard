@@ -84,9 +84,21 @@ interface Reviewable {
   sentAt: number;
 }
 
-/** The deployment's own key. Absent means the reviewer simply does not run. */
+/**
+ * The deployment's own key. Absent means the reviewer simply does not run.
+ *
+ * REVIEWER_API_KEY first, and it exists because the obvious variable is a trap
+ * here. ANTHROPIC_API_KEY is checked before a workspace's own key everywhere
+ * else, so setting it to give the reviewer something to run on would silently
+ * take every customer off their own key and put the whole deployment's spend
+ * on ours. A separate variable lets the review run without touching who pays
+ * for chat. The fallback is for a single-tenant deployment, where the two are
+ * the same key and there is nothing to keep apart.
+ */
 function serverKey(): string | null {
-  return process.env.ANTHROPIC_API_KEY?.trim() || null;
+  return (
+    process.env.REVIEWER_API_KEY?.trim() || process.env.ANTHROPIC_API_KEY?.trim() || null
+  );
 }
 
 export const reporterEnabled = () => Boolean(serverKey()) && databaseEnabled;

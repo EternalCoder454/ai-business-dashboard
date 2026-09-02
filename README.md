@@ -164,13 +164,20 @@ npm run dev
 | `NEXT_PUBLIC_SITE_URL` | deploys | The canonical origin, so invitation links never point at a preview. |
 | `RESEND_API_KEY` | invites | [Resend](https://resend.com). Without it access still works, because the row is what grants entry, but nobody is told. |
 | `INVITE_FROM` | invites | An address on a domain verified in Resend. Falls back to Resend's shared sender, which only delivers to the key's owner. |
-| `ANTHROPIC_API_KEY` | no | The deployment's own key. Used by the conduct reviewer, and preferred over a workspace's own if set. |
+| `REVIEWER_API_KEY` | reports | What the conduct reviewer runs on. Unset, the feature is off and the screen says so. |
+| `ANTHROPIC_API_KEY` | no | The deployment's own chat key. See the warning below before setting it. |
 | `OPENAI_API_KEY` / `GEMINI_API_KEY` | no | Same, for those providers. |
-| `ANTHROPIC_WORKSPACE_ID` | no | Only for an identity-linked Anthropic key. |
+| `ANTHROPIC_WORKSPACE_ID` | no | Only for an identity-linked Anthropic key, and only for the environment key above. |
 
-Businesses can bring their own keys instead, set under **Settings** by an administrator.
-They are write-only: nothing returns a key, to an administrator or anyone else, only
-whether one exists and its last four characters.
+Key precedence is **environment, then the business's own, then a key typed into a
+browser**. So setting `ANTHROPIC_API_KEY` on a multi-tenant deployment takes every
+customer off their own key and bills the whole thing to you. That is right for a
+single-tenant install and wrong for a product, which is why the reviewer has its own
+variable rather than sharing that one.
+
+Businesses set their own under **Settings**, and only an administrator can. They are
+write-only: nothing returns a key, to an administrator or anyone else, only whether one
+exists and its last four characters.
 
 ### Database
 
