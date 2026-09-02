@@ -63,9 +63,16 @@ async function canReceive(workspaceId: string, email: string): Promise<boolean> 
 }
 
 /**
- * GET with no query returns the overview: threads, unread total, and who can be
- * written to. With `?with=` it returns one thread, and `&since=` makes that the
- * polling call by returning only what arrived after a timestamp.
+ * GET with no `x-thread-with` header returns the overview: threads, unread
+ * total, and who can be written to. With that header it returns one thread,
+ * and `?since=` makes that the polling call by returning only what arrived
+ * after a timestamp.
+ *
+ * The colleague's address is a header rather than a query parameter on
+ * purpose. Query strings are recorded in the platform's request log and in the
+ * browser's own history, and a work address is the one piece of this that
+ * somebody outside the workspace might care about. A header is read by the
+ * route and written down nowhere.
  */
 export async function GET(request: Request) {
   const sender = await resolveSender();
@@ -74,7 +81,7 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const other = url.searchParams.get("with")?.trim().toLowerCase();
+  const other = request.headers.get("x-thread-with")?.trim().toLowerCase();
 
   try {
     if (other) {

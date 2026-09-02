@@ -795,7 +795,23 @@ export async function applyMutations(
         }
 
         case "profile": {
-          const values = { workspaceId, ...op.row, updatedAt: now };
+          // Named one by one, like every other table here. Spreading the
+          // client's row over the scope key let the row choose its own
+          // workspace, which is the one thing a tenant must never pick.
+          const row = op.row;
+          const values = {
+            workspaceId,
+            mission: row.mission ?? "",
+            audience: row.audience ?? "",
+            brandVoice: row.brandVoice ?? "",
+            keyFacts: row.keyFacts ?? "",
+            products: row.products ?? "",
+            stage: row.stage ?? "",
+            competitors: row.competitors ?? "",
+            constraints: row.constraints ?? "",
+            goals: row.goals ?? "",
+            updatedAt: now,
+          };
           await tx
             .insert(t.profiles)
             .values(values)
@@ -804,7 +820,40 @@ export async function applyMutations(
         }
 
         case "settings": {
-          const values = { workspaceId, ...op.row, updatedAt: now };
+          /*
+           * Named one by one, for two reasons.
+           *
+           * The scope key is the server's. `{ workspaceId, ...op.row }` let a
+           * client send its own `workspaceId` and land the write in somebody
+           * else's business: that is how a workspace got renamed by the first
+           * person to open it, and the same shape would have let any signed-in
+           * account write into any other company's settings.
+           *
+           * And the three model keys are columns on this table but are not
+           * settings. They are written only by /api/workspace/keys, which never
+           * reads them back. Leaving them out here means a settings save can
+           * neither overwrite a workspace's credentials nor carry one in.
+           */
+          const row = op.row;
+          const text = (value: unknown, fallback = "") =>
+            typeof value === "string" ? value : fallback;
+          const values = {
+            workspaceId,
+            model: text(row.model, "claude-sonnet-5"),
+            effort: text(row.effort, "medium"),
+            theme: text(row.theme, "dark"),
+            companyName: text(row.companyName, "Your Company"),
+            companySubtitle: text(row.companySubtitle),
+            writingRules: text(row.writingRules),
+            roomBrevity: text(row.roomBrevity, "tight"),
+            companyMark: text(row.companyMark, "HQ"),
+            companyLogoUrl: typeof row.companyLogoUrl === "string" ? row.companyLogoUrl : null,
+            sidebarSide: text(row.sidebarSide, "left"),
+            searchShortcut: text(row.searchShortcut, "slash"),
+            wikiTitle: text(row.wikiTitle, "Internal Wiki"),
+            wikiSubtitle: text(row.wikiSubtitle, "2 minute read"),
+            updatedAt: now,
+          };
           await tx
             .insert(t.settings)
             .values(values)
@@ -813,10 +862,10 @@ export async function applyMutations(
           // The company name and the business name are the same fact. Renaming
           // the panel renames the business, so the operator's list never shows
           // a name the customer stopped using months ago.
-          if (typeof op.row.companyName === "string" && op.row.companyName.trim()) {
+          if (values.companyName.trim()) {
             await tx
               .update(t.workspaces)
-              .set({ name: op.row.companyName.trim(), updatedAt: now })
+              .set({ name: values.companyName.trim(), updatedAt: now })
               .where(eq(t.workspaces.id, workspaceId));
           }
           break;

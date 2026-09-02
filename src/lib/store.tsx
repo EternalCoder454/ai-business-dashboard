@@ -322,7 +322,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // eight heads and shipped skills a fresh browser would get, so signing in
       // on a second device never lands on an empty org chart.
       if (snapshot.departments.length === 0) {
-        const { id: _id, apiKey: _key, ...defaultSettings } = DEFAULT_SETTINGS;
+        /*
+         * Everything except who the business is.
+         *
+         * The settings row already exists by this point, written when the
+         * workspace was created, and it carries the name the operator typed.
+         * Seeding used to send the whole of DEFAULT_SETTINGS, so the first
+         * person to open a new workspace overwrote that with "Your Company" and
+         * "HQ" — and because a settings write also renames the workspace row,
+         * the operator's list changed too. Defaults are for the fields nobody
+         * has chosen yet; a name somebody chose is not one of them.
+         */
+        const {
+          id: _id,
+          apiKey: _key,
+          companyName: _name,
+          companyMark: _mark,
+          companySubtitle: _subtitle,
+          ...defaultSettings
+        } = DEFAULT_SETTINGS;
         const ops: MutationOp[] = [
           { table: "departments", action: "upsert", rows: seedDepartments() },
           { table: "skills", action: "upsert", rows: seedSkills() },

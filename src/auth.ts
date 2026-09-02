@@ -50,14 +50,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: { signIn: "/signin", error: "/signin" },
   callbacks: {
     /**
-     * Two allowlists, and the environment one wins.
+     * Three ways in, checked in order, and nothing else opens the door.
      *
-     * The table is how people are actually invited, from Admin, without a
-     * redeploy. ALLOWED_EMAILS stays because it is the way back in: if the
-     * table is empty, someone revokes the wrong row, or Neon is unreachable at
-     * the moment you try to sign in, an address in the environment still gets
-     * through. Checking it first also means the owner's sign-in never waits on
-     * a query.
+     * OPERATOR_EMAILS first, because it lives in the environment rather than
+     * the database: if the access table is empty, a row is revoked by mistake,
+     * or Neon is unreachable at the moment somebody tries to sign in, the
+     * operator still gets through. Checking it first also means their sign-in
+     * never waits on a query.
+     *
+     * Then the access table, which is how everybody else is actually invited,
+     * from the operator screen and without a redeploy. Then first run, which
+     * closes the moment the first row exists.
+     *
+     * Getting in is all this decides. Which workspace the person then opens is
+     * `membershipFor`, asked again on every request, so revoking a row takes
+     * effect on the next call rather than whenever the session expires.
      *
      * The database module is imported here rather than at the top of the file
      * so that the proxy, which imports this on every request, does not pull a

@@ -163,9 +163,13 @@ export function useThread(other: string | undefined, self: string | undefined): 
     const pull = async () => {
       try {
         const since = newest.current;
-        const query = since ? `&since=${since}` : "";
+        // The address travels in a header rather than the query string. A
+        // query string is written down in the server's request log and in the
+        // browser's own history; a colleague's work address does not need to
+        // be in either to fetch a thread.
         const response = await fetch(
-          `/api/messages?with=${encodeURIComponent(other)}${query}`,
+          since ? `/api/messages?since=${since}` : "/api/messages?thread=1",
+          { headers: { "x-thread-with": other } },
         );
         if (!response.ok || cancelled) return;
 
