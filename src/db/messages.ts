@@ -1,7 +1,7 @@
 import { and, asc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
-import type { Colleague, DirectMessage, MessageThread } from "@/lib/types";
+import type { Colleague, DirectMessage, MessageThread, PresenceStatus } from "@/lib/types";
 
 /**
  * Direct messages sit apart from the workspace repository on purpose.
@@ -39,6 +39,33 @@ function counterpart(threadKey: string, self: string): string {
  * allowlist who has never signed in still appears, because otherwise there is
  * no way to start the conversation that would make them appear.
  */
+/**
+ * Online means seen inside this window.
+ *
+ * Long enough that reading a message without typing does not flip you to
+ * offline, short enough that a closed laptop stops claiming you are here.
+ */
+const ONLINE_WINDOW_MS = 3 * 60_000;
+
+function presenceOf(setting: string | null | undefined, lastSeen: Date | null | undefined): PresenceStatus {
+  if (setting === "dnd") return "dnd";
+  if (!lastSeen) return "offline";
+  return Date.now() - lastSeen.getTime() < ONLINE_WINDOW_MS ? "online" : "offline";
+}
+
+/** Records that this person is here, for the dot beside their name. */
+export async function touchPresence(email: string): Promise<void> {
+  try {
+    await requireDb()
+      .update(t.accounts)
+      .set({ lastSeenAt: new Date() })
+      .where(eq(t.accounts.userEmail, normalise(email)));
+  } catch {
+    // A missed heartbeat shows someone as offline for a minute. Not worth
+    // failing the request that carried it.
+  }
+}
+
 export async function listColleagues(workspaceId: string, self: string): Promise<Colleague[]> {
   const db = requireDb();
   const me = normalise(self);
@@ -58,6 +85,8 @@ export async function listColleagues(workspaceId: string, self: string): Promise
       displayName: t.accounts.displayName,
       roleTitle: t.accounts.roleTitle,
       avatarUrl: t.accounts.avatarUrl,
+      presence: t.accounts.presence,
+      lastSeenAt: t.accounts.lastSeenAt,
     })
     .from(t.accounts);
 
@@ -73,7 +102,7 @@ export async function listColleagues(workspaceId: string, self: string): Promise
         displayName: row?.displayName || undefined,
         roleTitle: row?.roleTitle || undefined,
         avatarUrl: row?.avatarUrl ?? undefined,
-        hasSignedIn: Boolean(row),
+        presence: presenceOf(row?.presence, row?.lastSeenAt),
       };
     })
     .sort((a, b) =>

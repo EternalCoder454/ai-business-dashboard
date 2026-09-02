@@ -218,7 +218,13 @@ export async function POST(request: Request) {
       });
     } catch (error) {
       console.error("[api/admin] createWorkspace", error);
-      return Response.json({ error: "Could not create that workspace." }, { status: 500 });
+      // The reason is usually actionable, so it is shown rather than hidden
+      // behind a generic failure.
+      const said = error instanceof Error ? error.message : "";
+      return Response.json(
+        { error: said || "Could not create that workspace." },
+        { status: 400 },
+      );
     }
   }
 

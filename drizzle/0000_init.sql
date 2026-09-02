@@ -20,6 +20,8 @@ CREATE TABLE "accounts" (
 	"current_focus" text DEFAULT '' NOT NULL,
 	"notes" text DEFAULT '' NOT NULL,
 	"avatar_url" text,
+	"presence" text DEFAULT 'auto' NOT NULL,
+	"last_seen_at" timestamp with time zone,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint

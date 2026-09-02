@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
  * shared account.
  */
 async function resolveOwner(): Promise<
-  { workspaceId: string; email: string } | { error: string; status: number }
+  { workspaceId: string; email: string; role: "member" | "admin" } | { error: string; status: number }
 > {
   if (!databaseEnabled) {
     return { error: "No DATABASE_URL, so this instance stores everything locally.", status: 501 };
@@ -33,7 +33,7 @@ async function resolveOwner(): Promise<
   if (!email) return { error: "Not signed in.", status: 401 };
 
   const membership = await membershipFor(email);
-  if (membership) return { workspaceId: membership.workspaceId, email };
+  if (membership) return { workspaceId: membership.workspaceId, email, role: membership.role };
 
   /*
    * Signed in and in no workspace.
@@ -57,7 +57,7 @@ async function resolveOwner(): Promise<
   }
 
   const provisioned = await provisionFor(email, "Your Company");
-  return { workspaceId: provisioned.workspaceId, email };
+  return { workspaceId: provisioned.workspaceId, email, role: provisioned.role };
 }
 
 export async function GET() {
@@ -96,6 +96,19 @@ export async function POST(request: Request) {
 
   if (!ops.every((op) => op && typeof op === "object" && WRITABLE_TABLES.has(op.table))) {
     return Response.json({ error: "Unrecognised operation." }, { status: 400 });
+  }
+
+  /*
+   * The wiki is the workspace's own documentation, written once and read by
+   * everyone in it, so writing it is an administrator's job. Enforced here
+   * rather than only by hiding the button, because a hidden button is not a
+   * permission.
+   */
+  if (owner.role !== "admin" && ops.some((op) => op.table === "wikiPages")) {
+    return Response.json(
+      { error: "Only an administrator of this workspace can edit the wiki." },
+      { status: 403 },
+    );
   }
 
   try {

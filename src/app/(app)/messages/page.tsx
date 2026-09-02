@@ -8,6 +8,7 @@ import {
   Chip,
   EmptyState,
   SendIcon,
+  StatusDot,
   TextArea,
   cx,
 } from "@/components/ui";
@@ -15,7 +16,17 @@ import { createRipple } from "@/components/ui/ripple";
 import { useMessages, useThread } from "@/lib/messages";
 import { formatRelativeTime } from "@/lib/routes";
 import { useStore } from "@/lib/store";
-import type { Colleague, DirectMessage } from "@/lib/types";
+import { PRESENCE_LABEL, type Colleague, type DirectMessage, type PresenceStatus } from "@/lib/types";
+
+/**
+ * Presence borrows the department dot rather than inventing a second set of
+ * colours for the same idea. Do-not-disturb reads as busy, which is what it is.
+ */
+const DOT: Record<PresenceStatus, "online" | "busy" | "offline"> = {
+  online: "online",
+  dnd: "busy",
+  offline: "offline",
+};
 
 /**
  * A two pane list-detail layout, which is the Material pattern for exactly this
@@ -44,7 +55,7 @@ export default function MessagesPage() {
       .map((person) => ({
         email: person.email,
         person,
-        preview: person.hasSignedIn ? "No messages yet" : "Has not signed in yet",
+        preview: "No messages yet",
         at: 0,
         unread: 0,
       }));
@@ -271,10 +282,13 @@ function Thread({
           </p>
         </div>
 
-        {person && !person.hasSignedIn ? (
-          <Chip tone="warning" title="They are on the allowlist but have never signed in">
-            Not signed in yet
-          </Chip>
+        {person ? (
+          <span className="flex flex-none items-center gap-1.5">
+            <StatusDot status={DOT[person.presence]} animate={person.presence === "online"} />
+            <span className="md-label-sm hidden text-on-variant medium:inline">
+              {PRESENCE_LABEL[person.presence]}
+            </span>
+          </span>
         ) : null}
       </header>
 

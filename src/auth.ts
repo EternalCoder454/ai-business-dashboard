@@ -67,9 +67,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const email = profile?.email?.toLowerCase();
       // Google verifies the address; an unverified one is not an identity.
       if (!email || profile?.email_verified === false) return false;
-      if (OPERATOR_EMAILS.includes(email)) return true;
-
       const { isAllowed, markSignedIn, nobodyHasAccess } = await import("@/db/access");
+
+      if (OPERATOR_EMAILS.includes(email)) {
+        // Recorded for the operator too. Their row said "never signed in"
+        // while they were reading it, which is a confusing thing for a screen
+        // to tell you about yourself.
+        await markSignedIn(email);
+        return true;
+      }
+
       if (await isAllowed(email)) {
         await markSignedIn(email);
         return true;

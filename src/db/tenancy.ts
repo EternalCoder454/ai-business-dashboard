@@ -120,6 +120,27 @@ export async function createWorkspace(input: {
   const database = requireDb();
   const id = newWorkspaceId();
 
+  /*
+   * One address belongs to one workspace: `email` is the primary key of the
+   * access table. Caught here so the operator is told which business already
+   * has them, rather than the insert failing on a constraint and the screen
+   * saying only that something went wrong.
+   */
+  if (input.firstMember) {
+    const existing = await membershipFor(input.firstMember);
+    if (existing) {
+      const [named] = await database
+        .select({ name: t.workspaces.name })
+        .from(t.workspaces)
+        .where(eq(t.workspaces.id, existing.workspaceId))
+        .limit(1);
+      throw new Error(
+        `${clean(input.firstMember)} is already in ${named?.name ?? "another business"}. ` +
+          "Remove them from it first, or use a different address.",
+      );
+    }
+  }
+
   await database.transaction(async (tx) => {
     await tx.insert(t.workspaces).values({
       id,

@@ -577,15 +577,11 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           (or set <code className="font-mono">ANTHROPIC_API_KEY</code> in{" "}
           <code className="font-mono">.env.local</code>) before sending a message.
         </Banner>
-      ) : profileMissing ? (
-        <Banner tone="info">
-          Your{" "}
-          <Link href="/profile" className="underline">
-            Company Profile
-          </Link>{" "}
-          is empty. Filling it in gives every department the same business context.
-        </Banner>
       ) : null}
+      {/* The empty-profile nudge used to sit here, at the top of every
+          conversation, which is a standing chore printed above the work. It is
+          a notification, where it is seen once and stops being seen when it is
+          done. */}
 
       <div
         ref={scrollRef}

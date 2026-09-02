@@ -292,6 +292,14 @@ export const accounts = pgTable("accounts", {
   currentFocus: text("current_focus").notNull().default(""),
   notes: text("notes").notNull().default(""),
   avatarUrl: text("avatar_url"),
+  /**
+   * auto or dnd. Auto means the dot follows whether they are actually here;
+   * do-not-disturb is a thing a person says about themselves and no amount of
+   * activity should override it.
+   */
+  presence: text("presence").notNull().default("auto"),
+  /** Touched while the app is open, so "here now" can be told from "has an account". */
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   updatedAt: updated(),
 });
 

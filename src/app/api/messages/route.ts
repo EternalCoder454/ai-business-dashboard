@@ -7,6 +7,7 @@ import {
   listThreads,
   markThreadRead,
   sendMessage,
+  touchPresence,
   unreadTotal,
 } from "@/db/messages";
 import { readJsonWithin, withinRate } from "@/lib/guard";
@@ -91,6 +92,11 @@ export async function GET(request: Request) {
     if (!workspace) {
       return Response.json({ error: "You are not in a workspace." }, { status: 403 });
     }
+
+    // The overview is already polled on a timer, so it is the heartbeat. A
+    // second endpoint doing nothing but saying "still here" would be one more
+    // request per person per minute for the same fact.
+    void touchPresence(sender.email);
 
     const [threads, people, unread] = await Promise.all([
       listThreads(sender.email),

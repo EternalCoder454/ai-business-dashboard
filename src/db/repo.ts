@@ -270,6 +270,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       currentFocus: accountRow[0]?.currentFocus ?? "",
       notes: accountRow[0]?.notes ?? "",
       avatarUrl: accountRow[0]?.avatarUrl ?? undefined,
+      presence: accountRow[0]?.presence === "dnd" ? "dnd" : "auto",
       email: email,
       updatedAt: accountRow[0]?.updatedAt ? ms(accountRow[0].updatedAt) : 0,
     },

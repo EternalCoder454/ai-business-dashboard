@@ -1,7 +1,6 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
-import { WikiEditor } from "@/components/WikiEditor";
 import { BusinessesTab, type WorkspaceRow } from "@/components/BusinessesTab";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -29,7 +28,9 @@ interface Usage {
 }
 
 interface Person {
-  email: string;
+  /** A workspace id. The People tab reviews businesses, not addresses. */
+  workspaceId: string;
+  name?: string;
   displayName?: string;
   roleTitle?: string;
   conversations: number;
@@ -73,14 +74,13 @@ interface Thread {
   messages: Message[];
 }
 
-type Tab = "businesses" | "overview" | "people" | "access" | "wiki";
+type Tab = "businesses" | "overview" | "people" | "access";
 
 const TAB_LABEL: Record<Tab, string> = {
   businesses: "Businesses",
   overview: "Overview",
   people: "People",
   access: "Access",
-  wiki: "Wiki",
 };
 
 const compact = (n: number) =>
@@ -106,8 +106,6 @@ export default function AdminPage() {
   const [departments, setDepartments] = useState<Record<string, string>>({});
   const [thread, setThread] = useState<Thread | null>(null);
 
-  const [removing, setRemoving] = useState<Person>();
-  const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -134,7 +132,7 @@ export default function AdminPage() {
     setThread(null);
     setHeads([]);
     setDetail(undefined);
-    const response = await fetch(`/api/admin?person=${encodeURIComponent(row.email)}`);
+    const response = await fetch(`/api/admin?person=${encodeURIComponent(row.workspaceId)}`);
     if (!response.ok) return;
     const body = await response.json();
     setHeads(body.conversations ?? []);
@@ -146,7 +144,7 @@ export default function AdminPage() {
     async (conversationId: string) => {
       if (!person) return;
       const response = await fetch(
-        `/api/admin?person=${encodeURIComponent(person.email)}&conversation=${encodeURIComponent(conversationId)}`,
+        `/api/admin?person=${encodeURIComponent(person.workspaceId)}&conversation=${encodeURIComponent(conversationId)}`,
       );
       if (!response.ok) return;
       const body = await response.json();
@@ -154,26 +152,6 @@ export default function AdminPage() {
     },
     [person],
   );
-
-  const remove = async () => {
-    if (!removing || busy) return;
-    setBusy(true);
-    const response = await fetch("/api/admin", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ person: removing.email, confirm: confirm.trim() }),
-    });
-    setBusy(false);
-    if (!response.ok) {
-      const body = await response.json().catch(() => null);
-      setError(body?.error ?? "That did not work.");
-      return;
-    }
-    setRemoving(undefined);
-    setConfirm("");
-    setPerson(undefined);
-    await load();
-  };
 
   if (storage !== "hosted" || !isOperator) {
     return (
@@ -198,7 +176,7 @@ export default function AdminPage() {
       />
 
       <div className="flex flex-none items-center gap-2 border-b border-outline-variant page-x py-3">
-        {(["businesses", "overview", "people", "access", "wiki"] as Tab[]).map((key) => (
+        {(["businesses", "overview", "people", "access"] as Tab[]).map((key) => (
           <Chip
             key={key}
             selected={tab === key}
@@ -226,8 +204,6 @@ export default function AdminPage() {
 
         {tab === "overview" ? <OverviewTab overview={overview} /> : null}
 
-        {tab === "wiki" ? <WikiEditor /> : null}
-
         {tab === "access" ? (
           <AccessTab access={access} people={people ?? []} />
         ) : null}
@@ -240,17 +216,13 @@ export default function AdminPage() {
               heads={heads}
               departments={departments}
               thread={thread}
-              isSelf={person.email === accountEmail}
+              isSelf={false}
               onBack={() => {
                 setPerson(undefined);
                 setThread(null);
               }}
               onOpenThread={openThread}
               onCloseThread={() => setThread(null)}
-              onRemove={() => {
-                setRemoving(person);
-                setConfirm("");
-              }}
             />
           ) : (
             <PeopleTable
@@ -262,40 +234,6 @@ export default function AdminPage() {
         ) : null}
       </div>
 
-      <Dialog
-        open={Boolean(removing)}
-        title={`Delete ${removing?.displayName || removing?.email}?`}
-        width="max-w-md"
-        onClose={() => setRemoving(undefined)}
-        footer={
-          <>
-            <Button variant="text" onClick={() => setRemoving(undefined)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={confirm.trim().toLowerCase() !== removing?.email || busy}
-              onClick={() => void remove()}
-            >
-              Delete everything
-            </Button>
-          </>
-        }
-      >
-        <p className="md-body text-on-variant">
-          Deletes their conversations, deliverables, projects, files, skills,
-          departments, settings, and messages. This cannot be undone. They keep access
-          unless you also remove them from OPERATOR_EMAILS.
-        </p>
-        <Field label="Type the address to confirm" className="mt-4">
-          <TextInput
-            value={confirm}
-            autoComplete="off"
-            spellCheck={false}
-            placeholder={removing?.email}
-            onChange={(event) => setConfirm(event.target.value)}
-          />
-        </Field>
-      </Dialog>
     </div>
   );
 }
@@ -378,7 +316,7 @@ function PeopleTable({
   return (
     <ul className="measure stagger flex flex-col gap-2">
       {people.map((row) => (
-        <li key={row.email}>
+        <li key={row.workspaceId}>
           <button
             type="button"
             onClick={(event) => {
@@ -389,14 +327,14 @@ function PeopleTable({
           >
             <span className="min-w-0 flex-1">
               <span className="md-title block truncate">
-                {row.displayName || row.email}
-                {row.email === accountEmail ? (
+                {row.name || row.displayName || row.workspaceId}
+                {false ? (
                   <span className="md-label-sm ml-2 text-on-variant/75">you</span>
                 ) : null}
               </span>
               <span className="md-label-sm block truncate text-on-variant">
                 {row.roleTitle ? `${row.roleTitle} · ` : ""}
-                {row.email}
+                {row.name ? row.workspaceId : ""}
               </span>
             </span>
 
@@ -427,7 +365,6 @@ function PersonDetail({
   onBack,
   onOpenThread,
   onCloseThread,
-  onRemove,
 }: {
   person: Person;
   detail?: Detail;
@@ -438,7 +375,6 @@ function PersonDetail({
   onBack: () => void;
   onOpenThread: (id: string) => void;
   onCloseThread: () => void;
-  onRemove: () => void;
 }) {
   return (
     <div className="measure flex flex-col gap-5">
@@ -446,18 +382,9 @@ function PersonDetail({
         <Button size="sm" variant="text" onClick={thread ? onCloseThread : onBack}>
           {thread ? "Back to conversations" : "Back to people"}
         </Button>
-        <span className="md-label truncate text-on-variant">{person.email}</span>
-        {!isSelf ? (
-          <Button
-            size="sm"
-            variant="text"
-            className="ml-auto"
-            icon={<TrashIcon className="h-4 w-4" />}
-            onClick={onRemove}
-          >
-            Delete workspace
-          </Button>
-        ) : null}
+        <span className="md-label truncate text-on-variant">{person.name ?? person.workspaceId}</span>
+        {/* Deleting a business lives on the Businesses tab, where it asks for
+            the name typed out. Two ways to destroy one is one too many. */}
       </div>
 
       {thread ? (
@@ -533,23 +460,21 @@ function AccessTab({
   people: Person[];
 }) {
   if (!access) return null;
-  const signedIn = new Set(people.map((p) => p.email));
 
   return (
     <div className="measure flex flex-col gap-5">
       <Card>
         <h2 className="md-title-lg mb-1">Who can sign in</h2>
         <p className="md-body mb-4 text-on-variant">
-          Set as OPERATOR_EMAILS. Changes require a redeploy.
+          Set as OPERATOR_EMAILS. An operator runs this deployment and can read
+          any workspace. Changing it needs a redeploy, which is deliberate:
+          nothing the app does should be able to grant it.
         </p>
         <ul className="flex flex-col gap-1.5">
           {access.allowed.map((email) => (
             <li key={email} className="flex flex-wrap items-center gap-2">
               <span className="md-body truncate">{email}</span>
               {access.admins.includes(email) ? <Chip tone="primary">Operator</Chip> : null}
-              {signedIn.has(email) ? null : (
-                <Chip tone="warning">Has not signed in</Chip>
-              )}
             </li>
           ))}
         </ul>

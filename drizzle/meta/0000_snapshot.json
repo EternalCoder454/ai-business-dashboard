@@ -1,5 +1,5 @@
 {
-  "id": "d9acf738-420d-4100-af6d-973d7d9aeb8c",
+  "id": "80496ce6-28d2-4cba-bab0-64821a1cc1e5",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -152,6 +152,19 @@
         "avatar_url": {
           "name": "avatar_url",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "presence": {
+          "name": "presence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'auto'"
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },

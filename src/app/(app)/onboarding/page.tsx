@@ -3,7 +3,8 @@
 import { PageHeader } from "@/components/PageHeader";
 import { useEffect, useState } from "react";
 import { Markdown } from "@/components/ChatView";
-import { BookIcon, EmptyState, cx } from "@/components/ui";
+import { BookIcon, Button, CloseIcon, EditIcon, EmptyState, cx } from "@/components/ui";
+import { WikiEditor } from "@/components/WikiEditor";
 import { createRipple } from "@/components/ui/ripple";
 import { blocksOf } from "@/lib/seedWiki";
 import { useStore } from "@/lib/store";
@@ -21,10 +22,21 @@ import { useStore } from "@/lib/store";
  * so a shared link works without a first visit arriving somewhere odd.
  */
 export default function WikiPage() {
-  const { ready, settings, wikiPages } = useStore();
+  const { ready, settings, wikiPages, workspaceRole } = useStore();
   const pages = wikiPages.filter((page) => page.enabled);
 
   const [openId, setOpenId] = useState<string | null>(null);
+  /**
+   * Editing lives here rather than on a separate screen.
+   *
+   * It used to be a tab on the operator's page, which was wrong twice over:
+   * the wiki belongs to a business rather than to the deployment, and the one
+   * person who could reach it was the one person it was not for. An
+   * administrator of this workspace edits it in place; everyone else never
+   * learns there was a button.
+   */
+  const [editing, setEditing] = useState(false);
+  const canEdit = workspaceRole === "admin";
 
   useEffect(() => {
     const fromHash = window.location.hash.slice(1);
@@ -48,14 +60,33 @@ export default function WikiPage() {
         eyebrow={settings.wikiTitle}
         title={settings.companyName}
         description={current === pages[0] ? settings.wikiSubtitle : (current?.blurb ?? "")}
+        actions={
+          canEdit ? (
+            <Button
+              variant={editing ? "filled" : "outlined"}
+              icon={
+                editing ? <CloseIcon className="h-4 w-4" /> : <EditIcon className="h-4 w-4" />
+              }
+              onClick={() => setEditing((value) => !value)}
+            >
+              {editing ? "Done" : "Edit"}
+            </Button>
+          ) : undefined
+        }
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto page-x py-6" id="wiki-top">
-        {ready && pages.length === 0 ? (
+        {editing ? (
+          <WikiEditor />
+        ) : ready && pages.length === 0 ? (
           <EmptyState
             icon={<BookIcon className="h-6 w-6" />}
             title="No pages yet"
-            description="Wiki pages are written in Admin."
+            description={
+              canEdit
+                ? "Write the first one with Edit, above."
+                : "An administrator of this workspace has not written any yet."
+            }
           />
         ) : (
           // Contents beside the page on a wide screen, above it otherwise.

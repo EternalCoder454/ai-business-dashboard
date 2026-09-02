@@ -213,6 +213,12 @@ export interface UserAccount {
   currentFocus: string;
   /** Anything else worth knowing. */
   notes: string;
+  /**
+   * auto or dnd. Auto follows whether they are actually here; do-not-disturb
+   * is a thing a person says about themselves and activity does not override
+   * it.
+   */
+  presence?: "auto" | "dnd";
   /** From Google, cached for display. Never editable here. */
   email?: string;
   avatarUrl?: string;
@@ -530,14 +536,25 @@ export interface MessageThread {
 }
 
 /** Someone who can be written to. */
+export type PresenceStatus = "online" | "offline" | "dnd";
+
+export const PRESENCE_LABEL: Record<PresenceStatus, string> = {
+  online: "Online",
+  offline: "Offline",
+  dnd: "Do not disturb",
+};
+
 export interface Colleague {
   email: string;
   displayName?: string;
   roleTitle?: string;
   avatarUrl?: string;
   /**
-   * False for someone on the allowlist who has never signed in. They can still
-   * be written to; the message is waiting when they arrive.
+   * Where they are now, not whether they have ever been here.
+   *
+   * Do-not-disturb is theirs to set and outranks activity; online means seen
+   * within the last few minutes; everything else is offline, including someone
+   * who was invited this morning and has not arrived.
    */
-  hasSignedIn: boolean;
+  presence: PresenceStatus;
 }

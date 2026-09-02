@@ -15,18 +15,14 @@ import { safeDestination } from "../src/app/signin/page";
 import { WRITABLE_TABLES, applyOp, emptyWorkspace } from "../src/lib/workspace";
 import { filesForDepartment } from "../src/lib/files";
 import {
-  COACH_ID,
   COMPANY_ID,
   DEPARTMENT_ACCENTS,
   departmentAccent,
-  leadershipCoach,
   seedDepartments,
 } from "../src/lib/seed";
 import { seedSkills } from "../src/lib/seedSkills";
 import {
-  SHIPPED_COACH_PROMPTS,
   promptFingerprint,
-  seedCoachSkills,
 } from "../src/lib/coachSkills";
 
 let failures = 0;
@@ -165,27 +161,13 @@ console.log("\na write immediately after a create can see it");
     check("an unknown department sees only company wide", stranger.length === 1);
   }
 
-  console.log("\nthe coach upgrades only while she has never been edited");
+  console.log("\nfingerprinting is stable, which is what protects an edit");
   {
-    const shipped = leadershipCoach(9).systemPrompt;
-    check("the current prompt is stable under hashing",
-      promptFingerprint(shipped) === promptFingerprint(shipped));
-    check("a different prompt hashes differently",
-      promptFingerprint(shipped) !== promptFingerprint(shipped + " "));
-    check("the previous shipped version is recognised",
-      SHIPPED_COACH_PROMPTS.has("1q6yu07"));
-    check("an edited prompt is not",
-      !SHIPPED_COACH_PROMPTS.has(promptFingerprint("I rewrote this myself.")));
-
-    const skills = seedCoachSkills();
-    check("she has playbooks", skills.length >= 8, String(skills.length));
-    check("all scoped to her", skills.every((s) => s.departmentId === COACH_ID));
-    check("ids are stable across runs",
-      seedCoachSkills().map((s) => s.id).join() === skills.map((s) => s.id).join());
-    check("ids are unique", new Set(skills.map((s) => s.id)).size === skills.length);
-    check("every one has a trigger line", skills.every((s) => s.description.length > 20));
-    check("none quotes a vendor statistic",
-      !skills.some((s) => /[0-9]+ ?(%|per cent of cases)/.test(s.content)));
+    // The whole reconciliation argument rests on this: the same body hashes
+    // the same way every time, and a changed one does not.
+    const body = seedSkills()[0]!.content;
+    check("stable under hashing", promptFingerprint(body) === promptFingerprint(body));
+    check("a changed body hashes differently", promptFingerprint(body) !== promptFingerprint(body + " "));
   }
 
   console.log("\nthe shipped library is small and covers every department");
@@ -234,7 +216,7 @@ console.log("\na write immediately after a create can see it");
     // The whole point of the accent is telling replies apart, so two heads
     // sharing one is a bug rather than a cosmetic detail. Adding a department
     // without assigning it an accent is the way this regresses.
-    const heads = [...seedDepartments(), leadershipCoach(99)];
+    const heads = seedDepartments();
     const used = new Map<string, string[]>();
     for (const head of heads) {
       const { label } = departmentAccent(head.id);

@@ -201,6 +201,21 @@ export default function AccountPage() {
               </Field>
 
               <Field
+                label="Availability"
+                hint="Do not disturb stays on until you turn it off."
+              >
+                <Select
+                  value={local.presence ?? "auto"}
+                  onChange={(event) =>
+                    set({ presence: event.target.value === "dnd" ? "dnd" : "auto" })
+                  }
+                >
+                  <option value="auto">Automatic</option>
+                  <option value="dnd">Do not disturb</option>
+                </Select>
+              </Field>
+
+              <Field
                 label="Pronouns"
               >
                 <TextInput
