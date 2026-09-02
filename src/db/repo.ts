@@ -29,7 +29,10 @@ const ms = (value: Date) => value.getTime();
  * Extracted text is kept: it is small, and a document with no text has nothing
  * to show at all.
  */
-function toAttachment(row: typeof t.files.$inferSelect): Attachment {
+/** Everything about a file except its bytes, which are fetched when opened. */
+type FileRow = Omit<typeof t.files.$inferSelect, "data">;
+
+function toAttachment(row: FileRow): Attachment {
   return {
     id: row.id,
     kind: row.kind as Attachment["kind"],
@@ -71,7 +74,37 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
     db.select().from(t.memory).where(eq(t.memory.workspaceId, workspaceId)).orderBy(desc(t.memory.occurredAt)),
     db.select().from(t.tasks).where(eq(t.tasks.workspaceId, workspaceId)).orderBy(asc(t.tasks.sortOrder)),
     db.select().from(t.wikiPages).where(eq(t.wikiPages.workspaceId, workspaceId)).orderBy(asc(t.wikiPages.sortOrder)),
-    db.select().from(t.files).where(eq(t.files.workspaceId, workspaceId)).orderBy(desc(t.files.updatedAt)),
+    /*
+     * Every column except `data`.
+     *
+     * `data` is the base64 of the image or PDF itself, and nothing built from
+     * these rows reads it — `toAttachment` never touches it, and the bytes are
+     * served on demand from /api/files/[id]. `select()` with no argument took
+     * it anyway, so a business with fifty megabytes in its Library pulled fifty
+     * megabytes out of Postgres, through the server, and dropped it on the
+     * floor on every single page load.
+     */
+    db
+      .select({
+        id: t.files.id,
+        workspaceId: t.files.workspaceId,
+        kind: t.files.kind,
+        mediaType: t.files.mediaType,
+        name: t.files.name,
+        textContent: t.files.textContent,
+        width: t.files.width,
+        height: t.files.height,
+        size: t.files.size,
+        departmentId: t.files.departmentId,
+        projectId: t.files.projectId,
+        note: t.files.note,
+        origin: t.files.origin,
+        createdAt: t.files.createdAt,
+        updatedAt: t.files.updatedAt,
+      })
+      .from(t.files)
+      .where(eq(t.files.workspaceId, workspaceId))
+      .orderBy(desc(t.files.updatedAt)),
     db.select().from(t.allHandsRuns).where(eq(t.allHandsRuns.workspaceId, workspaceId)).orderBy(desc(t.allHandsRuns.updatedAt)),
     db.select().from(t.allHandsRounds).where(eq(t.allHandsRounds.workspaceId, workspaceId)).orderBy(asc(t.allHandsRounds.sortOrder)),
     // The account is who you are, not where you work: still keyed by address,
