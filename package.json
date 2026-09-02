@@ -34,7 +34,8 @@
     "google-test": "tsx scripts/google-test.ts",
     "tenancy-audit": "tsx scripts/tenancy-audit.ts",
     "haskey-test": "tsx scripts/haskey-test.ts",
-    "reach-test": "tsx scripts/reach-test.ts"
+    "reach-test": "tsx scripts/reach-test.ts",
+    "route-test": "tsx scripts/route-test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

@@ -82,7 +82,7 @@ export function GoogleCalendarCard() {
         return;
       }
       if (body?.url) {
-        window.location.href = body.url;
+        window.location.assign(body.url);
         return;
       }
       await load();

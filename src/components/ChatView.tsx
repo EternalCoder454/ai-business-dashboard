@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ConversationList } from "./ConversationList";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -232,13 +233,34 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   const conversations = conversationsFor(departmentId);
   const requestedId = searchParams.get("c");
 
+  /*
+   * What the department opens to.
+   *
+   * `?c=<id>` is that conversation. `?c=new` is a blank one. Nothing at all
+   * means the list, unless there is nothing to list, in which case it is a
+   * blank chat.
+   *
+   * It used to be `conversations[0]` with no way out: every visit for the rest
+   * of the month reopened whichever thread was most recent, so a second subject
+   * went into the middle of the first one or nowhere.
+   */
+  const started = useMemo(
+    () => conversations.filter((c) => c.messageCount > 0),
+    [conversations],
+  );
+
+  const showList = !requestedId && started.length > 0;
+
   const active: Conversation | undefined = useMemo(() => {
+    if (requestedId === "new") return undefined;
     if (requestedId) {
       const match = conversations.find((c) => c.id === requestedId);
       if (match) return match;
     }
-    return conversations[0];
-  }, [conversations, requestedId]);
+    // A conversation that exists but has nothing in it yet is the one a blank
+    // chat already made, so reuse it rather than leaving empties behind.
+    return started.length > 0 ? undefined : conversations[0];
+  }, [conversations, started.length, requestedId]);
 
   const [draft, setDraft] = useState("");
   const [stream, setStream] = useState<StreamState>(EMPTY_STREAM);
@@ -559,6 +581,23 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     );
   }
 
+  /*
+   * The list, once this head has been asked anything.
+   *
+   * After the not-found branch, so a bad department id still says so, and
+   * before anything that assumes a conversation, because on this path there
+   * deliberately is not one.
+   */
+  if (showList) {
+    return (
+      <ConversationList
+        department={department}
+        conversations={started}
+        onDelete={(id) => void deleteConversation(id)}
+      />
+    );
+  }
+
   // A key on the server answers just as well as one typed into Settings,
   // so testing only the local one told a hosted workspace it had none.
   // This department's model, not the workspace default: a business on
@@ -584,9 +623,23 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         >
           <ChevronIcon className="h-5 w-5 rotate-180" />
         </button>
-        <div className="hidden flex-none medium:block">
-          <DepartmentAvatar department={department} size={44} />
-        </div>
+        {/* Back to this head's other conversations, once there are any. The
+            arrow above is the phone's back gesture and goes wherever they came
+            from; this always goes to the list. */}
+        {started.length > 0 ? (
+          <Link
+            href={departmentHrefById(departmentId)}
+            aria-label={`All conversations with ${department.personaName || department.name}`}
+            onClick={createRipple}
+            className="md-state md-target hidden flex-none place-items-center rounded-full text-on-variant medium:grid"
+          >
+            <ChevronIcon className="h-5 w-5 rotate-180" />
+          </Link>
+        ) : (
+          <div className="hidden flex-none medium:block">
+            <DepartmentAvatar department={department} size={44} />
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h1 className="md-title-lg truncate">{department.name}</h1>

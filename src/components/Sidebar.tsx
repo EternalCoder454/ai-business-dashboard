@@ -464,48 +464,14 @@ export function SidebarContent({
         </>
       ),
     } : undefined,
-    recent: {
-      label: "Recent",
-      content: (
-        <>
-              {recent.length === 0 ? (
-                <p className="md-body px-3 py-2 text-on-variant/75">
-                  Conversations you start will show up here.
-                </p>
-              ) : (
-                <ul className="space-y-0.5">
-                  {recent.map((conversation) => {
-                    const department = allDepartments.find(
-                      (d) => d.id === conversation.departmentId,
-                    );
-                    return (
-                      <li key={conversation.id}>
-                        <NavRow
-                          href={conversationHref(conversation.departmentId, conversation.id)}
-                          active={false}
-                          onNavigate={onNavigate}
-                        >
-                          {department ? (
-                            <DepartmentAvatar department={department} size={18} />
-                          ) : (
-                            <span className="h-4.5 w-4.5 flex-none rounded-full bg-high" />
-                          )}
-                          <span className="min-w-0 flex-1">
-                            <span className="md-body block truncate">{conversation.title}</span>
-                            <span className="md-label-sm block truncate text-on-variant/75">
-                              {department?.name ?? "Archived"} ·{" "}
-                              {formatRelativeTime(conversation.updatedAt)}
-                            </span>
-                          </span>
-                        </NavRow>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-        </>
-      ),
-    },
+    /*
+     * Recent conversations used to live here.
+     *
+     * A department opens to its own list now, so this was the same threads
+     * in a narrower column, and it was the only place they could be reached
+     * from back when a department reopened whichever one was most recent and
+     * would not let go of it.
+     */
         }}
       />
     </>

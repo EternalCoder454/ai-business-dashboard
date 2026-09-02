@@ -393,9 +393,11 @@ function ExportMenu({ deliverable }: { deliverable: Deliverable }) {
     setOpen(false);
     // A plain navigation. The response carries Content-Disposition, so the
     // browser saves it and the page does not move.
-    window.location.href = `/api/workspace/deliverable?id=${encodeURIComponent(
-      deliverable.id,
-    )}&format=${format}`;
+    // assign rather than setting href: the compiler treats the assignment as
+    // mutating a value it does not own, and this reads as the navigation it is.
+    window.location.assign(
+      `/api/workspace/deliverable?id=${encodeURIComponent(deliverable.id)}&format=${format}`,
+    );
   };
 
   return (
