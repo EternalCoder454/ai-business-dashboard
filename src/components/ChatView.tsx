@@ -176,6 +176,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     createTask,
     pullShared,
     openConversation,
+    calendar,
     skillsFor,
     profile,
     settings,
@@ -403,6 +404,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           memory,
           tasks,
           toolsFor(departmentId),
+          calendar,
         ),
         messages: await Promise.all(
           history.map(async (m) => ({ role: m.role, content: await toWire(m) })),
@@ -482,6 +484,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     isStreaming,
     department,
     active,
+    calendar,
     createConversation,
     departmentId,
     openConversation,

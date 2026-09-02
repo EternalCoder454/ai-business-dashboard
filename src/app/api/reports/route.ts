@@ -41,6 +41,8 @@ export async function GET() {
 
   try {
     const [rows, [cursor]] = await Promise.all([
+      // tenancy-audit: every business, on purpose. This is the operator's
+      // screen and the route is gated on isOperator above.
       requireDb().select().from(t.reports).orderBy(desc(t.reports.createdAt)).limit(200),
       requireDb()
         .select({ lastRunAt: t.reviewCursors.lastRunAt })
@@ -104,6 +106,8 @@ export async function POST(request: Request) {
           ? parsed.body.status
           : "new";
       if (!id) return Response.json({ error: "Nothing named." }, { status: 400 });
+      // tenancy-audit: by the report's own id, which the operator got from
+      // the list above. Only an operator reaches this.
       await requireDb().update(t.reports).set({ status }).where(eq(t.reports.id, id));
       return Response.json({ ok: true });
     }

@@ -6,6 +6,7 @@ import { workspaceKey } from "@/db/keys";
 import { loadWorkspace } from "@/db/repo";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { providerOf, providerInfo, type Provider } from "@/lib/providers";
+import { upcoming } from "@/lib/google";
 
 /**
  * Work that happens without anybody asking for it.
@@ -150,6 +151,9 @@ export async function runSchedules(now = new Date()): Promise<ScheduleRun> {
     return { considered: 0, ran: 0, skipped: ["No database."], failed: [] };
   }
 
+  // tenancy-audit: every business's schedules, because this is the nightly
+  // tick rather than a request. Each one is then loaded and run against its
+  // own workspace, one at a time.
   const rows = await db
     .select()
     .from(t.schedules)
@@ -186,6 +190,16 @@ export async function runSchedules(now = new Date()): Promise<ScheduleRun> {
         continue;
       }
 
+      /*
+       * The calendar of whoever set the schedule up.
+       *
+       * A briefing is addressed to that person: they wrote the question and
+       * they are the one who will read the answer on Monday morning. Nobody
+       * else's diary is involved, and somebody who has not connected one
+       * simply gets a briefing without a calendar block in it.
+       */
+      const { events } = await upcoming(schedule.createdBy, 7);
+
       const system = buildSystemPrompt(
         department,
         workspace.profile,
@@ -196,6 +210,7 @@ export async function runSchedules(now = new Date()): Promise<ScheduleRun> {
         workspace.memory,
         workspace.tasks,
         [],
+        events,
       );
 
       const reply = await ask(provider, model, apiKey, system, schedule.prompt);
@@ -218,6 +233,7 @@ export async function runSchedules(now = new Date()): Promise<ScheduleRun> {
 
       // Stamped only after the briefing is stored, so a failure between the two
       // is retried tomorrow rather than counted as done.
+      // tenancy-audit: by the schedule's own id, taken from the row being run.
       await requireDb()
         .update(t.schedules)
         .set({ lastRunAt: now })

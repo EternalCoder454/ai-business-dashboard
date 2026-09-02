@@ -200,6 +200,72 @@ export function buildToolsBlock(tools: { name: string }[]): string {
  * Composes the full system prompt sent to the API: department identity, shared
  * company context, and the house rules every department follows.
  */
+/**
+ * What the person's next few days look like.
+ *
+ * The reason the calendar is worth putting in a prompt at all: "what should I
+ * focus on this week" is usually answered by "you have four hours of meetings
+ * on Tuesday". A head that cannot see the diary gives advice for a week the
+ * person does not have.
+ *
+ * Titles, times, and whether something is all day. Not the guest list, not the
+ * description, not the joining link. Those belong to other people who did not
+ * agree to be described to a model, and none of them change the advice.
+ *
+ * Shaped so it is skimmable rather than parsed: a model reads a day with times
+ * under it the same way a person does, and it costs fewer tokens than JSON.
+ */
+export interface PromptCalendarEvent {
+  title: string;
+  start: number;
+  end: number;
+  allDay: boolean;
+}
+
+export function buildCalendarBlock(events: PromptCalendarEvent[]): string {
+  if (events.length === 0) return "";
+
+  const midnight = (at: number) => {
+    const d = new Date(at);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  };
+  const today = midnight(Date.now());
+
+  const dayName = (at: number) => {
+    const days = Math.round((midnight(at) - today) / 86_400_000);
+    if (days === 0) return "Today";
+    if (days === 1) return "Tomorrow";
+    return new Date(at).toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "short",
+    });
+  };
+
+  const time = (at: number) =>
+    new Date(at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+  const byDay = new Map<string, string[]>();
+  for (const event of events.slice(0, 40)) {
+    const key = dayName(event.start);
+    const when = event.allDay ? "All day" : `${time(event.start)}-${time(event.end)}`;
+    byDay.set(key, [...(byDay.get(key) ?? []), `  ${when}  ${event.title}`]);
+  }
+
+  const lines = [...byDay.entries()].map(([day, items]) => [day, ...items].join("\n"));
+
+  return [
+    "## Their calendar",
+    "",
+    "What is already booked in the next few days. Take it into account when you",
+    "suggest what to do and when: a day that is full is not a day for a big",
+    "piece of work, and a clear morning is worth naming. Do not mention the",
+    "calendar when it has no bearing on the answer.",
+    "",
+    ...lines,
+  ].join("\n");
+}
+
 export function buildSystemPrompt(
   department: Department,
   profile: CompanyProfile | undefined,
@@ -210,6 +276,7 @@ export function buildSystemPrompt(
   memory: MemoryEntry[] = [],
   tasks: Task[] = [],
   tools: { name: string }[] = [],
+  calendar: PromptCalendarEvent[] = [],
 ): string {
   const context = buildCompanyContext(profile, companyName);
 
@@ -231,6 +298,9 @@ export function buildSystemPrompt(
     // leaves everything above it cached, and the record is what changes most.
     buildMemoryBlock(memory, department.id),
     buildTasksBlock(tasks, department.id),
+    // After the record and the board, because it changes every day and would
+    // otherwise push everything below it out of the cached prefix daily.
+    buildCalendarBlock(calendar),
     buildToolsBlock(tools),
     SHARED_OPERATING_RULES,
     writingRules.trim(),

@@ -320,6 +320,8 @@ export async function overview(): Promise<AdminOverview> {
   const db = requireDb();
   const count = sql<number>`count(*)::int`;
 
+  // tenancy-audit: totals across every business, which is what an overview of
+  // the deployment is. Reachable only through the operator-gated admin route.
   const [people, conversations, messages, deliverables, projects, files, usage] =
     await Promise.all([
       db.select({ n: sql<number>`count(distinct ${t.conversations.workspaceId})::int` }).from(t.conversations),
@@ -412,7 +414,23 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
   const db = requireDb();
   const owner = workspaceId.toLowerCase();
 
+  /*
+   * Everything, and the list is checked against the schema rather than
+   * remembered.
+   *
+   * Two of these used to compare a workspace id to an email column, left over
+   * from when the scope key was an address: `accounts.userEmail = owner` and
+   * the direct message delete both matched nothing, so deleting a business
+   * kept every message its people had sent each other. Eleven more tables have
+   * been added since and none of them were here at all, including api_keys,
+   * whose tokens went on authenticating against a business that no longer
+   * existed.
+   *
+   * Anything holding a workspace_id belongs in this list. `npm run
+   * tenancy-audit` compares the two and says so when they disagree.
+   */
   await db.transaction(async (tx) => {
+    // The work.
     await tx.delete(t.messages).where(eq(t.messages.workspaceId, owner));
     await tx.delete(t.conversations).where(eq(t.conversations.workspaceId, owner));
     await tx.delete(t.allHandsRounds).where(eq(t.allHandsRounds.workspaceId, owner));
@@ -421,14 +439,45 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
     await tx.delete(t.projects).where(eq(t.projects.workspaceId, owner));
     await tx.delete(t.files).where(eq(t.files.workspaceId, owner));
     await tx.delete(t.skills).where(eq(t.skills.workspaceId, owner));
+    await tx.delete(t.tasks).where(eq(t.tasks.workspaceId, owner));
+    await tx.delete(t.wikiPages).where(eq(t.wikiPages.workspaceId, owner));
+    await tx.delete(t.memory).where(eq(t.memory.workspaceId, owner));
     await tx.delete(t.departments).where(eq(t.departments.workspaceId, owner));
+
+    // What people said to each other. By workspace, not by address: `owner` is
+    // a workspace id, and the version that compared it to an email deleted
+    // nothing at all.
+    await tx.delete(t.directMessages).where(eq(t.directMessages.workspaceId, owner));
+
+    // The rhythms, and what they produced.
+    await tx.delete(t.briefings).where(eq(t.briefings.workspaceId, owner));
+    await tx.delete(t.schedules).where(eq(t.schedules.workspaceId, owner));
+
+    // Credentials and anything holding one. An api_keys row left behind is a
+    // token that still authenticates.
+    await tx.delete(t.apiKeys).where(eq(t.apiKeys.workspaceId, owner));
+    await tx.delete(t.idempotency).where(eq(t.idempotency.workspaceId, owner));
+    await tx.delete(t.googleConnections).where(eq(t.googleConnections.workspaceId, owner));
+
+    // The reviewer's record of this business, and where it had read up to.
+    await tx.delete(t.reports).where(eq(t.reports.workspaceId, owner));
+    await tx.delete(t.reviewCursors).where(eq(t.reviewCursors.workspaceId, owner));
+
+    // Settings last of the scoped tables, since the model keys live there.
     await tx.delete(t.settings).where(eq(t.settings.workspaceId, owner));
     await tx.delete(t.profiles).where(eq(t.profiles.workspaceId, owner));
-    await tx.delete(t.accounts).where(eq(t.accounts.userEmail, owner));
-    await tx
-      .delete(t.directMessages)
-      .where(
-        sql`${t.directMessages.fromEmail} = ${owner} or ${t.directMessages.toEmail} = ${owner}`,
-      );
+
+    /*
+     * Accounts and feedback are deliberately not here.
+     *
+     * An account is the person, not the business: their name, pronouns, and
+     * notes follow them if they are ever added to another one, and deleting a
+     * company should not delete a person. Feedback is about the product and
+     * was written to us rather than to them.
+     *
+     * The access rows are removed by deleteWorkspace, which calls this and
+     * then takes the workspace row itself.
+     */
   });
 }
+

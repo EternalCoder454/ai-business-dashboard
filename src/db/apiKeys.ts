@@ -104,6 +104,8 @@ export async function createKey(input: {
     createdBy: input.createdBy,
   };
   await requireDb().insert(t.apiKeys).values(row);
+  // tenancy-audit: reading back the row just inserted, by the uuid generated
+  // for it a line ago.
   const [saved] = await requireDb()
     .select()
     .from(t.apiKeys)
@@ -147,6 +149,9 @@ export async function resolveBearer(token: string | null): Promise<Bearer | null
   if (!token || !token.startsWith(PREFIX) || !databaseEnabled || !db) return null;
 
   const digest = hash(token);
+  // tenancy-audit: found by the hash of the token, which is the credential
+  // itself and is unique across every business. The workspace comes out of
+  // this lookup; it cannot be an input to it.
   const [row] = await db
     .select()
     .from(t.apiKeys)
@@ -177,6 +182,8 @@ export function touchKey(keyId: string): void {
   const now = Date.now();
   if (now - (lastWrite.get(keyId) ?? 0) < 60_000) return;
   lastWrite.set(keyId, now);
+  // tenancy-audit: by the key's own id, which came from resolveBearer and so
+  // is already the caller's own.
   void requireDb()
     .update(t.apiKeys)
     .set({ lastUsedAt: new Date() })

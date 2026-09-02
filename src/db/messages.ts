@@ -4,6 +4,15 @@ import * as t from "./schema";
 import type { Colleague, DirectMessage, MessageThread, PresenceStatus } from "@/lib/types";
 
 /**
+ * Every read here is fenced to one business as well as to the two addresses.
+ *
+ * The pair alone looks sufficient, because an address belongs to exactly one
+ * workspace at a time. It is not. Somebody moved from one business to another,
+ * which this product supports and an operator can do in two clicks, would open
+ * their inbox and find their old colleagues and everything they had said to
+ * each other, inside their new employer's panel. The workspace column was
+ * being written on every row and read on none of them.
+ *
  * Direct messages sit apart from the workspace repository on purpose.
  *
  * Everything in repo.ts belongs to exactly one account and is loaded as one
@@ -138,7 +147,10 @@ export async function listColleagues(workspaceId: string, self: string): Promise
  * message. Fetching every message and reducing in JavaScript would return the
  * entire history to answer a question about its last line.
  */
-export async function listThreads(self: string): Promise<MessageThread[]> {
+export async function listThreads(
+  workspaceId: string,
+  self: string,
+): Promise<MessageThread[]> {
   const db = requireDb();
   const me = normalise(self);
 
@@ -151,14 +163,20 @@ export async function listThreads(self: string): Promise<MessageThread[]> {
   }>(sql`
     SELECT DISTINCT ON (thread_key) thread_key, from_email, to_email, body, sent_at
     FROM direct_messages
-    WHERE from_email = ${me} OR to_email = ${me}
+    WHERE workspace_id = ${workspaceId} AND (from_email = ${me} OR to_email = ${me})
     ORDER BY thread_key, sent_at DESC
   `);
 
   const unread = await db
     .select({ from: t.directMessages.fromEmail, count: sql<number>`count(*)::int` })
     .from(t.directMessages)
-    .where(and(eq(t.directMessages.toEmail, me), isNull(t.directMessages.readAt)))
+    .where(
+      and(
+        eq(t.directMessages.workspaceId, workspaceId),
+        eq(t.directMessages.toEmail, me),
+        isNull(t.directMessages.readAt),
+      ),
+    )
     .groupBy(t.directMessages.fromEmail);
 
   const unreadBy = new Map(unread.map((row) => [row.from, Number(row.count)]));
@@ -184,6 +202,7 @@ export async function listThreads(self: string): Promise<MessageThread[]> {
  * already on screen and only what arrived after it comes back.
  */
 export async function listThread(
+  workspaceId: string,
   self: string,
   other: string,
   since?: number,
@@ -195,9 +214,11 @@ export async function listThread(
     .select()
     .from(t.directMessages)
     .where(
-      since
-        ? and(eq(t.directMessages.threadKey, key), gt(t.directMessages.sentAt, since))
-        : eq(t.directMessages.threadKey, key),
+      and(
+        eq(t.directMessages.workspaceId, workspaceId),
+        eq(t.directMessages.threadKey, key),
+        since ? gt(t.directMessages.sentAt, since) : undefined,
+      ),
     )
     .orderBy(asc(t.directMessages.sentAt))
     // A ceiling rather than a pager: a thread this long is not something anyone
@@ -215,13 +236,17 @@ export async function listThread(
 }
 
 /** Total unread across every thread, for the badge in the navigation. */
-export async function unreadTotal(self: string): Promise<number> {
+export async function unreadTotal(workspaceId: string, self: string): Promise<number> {
   const db = requireDb();
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(t.directMessages)
     .where(
-      and(eq(t.directMessages.toEmail, normalise(self)), isNull(t.directMessages.readAt)),
+      and(
+        eq(t.directMessages.workspaceId, workspaceId),
+        eq(t.directMessages.toEmail, normalise(self)),
+        isNull(t.directMessages.readAt),
+      ),
     );
   return Number(row?.count ?? 0);
 }
@@ -257,13 +282,18 @@ export async function sendMessage(
  * Scoped to messages addressed to the reader, so opening a thread can never
  * mark your own outgoing messages read on the recipient's behalf.
  */
-export async function markThreadRead(self: string, other: string): Promise<void> {
+export async function markThreadRead(
+  workspaceId: string,
+  self: string,
+  other: string,
+): Promise<void> {
   const db = requireDb();
   await db
     .update(t.directMessages)
     .set({ readAt: Date.now() })
     .where(
       and(
+        eq(t.directMessages.workspaceId, workspaceId),
         eq(t.directMessages.threadKey, threadKeyFor(self, other)),
         eq(t.directMessages.toEmail, normalise(self)),
         isNull(t.directMessages.readAt),
@@ -276,6 +306,8 @@ export async function deleteThreadsFor(emails: string[]): Promise<void> {
   if (!emails.length) return;
   const db = requireDb();
   const lowered = emails.map(normalise);
+  // tenancy-audit: by address and across every business, which is what a test
+  // cleanup needs. Exported for the tests and called by nothing in the app.
   await db
     .delete(t.directMessages)
     .where(

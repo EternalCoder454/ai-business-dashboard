@@ -91,7 +91,7 @@ export async function GET(request: Request) {
       }
       const rawSince = Number(url.searchParams.get("since") ?? "");
       const since = Number.isFinite(rawSince) && rawSince > 0 ? rawSince : undefined;
-      const messages = await listThread(sender.email, other, since);
+      const messages = await listThread(mine.workspaceId, sender.email, other, since);
       return Response.json({ messages });
     }
 
@@ -106,9 +106,9 @@ export async function GET(request: Request) {
     void touchPresence(sender.email);
 
     const [threads, people, unread] = await Promise.all([
-      listThreads(sender.email),
+      listThreads(workspace.workspaceId, sender.email),
       listColleagues(workspace.workspaceId, sender.email),
-      unreadTotal(sender.email),
+      unreadTotal(workspace.workspaceId, sender.email),
     ]);
     return Response.json({ threads, people, unread, self: sender.email });
   } catch (error) {
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
       if (!mine || !(await canReceive(mine.workspaceId, other))) {
         return Response.json({ error: "No such person here." }, { status: 404 });
       }
-      await markThreadRead(sender.email, other);
+      await markThreadRead(mine.workspaceId, sender.email, other);
       return Response.json({ ok: true });
     }
 

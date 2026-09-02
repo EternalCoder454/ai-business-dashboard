@@ -233,6 +233,7 @@ npm run db:studio
 | `npm run typecheck` · `lint` · `build` | the usual |
 | `npm run keys-test` | plants a real key and searches every payload for it |
 | `npm run keys-encrypt` | encrypts credentials stored before encryption was switched on |
+| `npm run tenancy-audit` | reads the source: every query on a scoped table names a workspace, and deleting a business clears every table |
 | `npm run tenancy-test` | a saved row cannot choose which business it lands in |
 | `npm run api-test` | the developer API end to end, including cross-tenant isolation (needs `npm run dev`) |
 | `npm run admin-test` | operator reads stay inside the business they name |

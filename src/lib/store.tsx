@@ -17,6 +17,7 @@ import {
   type Credentials,
 } from "./credentials";
 import { newId } from "./ids";
+import type { PromptCalendarEvent } from "./prompts";
 import {
   applyOp,
   type MutationOp,
@@ -183,6 +184,14 @@ export interface StoreValue {
    * it in. Returns how many arrived, so a caller can decide whether to scroll.
    */
   /**
+   * The signed-in person's next few days, when they have connected a calendar.
+   *
+   * Read once per session and held, because it goes into the system prompt on
+   * every message and refetching it per keystroke would be a request to Google
+   * for every question asked.
+   */
+  calendar: PromptCalendarEvent[];
+  /**
    * Loads one conversation's messages.
    *
    * The workspace snapshot carries counts rather than bodies, so a thread is
@@ -252,6 +261,7 @@ export function StoreProvider({
     openai: false,
     google: false,
   });
+  const [calendar, setCalendar] = useState<PromptCalendarEvent[]>([]);
   const [isOperator, setIsOperator] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [remote, setRemote] = useState<Workspace | null>(null);
@@ -312,6 +322,27 @@ export function StoreProvider({
       .catch(() => {
         if (!cancelled) setMode("local");
       });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /*
+   * The calendar, once, if there is one.
+   *
+   * Silent about every failure. Nobody has connected one, Google is having a
+   * day, the deployment has no OAuth client: in all three cases the right
+   * behaviour is a prompt without a calendar block in it, not an error on a
+   * screen about a feature the person may never have switched on.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/calendar?days=7")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { events?: PromptCalendarEvent[] } | null) => {
+        if (!cancelled && body?.events?.length) setCalendar(body.events);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -594,6 +625,7 @@ export function StoreProvider({
         return null;
       },
       isOperator,
+      calendar,
       allDepartments: departmentList,
       departments: departmentList.filter((d) => !d.isCeo && !d.personal),
       personalDepartments: departmentList.filter((d) => d.personal),
@@ -1146,6 +1178,7 @@ export function StoreProvider({
     signedInEmail,
     serverKey,
     isOperator,
+    calendar,
     remote,
     push,
     departmentList,

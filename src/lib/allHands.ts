@@ -1,6 +1,10 @@
 import { mapWithConcurrency, streamChat } from "./chatClient";
 import { newId } from "./ids";
-import { buildSystemPrompt, deriveConversationTitle } from "./prompts";
+import {
+  buildSystemPrompt,
+  deriveConversationTitle,
+  type PromptCalendarEvent,
+} from "./prompts";
 import { providerOf } from "./providers";
 import type {
   AllHandsRound,
@@ -38,6 +42,8 @@ export interface AllHandsOptions {
   memory?: MemoryEntry[];
   /** Open work, so the room weighs new ideas against what is outstanding. */
   tasks?: Task[];
+  /** The asker's next few days, read by the lead alone when reading across. */
+  calendar?: PromptCalendarEvent[];
   /** Whether the CEO reads across the round once every head has answered. */
   synthesize: boolean;
   onProgress: (run: AllHandsRun) => void;
@@ -136,6 +142,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
     account,
     memory = [],
     tasks = [],
+    calendar = [],
     synthesize,
     onProgress,
     signal,
@@ -256,6 +263,12 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
           account,
           memory,
           tasks,
+          [],
+          // Only the lead. The eight heads are each answering their own corner
+          // of the question and none of them needs somebody's diary to do it;
+          // sending it to all of them would be eight copies in flight to say
+          // the same thing once.
+          calendar,
         ),
         messages: [
           {
