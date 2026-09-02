@@ -44,7 +44,6 @@ export function Dashboard() {
     skills,
     profile,
     settings,
-    serverKey,
   } = useStore();
 
   const nameOf = (id: string) =>

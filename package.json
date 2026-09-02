@@ -32,7 +32,8 @@
     "export-test": "tsx scripts/export-test.ts",
     "schedules-test": "tsx scripts/schedules-test.ts",
     "google-test": "tsx scripts/google-test.ts",
-    "tenancy-audit": "tsx scripts/tenancy-audit.ts"
+    "tenancy-audit": "tsx scripts/tenancy-audit.ts",
+    "haskey-test": "tsx scripts/haskey-test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

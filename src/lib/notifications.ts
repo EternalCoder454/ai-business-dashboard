@@ -1,5 +1,6 @@
 "use client";
 
+import { hasKeyFor } from "./hasKey";
 import { useMemo, useState } from "react";
 import { hasProfileContent } from "./prompts";
 import { useStore } from "./store";
@@ -20,8 +21,17 @@ export interface Notification {
 }
 
 export function useNotifications(): Notification[] {
-  const { ready, departments, skills, memory, tasks, profile, settings, serverKey } =
-    useStore();
+  const {
+    ready,
+    departments,
+    skills,
+    memory,
+    tasks,
+    profile,
+    settings,
+    serverKeys,
+    workspaceKeys,
+  } = useStore();
 
   // Taken once on mount. Reading the clock during render is not pure, and the
   // output would then depend on when React happened to run.
@@ -33,7 +43,11 @@ export function useNotifications(): Notification[] {
     // announcing it then means claiming it is empty on every refresh.
     if (!ready) return items;
 
-    if (!serverKey && !settings.apiKey) {
+    // Against the model this business actually uses, and against all three
+    // places a key can live. This used to skip the business's own key, so every
+    // colleague an administrator invited was told there was no key because they
+    // personally had never typed one into their own browser.
+    if (!hasKeyFor(settings.model, { serverKeys, workspaceKeys, browserKey: settings.apiKey })) {
       items.push({
         id: "no-key",
         label: "No API key set",
@@ -83,5 +97,17 @@ export function useNotifications(): Notification[] {
     }
 
     return items;
-  }, [ready, serverKey, settings.apiKey, tasks, now, profile, memory, departments, skills]);
+  }, [
+    ready,
+    serverKeys,
+    workspaceKeys,
+    settings.apiKey,
+    settings.model,
+    tasks,
+    now,
+    profile,
+    memory,
+    departments,
+    skills,
+  ]);
 }

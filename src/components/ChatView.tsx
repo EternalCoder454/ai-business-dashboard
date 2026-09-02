@@ -7,6 +7,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { newId } from "@/lib/ids";
+import { hasKeyFor } from "@/lib/hasKey";
 import {
   ACCEPTED_FILE_TYPES,
   FILE_ICON,
@@ -198,7 +199,8 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     saveMemory,
     files,
     projects,
-    serverKey,
+    serverKeys,
+    workspaceKeys,
     memory,
     tasks,
     createTask,
@@ -214,7 +216,13 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   const store = useStore();
 
   const department = getDepartment(departmentId);
-  const liveStatus = useDepartmentStatus(Boolean(serverKey || settings.apiKey))(departmentId);
+  const liveStatus = useDepartmentStatus(
+    hasKeyFor(getDepartment(departmentId)?.model || settings.model, {
+      serverKeys,
+      workspaceKeys,
+      browserKey: settings.apiKey,
+    }),
+  )(departmentId);
 
   /** Library files scoped to this department, or shared with every one. */
   const shared = useMemo(
@@ -553,7 +561,14 @@ export function ChatView({ departmentId }: { departmentId: string }) {
 
   // A key on the server answers just as well as one typed into Settings,
   // so testing only the local one told a hosted workspace it had none.
-  const needsKey = !serverKey && !settings.apiKey;
+  // This department's model, not the workspace default: a business on
+  // Anthropic with one head pointed at Gemini genuinely lacks a key for that
+  // one, and the banner should be right about which.
+  const needsKey = !hasKeyFor(department?.model || settings.model, {
+    serverKeys,
+    workspaceKeys,
+    browserKey: settings.apiKey,
+  });
   const profileMissing = !hasProfileContent(profile);
 
   return (

@@ -1,5 +1,6 @@
 "use client";
 
+import { hasKeyFor } from "@/lib/hasKey";
 import Link from "next/link";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -45,7 +46,8 @@ export default function AllHandsPage() {
     allHandsRuns,
     profile,
     settings,
-    serverKey,
+    serverKeys,
+    workspaceKeys,
     memory,
     tasks,
     calendar,
@@ -458,7 +460,12 @@ export default function AllHandsPage() {
               {synthesize ? <CheckIcon className="h-3.5 w-3.5" /> : null}
               {ceo?.personaName ?? "CEO"} reads across the room
             </Chip>
-            {ready && !serverKey && !settings.apiKey ? (
+            {ready &&
+            !hasKeyFor(settings.model, {
+              serverKeys,
+              workspaceKeys,
+              browserKey: settings.apiKey,
+            }) ? (
               <span className="md-label text-warning">
                 No API key yet. Add one in{" "}
                 <Link href="/settings" className="underline">

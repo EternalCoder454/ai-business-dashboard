@@ -1,5 +1,6 @@
 "use client";
 
+import { hasKeyFor } from "@/lib/hasKey";
 import Link from "next/link";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { usePathname, useRouter } from "next/navigation";
@@ -222,13 +223,19 @@ export function SidebarContent({
     createConversation,
     isOperator,
     personalDepartments,
-    serverKey,
+    serverKeys,
+    workspaceKeys,
   } = useStore();
   const { unread } = useMessages();
 
   // A dot that always says Online is worse than no dot. This one reflects
   // whether a request could actually succeed, and whether one is in flight.
-  const statusOf = useDepartmentStatus(Boolean(serverKey || settings.apiKey));
+  // Whether anything can reply at all, which is the same question the chat
+  // banner asks and used to answer differently: this skipped the business's own
+  // key, so every invited colleague saw every head as unavailable.
+  const statusOf = useDepartmentStatus(
+    hasKeyFor(settings.model, { serverKeys, workspaceKeys, browserKey: settings.apiKey }),
+  );
 
 
   const [subtitle, setSubtitle] = useState(settings.companySubtitle);
