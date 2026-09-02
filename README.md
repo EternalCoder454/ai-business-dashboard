@@ -24,6 +24,7 @@ and people sign up at the address it is deployed to rather than installing anyth
 | **Company Profile** | Mission, products, audience, voice, constraints. Written once and injected into every head, so they all argue from the same facts. |
 | **Library** | Skills, deliverables, recorded decisions, and uploaded files, in card, compact, or list view. Deliverables export as Word, Markdown, or plain text. |
 | **Projects** | A thread, its outputs, its files, and its tasks kept together. |
+| **Briefings** | Questions put to a head on a rhythm, answered overnight, waiting when somebody signs in. Daily, weekly, or monthly, set by an administrator. |
 | **Tasks** | A board fed by hand, by a head capturing something out of a reply, or by the API. |
 | **Internal Wiki** | The business's own written record, edited in place by anyone with permission. |
 | **Inbox** | Direct messages between colleagues, with presence. |
@@ -189,7 +190,7 @@ npm run dev
 | `RESEND_API_KEY` | invites | [Resend](https://resend.com). Without it access still works, because the row is what grants entry, but nobody is told. |
 | `INVITE_FROM` | invites | An address on a domain verified in Resend. Falls back to Resend's shared sender, which only delivers to the key's owner. |
 | `REVIEWER_API_KEY` | reports | What the conduct reviewer runs on. Unset, the feature is off and the screen says so. |
-| `CRON_SECRET` | reports | What Vercel sends on the scheduled call. Without it the reviewer only runs from the button. |
+| `CRON_SECRET` | schedules | What Vercel sends on the nightly call at `/api/cron`, which runs briefings and the reviewer. Without it neither runs on its own. |
 | `ANTHROPIC_API_KEY` | no | The deployment's own chat key. See the warning below before setting it. |
 | `OPENAI_API_KEY` / `GEMINI_API_KEY` | no | Same, for those providers. |
 | `ANTHROPIC_WORKSPACE_ID` | no | Only for an identity-linked Anthropic key, and only for the environment key above. |

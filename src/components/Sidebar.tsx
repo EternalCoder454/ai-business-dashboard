@@ -74,6 +74,12 @@ export const WORK_LINKS: NavLink[] = [
     icon: <MailIcon className="h-5 w-5" />,
   },
   {
+    href: "/briefings",
+    label: "Briefings",
+    short: "Briefs",
+    icon: <SparkIcon className="h-5 w-5" />,
+  },
+  {
     href: "/tasks",
     label: "Tasks",
     short: "Tasks",

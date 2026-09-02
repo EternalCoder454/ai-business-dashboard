@@ -698,3 +698,72 @@ export const idempotency = pgTable(
   },
   (table) => [index("idempotency_age_idx").on(table.createdAt)],
 );
+
+/**
+ * Something a business asks for on a rhythm rather than by remembering.
+ *
+ * Two of the shipped skills are called Weekly Priority Call and Monthly Books
+ * Check. Those are rhythms, and nothing ran them, so they happened twice and
+ * then never. A schedule is a question put to one head on a cadence, and the
+ * answer waits in the panel for whenever somebody next opens it.
+ *
+ * Cadence is stored as its parts rather than a cron string. Nobody setting up
+ * a weekly review should have to write `0 9 * * 1`, and the parts are what the
+ * screen asks for anyway.
+ */
+export const schedules = pgTable(
+  "schedules",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: workspace(),
+    /** What it is called on the screen. */
+    name: text("name").notNull(),
+    /** Which head answers it. */
+    departmentId: text("department_id").notNull(),
+    /** The question, in the owner's words. */
+    prompt: text("prompt").notNull(),
+    /** daily, weekly, or monthly. */
+    cadence: text("cadence").notNull().default("weekly"),
+    /** 0 is Sunday. Only read for a weekly cadence. */
+    weekday: integer("weekday").notNull().default(1),
+    /** 1 to 28, kept below 29 so every month has one. Monthly only. */
+    dayOfMonth: integer("day_of_month").notNull().default(1),
+    enabled: boolean("enabled").notNull().default(true),
+    createdBy: text("created_by").notNull(),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    createdAt: created(),
+    updatedAt: updated(),
+  },
+  (table) => [index("schedules_ws_idx").on(table.workspaceId, table.enabled)],
+);
+
+/**
+ * One answer a schedule produced.
+ *
+ * Kept rather than emailed, because the panel is already somewhere they sign
+ * in and an email is one more thing to unsubscribe from. Read state is per
+ * business rather than per person: a briefing is addressed to the business, and
+ * two administrators do not each need to dismiss it.
+ */
+export const briefings = pgTable(
+  "briefings",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: workspace(),
+    /** Null once the schedule that made it has been deleted. */
+    scheduleId: text("schedule_id"),
+    /** As the schedule was called when this ran. */
+    scheduleName: text("schedule_name").notNull().default(""),
+    departmentId: text("department_id").notNull(),
+    title: text("title").notNull(),
+    /** Markdown, the same as a deliverable, so it exports the same way. */
+    body: text("body").notNull().default(""),
+    /** Set when somebody in the business has opened it. */
+    readAt: timestamp("read_at", { withTimezone: true }),
+    /** What it cost, so a business can see what its rhythms are worth. */
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    createdAt: created(),
+  },
+  (table) => [index("briefings_ws_idx").on(table.workspaceId, table.createdAt)],
+);
