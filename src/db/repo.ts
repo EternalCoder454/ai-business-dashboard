@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
 import type { MutationOp, Workspace } from "@/lib/workspace";
@@ -45,6 +45,129 @@ function toAttachment(row: FileRow): Attachment {
   };
 }
 
+/**
+ * One stored row as the shape the interface uses.
+ *
+ * Exported because the endpoint that loads a conversation on demand needs the
+ * identical mapping. It was written out twice for a while, which is how the two
+ * come to disagree about a field nobody is looking at.
+ */
+export function toMessage(
+  row: typeof t.messages.$inferSelect,
+  filesById: Map<string, Attachment>,
+): Message {
+  return {
+    id: row.id,
+    role: row.role as Message["role"],
+    content: row.content,
+    thinking: row.thinking ?? undefined,
+    error: row.isError || undefined,
+    timestamp: row.sentAt,
+    authorEmail: row.authorEmail ?? undefined,
+    toolCalls: row.toolCalls ?? undefined,
+    model: row.model ?? undefined,
+    usage:
+      row.inputTokens || row.outputTokens || row.cacheReadTokens || row.cacheWriteTokens
+        ? {
+            input: row.inputTokens,
+            output: row.outputTokens,
+            cacheRead: row.cacheReadTokens,
+            cacheWrite: row.cacheWriteTokens,
+          }
+        : undefined,
+    attachments: row.attachmentIds.length
+      ? row.attachmentIds
+          .map((id) => filesById.get(id))
+          .filter((file): file is Attachment => Boolean(file))
+      : undefined,
+  };
+}
+
+/**
+ * One conversation's messages, which the snapshot deliberately does not carry.
+ *
+ * Lives here rather than in the route that serves it so that the repository is
+ * still the one place that knows how a stored row becomes a message, and so
+ * that a test can exercise it without standing up an HTTP server.
+ *
+ * `since` is the polling form: everything after a moment, in order. Without it
+ * this is the opening form, the newest window of the thread, and `hasMore` says
+ * whether anything sits above it.
+ */
+export async function loadConversationMessages(
+  workspaceId: string,
+  conversationId: string,
+  options: { since?: number; window?: number } = {},
+): Promise<{ messages: Message[]; hasMore: boolean }> {
+  const db = requireDb();
+  const window = options.window ?? 200;
+  const since = options.since;
+
+  const where = and(
+    eq(t.messages.workspaceId, workspaceId),
+    eq(t.messages.conversationId, conversationId),
+    since !== undefined ? gt(t.messages.sentAt, since) : undefined,
+  );
+
+  // Newest first when opening, so the end of a long thread costs the same as
+  // the end of a short one; oldest first when polling, which is already in
+  // order. One more than asked for answers "is there more above this" without
+  // a second count.
+  const rows =
+    since === undefined
+      ? (
+          await db
+            .select()
+            .from(t.messages)
+            .where(where)
+            .orderBy(desc(t.messages.sentAt))
+            .limit(window + 1)
+        ).reverse()
+      : await db
+          .select()
+          .from(t.messages)
+          .where(where)
+          .orderBy(asc(t.messages.sentAt))
+          .limit(window);
+
+  const hasMore = since === undefined && rows.length > window;
+  const kept = hasMore ? rows.slice(rows.length - window) : rows;
+
+  // Only the files these messages point at, and never their bytes.
+  const wanted = new Set(kept.flatMap((row) => row.attachmentIds));
+  const filesById = new Map<string, Attachment>();
+  if (wanted.size > 0) {
+    const files = await db
+      .select({
+        id: t.files.id,
+        kind: t.files.kind,
+        mediaType: t.files.mediaType,
+        name: t.files.name,
+        textContent: t.files.textContent,
+        width: t.files.width,
+        height: t.files.height,
+        size: t.files.size,
+      })
+      .from(t.files)
+      .where(eq(t.files.workspaceId, workspaceId));
+    for (const file of files) {
+      if (!wanted.has(file.id)) continue;
+      filesById.set(file.id, {
+        id: file.id,
+        kind: file.kind as Attachment["kind"],
+        mediaType: file.mediaType,
+        name: file.name,
+        text: file.textContent ?? undefined,
+        width: file.width,
+        height: file.height,
+        size: file.size,
+      });
+    }
+  }
+
+  return { messages: kept.map((row) => toMessage(row, filesById)), hasMore };
+}
+
 export async function loadWorkspace(workspaceId: string, email: string): Promise<Workspace> {
   const db = requireDb();
 
@@ -52,7 +175,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
     departmentRows,
     projectRows,
     conversationRows,
-    messageRows,
+    messageCountRows,
     skillRows,
     deliverableRows,
     memoryRows,
@@ -68,7 +191,23 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
     db.select().from(t.departments).where(eq(t.departments.workspaceId, workspaceId)).orderBy(asc(t.departments.sortOrder)),
     db.select().from(t.projects).where(eq(t.projects.workspaceId, workspaceId)).orderBy(desc(t.projects.updatedAt)),
     db.select().from(t.conversations).where(eq(t.conversations.workspaceId, workspaceId)).orderBy(desc(t.conversations.updatedAt)),
-    db.select().from(t.messages).where(eq(t.messages.workspaceId, workspaceId)).orderBy(asc(t.messages.sentAt)),
+    /*
+     * How many messages each conversation has, not what they say.
+     *
+     * This used to be every message body in the business, on every page load,
+     * for every page. Measured against the real database with 1,200 messages
+     * across 40 conversations it was 438 ms of a 557 ms load, and it grew with
+     * the history rather than staying flat, so it got worse the longer somebody
+     * used the product. The bodies arrive when a conversation is opened.
+     */
+    db
+      .select({
+        conversationId: t.messages.conversationId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(t.messages)
+      .where(eq(t.messages.workspaceId, workspaceId))
+      .groupBy(t.messages.conversationId),
     db.select().from(t.skills).where(eq(t.skills.workspaceId, workspaceId)).orderBy(desc(t.skills.updatedAt)),
     db.select().from(t.deliverables).where(eq(t.deliverables.workspaceId, workspaceId)).orderBy(desc(t.deliverables.updatedAt)),
     db.select().from(t.memory).where(eq(t.memory.workspaceId, workspaceId)).orderBy(desc(t.memory.occurredAt)),
@@ -144,36 +283,9 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
 
   const filesById = new Map(fileRows.map((row) => [row.id, toAttachment(row)]));
 
-  const messagesByConversation = new Map<string, Message[]>();
-  for (const row of messageRows) {
-    const list = messagesByConversation.get(row.conversationId) ?? [];
-    list.push({
-      id: row.id,
-      role: row.role as Message["role"],
-      content: row.content,
-      thinking: row.thinking ?? undefined,
-      error: row.isError || undefined,
-      timestamp: row.sentAt,
-      authorEmail: row.authorEmail ?? undefined,
-      toolCalls: row.toolCalls ?? undefined,
-      model: row.model ?? undefined,
-      usage:
-        row.inputTokens || row.outputTokens || row.cacheReadTokens || row.cacheWriteTokens
-          ? {
-              input: row.inputTokens,
-              output: row.outputTokens,
-              cacheRead: row.cacheReadTokens,
-              cacheWrite: row.cacheWriteTokens,
-            }
-          : undefined,
-      attachments: row.attachmentIds.length
-        ? row.attachmentIds
-            .map((id) => filesById.get(id))
-            .filter((file): file is Attachment => Boolean(file))
-        : undefined,
-    });
-    messagesByConversation.set(row.conversationId, list);
-  }
+  const countByConversation = new Map(
+    messageCountRows.map((row) => [row.conversationId, Number(row.count)]),
+  );
 
   const roundsByRun = new Map<string, AllHandsRun["rounds"]>();
   for (const row of roundRows) {
@@ -221,7 +333,8 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       departmentId: row.departmentId,
       projectId: row.projectId ?? undefined,
       title: row.title,
-      messages: messagesByConversation.get(row.id) ?? [],
+      messages: [],
+      messageCount: countByConversation.get(row.id) ?? 0,
       createdAt: ms(row.createdAt),
       updatedAt: ms(row.updatedAt),
     })),

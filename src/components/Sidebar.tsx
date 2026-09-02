@@ -244,7 +244,7 @@ export function SidebarContent({
     onNavigate?.();
   };
 
-  const recent = conversations.filter((c) => c.messages.length > 0).slice(0, 24);
+  const recent = conversations.filter((c) => c.messageCount > 0).slice(0, 24);
 
   return (
     <>

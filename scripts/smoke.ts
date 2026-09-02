@@ -11,7 +11,12 @@ import { and, eq } from "drizzle-orm";
 
 import { requireDb } from "../src/db/client";
 import * as schema from "../src/db/schema";
-import { applyMutations, isEmpty, loadWorkspace } from "../src/db/repo";
+import {
+  applyMutations,
+  isEmpty,
+  loadConversationMessages,
+  loadWorkspace,
+} from "../src/db/repo";
 import { seedDepartments } from "../src/lib/seed";
 import { seedSkills } from "../src/lib/seedSkills";
 import type { Conversation } from "../src/lib/types";
@@ -90,6 +95,7 @@ async function main() {
     id: "conv_smoke",
     departmentId: "design",
     title: "Sprite review",
+    messageCount: 2,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     messages: [
@@ -125,19 +131,33 @@ async function main() {
   const withConv = await loadWorkspace(USER, USER);
   const loaded = withConv.conversations.find((c) => c.id === "conv_smoke");
   check("conversation stored", Boolean(loaded));
+
+  /*
+   * The snapshot carries the count, not the bodies.
+   *
+   * This used to assert on `loaded.messages`, back when every message in the
+   * business came down on every page load. That is the thing the paging change
+   * removed, so the assertion moved with it: the count has to be right in the
+   * snapshot, and the bodies have to be right when the thread is opened.
+   */
+  check("the snapshot counts them", loaded?.messageCount === 2, String(loaded?.messageCount));
+  check("without carrying them", loaded?.messages.length === 0);
+
+  const opened = await loadConversationMessages(USER, "conv_smoke");
   check(
-    "messages come back in order",
-    loaded?.messages[0]?.id === "msg_smoke_1" && loaded?.messages[1]?.id === "msg_smoke_2",
+    "messages come back in order when opened",
+    opened.messages[0]?.id === "msg_smoke_1" && opened.messages[1]?.id === "msg_smoke_2",
   );
-  check("attachment rehydrated", loaded?.messages[0]?.attachments?.[0]?.name === "sprite.png");
+  check("and that is the whole thread", !opened.hasMore);
+  check("attachment rehydrated", opened.messages[0]?.attachments?.[0]?.name === "sprite.png");
   // Bytes deliberately do not travel with a message either. A conversation
   // full of screenshots used to re-download all of them on every page load;
   // they are fetched from /api/files when one is opened or re-sent.
   check(
     "attachment bytes stay out of the snapshot",
-    loaded?.messages[0]?.attachments?.[0]?.data === undefined,
+    (opened.messages[0]?.attachments?.[0] as { data?: string } | undefined)?.data === undefined,
   );
-  check("thinking survives", loaded?.messages[1]?.thinking === "checking readability");
+  check("thinking survives", opened.messages[1]?.thinking === "checking readability");
   check(
     "chat attachment stays out of the Library",
     !withConv.files.some((f) => f.id === "att_smoke_1"),
@@ -165,8 +185,10 @@ async function main() {
     },
   ]);
   const appended = await loadWorkspace(USER, USER);
-  const appendedCount = appended.conversations.find((c) => c.id === "conv_smoke")?.messages.length;
+  const appendedCount = appended.conversations.find((c) => c.id === "conv_smoke")?.messageCount;
   check("three messages, not five", appendedCount === 3, String(appendedCount));
+  const reopened = await loadConversationMessages(USER, "conv_smoke");
+  check("and three come back", reopened.messages.length === 3, String(reopened.messages.length));
 
   console.log("\nall hands round trip");
   await applyMutations(USER, USER, [

@@ -63,6 +63,7 @@ async function seed(email: string, title: string, body: string, withUsage = fals
           id: `conv_${email.split("@")[0]}`,
           departmentId: "ops",
           title,
+          messageCount: withUsage ? 2 : 2,
           messages: [
             { id: `m_${email}`, role: "user", content: body, timestamp: Date.now() },
             ...(withUsage
@@ -161,6 +162,7 @@ async function main() {
           departmentId: "ops",
           title: "Never used",
           messages: [],
+          messageCount: 0,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         },

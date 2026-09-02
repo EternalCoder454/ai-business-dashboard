@@ -112,6 +112,7 @@ console.log("\na write immediately after a create can see it");
     departmentId: "ceo",
     title: "New conversation",
     messages: [],
+    messageCount: 0,
     createdAt: 1,
     updatedAt: 1,
   };

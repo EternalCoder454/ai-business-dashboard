@@ -182,6 +182,13 @@ export interface StoreValue {
    * Pulls anything written to a shared conversation by someone else and merges
    * it in. Returns how many arrived, so a caller can decide whether to scroll.
    */
+  /**
+   * Loads one conversation's messages.
+   *
+   * The workspace snapshot carries counts rather than bodies, so a thread is
+   * empty until this is called. Calling it twice is free.
+   */
+  openConversation: (conversationId: string) => Promise<Message[]>;
   pullShared: (conversationId: string) => Promise<number>;
 
   createDeliverable: (input: Partial<Deliverable>) => Promise<Deliverable>;
@@ -704,6 +711,9 @@ export function StoreProvider({
           departmentId,
           title: title ?? "New conversation",
           messages: [],
+          messageCount: 0,
+          // Nothing to fetch, so it counts as fully loaded from the start.
+          loaded: true,
           createdAt: now,
           updatedAt: now,
         };
@@ -733,7 +743,13 @@ export function StoreProvider({
         await push({
           table: "conversations",
           action: "upsert",
-          rows: [{ ...current, messages, updatedAt: Date.now() }],
+          // The count travels with the messages. It is what every list reads to
+          // decide whether a thread has anything in it, so leaving it behind
+          // would make a conversation somebody just started look empty in the
+          // sidebar until the next reload.
+          rows: [
+            { ...current, messages, messageCount: messages.length, loaded: true, updatedAt: Date.now() },
+          ],
         });
       },
 
@@ -866,13 +882,67 @@ export function StoreProvider({
       },
 
 
+      /**
+       * Everything in a conversation, fetched when it is opened.
+       *
+       * The snapshot carries no message bodies, so this is what puts them on
+       * screen. Cached by the `loaded` flag: reopening a thread in the same
+       * session does not ask again, and a thread somebody else is typing in is
+       * kept current by `pullShared` rather than by refetching all of it.
+       */
+      openConversation: async (conversationId) => {
+        const current = remoteRef.current?.conversations.find((c) => c.id === conversationId);
+        if (!current) return [];
+        if (current.loaded) return current.messages;
+
+        const response = await fetch(
+          `/api/workspace/conversation?id=${encodeURIComponent(conversationId)}`,
+        );
+        if (!response.ok) return current.messages;
+        const body = (await response.json()) as {
+          messages: Message[];
+          complete?: boolean;
+        };
+
+        const latest = remoteRef.current?.conversations.find((c) => c.id === conversationId);
+        if (!latest) return [];
+
+        // Merged by id rather than replaced, so a message sent while this was
+        // in flight is not thrown away by the answer to a request that started
+        // before it existed.
+        const byId = new Map((body.messages ?? []).map((m) => [m.id, m]));
+        for (const message of latest.messages) byId.set(message.id, message);
+        const merged = [...byId.values()].sort((a, b) => a.timestamp - b.timestamp);
+
+        commitRemote(
+          applyOp(remoteRef.current!, {
+            table: "conversations",
+            action: "upsert",
+            rows: [
+              {
+                ...latest,
+                messages: merged,
+                messageCount: Math.max(latest.messageCount, merged.length),
+                loaded: body.complete !== false,
+              },
+            ],
+          }),
+        );
+
+        // Returned as well as stored, because the caller that matters most is
+        // the send path, and it holds a conversation from before this ran.
+        // Reading the store again from a stale closure would give it the empty
+        // one it started with.
+        return merged;
+      },
+
       pullShared: async (conversationId) => {
         const current = remoteRef.current?.conversations.find((c) => c.id === conversationId);
         if (!current) return 0;
 
         const since = current.messages.reduce((max, m) => Math.max(max, m.timestamp), 0);
         const response = await fetch(
-          `/api/projects/conversation?id=${encodeURIComponent(conversationId)}&since=${since}`,
+          `/api/workspace/conversation?id=${encodeURIComponent(conversationId)}&since=${since}`,
         );
         if (!response.ok) return 0;
 

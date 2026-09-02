@@ -175,6 +175,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     tasks,
     createTask,
     pullShared,
+    openConversation,
     skillsFor,
     profile,
     settings,
@@ -282,6 +283,18 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     return () => abortRef.current?.abort();
   }, []);
 
+  /*
+   * Fetch the thread the moment it is opened.
+   *
+   * The workspace snapshot carries counts rather than message bodies, so a
+   * conversation arrives empty and fills in here. `openConversation` returns
+   * immediately for one already loaded, so this runs on every render of a new
+   * id and does nothing on the rest.
+   */
+  useEffect(() => {
+    if (active?.id) void openConversation(active.id);
+  }, [active?.id, openConversation]);
+
   const messages = active?.messages ?? [];
 
   useLayoutEffect(() => {
@@ -341,7 +354,22 @@ export function ChatView({ departmentId }: { departmentId: string }) {
       attachments: pending.length ? pending : undefined,
     };
 
-    const history = [...conversation.messages, userMessage];
+    /*
+     * The thread has to be in hand before anything is sent.
+     *
+     * The snapshot carries no message bodies, so a conversation opened and
+     * typed into within the same second still has an empty `messages`. Building
+     * the history from that would send the model a question with no
+     * conversation behind it, and leave the screen looking like the thread had
+     * emptied itself. `openConversation` returns what it loaded rather than
+     * relying on this closure, which is holding the conversation from before it
+     * ran.
+     */
+    const prior = conversation.loaded
+      ? conversation.messages
+      : await openConversation(conversation.id);
+
+    const history = [...prior, userMessage];
 
     setDraft("");
     setPending([]);
@@ -353,7 +381,10 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     setDepartmentActivity(departmentId, "busy");
 
     await setMessages(conversation.id, history);
-    if (conversation.messages.length === 0) {
+    // The count, not what is loaded: a thread that has messages but has not
+    // been fetched yet is not a new one, and renaming it here would rename
+    // somebody's conversation out from under them.
+    if (conversation.messageCount === 0 && prior.length === 0) {
       await updateConversation(conversation.id, { title: deriveConversationTitle(text) });
     }
 
@@ -453,6 +484,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     active,
     createConversation,
     departmentId,
+    openConversation,
     router,
     setMessages,
     updateConversation,

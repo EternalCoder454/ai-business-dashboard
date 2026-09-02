@@ -266,8 +266,8 @@ src/
       v1/                 The developer API
       reports/            The conduct reviewer
   db/
-    schema.ts             22 tables. The source of truth for every type below it.
-    repo.ts               loadWorkspace and applyMutations
+    schema.ts             23 tables. The source of truth for every type below it.
+    repo.ts               loadWorkspace, loadConversationMessages, applyMutations
     tenancy.ts            membershipFor, and everything that decides who sees what
     apiKeys.ts            Bearer tokens, stored as hashes
   lib/

@@ -168,7 +168,7 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
   }
 
   for (const conversation of corpus.conversations) {
-    if (conversation.messages.length === 0) continue;
+    if (conversation.messageCount === 0) continue;
 
     const titleScore = scoreField(conversation.title, needle, 8);
     if (titleScore) {
@@ -182,23 +182,15 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
       });
     }
 
-    // The most recent matching message only. Ten hits from one thread would
-    // bury every other kind of result.
-    const hit = [...conversation.messages]
-      .reverse()
-      .find((message) => message.content.toLowerCase().includes(needle));
-
-    if (hit) {
-      results.push({
-        id: `msg:${hit.id}`,
-        kind: "message",
-        title: conversation.title,
-        subtitle: `${hit.role === "user" ? "You" : nameOf(conversation.departmentId)} · in conversation`,
-        snippet: snippetAround(hit.content, needle),
-        href: conversationHref(conversation.departmentId, conversation.id),
-        score: 3,
-      });
-    }
+    /*
+     * Message bodies are not here to search.
+     *
+     * They used to be, because the snapshot held every message in the business.
+     * It no longer does, and searching what happens to be loaded would be worse
+     * than not searching at all: the results would depend on which threads you
+     * had opened this session, and nothing would say so. `searchMessages` asks
+     * the server, and the palette merges those in when they arrive.
+     */
   }
 
   for (const run of corpus.allHandsRuns) {
@@ -260,4 +252,33 @@ export function groupResults(results: SearchResult[]): [ResultKind, SearchResult
   return order
     .map((kind) => [kind, results.filter((r) => r.kind === kind)] as [ResultKind, SearchResult[]])
     .filter(([, items]) => items.length > 0);
+}
+
+/**
+ * Message bodies, from the server.
+ *
+ * Separate from `search` above and deliberately async. Everything that answer
+ * covers is already in hand, so it can stay instant; this is the one kind of
+ * result that needs a query, and making the whole palette wait on a round trip
+ * to include it would make every keystroke feel worse to gain one row.
+ */
+export async function searchMessages(
+  query: string,
+  signal?: AbortSignal,
+): Promise<SearchResult[]> {
+  const needle = query.trim();
+  if (needle.length < 2) return [];
+
+  try {
+    const response = await fetch(
+      `/api/workspace/search?q=${encodeURIComponent(needle)}`,
+      { signal },
+    );
+    if (!response.ok) return [];
+    const body = (await response.json()) as { results?: SearchResult[] };
+    return body.results ?? [];
+  } catch {
+    // An aborted keystroke or a dropped connection. The local results stand.
+    return [];
+  }
 }

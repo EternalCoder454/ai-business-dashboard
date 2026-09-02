@@ -127,7 +127,7 @@ export function ReportsTab() {
               anyone who may be at risk. It does not look at business secrets, client
               information, or figures, and it does not judge tone. It reads on a
               schedule and raises what it finds here; acting on any of it is a
-              person's job, and every row is a prompt to go and look.
+              person&apos;s job, and every row is a prompt to go and look.
             </p>
             <p className="md-label-sm mt-2 text-on-variant/75">
               {enabled

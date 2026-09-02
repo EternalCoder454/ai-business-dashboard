@@ -182,8 +182,8 @@ export default function ProjectPage() {
                       >
                         <span className="md-body block truncate">{conversation.title}</span>
                         <span className="md-label-sm text-on-variant/75">
-                          {conversation.messages.length} message
-                          {conversation.messages.length === 1 ? "" : "s"} ·{" "}
+                          {conversation.messageCount} message
+                          {conversation.messageCount === 1 ? "" : "s"} ·{" "}
                           {formatRelativeTime(conversation.updatedAt)}
                         </span>
                       </Link>

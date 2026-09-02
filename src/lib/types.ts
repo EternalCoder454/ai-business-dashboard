@@ -125,7 +125,19 @@ export interface Conversation {
   /** The project this belongs to, when it belongs to one. */
   projectId?: string;
   title: string;
+  /**
+   * What has been fetched, not what exists.
+   *
+   * The workspace snapshot no longer carries message bodies: it used to load
+   * every message in the business on every page load, which was most of the
+   * time a page took and grew forever. A conversation's messages arrive when it
+   * is opened. `messageCount` is the real total either way, so a list can say
+   * whether a thread has anything in it without reading any of it.
+   */
   messages: Message[];
+  messageCount: number;
+  /** True once the messages above are the whole conversation. */
+  loaded?: boolean;
   createdAt: number;
   updatedAt: number;
 }

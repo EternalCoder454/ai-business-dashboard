@@ -8,6 +8,7 @@ import {
   search,
   type ResultKind,
   type SearchResult,
+  searchMessages,
 } from "@/lib/search";
 import { useStore } from "@/lib/store";
 import {
@@ -44,11 +45,41 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  const results = useMemo(
+  const local = useMemo(
     () =>
       search(query, { departments, conversations, skills, deliverables, projects, allHandsRuns }),
     [query, departments, conversations, skills, deliverables, projects, allHandsRuns],
   );
+
+  /*
+   * What was said, from the server, merged in when it arrives.
+   *
+   * Everything above is already in hand and stays instant. Message bodies are
+   * not in the snapshot any more, so they need a round trip, and making every
+   * keystroke wait on one to gain a handful of rows would be a bad trade. They
+   * appear a moment later instead, which is what a search feels like anyway.
+   *
+   * Each keystroke aborts the last request, so a fast typist does not get the
+   * answer to a query they have already replaced.
+   */
+  const [fromServer, setFromServer] = useState<SearchResult[]>([]);
+
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setFromServer([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void searchMessages(query, controller.signal).then(setFromServer);
+    }, 150);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
+
+  const results = useMemo(() => [...local, ...fromServer], [local, fromServer]);
 
   const grouped = useMemo(() => groupResults(results), [results]);
   // Flattened in display order, so the arrow keys walk what the eye sees.

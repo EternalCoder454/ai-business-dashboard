@@ -84,7 +84,7 @@ export function Dashboard() {
   const [now] = useState(() => Date.now());
 
   const activeProjects = projects.filter((p) => p.status === "active").length;
-  const threads = conversations.filter((c) => c.messages.length > 0).length;
+  const threads = conversations.filter((c) => c.messageCount > 0).length;
 
   return (
     <div className="page-x space-y-5 py-5">
@@ -188,7 +188,7 @@ export function Dashboard() {
           href="/ceo"
           empty="No conversations."
           items={conversations
-            .filter((c) => c.messages.length > 0)
+            .filter((c) => c.messageCount > 0)
             .slice(0, 4)
             .map((conversation) => ({
               key: conversation.id,

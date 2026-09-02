@@ -82,8 +82,8 @@ export default function InformationPage() {
   const storage = [
     { label: "Departments", value: allDepartments.length },
     { label: "Skills", value: skills.length },
-    { label: "Conversations", value: conversations.filter((c) => c.messages.length > 0).length },
-    { label: "Messages", value: conversations.reduce((n, c) => n + c.messages.length, 0) },
+    { label: "Conversations", value: conversations.filter((c) => c.messageCount > 0).length },
+    { label: "Messages", value: conversations.reduce((n, c) => n + c.messageCount, 0) },
     { label: "Deliverables", value: deliverables.length },
     { label: "Ask Everyone rounds", value: allHandsRuns.reduce((n, r) => n + r.rounds.length, 0) },
     { label: "Library files", value: files.length },
