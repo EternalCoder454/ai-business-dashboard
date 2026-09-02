@@ -202,7 +202,25 @@ const OLD_SCOPE_PREFIX = "Out of scope: ";
 const NEW_SCOPE_PREFIX =
   "Route these away only if they are asked for, in one line, then drop it. Never bring them up otherwise: ";
 
-export function StoreProvider({ children }: { children: ReactNode }) {
+/**
+ * What the server already knew about the business when it rendered the page.
+ *
+ * Only the identity, and only to stop the shell drawing the wrong one. The
+ * store still fetches the whole workspace a moment later and this is replaced
+ * by it; the point is that the first paint is not a lie.
+ */
+export interface InitialBranding {
+  name: string;
+  mark: string;
+}
+
+export function StoreProvider({
+  children,
+  initialBranding,
+}: {
+  children: ReactNode;
+  initialBranding?: InitialBranding | null;
+}) {
   const [seeded, setSeeded] = useState(false);
   const [mode, setMode] = useState<StorageMode>("resolving");
 
@@ -428,12 +446,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    * the screen shows" is assembled from "what the server said".
    */
   const settings: Settings = useMemo(() => {
-    const base = { ...DEFAULT_SETTINGS, ...(remote?.settings ?? {}) };
+    // The server's answer sits between the shipped defaults and the workspace
+    // proper, so the name on screen is right from the first frame instead of
+    // reading "Your Company" until the fetch lands.
+    const base = {
+      ...DEFAULT_SETTINGS,
+      ...(initialBranding
+        ? { companyName: initialBranding.name, companyMark: initialBranding.mark }
+        : {}),
+      ...(remote?.settings ?? {}),
+    };
     // Neither storage holds the credentials, so they are laid over the top from
     // this browser once read. Overlaying unconditionally is what lets an empty
     // key mean cleared rather than merely absent.
     return credentialsReady ? { ...base, ...credentials } : base;
-  }, [remote?.settings, credentials, credentialsReady]);
+  }, [remote?.settings, credentials, credentialsReady, initialBranding]);
 
   /**
    * Google supplies the name, avatar, and address on every sign in, so those

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { OPERATOR_EMAILS } from "./admin";
@@ -59,5 +59,59 @@ export async function loadBranding(): Promise<Branding> {
     };
   } catch {
     return FALLBACK_BRANDING;
+  }
+}
+
+/**
+ * The branding of the business the visitor themselves belongs to.
+ *
+ * Distinct from `loadBranding` above, which is deliberately the operator's and
+ * stands for the deployment on icons and link cards. This one is for the shell
+ * the signed-in person is about to look at.
+ *
+ * It exists to stop a flash of the wrong company. The store starts from
+ * DEFAULT_SETTINGS, whose name is "Your Company", and only learns the real one
+ * when /api/workspace answers — so every refresh showed somebody else's
+ * business name for a beat before their own appeared. The theme already has
+ * this exact treatment for the same reason.
+ *
+ * Returns null rather than the fallback when there is nothing to say, so the
+ * shell can render a placeholder instead of a name that is wrong.
+ */
+export async function loadViewerBranding(): Promise<Branding | null> {
+  if (!databaseEnabled) return null;
+
+  try {
+    const { auth, authEnabled } = await import("@/auth");
+    if (!authEnabled) return null;
+
+    const session = await auth();
+    const email = session?.user?.email?.toLowerCase();
+    if (!email) return null;
+
+    // One join rather than membershipFor followed by a settings read. This sits
+    // on the critical path of the HTML for every page in the app, so the second
+    // round trip is worth not making — both halves are single indexed rows.
+    const [row] = await requireDb()
+      .select({
+        name: t.settings.companyName,
+        mark: t.settings.companyMark,
+        logo: t.settings.companyLogoUrl,
+      })
+      .from(t.access)
+      .innerJoin(t.settings, eq(t.settings.workspaceId, t.access.workspaceId))
+      .where(and(eq(t.access.email, email), isNull(t.access.revokedAt)))
+      .limit(1);
+
+    if (!row?.name?.trim()) return null;
+    return {
+      name: row.name.trim(),
+      mark: row.mark?.trim().slice(0, 2).toUpperCase() || FALLBACK_BRANDING.mark,
+      logo: row.logo ?? null,
+    };
+  } catch {
+    // A name is not worth failing a page over. The store fills it in a moment
+    // later either way.
+    return null;
   }
 }
