@@ -231,7 +231,51 @@ export interface RunResult {
   workspaces: number;
   reviewed: number;
   raised: number;
+  /** Businesses whose pass failed, so one bad row does not hide the rest. */
+  failed: string[];
   skipped: string | null;
+}
+
+/**
+ * How many batches one business gets in a single pass.
+ *
+ * A cap rather than "until caught up", because this runs unattended on a
+ * schedule with a wall clock over it. A business that has been quiet for a
+ * month is worked through over consecutive runs instead of holding the whole
+ * pass, and everybody else still gets looked at today.
+ */
+const MAX_BATCHES = 5;
+
+/** Writes what one pass found, and moves the cursor to what it actually read. */
+async function record(
+  space: { id: string; name: string },
+  findings: Finding[],
+  through: number,
+): Promise<void> {
+  const database = requireDb();
+
+  if (findings.length > 0) {
+    await database.insert(t.reports).values(
+      findings.map((finding) => ({
+        id: randomUUID(),
+        workspaceId: space.id,
+        workspaceName: space.name,
+        source: finding.source,
+        sourceId: finding.sourceId,
+        authorEmail: finding.authorEmail,
+        category: finding.category,
+        severity: finding.severity,
+        reason: finding.reason,
+        quote: finding.quote,
+      })),
+    );
+  }
+
+  const values = { workspaceId: space.id, messagesThrough: through, lastRunAt: new Date() };
+  await database
+    .insert(t.reviewCursors)
+    .values(values)
+    .onConflictDoUpdate({ target: t.reviewCursors.workspaceId, set: values });
 }
 
 /**
@@ -240,10 +284,14 @@ export interface RunResult {
  * Sequential rather than parallel: this runs on a schedule with nobody waiting
  * for it, and a hosted database with a connection ceiling is a worse thing to
  * exhaust than a few seconds are to save.
+ *
+ * Each business is wrapped on its own. Unattended work that stops at the first
+ * error stops silently, and the businesses after the broken one would go
+ * unreviewed for as long as it stayed broken without anything saying so.
  */
 export async function runReview(): Promise<RunResult> {
   if (!reporterEnabled() || !db) {
-    return { workspaces: 0, reviewed: 0, raised: 0, skipped: "Not configured." };
+    return { workspaces: 0, reviewed: 0, raised: 0, failed: [], skipped: "Not configured." };
   }
 
   const spaces = await db
@@ -252,55 +300,40 @@ export async function runReview(): Promise<RunResult> {
 
   let reviewed = 0;
   let raised = 0;
+  const failed: string[] = [];
 
   for (const space of spaces) {
-    const [cursor] = await db
-      .select()
-      .from(t.reviewCursors)
-      .where(eq(t.reviewCursors.workspaceId, space.id))
-      .limit(1);
+    try {
+      const [cursor] = await db
+        .select()
+        .from(t.reviewCursors)
+        .where(eq(t.reviewCursors.workspaceId, space.id))
+        .limit(1);
 
-    const since = cursor?.messagesThrough ?? 0;
-    const batch = await unreviewed(space.id, since);
-    if (batch.length === 0) continue;
+      let since = cursor?.messagesThrough ?? 0;
 
-    reviewed += batch.length;
-    const findings = await review(batch);
+      for (let pass = 0; pass < MAX_BATCHES; pass += 1) {
+        const batch = await unreviewed(space.id, since);
+        if (batch.length === 0) break;
 
-    if (findings.length > 0) {
-      await requireDb()
-        .insert(t.reports)
-        .values(
-          findings.map((finding) => ({
-            id: randomUUID(),
-            workspaceId: space.id,
-            workspaceName: space.name,
-            source: finding.source,
-            sourceId: finding.sourceId,
-            authorEmail: finding.authorEmail,
-            category: finding.category,
-            severity: finding.severity,
-            reason: finding.reason,
-            quote: finding.quote,
-          })),
-        );
-      raised += findings.length;
+        reviewed += batch.length;
+        const findings = await review(batch);
+
+        // The cursor moves whether or not anything was raised, and only as far
+        // as the batch actually read, so nothing is skipped and nothing is
+        // read twice.
+        since = batch[batch.length - 1].sentAt;
+        await record(space, findings, since);
+        raised += findings.length;
+
+        // A short batch means that was everything there was.
+        if (batch.length < BATCH) break;
+      }
+    } catch (error) {
+      console.error(`[reporter] ${space.id} failed`, error);
+      failed.push(space.name || space.id);
     }
-
-    // The cursor moves whether or not anything was raised, and only as far as
-    // the batch actually read, so a business with more than one batch of new
-    // messages is caught up over consecutive runs rather than skipped.
-    const through = batch[batch.length - 1].sentAt;
-    const values = {
-      workspaceId: space.id,
-      messagesThrough: through,
-      lastRunAt: new Date(),
-    };
-    await requireDb()
-      .insert(t.reviewCursors)
-      .values(values)
-      .onConflictDoUpdate({ target: t.reviewCursors.workspaceId, set: values });
   }
 
-  return { workspaces: spaces.length, reviewed, raised, skipped: null };
+  return { workspaces: spaces.length, reviewed, raised, failed, skipped: null };
 }

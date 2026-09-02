@@ -41,7 +41,15 @@ export const config = {
      * a wrong URL. Every route under it calls `authorize` for itself, which is
      * a stricter gate than this one: it checks the key, the scope, and the
      * rate limit, where the proxy only checks that somebody is signed in.
+     *
+     * api/reports/run is excluded for the same reason and is worth naming
+     * separately, because the caller is a scheduler rather than a person and
+     * would never have reported the problem. Left in, the nightly pass was
+     * redirected to the sign-in page, Vercel recorded a 307 as a success, and
+     * the reviewer would have looked like it was running for as long as
+     * anybody cared to believe it. It checks its own bearer token in constant
+     * time and otherwise requires an operator session.
      */
-    "/((?!api/auth|api/v1|api/workspace/status|signin|_next/static|_next/image|icon|apple-icon|manifest.webmanifest|opengraph-image|twitter-image|robots.txt|favicon.ico).*)",
+    "/((?!api/auth|api/v1|api/reports/run|api/workspace/status|signin|_next/static|_next/image|icon|apple-icon|manifest.webmanifest|opengraph-image|twitter-image|robots.txt|favicon.ico).*)",
   ],
 };

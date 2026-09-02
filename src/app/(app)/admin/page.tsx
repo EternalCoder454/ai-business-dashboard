@@ -360,7 +360,10 @@ function presenceOf(member: {
   if (member.presence === "busy") return { label: "Do not disturb", tone: "busy" };
   if (member.presence === "away") return { label: "Away", tone: "off" };
   if (member.presence === "online") return { label: "Online", tone: "on" };
-  if (!member.lastSignedInAt) return { label: "Never signed in", tone: "off" };
+  // Either timestamp is proof they have been here. See the note in Your people.
+  if (!member.lastSignedInAt && !member.lastSeenAt) {
+    return { label: "Never signed in", tone: "off" };
+  }
   return Date.now() - (member.lastSeenAt ?? 0) < ACTIVE_WINDOW
     ? { label: "Online", tone: "on" }
     : { label: "Offline", tone: "off" };

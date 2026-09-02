@@ -84,7 +84,7 @@ export function ReportsTab() {
       });
       const body = (await response.json().catch(() => null)) as {
         error?: string;
-        result?: { workspaces: number; reviewed: number; raised: number };
+        result?: { workspaces: number; reviewed: number; raised: number; failed?: string[] };
       } | null;
       if (!response.ok) {
         setError(body?.error ?? "That pass did not run.");
@@ -95,7 +95,10 @@ export function ReportsTab() {
         result
           ? `Read ${result.reviewed} new message${result.reviewed === 1 ? "" : "s"} across ` +
             `${result.workspaces} business${result.workspaces === 1 ? "" : "es"}. ` +
-            `${result.raised === 0 ? "Nothing raised." : `${result.raised} raised.`}`
+            `${result.raised === 0 ? "Nothing raised." : `${result.raised} raised.`}` +
+            (result.failed?.length
+              ? ` Could not read: ${result.failed.join(", ")}.`
+              : "")
           : null,
       );
       await load();
@@ -122,16 +125,19 @@ export function ReportsTab() {
             <p className="md-body mt-1 text-on-variant">
               Reads internal messages for harassment, threats, fraud, malware, and
               anyone who may be at risk. It does not look at business secrets, client
-              information, or figures, and it does not judge tone. Nothing here happens
-              automatically. Every row is a prompt to go and look.
+              information, or figures, and it does not judge tone. It reads on a
+              schedule and raises what it finds here; acting on any of it is a
+              person's job, and every row is a prompt to go and look.
             </p>
             <p className="md-label-sm mt-2 text-on-variant/75">
-              {lastRunAt ? `Last pass ${formatRelativeTime(lastRunAt)}.` : "Never run."}
-              {enabled ? "" : " Needs ANTHROPIC_API_KEY on the deployment."}
+              {enabled
+                ? "Runs on its own once a day. "
+                : "Off. Needs REVIEWER_API_KEY on the deployment. "}
+              {lastRunAt ? `Last pass ${formatRelativeTime(lastRunAt)}.` : "Not run yet."}
             </p>
           </div>
           <Button disabled={running || !enabled} onClick={() => void run()}>
-            {running ? "Reading…" : "Run a pass"}
+            {running ? "Reading…" : "Run one now"}
           </Button>
         </div>
       </Card>

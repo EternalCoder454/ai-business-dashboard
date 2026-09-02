@@ -44,7 +44,13 @@ function presenceOf(member: Member): { label: string; tone: "on" | "busy" | "off
   if (member.presence === "busy") return { label: "Do not disturb", tone: "busy" };
   if (member.presence === "away") return { label: "Away", tone: "off" };
   if (member.presence === "online") return { label: "Online", tone: "on" };
-  if (!member.lastSignedInAt) return { label: "Not signed in yet", tone: "off" };
+  // Either timestamp is proof they have been here. lastSignedInAt is written
+  // by the OAuth callback, which does not fire while a session holds, so on its
+  // own it told people who were plainly using the panel that they had never
+  // arrived.
+  if (!member.lastSignedInAt && !member.lastSeenAt) {
+    return { label: "Not signed in yet", tone: "off" };
+  }
   const seen = member.lastSeenAt ?? 0;
   return Date.now() - seen < ACTIVE_WINDOW
     ? { label: "Online", tone: "on" }
@@ -258,11 +264,6 @@ export default function ManagePage() {
           </ul>
         )}
 
-        <p className="md-label-sm text-on-variant/75">
-          An administrator can add and remove people, change what they can do, and set
-          the model keys this business runs on. A member can use the panel and nothing
-          else.
-        </p>
       </div>
 
       <Dialog
@@ -294,10 +295,7 @@ export default function ManagePage() {
           </>
         }
       >
-        <Field
-          label="Their work email"
-          hint="They sign in with this Google account. There is no password to set."
-        >
+        <Field label="Their work email">
           <TextInput
             autoFocus
             type="email"

@@ -265,7 +265,7 @@ curl -X PATCH https://business.eterneon.net/api/v1/tasks/TASK_ID \\
           </>
         }
       >
-        <Field label="What is it for?" hint="So you can tell two keys apart later.">
+        <Field label="What is it for?">
           <TextInput
             autoFocus
             value={draftName}
@@ -273,7 +273,7 @@ curl -X PATCH https://business.eterneon.net/api/v1/tasks/TASK_ID \\
             onChange={(event) => setDraftName(event.target.value)}
           />
         </Field>
-        <Field label="What it can do" hint="Give it the least that does the job.">
+        <Field label="What it can do">
           <div className="filter-row">
             {scopes.map((scope) => {
               const on = draftScopes.includes(scope);

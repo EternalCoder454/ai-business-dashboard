@@ -55,11 +55,31 @@ function presenceOf(setting: string | null | undefined, lastSeen: Date | null | 
 
 /** Records that this person is here, for the dot beside their name. */
 export async function touchPresence(email: string): Promise<void> {
+  const who = normalise(email);
   try {
-    await requireDb()
+    const database = requireDb();
+    await database
       .update(t.accounts)
       .set({ lastSeenAt: new Date() })
-      .where(eq(t.accounts.userEmail, normalise(email)));
+      .where(eq(t.accounts.userEmail, who));
+
+    /*
+     * And the arrival, if nothing recorded one.
+     *
+     * `markSignedIn` runs in the OAuth callback, which fires when somebody
+     * completes a fresh sign in and never again while their session holds. So
+     * anybody signed in from before that code existed, or simply signed in for
+     * a long time, kept a null there, and the screens that read it told them to
+     * their face that they had never signed in. Whoever is sending this
+     * heartbeat is, self evidently, signed in.
+     *
+     * Only when it is null, so this stays a backfill and not a second
+     * timestamp competing with the real one.
+     */
+    await database
+      .update(t.access)
+      .set({ lastSignedInAt: new Date() })
+      .where(and(eq(t.access.email, who), isNull(t.access.lastSignedInAt)));
   } catch {
     // A missed heartbeat shows someone as offline for a minute. Not worth
     // failing the request that carried it.

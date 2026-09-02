@@ -78,6 +78,13 @@ does not judge tone, swearing, or disagreement. A report holds a category, a sen
 one short quote, not a copy of the conversation. It runs on the deployment's key, not the
 customer's. Nothing it finds acts on its own.
 
+It runs on its own, daily at 03:00 UTC, through the cron entry in `vercel.json`. Vercel
+calls `/api/reports/run` with `CRON_SECRET` as a bearer token; that route accepts nothing
+else except an operator with a session, so the same URL can be opened by hand. Daily is
+what every Vercel plan allows: on Pro, change the schedule to `0 * * * *` for hourly. Each
+business is reviewed on its own, so one that fails does not stop the rest, and it is named
+in the result rather than passed over in silence.
+
 > If you deploy this, tell your people it exists. Several jurisdictions require notice for
 > workplace monitoring, and it is the difference between a safety net and something that
 > feels like surveillance when it is discovered.
@@ -166,6 +173,7 @@ npm run dev
 | `RESEND_API_KEY` | invites | [Resend](https://resend.com). Without it access still works, because the row is what grants entry, but nobody is told. |
 | `INVITE_FROM` | invites | An address on a domain verified in Resend. Falls back to Resend's shared sender, which only delivers to the key's owner. |
 | `REVIEWER_API_KEY` | reports | What the conduct reviewer runs on. Unset, the feature is off and the screen says so. |
+| `CRON_SECRET` | reports | What Vercel sends on the scheduled call. Without it the reviewer only runs from the button. |
 | `ANTHROPIC_API_KEY` | no | The deployment's own chat key. See the warning below before setting it. |
 | `OPENAI_API_KEY` / `GEMINI_API_KEY` | no | Same, for those providers. |
 | `ANTHROPIC_WORKSPACE_ID` | no | Only for an identity-linked Anthropic key, and only for the environment key above. |
