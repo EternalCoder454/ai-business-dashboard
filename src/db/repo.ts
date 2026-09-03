@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
+import { forgetBlobs } from "./blobs";
 import type { MutationOp, Workspace } from "@/lib/workspace";
 import type {
   AllHandsRun,
@@ -30,7 +31,14 @@ const ms = (value: Date) => value.getTime();
  * to show at all.
  */
 /** Everything about a file except its bytes, which are fetched when opened. */
-type FileRow = Omit<typeof t.files.$inferSelect, "data">;
+/*
+ * Everything a client is allowed to know about a file.
+ *
+ * Neither the bytes nor where they are kept. The browser fetches a file through
+ * this app's own route, which checks the workspace first, so it has no use for
+ * the blob URL and a URL it never receives is one it cannot leak.
+ */
+type FileRow = Omit<typeof t.files.$inferSelect, "data" | "blobUrl">;
 
 function toAttachment(row: FileRow): Attachment {
   return {
@@ -529,6 +537,16 @@ export async function applyMutations(
   const db = requireDb();
   const now = new Date();
 
+  /*
+   * Blobs whose rows are about to go, cleared once the transaction has.
+   *
+   * Gathered inside and deleted outside on purpose. A store that is unreachable
+   * must not roll back a delete the person asked for, and a row gone with its
+   * bytes left behind is a smaller problem than a file somebody deleted coming
+   * back.
+   */
+  const orphaned: string[] = [];
+
   await db.transaction(async (tx) => {
     for (const op of ops) {
       switch (op.table) {
@@ -704,15 +722,20 @@ export async function applyMutations(
                 .where(and(eq(t.messages.workspaceId, workspaceId), inArray(t.messages.conversationId, op.ids)));
 
               if (attachmentIds.length) {
-                await tx
-                  .delete(t.files)
-                  .where(
-                    and(
-                      eq(t.files.workspaceId, workspaceId),
-                      eq(t.files.origin, "chat"),
-                      inArray(t.files.id, attachmentIds),
-                    ),
-                  );
+                const where = and(
+                  eq(t.files.workspaceId, workspaceId),
+                  eq(t.files.origin, "chat"),
+                  inArray(t.files.id, attachmentIds),
+                );
+                // Read where the bytes are before the rows that say so are
+                // gone. Deleted after the transaction, so a store that is having
+                // a bad day cannot roll back a delete somebody asked for.
+                orphaned.push(
+                  ...(await tx.select({ url: t.files.blobUrl }).from(t.files).where(where)).map(
+                    (row) => row.url,
+                  ),
+                );
+                await tx.delete(t.files).where(where);
               }
 
               await tx
@@ -751,6 +774,7 @@ export async function applyMutations(
                   // Empty only when the client never had the bytes, which means
                   // the row already exists; the insert below leaves it alone.
                   data: attachment.data ?? "",
+                  blobUrl: attachment.blobUrl ?? "",
                   textContent: attachment.text ?? null,
                   width: attachment.width,
                   height: attachment.height,
@@ -968,9 +992,16 @@ export async function applyMutations(
         case "files": {
           if (op.action === "delete") {
             if (op.ids.length) {
-              await tx
-                .delete(t.files)
-                .where(and(eq(t.files.workspaceId, workspaceId), inArray(t.files.id, op.ids)));
+              const where = and(
+                eq(t.files.workspaceId, workspaceId),
+                inArray(t.files.id, op.ids),
+              );
+              orphaned.push(
+                ...(await tx.select({ url: t.files.blobUrl }).from(t.files).where(where)).map(
+                  (row) => row.url,
+                ),
+              );
+              await tx.delete(t.files).where(where);
             }
             break;
           }
@@ -1163,6 +1194,9 @@ export async function applyMutations(
       }
     }
   });
+
+  // After the rows, and never in a way that can fail the write.
+  await forgetBlobs(orphaned);
 }
 
 /** True when the account has never been written to, so it needs seeding or an import. */

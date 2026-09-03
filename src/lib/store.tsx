@@ -39,6 +39,7 @@ import { memoryFor as liveMemoryFor } from "./memory";
 import { skillReconciliation, writingRulesReplaceable } from "./shippedSkills";
 import { seedSkills } from "./seedSkills";
 import { seedWikiPages } from "./seedWiki";
+import { toBlob } from "./blobUpload";
 import { report } from "./telemetryClient";
 import type {
   AllHandsRun,
@@ -961,6 +962,9 @@ export function StoreProvider({
       },
 
       addFile: async (file) => {
+        // The bytes go to the store first, so the row carries a location rather
+        // than a third of a megabyte of base64.
+        file = { ...file, ...(await toBlob(file)) };
         await push({ table: "files", action: "upsert", rows: [file] });
       },
 

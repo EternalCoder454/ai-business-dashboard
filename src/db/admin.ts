@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
+import { forgetBlobs } from "./blobs";
 import type { Message } from "@/lib/types";
 
 /**
@@ -508,6 +509,10 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
   const db = requireDb();
   const owner = workspaceId.toLowerCase();
 
+  // Cleared after the transaction. A store having a bad day must not stop a
+  // business being deleted when somebody asked for it to be.
+  const blobs: string[] = [];
+
   /*
    * Everything, and the list is checked against the schema rather than
    * remembered.
@@ -531,6 +536,15 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
     await tx.delete(t.allHandsRuns).where(eq(t.allHandsRuns.workspaceId, owner));
     await tx.delete(t.deliverables).where(eq(t.deliverables.workspaceId, owner));
     await tx.delete(t.projects).where(eq(t.projects.workspaceId, owner));
+    // Where this business kept its bytes, read before the rows that say so go.
+    blobs.push(
+      ...(
+        await tx
+          .select({ url: t.files.blobUrl })
+          .from(t.files)
+          .where(eq(t.files.workspaceId, owner))
+      ).map((row) => row.url),
+    );
     await tx.delete(t.files).where(eq(t.files.workspaceId, owner));
     await tx.delete(t.skills).where(eq(t.skills.workspaceId, owner));
     await tx.delete(t.tasks).where(eq(t.tasks.workspaceId, owner));
@@ -578,5 +592,9 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
      * then takes the workspace row itself.
      */
   });
+
+  // After the rows. A business deleted with its files left in the store would
+  // be paying for a company that no longer exists.
+  await forgetBlobs(blobs);
 }
 

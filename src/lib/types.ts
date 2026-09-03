@@ -34,6 +34,15 @@ export interface Attachment {
   height: number;
   /** Original byte size, before base64. */
   size?: number;
+  /**
+   * Where the bytes are, when they are not in the row.
+   *
+   * Set by the client after it uploads, and read by the server when it
+   * writes the row. It goes no further than that: the workspace snapshot
+   * never carries it, because the browser fetches files through this app's
+   * own route and a URL it never receives is one it cannot leak.
+   */
+  blobUrl?: string;
 }
 
 /** A file kept in the Library, reusable across conversations. */

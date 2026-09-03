@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ConversationList } from "./ConversationList";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { HeadProfile } from "./HeadProfile";
+import { allToBlob } from "@/lib/blobUpload";
 import { useRouter, useSearchParams } from "next/navigation";
 import { setConversationOpen, showsConversationList } from "@/lib/chatRoute";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -424,12 +425,23 @@ export function ChatView({ departmentId }: { departmentId: string }) {
       router.replace(conversationHref(departmentId, conversation.id));
     }
 
+    /*
+     * Attachments go to the blob store on send, not on pick.
+     *
+     * Something attached and then removed before sending never reaches the
+     * store, which is the difference between paying for what people sent and
+     * paying for what they considered sending. The bytes are still in memory
+     * here either way, so the model gets them from the same place it always
+     * did.
+     */
+    const attached = pending.length ? await allToBlob(pending) : [];
+
     const userMessage: Message = {
       id: newId("msg"),
       role: "user",
       content: text,
       timestamp: Date.now(),
-      attachments: pending.length ? pending : undefined,
+      attachments: attached.length ? attached : undefined,
     };
 
     /*

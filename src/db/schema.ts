@@ -217,7 +217,21 @@ export const files = pgTable(
     kind: text("kind").notNull(),
     mediaType: text("media_type").notNull(),
     name: text("name").notNull(),
-    /** Base64 for images and PDFs, empty for documents. */
+    /**
+     * Where the bytes live, when they live outside the database.
+     *
+     * A fifteen megabyte PDF became twenty megabytes of base64 in a row, so the
+     * database was a blob store: backups, restores and storage all priced as
+     * though a scanned tax return were a business record. It is a URL now, and
+     * the bytes are served through this app rather than from it.
+     *
+     * `data` stays for two reasons. A deployment with no blob store configured
+     * still works exactly as it did, which is what makes this safe to ship
+     * before the store exists. And a row written before the change still has
+     * its bytes where it left them.
+     */
+    blobUrl: text("blob_url").notNull().default(""),
+    /** Base64, for a row written before there was anywhere else to put it. */
     data: text("data").notNull().default(""),
     /** Extracted text for documents the API cannot read directly. */
     textContent: text("text_content"),
