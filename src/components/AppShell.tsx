@@ -13,6 +13,7 @@ import { CompanyMark } from "./CompanyMark";
 import { ProfileMenu } from "./ProfileMenu";
 import { LoadFailed } from "./LoadFailed";
 import { NoWorkspace } from "./NoWorkspace";
+import { Setup } from "./Setup";
 import { WriteError } from "./WriteError";
 import { setNavCollapsed, useNavCollapsed } from "@/lib/navCollapsed";
 import { ChevronIcon, CloseIcon, NavBadge, cx } from "./ui";
@@ -160,6 +161,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* Before LoadFailed in importance, and after it in the tree only
             because neither can be showing at once. */}
         <NoWorkspace />
+        {/* Last, so it sits over everything. It only appears for an
+            administrator of a business nobody has filled in yet. */}
+        <Setup />
         {isConversation ? null : (
           <BottomBar pathname={pathname} onOpenDrawer={() => setDrawerOpen(true)} />
         )}
