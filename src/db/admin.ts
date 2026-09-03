@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
 import type { Message } from "@/lib/types";
@@ -64,6 +64,32 @@ export interface AdminOverview {
   /** Base64 attachment bytes held in the database, which is what grows. */
   storageBytes: number;
   usage: AdminUsage;
+  /**
+   * The things somebody has to do something about, as opposed to the things
+   * that are merely true. Everything above is a total that goes up on its own;
+   * these are the ones with a person waiting at the end of them.
+   */
+  waiting: {
+    reports: number;
+    urgentReports: number;
+    feedback: number;
+    /** The last nightly tick, so an absence is visible rather than silent. */
+    cronAt: number | null;
+  };
+  /** The last day of behaviour, which is the question "is it working now". */
+  health: {
+    calls: number;
+    errors: number;
+    refused: number;
+    slow: number;
+  };
+  businesses: {
+    total: number;
+    /** Somebody sent something in the last week. */
+    active: number;
+    /** Nothing in a month, which is the shape of a customer leaving. */
+    quiet: number;
+  };
 }
 
 const NO_USAGE: AdminUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
@@ -347,6 +373,55 @@ export async function overview(): Promise<AdminOverview> {
 
   const accounts = await db.select({ n: count }).from(t.accounts);
 
+  const now = Date.now();
+  const day = now - 86_400_000;
+  const week = now - 7 * 86_400_000;
+  const month = now - 30 * 86_400_000;
+
+  /*
+   * The second half: what needs a person, and whether it is working.
+   *
+   * Separate from the totals above because they answer different questions. A
+   * count of conversations tells you how big this is; an open report tells you
+   * somebody is waiting. The screen leads with the second kind.
+   */
+  // tenancy-audit: across every business, which is what an operator's overview
+  // is, and the route above is gated on isOperator.
+  const [openReports, urgentReports, newFeedback, tick, day1, spaces, lively] =
+    await Promise.all([
+      db.select({ n: count }).from(t.reports).where(eq(t.reports.status, "new")),
+      db
+        .select({ n: count })
+        .from(t.reports)
+        .where(and(eq(t.reports.status, "new"), eq(t.reports.severity, "high"))),
+      db.select({ n: count }).from(t.feedback).where(eq(t.feedback.status, "new")),
+      db
+        .select({ at: sql<number>`max(${t.telemetry.bucket})::bigint` })
+        .from(t.telemetry)
+        .where(eq(t.telemetry.operation, "cron.tick")),
+      db
+        .select({
+          calls: sql<number>`coalesce(sum(${t.telemetry.calls}), 0)::int`,
+          errors: sql<number>`coalesce(sum(${t.telemetry.errors}), 0)::int`,
+          refused: sql<number>`coalesce(sum(${t.telemetry.refused}), 0)::int`,
+          slow: sql<number>`coalesce(sum(${t.telemetry.slow}), 0)::int`,
+        })
+        .from(t.telemetry)
+        .where(gte(t.telemetry.bucket, day)),
+      db.select({ n: count }).from(t.workspaces),
+      // One row per business that has said anything, with when it last did.
+      db
+        .select({
+          ws: t.messages.workspaceId,
+          at: sql<number>`max(${t.messages.sentAt})::bigint`,
+        })
+        .from(t.messages)
+        .groupBy(t.messages.workspaceId),
+    ]);
+
+  const lastSpoke = lively.map((row) => Number(row.at));
+  const total = Number(spaces[0]?.n ?? 0);
+
   return {
     people: Number(people[0]?.n ?? 0),
     signedIn: Number(accounts[0]?.n ?? 0),
@@ -357,6 +432,25 @@ export async function overview(): Promise<AdminOverview> {
     files: Number(files[0]?.n ?? 0),
     // Base64 is four characters for every three bytes.
     storageBytes: Math.round(Number(files[0]?.bytes ?? 0) * 0.75),
+    waiting: {
+      reports: Number(openReports[0]?.n ?? 0),
+      urgentReports: Number(urgentReports[0]?.n ?? 0),
+      feedback: Number(newFeedback[0]?.n ?? 0),
+      cronAt: tick[0]?.at == null ? null : Number(tick[0].at),
+    },
+    health: {
+      calls: Number(day1[0]?.calls ?? 0),
+      errors: Number(day1[0]?.errors ?? 0),
+      refused: Number(day1[0]?.refused ?? 0),
+      slow: Number(day1[0]?.slow ?? 0),
+    },
+    businesses: {
+      total,
+      active: lastSpoke.filter((at) => at >= week).length,
+      // A business that has never said anything counts as quiet: it is the
+      // same problem as one that stopped, and arguably a worse one.
+      quiet: total - lastSpoke.filter((at) => at >= month).length,
+    },
     usage: {
       input: Number(usage[0]?.input ?? 0),
       output: Number(usage[0]?.output ?? 0),

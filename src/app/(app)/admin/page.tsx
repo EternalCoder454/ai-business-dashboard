@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { BusinessesTab, type WorkspaceRow } from "@/components/BusinessesTab";
 import { FeedbackTab } from "@/components/FeedbackTab";
 import { ReportsTab } from "@/components/ReportsTab";
+import { OperatorOverview } from "@/components/OperatorOverview";
 import { TelemetryTab } from "@/components/TelemetryTab";
 import { UsageTab } from "@/components/UsageTab";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -77,14 +78,24 @@ interface Thread {
  * Deriving the union from the row means a tab that exists is a tab you can
  * reach.
  */
+/*
+ * Overview first, because it is the one that says whether anything needs doing
+ * and the rest are where you go once it does. It used to sit fifth, behind
+ * three lists and a queue, which is a table of contents in the order the
+ * screens happened to be written.
+ *
+ * After it: the two that have somebody waiting, then the two that answer how it
+ * is behaving, then the two that are lists of people, then access, which is
+ * opened deliberately or not at all.
+ */
 const TABS = [
-  "businesses",
-  "clients",
+  "overview",
   "reports",
   "feedback",
-  "overview",
   "health",
   "usage",
+  "businesses",
+  "clients",
   "access",
 ] as const;
 
@@ -271,7 +282,7 @@ export default function AdminPage() {
 
         {tab === "feedback" ? <FeedbackTab /> : null}
 
-        {tab === "overview" ? <OverviewTab overview={overview} /> : null}
+        {tab === "overview" ? <OperatorOverview overview={overview} /> : null}
 
         {tab === "access" ? (
           <AccessTab access={access} people={people ?? []} />
@@ -314,51 +325,6 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
       <p className="md-headline mt-1">{value}</p>
       {hint ? <p className="md-label-sm mt-0.5 text-on-variant/75">{hint}</p> : null}
     </Card>
-  );
-}
-
-function OverviewTab({ overview }: { overview: Overview | null }) {
-  if (!overview) return null;
-  const u = overview.usage;
-  const totalIn = u.input + u.cacheRead + u.cacheWrite;
-
-  return (
-    <div className="measure flex flex-col gap-5">
-      <div className="stagger grid grid-cols-1 gap-3 medium:grid-cols-3">
-        <Stat label="Accounts" value={String(overview.signedIn)} hint={`${overview.people} with a workspace`} />
-        <Stat label="Conversations" value={compact(overview.conversations)} hint={`${compact(overview.messages)} messages`} />
-        <Stat label="Attachments" value={compact(overview.files)} hint={bytes(overview.storageBytes)} />
-        <Stat label="Deliverables" value={compact(overview.deliverables)} />
-        <Stat label="Projects" value={compact(overview.projects)} />
-        <Stat label="Output tokens" value={compact(u.output)} />
-      </div>
-
-      <Card>
-        <h2 className="md-title-lg mb-1">Tokens</h2>
-        <p className="md-body mb-4 text-on-variant">
-          Recorded since usage tracking began. Billing is in the Anthropic console.
-        </p>
-        <dl className="grid grid-cols-1 gap-3 medium:grid-cols-4">
-          {[
-            ["Input, new", u.input],
-            ["Input, cached", u.cacheRead],
-            ["Cache writes", u.cacheWrite],
-            ["Output", u.output],
-          ].map(([label, value]) => (
-            <div key={String(label)}>
-              <dt className="md-label-sm text-on-variant">{label}</dt>
-              <dd className="md-title mt-0.5">{compact(Number(value))}</dd>
-            </div>
-          ))}
-        </dl>
-        {totalIn > 0 ? (
-          <p className="md-label-sm mt-4 text-on-variant/75">
-            {Math.round((u.cacheRead / totalIn) * 100)} per cent of input tokens were
-            served from cache, at roughly a tenth of the price of new ones.
-          </p>
-        ) : null}
-      </Card>
-    </div>
   );
 }
 
