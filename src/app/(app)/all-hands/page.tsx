@@ -70,6 +70,30 @@ export default function AllHandsPage() {
   const abortRef = useRef<AbortController | null>(null);
   const feedRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  /*
+   * Who is being asked, held as who is left out rather than who is in.
+   *
+   * Everyone by default, and a head added to the business later joins the room
+   * without anybody having to remember to tick it. Kept per visit rather than
+   * saved: a room picked for one question is rarely the room for the next, and
+   * a selection that quietly persists is one somebody sends a question to the
+   * wrong half of the company with.
+   */
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
+
+  const asking = useMemo(
+    () => departments.filter((d) => !excluded.has(d.id)),
+    [departments, excluded],
+  );
+
+  const toggle = (id: string) =>
+    setExcluded((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const stickToBottom = useRef(true);
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -89,6 +113,20 @@ export default function AllHandsPage() {
   );
 
   const currentRound = thread?.rounds[thread.rounds.length - 1];
+
+  /*
+   * Who the two roster panels show.
+   *
+   * The round that happened, when there is one, rather than every head in the
+   * company. Both panels used to list everybody and mark anyone without a
+   * response as idle, which after the room became something you choose read as
+   * four heads permanently thinking about a question nobody asked them.
+   */
+  const room = useMemo(() => {
+    if (!currentRound) return asking;
+    const present = new Set(currentRound.responses.map((r) => r.departmentId));
+    return departments.filter((d) => present.has(d.id));
+  }, [currentRound, departments, asking]);
   const answeredCount = currentRound
     ? currentRound.responses.filter((r) => !r.pending).length
     : 0;
@@ -101,7 +139,7 @@ export default function AllHandsPage() {
 
   const ask = async (startNew: boolean) => {
     const text = question.trim();
-    if (!text || running || departments.length === 0) return;
+    if (!text || running || asking.length === 0) return;
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -112,7 +150,7 @@ export default function AllHandsPage() {
     const finished = await runAllHandsRound({
       run: startNew || composingNew ? undefined : thread,
       question: text,
-      departments,
+      departments: asking,
       ceo,
       profile,
       settings,
@@ -245,7 +283,7 @@ export default function AllHandsPage() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {thread ? (
             <div className="flex flex-none gap-1.5 overflow-x-auto border-b border-outline-variant px-4 py-2 large:hidden">
-              {departments.map((department) => {
+              {room.map((department) => {
                 const response = currentRound?.responses.find(
                   (r) => r.departmentId === department.id,
                 );
@@ -287,7 +325,7 @@ export default function AllHandsPage() {
         >
           <div className="measure-read flex flex-col gap-5">
             {!thread ? (
-              <Opening departments={departments} ceoName={ceo?.personaName} />
+              <Opening departments={asking} ceoName={ceo?.personaName} />
             ) : (
               thread.rounds.map((round) => (
                 <div key={round.id} className="flex flex-col gap-4">
@@ -334,7 +372,7 @@ export default function AllHandsPage() {
         <aside className="hidden w-[13.75rem] flex-none flex-col border-l border-outline-variant bg-low large:flex">
           <p className="md-label-sm px-4 pb-1 pt-4 text-on-variant/70">In the room</p>
           <ul className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-            {departments.map((department) => {
+            {room.map((department) => {
               const response = currentRound?.responses.find(
                 (r) => r.departmentId === department.id,
               );
@@ -402,6 +440,60 @@ export default function AllHandsPage() {
             />
           ) : null}
 
+          {/*
+            * Who is in the room, above the box you type in.
+            *
+            * A question about pricing does not need Legal, Social and the
+            * Engineering head each spending a call to say it is not their area.
+            * Turning them off is the difference between a room and a mailing
+            * list, and on a bring your own key panel it is also the customer's
+            * own money.
+            *
+            * Off rather than removed: a head switched off stays on screen, so
+            * the room you are about to ask is always the whole company with
+            * some of it dimmed, rather than a list you have to remember what
+            * is missing from.
+            */}
+          {!running && departments.length > 1 ? (
+            <div className="mb-2 flex flex-wrap items-center gap-1.5">
+              {departments.map((department) => {
+                const inRoom = !excluded.has(department.id);
+                return (
+                  <button
+                    key={department.id}
+                    type="button"
+                    aria-pressed={inRoom}
+                    title={`${department.personaName || department.name}, ${department.roleTitle}`}
+                    onClick={() => toggle(department.id)}
+                    className={cx(
+                      "md-state flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 transition-colors",
+                      inRoom
+                        ? "border-primary/40 bg-primary/10 text-on-surface"
+                        : "border-outline-variant text-on-variant/60",
+                    )}
+                  >
+                    <span className={cx(!inRoom && "opacity-40")}>
+                      <DepartmentAvatar department={department} size={22} />
+                    </span>
+                    <span className="md-label-sm">
+                      {department.personaName || department.name}
+                    </span>
+                  </button>
+                );
+              })}
+
+              {excluded.size > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setExcluded(new Set())}
+                  className="md-state md-label-sm rounded-full px-2.5 py-1 text-primary"
+                >
+                  Everyone
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-lowest py-2 pl-4 pr-2 transition-colors focus-within:border-primary">
             <textarea
               ref={inputRef}
@@ -435,10 +527,14 @@ export default function AllHandsPage() {
             ) : (
               <Button
                 className="flex-none"
-                disabled={!question.trim() || departments.length === 0}
+                disabled={!question.trim() || asking.length === 0}
                 onClick={() => void ask(false)}
               >
-                {thread ? "Ask again" : "Ask everyone"}
+                {thread
+                  ? "Ask again"
+                  : asking.length === departments.length
+                    ? "Ask everyone"
+                    : `Ask ${asking.length}`}
               </Button>
             )}
           </div>
