@@ -14,6 +14,12 @@ export interface ChangelogEntry {
 /** Newest first, which is the order the screen shows them in. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "id": "1a23338",
+    "date": "2026-09-03",
+    "title": "Count rate limits in Postgres, check every request body, and add a Changelog",
+    "detail": "Rate limiting was a Map in the process. On a platform that runs as many instances as it likes that meant the real ceiling was the limit times however many were up, and instances go up under load, so it loosened exactly when it was meant to hold. Sixteen routes relied on it, including the ones that spend money."
+  },
+  {
     "id": "1fef674",
     "date": "2026-09-03",
     "title": "Give each person their own set of permissions, and fix the mobile panel",
@@ -886,4 +892,4 @@ export const CHANGELOG: ChangelogEntry[] = [
 ];
 
 /** What the newest entry is, for deciding whether somebody has seen it. */
-export const LATEST = "1fef674";
+export const LATEST = "1a23338";
