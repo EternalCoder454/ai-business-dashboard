@@ -10,12 +10,14 @@ import {
   EmptyState,
   Field,
   PlusIcon,
+  PolicyIcon,
   Select,
   TextInput,
   TrashIcon,
   UsersIcon,
   cx,
 } from "@/components/ui";
+import { ReportsTab } from "@/components/ReportsTab";
 import { useStore } from "@/lib/store";
 import { formatRelativeTime } from "@/lib/routes";
 
@@ -68,6 +70,7 @@ function presenceOf(member: Member): { label: string; tone: "on" | "busy" | "off
  */
 export default function ManagePage() {
   const { workspaceRole, settings } = useStore();
+  const [tab, setTab] = useState<"people" | "reports">("people");
 
   const [members, setMembers] = useState<Member[] | null>(null);
   const [you, setYou] = useState("");
@@ -157,15 +160,49 @@ export default function ManagePage() {
     <>
       <PageHeader
         eyebrow={settings.companyName}
-        title="Your people"
+        title={tab === "people" ? "Your people" : "Reports"}
         actions={
-          <Button onClick={() => setInviting(true)}>
-            <PlusIcon className="h-4 w-4" />
-            Add somebody
-          </Button>
+          tab === "people" ? (
+            <Button onClick={() => setInviting(true)}>
+              <PlusIcon className="h-4 w-4" />
+              Add somebody
+            </Button>
+          ) : undefined
         }
       />
 
+      {/*
+        * Two tabs rather than a second screen in the navigation.
+        *
+        * Both of these are the same job: looking after the people in this
+        * business. Reports are about the same names that are on the other tab,
+        * and a separate entry in the sidebar would put conduct next to Tasks
+        * for everyone who is not an administrator and cannot open it anyway.
+        */}
+      <div className="flex flex-none items-center gap-2 border-b border-outline-variant px-4 py-3 sm:px-6">
+        {(["people", "reports"] as const).map((key) => (
+          <Chip
+            key={key}
+            selected={tab === key}
+            onClick={() => setTab(key)}
+          >
+            <span className="flex items-center gap-1.5">
+              {key === "people" ? (
+                <UsersIcon className="h-4 w-4" />
+              ) : (
+                <PolicyIcon className="h-4 w-4" />
+              )}
+              {key === "people" ? "People" : "Reports"}
+            </span>
+          </Chip>
+        ))}
+      </div>
+
+      {tab === "reports" ? (
+        <div className="measure p-4 sm:p-6">
+          <ReportsTab />
+        </div>
+      ) : (
       <div className="measure flex flex-col gap-4 p-4 sm:p-6">
         {error ? <p className="md-label text-error">{error}</p> : null}
         {notice ? <p className="md-label text-primary">{notice}</p> : null}
@@ -265,6 +302,7 @@ export default function ManagePage() {
         )}
 
       </div>
+      )}
 
       <Dialog
         open={inviting}

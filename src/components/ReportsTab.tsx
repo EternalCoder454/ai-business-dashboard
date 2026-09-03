@@ -45,6 +45,14 @@ export function ReportsTab() {
   const [running, setRunning] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
 
+  /*
+   * Whether this is the operator looking across businesses or an administrator
+   * looking at their own. Worked out from the rows rather than passed in,
+   * because the route already decides which rows the caller may see and a prop
+   * would be a second place for the two to disagree.
+   */
+  const manyBusinesses = new Set((rows ?? []).map((row) => row.workspaceName)).size > 1;
+
   const load = useCallback(async () => {
     try {
       const response = await fetch("/api/reports");
@@ -173,7 +181,13 @@ export function ReportsTab() {
                     {CATEGORY_LABEL[row.category] ?? row.category}
                   </Chip>
                   <span className="md-label-sm text-on-variant/75">{row.severity}</span>
-                  <span className="md-title truncate">{row.workspaceName}</span>
+                  {/* Only where there is more than one business to tell
+                      apart. On an administrator's own screen every row is the
+                      same name, which is a column of their own company name
+                      repeated down the page. */}
+                  {manyBusinesses ? (
+                    <span className="md-title truncate">{row.workspaceName}</span>
+                  ) : null}
                   <span className="md-label-sm text-on-variant/75">
                     {formatRelativeTime(row.createdAt)}
                   </span>

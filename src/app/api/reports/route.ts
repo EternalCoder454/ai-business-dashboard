@@ -1,7 +1,8 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
+import { membershipFor } from "@/db/tenancy";
 import { isOperator } from "@/lib/admin";
 import { readJsonWithin, withinRate } from "@/lib/guard";
 import { reporterEnabled, runReview } from "@/lib/reporter";
@@ -15,13 +16,28 @@ export const maxDuration = 300;
 /**
  * Reports are the operator's alone.
  *
- * Not a workspace administrator's: a report is often about somebody's own
- * colleague, sometimes about the administrator, and handing the business a
- * console for reading flagged messages about its own staff would turn a safety
- * net into a management tool. It stays with whoever runs the deployment.
+ * Two readers, and the boundary between them is which rows.
+ *
+ * An operator sees every business, because somebody has to be able to answer a
+ * complaint about a customer and because the deployment is theirs.
+ *
+ * An administrator sees their own business and nothing else. This used to be
+ * operator only, on the reasoning that a report is sometimes about the
+ * administrator themselves and a console for reading flagged messages about
+ * your own staff is a management tool rather than a safety net. That reasoning
+ * has a real hole in it: the review now runs on the business's own key, about
+ * its own people, and the version where the only person who can see it is a
+ * stranger who runs the servers is worse for everybody, including the person
+ * the report is about. It is their duty of care and their bill.
+ *
+ * The hole that remains, stated rather than designed around: an administrator
+ * can see and dismiss a report about themselves. The operator's own view still
+ * shows every row from every business, so nothing disappears by being
+ * dismissed, and that is the check on it.
  */
-async function requireOperator(): Promise<
-  { ok: true; email: string } | { ok: false; status: number; error: string }
+async function reader(): Promise<
+  | { ok: true; email: string; workspaceId: string | null }
+  | { ok: false; status: number; error: string }
 > {
   if (!authEnabled || !databaseEnabled) {
     return { ok: false, status: 501, error: "Not configured." };
@@ -29,24 +45,38 @@ async function requireOperator(): Promise<
   const session = await auth();
   const email = session?.user?.email?.toLowerCase();
   if (!email) return { ok: false, status: 401, error: "Not signed in." };
+
+  // null means every business.
+  if (isOperator(email)) return { ok: true, email, workspaceId: null };
+
+  const mine = await membershipFor(email);
+  if (mine?.role === "admin") return { ok: true, email, workspaceId: mine.workspaceId };
+
   // 404 rather than 403, so the route does not confirm it exists to somebody
   // who should not know that it does.
-  if (!isOperator(email)) return { ok: false, status: 404, error: "Not found." };
-  return { ok: true, email };
+  return { ok: false, status: 404, error: "Not found." };
 }
 
 export async function GET() {
-  const who = await requireOperator();
+  const who = await reader();
   if (!who.ok) return Response.json({ error: who.error }, { status: who.status });
 
   try {
+    const mine = who.workspaceId;
     const [rows, [cursor]] = await Promise.all([
-      // tenancy-audit: every business, on purpose. This is the operator's
-      // screen and the route is gated on isOperator above.
-      requireDb().select().from(t.reports).orderBy(desc(t.reports.createdAt)).limit(200),
+      // tenancy-audit: fenced to one business for an administrator, and
+      // deliberately across all of them for an operator, which `reader` above
+      // is the gate on.
+      requireDb()
+        .select()
+        .from(t.reports)
+        .where(mine ? eq(t.reports.workspaceId, mine) : undefined)
+        .orderBy(desc(t.reports.createdAt))
+        .limit(200),
       requireDb()
         .select({ lastRunAt: t.reviewCursors.lastRunAt })
         .from(t.reviewCursors)
+        .where(mine ? eq(t.reviewCursors.workspaceId, mine) : undefined)
         .orderBy(desc(t.reviewCursors.lastRunAt))
         .limit(1),
     ]);
@@ -77,7 +107,7 @@ export async function GET() {
 
 /** Run a pass now, or mark one report as dealt with. */
 export async function POST(request: Request) {
-  const who = await requireOperator();
+  const who = await reader();
   if (!who.ok) return Response.json({ error: who.error }, { status: who.status });
 
   const parsed = await readJsonWithin<{ action?: string; id?: string; status?: string }>(
@@ -96,7 +126,9 @@ export async function POST(request: Request) {
           { status: 429 },
         );
       }
-      const result = await runReview();
+      // An administrator reviews their own business and pays for it with their
+      // own key. An operator sweeps the lot.
+      const result = await runReview(who.workspaceId ?? undefined);
       return Response.json({ ok: true, result });
     }
 
@@ -107,9 +139,24 @@ export async function POST(request: Request) {
           ? parsed.body.status
           : "new";
       if (!id) return Response.json({ error: "Nothing named." }, { status: 400 });
-      // tenancy-audit: by the report's own id, which the operator got from
-      // the list above. Only an operator reaches this.
-      await requireDb().update(t.reports).set({ status }).where(eq(t.reports.id, id));
+      /*
+       * Fenced to the caller's business unless they are the operator.
+       *
+       * By id alone this was safe only while an operator was the one caller.
+       * The moment an administrator can post here, an id from another business
+       * would have worked: reports are not secret ids, they travel in support
+       * threads, and dismissing somebody else's report is a quiet way to bury
+       * one. Keyed by both, so an id from elsewhere matches nothing rather than
+       * matching and being refused.
+       */
+      await requireDb()
+        .update(t.reports)
+        .set({ status })
+        .where(
+          who.workspaceId
+            ? and(eq(t.reports.id, id), eq(t.reports.workspaceId, who.workspaceId))
+            : eq(t.reports.id, id),
+        );
       return Response.json({ ok: true });
     }
 

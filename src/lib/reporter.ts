@@ -354,14 +354,19 @@ async function record(
  * error stops silently, and the businesses after the broken one would go
  * unreviewed for as long as it stayed broken without anything saying so.
  */
-export async function runReview(): Promise<RunResult> {
+export async function runReview(only?: string): Promise<RunResult> {
   if (!reporterEnabled() || !db) {
     return { workspaces: 0, reviewed: 0, raised: 0, failed: [], skipped: "Not configured." };
   }
 
+  // One business when an administrator asked, every business on the nightly
+  // tick and when an operator asked.
+  // tenancy-audit: the unfenced read is the operator's sweep; the caller
+  // decides which of the two this is and the route gates on that.
   const spaces = await db
     .select({ id: t.workspaces.id, name: t.workspaces.name })
-    .from(t.workspaces);
+    .from(t.workspaces)
+    .where(only ? eq(t.workspaces.id, only) : undefined);
 
   let reviewed = 0;
   let raised = 0;

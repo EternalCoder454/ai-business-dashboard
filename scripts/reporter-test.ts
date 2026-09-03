@@ -18,7 +18,7 @@ function check(label: string, condition: boolean, detail = "") {
 
 const line = (n: number): Reviewable => ({
   id: `m${n}`,
-  source: "message",
+
   author: n % 2 === 0 ? "ada@example.com" : "bob@example.com",
   body: `line ${n}`,
   sentAt: 1_700_000_000_000 + n * 60_000,
