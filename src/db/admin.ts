@@ -556,6 +556,9 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
     await tx.delete(t.reports).where(eq(t.reports.workspaceId, owner));
     await tx.delete(t.reviewCursors).where(eq(t.reviewCursors.workspaceId, owner));
 
+    // The link hosts it had agreed to, which mean nothing without it.
+    await tx.delete(t.linkAllowlist).where(eq(t.linkAllowlist.workspaceId, owner));
+
     // How it behaved. Counts and timings rather than anything anybody wrote,
     // but they are still this business's rows and a deleted business should
     // not go on appearing in the health screen.

@@ -1,9 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Button, Card, Chip, EmptyState, ReportIcon, cx } from "./ui";
+import {
+  Button,
+  Card,
+  Chip,
+  CloseIcon,
+  EmptyState,
+  LinkIcon,
+  ReportIcon,
+  TextInput,
+  cx,
+} from "./ui";
 import { formatRelativeTime } from "@/lib/routes";
+import { labelFor } from "@/lib/conduct";
 import { useStore } from "@/lib/store";
+
+interface AllowedLink {
+  domain: string;
+  addedBy: string;
+  createdAt: number;
+}
 
 interface ReportRow {
   id: string;
@@ -44,16 +61,6 @@ const SEVERITY_LABEL: Record<string, string> = {
   low: "Low",
 };
 
-const CATEGORY_LABEL: Record<string, string> = {
-  disrespect: "Disrespect",
-  toxicity: "Toxicity",
-  harassment: "Harassment",
-  "sexual-harassment": "Sexual harassment",
-  threat: "Threat",
-  malware: "Malware",
-  fraud: "Fraud",
-  "self-harm": "Someone may be at risk",
-};
 
 /**
  * What the reviewer has raised, for a person to decide about.
@@ -91,6 +98,10 @@ export function ReportsTab({
    */
   const [transcripts, setTranscripts] = useState<Record<string, string>>({});
 
+  /** The link hosts this business allows. Empty on the operator's own screen. */
+  const [links, setLinks] = useState<AllowedLink[]>([]);
+  const [domain, setDomain] = useState("");
+
   const loadTranscript = useCallback(
     async (id: string) => {
       if (transcripts[id] !== undefined) return;
@@ -121,6 +132,7 @@ export function ReportsTab({
       if (!response.ok) throw new Error(String(response.status));
       const body = await response.json();
       setRows(body.reports ?? []);
+      setLinks(body.links ?? []);
       setEnabled(Boolean(body.enabled));
       setLastRunAt(body.lastRunAt ?? null);
     } catch {
@@ -161,6 +173,32 @@ export function ReportsTab({
       setRows(before);
       setError("Could not delete that.");
     }
+  };
+
+  /*
+   * Adding a domain and taking one away, which both answer with the whole list
+   * rather than the one row that changed. It is a handful of entries, and the
+   * alternative is two places deciding what the list now looks like.
+   */
+  const changeLink = async (action: "allow-link" | "disallow-link", value: string) => {
+    setError(null);
+    const response = await fetch("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, domain: value, scope }),
+    }).catch(() => null);
+
+    const body = (await response?.json().catch(() => null)) as {
+      links?: AllowedLink[];
+      error?: string;
+    } | null;
+
+    if (!response?.ok) {
+      setError(body?.error ?? "Could not change the allowed links.");
+      return;
+    }
+    setLinks(body?.links ?? []);
+    setDomain("");
   };
 
   const run = async () => {
@@ -257,6 +295,68 @@ export function ReportsTab({
       {error ? <p className="md-label text-error">{error}</p> : null}
       {notice ? <p className="md-label text-primary">{notice}</p> : null}
 
+      {/*
+        * Only on a business's own panel. The list belongs to one workspace and
+        * the operator's screen spans every one of them, so there is no single
+        * list to show there.
+        */}
+      {mineOnly ? (
+        <Card>
+          <div className="flex flex-wrap items-start gap-3">
+            <LinkIcon className="mt-0.5 h-5 w-5 flex-none text-on-variant" />
+            <div className="min-w-0 flex-1">
+              <p className="md-title">Allowed links</p>
+              <p className="md-body mt-1 text-on-variant">
+                A link in a message is removed unless its address is here. An
+                address covers its own subdomains.
+              </p>
+
+              <form
+                className="mt-3 flex flex-wrap items-center gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (domain.trim()) void changeLink("allow-link", domain);
+                }}
+              >
+                <TextInput
+                  value={domain}
+                  onChange={(event) => setDomain(event.target.value)}
+                  placeholder="example.com"
+                  aria-label="Address to allow"
+                  className="w-full medium:w-64"
+                />
+                <Button type="submit" size="sm" disabled={!domain.trim()}>
+                  Allow
+                </Button>
+              </form>
+
+              {links.length > 0 ? (
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {links.map((entry) => (
+                    <li key={entry.domain}>
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-outline-variant px-2.5 py-1">
+                        <span className="md-label">{entry.domain}</span>
+                        <button
+                          onClick={() => void changeLink("disallow-link", entry.domain)}
+                          aria-label={`Stop allowing ${entry.domain}`}
+                          className="md-state grid h-5 w-5 place-items-center rounded-full text-on-variant"
+                        >
+                          <CloseIcon className="h-3 w-3" />
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="md-label-sm mt-3 text-on-variant/75">
+                  Nothing allowed yet, so every link is removed.
+                </p>
+              )}
+            </div>
+          </div>
+        </Card>
+      ) : null}
+
       {rows.length > open.length ? (
         <div className="filter-row">
           <Chip selected={!showClosed} onClick={() => setShowClosed(false)}>
@@ -288,7 +388,7 @@ export function ReportsTab({
               >
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <Chip tone={(SEVERITY[row.severity] ?? SEVERITY.low).chip}>
-                    {CATEGORY_LABEL[row.category] ?? row.category}
+                    {labelFor(row.category)}
                   </Chip>
                   <span
                     className={cx(
@@ -359,6 +459,23 @@ export function ReportsTab({
                     Written by {row.authorEmail}
                   </span>
                   <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {/* The one report somebody can act on from here: the quote
+                        is the host, so allowing it is one press. */}
+                    {mineOnly && row.category === "suspicious-link"
+                      ? row.quote
+                          .split(/\s+/)
+                          .filter(Boolean)
+                          .map((host) => (
+                            <Button
+                              key={host}
+                              size="sm"
+                              variant="outlined"
+                              onClick={() => void changeLink("allow-link", host)}
+                            >
+                              Allow {host}
+                            </Button>
+                          ))
+                      : null}
                     {isOperator ? (
                       <Button
                         size="sm"

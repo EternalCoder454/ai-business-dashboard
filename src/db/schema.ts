@@ -1058,3 +1058,23 @@ export const rateLimits = pgTable(
     index("rate_limits_window_idx").on(table.windowStart),
   ],
 );
+
+/**
+ * Link hosts one business has agreed to receive.
+ *
+ * A message carrying anything else has it taken out before it is stored, so
+ * this is the whole of what a colleague can send somebody to. Per workspace,
+ * because one company's suppliers are not another's.
+ */
+export const linkAllowlist = pgTable(
+  "link_allowlist",
+  {
+    workspaceId: workspace(),
+    /** Lowercased, no scheme, no `www.`. Covers itself and any subdomain. */
+    domain: text("domain").notNull(),
+    /** Who added it, so a surprising entry has somebody to ask about it. */
+    addedBy: text("added_by").notNull().default(""),
+    createdAt: created(),
+  },
+  (table) => [primaryKey({ columns: [table.workspaceId, table.domain] })],
+);

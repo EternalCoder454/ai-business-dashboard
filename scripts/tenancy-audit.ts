@@ -41,6 +41,7 @@ const SCOPED = [
   "briefings",
   "reports",
   "telemetry",
+  "linkAllowlist",
 ];
 
 /**
@@ -259,12 +260,20 @@ function main() {
    */
   console.log("\ndeleting a business clears every table that holds its rows");
   const schema = readFileSync("src/db/schema.ts", "utf8");
+  /*
+   * Each table's own body, cut at the next declaration rather than at a fixed
+   * number of characters. A fixed window reads into whatever follows, so
+   * appending a scoped table to the end of the file made the two before it
+   * look scoped and fail this check for no reason.
+   */
+  const declarations = [...schema.matchAll(/export const (\w+) = pgTable\(/g)];
   const scopedInSchema = new Set<string>();
-  for (const match of schema.matchAll(/export const (\w+) = pgTable\(/g)) {
-    const at = match.index ?? 0;
-    const body = schema.slice(at, at + 2500);
+  declarations.forEach((match, index) => {
+    const from = match.index ?? 0;
+    const to = declarations[index + 1]?.index ?? schema.length;
+    const body = schema.slice(from, to);
     if (/workspace\(\)|text\("workspace_id"\)/.test(body)) scopedInSchema.add(match[1]);
-  }
+  });
 
   const deleteBody = (() => {
     const source = readFileSync("src/db/admin.ts", "utf8");

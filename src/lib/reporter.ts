@@ -5,6 +5,7 @@ import * as t from "@/db/schema";
 import { workspaceKey } from "@/db/keys";
 import { askOnce } from "./askOnce";
 import type { Provider } from "./providers";
+import { FLOOR, atLeast, isCategory } from "./conduct";
 
 /**
  * The reviewer: reads internal messages and raises a hand at conduct rather
@@ -34,64 +35,52 @@ export interface Finding {
   quote: string;
 }
 
-const CATEGORIES = [
-  "disrespect",
-  "toxicity",
-  "harassment",
-  "sexual-harassment",
-  "threat",
-  "malware",
-  "fraud",
-  "self-harm",
-] as const;
+// Categories, severity floors and labels live in lib/conduct, so the Reports
+// screen and the reviewer cannot disagree about them.
 
-/**
- * What each category is worth, so the model cannot rate its own severity.
- *
- * It was free to pick low, medium or high for anything, which made severity a
- * mood rather than a scale: the same threat came back high on one pass and
- * medium on another. The kind of thing decides the floor and the model can
- * only raise it, so disrespect is never an emergency and a threat is never a
- * footnote.
- */
-const FLOOR: Record<(typeof CATEGORIES)[number], "low" | "medium" | "high"> = {
-  disrespect: "low",
-  toxicity: "medium",
-  harassment: "medium",
-  "sexual-harassment": "high",
-  threat: "high",
-  malware: "high",
-  fraud: "high",
-  "self-harm": "high",
-};
 
-const RANK = { low: 0, medium: 1, high: 2 } as const;
+const INSTRUCTIONS = `You are reviewing internal messages between colleagues at a business, looking for conduct somebody responsible for the workplace would need to know about.
 
-const atLeast = (
-  floor: "low" | "medium" | "high",
-  said: "low" | "medium" | "high",
-) => (RANK[said] > RANK[floor] ? said : floor);
+Raise something ONLY when it is one of these.
 
-const INSTRUCTIONS = `You are reviewing internal messages between colleagues at a business, looking only for conduct somebody responsible for the workplace would need to know about.
-
-Raise something ONLY when it is one of these:
-- disrespect: contempt aimed at a colleague as a person rather than at their work. Calling someone stupid, useless or worthless, mocking them personally, talking down to them. Criticising what somebody produced, however bluntly, is not this
+Aimed at a colleague:
+- abuse: swearing or contempt aimed AT a person rather than at a piece of work. "Fuck you", "fuck off", "shut the fuck up", "go to hell". Raise it on a single message. It does not need to be repeated or sustained, and it does not matter whether the sender sounds angry or casual
+- disrespect: contempt aimed at a person without the swearing. Calling someone stupid, useless, worthless or pathetic, mocking them personally, talking down to them
 - toxicity: cruelty or hostility towards a colleague that is sustained, piled on by several people, or plainly meant to humiliate rather than to settle anything
 - harassment: sustained personal abuse, demeaning someone for who they are, bullying
+- discrimination: anything demeaning about race, colour, nationality, ethnicity, religion, sex, gender, sexuality, disability, age, pregnancy or marital status. Every slur belongs here, and so do jokes and stereotypes built on one, including where the sender frames it as banter, as "just a joke", or as something they were only repeating. Also decisions made on those grounds: not hiring somebody because of their accent, passing somebody over because they might have children. Raise it on a single message, whether or not the person it is about is in the conversation
 - sexual-harassment: unwanted advances, sexual comments about a colleague, pressure of a sexual nature, or any unwanted statement of sexual intent towards them. A joking tone, an emoticon, a smiley or "just kidding" does not make one of these acceptable and is not a reason to leave it alone: what matters is that somebody said it to a colleague, not how lightly they dressed it up
+- sexual-content: pornography or sexual images shared at work, or an intimate image of somebody shared without their consent
+- stalking: following, waiting for, or turning up on a colleague outside work, monitoring or secretly recording them, or publishing their home address, phone number or other private details
+- extortion: blackmail, or making something somebody needs at work conditional on something they owe you. A manager tying a promotion, a shift, a reference or a job to a favour, a date, or silence
+- retaliation: punishing somebody, or arranging to, for raising a concern, making a complaint, reporting something, or refusing to take part in any of the above
+
+Aimed at somebody's safety:
 - threat: threatening violence or serious harm to a person
-- malware: writing, obtaining, or deploying software meant to damage or break into systems without permission
-- fraud: arranging to deceive someone for money, forge records, or steal
+- violence: violence that has happened or is being arranged, or bringing a weapon to work
+- child-safety: anything sexual involving a minor, or an adult grooming one. Raise this at once and never talk yourself out of it
 - self-harm: somebody appears to be at risk of harming themselves
+- safety: telling somebody to bypass a safety measure, work in a way that could injure them, hide an accident, or ignore a hazard
+- extremism: promoting, organising, funding or recruiting for terrorism or violent extremism
+
+Aimed at the business or its customers:
+- drugs: offering, selling, buying, sourcing or sharing illegal drugs, arranging to do so, or coming to work under the influence. Someone naming a prescribed medication they take, or discussing drugs as a policy or business matter, is not this. Alcohol is only this when somebody is impaired at work
+- fraud: arranging to deceive somebody for money, forge records, steal, take or pay a bribe or kickback, launder money, evade tax, or trade on information the public does not have
+- data-theft: taking client data, a customer list, source code or other company property, or arranging to, whether to keep, to sell, or to carry to another employer
+- sabotage: deliberately damaging the business, its systems, its data or its reputation
+- malware: writing, obtaining, or deploying software meant to damage or break into systems without permission
 
 Do NOT raise:
-- confidential business information, client names, figures, contracts, or trade secrets. That is their own information and is not your concern.
-- swearing, bluntness, sarcasm, venting, or complaining about work, a process, or management. Somebody calling a forecast garbage is talking about the forecast
+- confidential business information, client names, figures, contracts, or trade secrets discussed in the ordinary course of work. That is their own information and is not your concern. Somebody arranging to take it elsewhere is data-theft and is
+- swearing aimed at a thing rather than a person. "This build is fucked", "what a shit week", "the forecast is garbage" are all fine. The test is the target, not the language
 - disagreement, criticism of somebody's work, or an ordinary argument, however sharply worded, as long as it stays about the work
-- jokes between people who are plainly on good terms
-- discussion of security, hacking, or malware as a subject, when it is somebody's job or an ordinary technical conversation
+- ordinary management: assigning work, giving critical feedback, turning down a request, raising a performance concern, or dismissing somebody for a reason that is about their work
+- jokes between people plainly on good terms, unless the joke is one of the categories above. A slur is not rescued by being a joke
+- discussion of security, hacking, malware, fraud, drugs or extremism as a subject, when it is somebody's job, a policy question, or an ordinary technical conversation. What matters is whether somebody is doing it or arranging to
 
-The bar is high. Most workplaces produce nothing. Returning an empty list is the normal, correct answer, and a false alarm about a real person costs more than a missed borderline case. That applies to disrespect and toxicity most of all: they are the easiest to over-report and the two that would turn this into a list nobody reads.
+On the bar. Most days produce nothing, and returning an empty list is the normal and correct answer. But that is a statement about how often this happens, not a reason to talk yourself out of something that is in front of you. Where one of the categories above is plainly present, raise it, even if it is one message, even if it is brief, and even if the tone is light. Under-reporting a slur, a person being sworn at, or anything involving a child is a far worse failure than a false alarm.
+
+Only disrespect and toxicity need real restraint, because they are the two that are easy to read into an ordinary bad day.
 
 Reply with JSON only, no prose, in this exact shape:
 {"findings":[{"id":"<the number at the start of the line>","category":"<one of the categories above>","severity":"low|medium|high","reason":"<one sentence, plain English, no quotes from the message>","quote":"<at most 200 characters, verbatim, the part that made you raise it>"}]}
@@ -183,9 +172,7 @@ async function unreviewed(workspaceId: string, since: number): Promise<Reviewabl
   }));
 }
 
-function isCategory(value: unknown): value is (typeof CATEGORIES)[number] {
-  return typeof value === "string" && (CATEGORIES as readonly string[]).includes(value);
-}
+
 
 /**
  * Asks the model, and believes as little of the answer as possible.
@@ -311,10 +298,7 @@ export async function review(
       authorEmail: source.author,
       category: item.category,
       // The kind decides the floor; the model may only raise it.
-      severity: atLeast(
-        FLOOR[item.category],
-        item.severity === "high" || item.severity === "low" ? item.severity : "medium",
-      ),
+      severity: atLeast(item.severity, FLOOR[item.category]),
       reason: typeof item.reason === "string" ? item.reason.slice(0, 500) : "",
       quote: typeof item.quote === "string" ? item.quote.slice(0, MAX_QUOTE) : "",
     });

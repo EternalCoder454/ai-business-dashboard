@@ -25,7 +25,7 @@ import { TASK_STATUSES, type Task, type TaskStatus } from "@/lib/types";
 
 const COLUMN_LABEL: Record<TaskStatus, string> = {
   todo: "To do",
-  doing: "Doing",
+  doing: "Ongoing",
   done: "Done",
 };
 

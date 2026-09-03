@@ -268,6 +268,7 @@ export function useThread(other: string | undefined, self: string | undefined): 
         const payload = (await response.json().catch(() => null)) as {
           message?: DirectMessage;
           error?: string;
+          removedLinks?: string[];
         } | null;
 
         if (!response.ok || !payload?.message) {
@@ -278,6 +279,18 @@ export function useThread(other: string | undefined, self: string | undefined): 
           // left the business is something the row cannot say.
           setError(payload?.error);
           return;
+        }
+
+        /*
+         * A link the business does not allow was taken out on the way through.
+         * The message did send, so this is not a failure, but the sender is the
+         * only person who can tell that what arrived is not what they wrote.
+         */
+        if (payload.removedLinks?.length) {
+          const hosts = payload.removedLinks.join(", ");
+          setError(
+            `Sent without ${payload.removedLinks.length === 1 ? "a link" : "some links"}: ${hosts} ${payload.removedLinks.length === 1 ? "is" : "are"} not on the allowed list for this business.`,
+          );
         }
 
         const saved = payload.message;

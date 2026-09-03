@@ -17,6 +17,8 @@ import { withinRate } from "@/lib/rateLimit";
 import { track } from "@/lib/telemetry";
 import { membershipFor, type Membership } from "@/db/tenancy";
 import { allowsArea } from "@/lib/permissions";
+import { allowedDomains, recordStrippedLinks } from "@/db/links";
+import { REMOVED, scrubLinks } from "@/lib/links";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -203,14 +205,51 @@ export async function POST(request: Request) {
       return Response.json({ error: "Slow down a moment." }, { status: 429 });
     }
 
+    /*
+     * Links the business has not agreed to are taken out before the message is
+     * stored, so the recipient never sees one and nothing can bring it back.
+     *
+     * Before the write rather than after, because a link that exists for a
+     * second still exists: the recipient could be polling, and a message is
+     * pushed to their screen the moment it lands.
+     */
+    const allowed = await allowedDomains(mine.workspaceId);
+    const scrubbed = scrubLinks(text, allowed);
+
+    /*
+     * A message that was nothing but a bad link has nothing left to send.
+     * Refusing is better than delivering an empty bubble, and it tells the
+     * sender what happened while they still have what they wrote.
+     */
+    if (!scrubbed.text.replace(REMOVED, "").trim()) {
+      return Response.json(
+        {
+          error: `That link is not on the allowed list for this business: ${scrubbed.removed.join(", ")}`,
+        },
+        { status: 422 },
+      );
+    }
+
+    const id = randomUUID();
     const message = await sendMessage(
       mine.workspaceId,
       sender.email,
       recipient,
-      text,
-      randomUUID(),
+      scrubbed.text,
+      id,
     );
-    return Response.json({ message });
+
+    // After the send, and never allowed to fail it.
+    if (scrubbed.removed.length > 0) {
+      void recordStrippedLinks({
+        workspaceId: mine.workspaceId,
+        messageId: id,
+        authorEmail: sender.email,
+        hosts: scrubbed.removed,
+      });
+    }
+
+    return Response.json({ message, removedLinks: scrubbed.removed });
   } catch (error) {
     console.error("[api/messages] write", error);
     return Response.json({ error: "Could not send that." }, { status: 500 });

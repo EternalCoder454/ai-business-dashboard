@@ -122,7 +122,7 @@ Open tasks are shared with the department they belong to, so asking what to focu
       },
       {
         title: "How it works",
-        body: `Three columns: To do, Doing, Done. Drag a card between them or tick it off in place.
+        body: `Three columns: To do, Ongoing, Done. Drag a card between them or tick it off in place.
 
 New tasks go to the top of their column. Due dates are optional, and anything overdue turns red and appears in notifications. Completed tasks stay on the board and leave the prompt.`,
       },

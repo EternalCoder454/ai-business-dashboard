@@ -1,4 +1,5 @@
 import { reportsBody } from "@/lib/schemas";
+import { allowLink, allowedLinks, disallowLink } from "@/db/links";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
@@ -145,6 +146,9 @@ async function listing(who: { email: string; workspaceId: string | null }) {
     return Response.json({
       enabled: reporterEnabled(),
       lastRunAt: cursor?.lastRunAt?.getTime() ?? null,
+      // Only on a business's own panel: the list belongs to one workspace, and
+      // the operator's view spans every one of them.
+      links: mine ? await allowedLinks(mine) : [],
       reports: rows.map((row) => ({
         id: row.id,
         workspaceName: row.workspaceName,
@@ -220,6 +224,31 @@ export async function POST(request: Request) {
             : eq(t.reports.id, id),
         );
       return Response.json({ ok: true });
+    }
+
+    /*
+     * The allowlist belongs to one business, so these need a workspace. The
+     * operator screen reads across every business and has none, which is why
+     * the Allowed links section only appears on a business's own panel.
+     */
+    if (parsed.body.action === "allow-link" || parsed.body.action === "disallow-link") {
+      if (!who.workspaceId) {
+        return Response.json(
+          { error: "Open this from a business's own panel." },
+          { status: 400 },
+        );
+      }
+      const domain = parsed.body.domain?.trim() ?? "";
+      if (!domain) return Response.json({ error: "No domain given." }, { status: 400 });
+
+      if (parsed.body.action === "disallow-link") {
+        await disallowLink(who.workspaceId, domain);
+        return Response.json({ ok: true, links: await allowedLinks(who.workspaceId) });
+      }
+
+      const added = await allowLink(who.workspaceId, domain, who.email);
+      if (!added.ok) return Response.json({ error: added.error }, { status: 400 });
+      return Response.json({ ok: true, links: await allowedLinks(who.workspaceId) });
     }
 
     if (parsed.body.action === "delete") {
