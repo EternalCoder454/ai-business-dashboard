@@ -646,6 +646,22 @@ export const reports = pgTable(
     reason: text("reason").notNull().default(""),
     /** A short verbatim quote, so an operator can judge without reading everything. */
     quote: text("quote").notNull().default(""),
+    /**
+     * What was said around it, so an accusation arrives with its context.
+     *
+     * A line on its own is the worst possible evidence about conduct: the same
+     * sentence is a threat or a quote from a film depending entirely on what
+     * came before it, and an operator deciding about a real person should not
+     * have to guess which.
+     *
+     * This is the one place the earlier rule about not copying anybody's
+     * messages gives way, and only this far. It is bounded, it exists only on a
+     * conversation something was raised about, and it is the same text the
+     * reviewer had already read to raise it. The alternative was a link that
+     * breaks the moment somebody deletes the thread, which fails in exactly the
+     * cases where the record matters most.
+     */
+    transcript: text("transcript").notNull().default(""),
     /** new, reviewed, or dismissed. */
     status: text("status").notNull().default("new"),
     createdAt: created(),

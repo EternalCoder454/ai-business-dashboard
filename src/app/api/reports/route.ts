@@ -64,6 +64,7 @@ export async function GET() {
         severity: row.severity,
         reason: row.reason,
         quote: row.quote,
+        transcript: row.transcript,
         status: row.status,
         createdAt: row.createdAt.getTime(),
       })),

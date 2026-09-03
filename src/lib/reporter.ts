@@ -2,6 +2,9 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq, gt } from "drizzle-orm";
 import { databaseEnabled, db, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
+import { workspaceKey } from "@/db/keys";
+import { askOnce } from "./askOnce";
+import type { Provider } from "./providers";
 
 /**
  * The reviewer.
@@ -77,7 +80,7 @@ Reply with JSON only, no prose, in this exact shape:
 
 If nothing meets the bar: {"findings":[]}`;
 
-interface Reviewable {
+export interface Reviewable {
   id: string;
   author: string;
   body: string;
@@ -85,23 +88,57 @@ interface Reviewable {
 }
 
 /**
- * The deployment's own key. Absent means the reviewer simply does not run.
+ * What one business's review runs on, in order.
  *
- * REVIEWER_API_KEY first, and it exists because the obvious variable is a trap
- * here. ANTHROPIC_API_KEY is checked before a workspace's own key everywhere
- * else, so setting it to give the reviewer something to run on would silently
- * take every customer off their own key and put the whole deployment's spend
- * on ours. A separate variable lets the review run without touching who pays
- * for chat. The fallback is for a single-tenant deployment, where the two are
- * the same key and there is nothing to keep apart.
+ * The business's own key is the point of the change. This used to need
+ * REVIEWER_API_KEY set on the deployment, and without it the reviewer did not
+ * run at all: it never read a single message here in the months it has
+ * existed, and nothing said so. A panel where every customer already brings a
+ * key should not need a second one bolted on before a safety feature works.
+ *
+ * REVIEWER_API_KEY still wins where it is set, because an operator who sets it
+ * is saying they want to pay for reviews themselves rather than spend a
+ * customer's key on them. And ANTHROPIC_API_KEY is last rather than first,
+ * which is the whole reason a separate variable existed: checked first it
+ * would quietly move every review onto the deployment's own account.
+ *
+ * A business with no key of any kind is skipped rather than failed. There is
+ * nothing to review with and nothing broken about that.
  */
-function serverKey(): string | null {
-  return (
-    process.env.REVIEWER_API_KEY?.trim() || process.env.ANTHROPIC_API_KEY?.trim() || null
-  );
+async function keyFor(
+  workspaceId: string,
+): Promise<{ provider: Provider; key: string; model: string } | null> {
+  const override = process.env.REVIEWER_API_KEY?.trim();
+  if (override) return { provider: "anthropic", key: override, model: MODEL };
+
+  for (const provider of ["anthropic", "openai", "google"] as Provider[]) {
+    const theirs = await workspaceKey(workspaceId, provider);
+    if (theirs) return { provider, key: theirs, model: reviewModel(provider) };
+  }
+
+  const server = process.env.ANTHROPIC_API_KEY?.trim();
+  return server ? { provider: "anthropic", key: server, model: MODEL } : null;
 }
 
-export const reporterEnabled = () => Boolean(serverKey()) && databaseEnabled;
+/**
+ * The cheapest model each provider has that can follow a schema.
+ *
+ * This is a classifier reading everything anybody writes, so it runs far more
+ * often than a conversation does and the difference between the cheap model
+ * and the good one is the difference between a feature somebody leaves on and
+ * one they turn off when the bill arrives.
+ */
+function reviewModel(provider: Provider): string {
+  if (provider === "openai") return "gpt-4o-mini";
+  if (provider === "google") return "gemini-2.5-flash";
+  return MODEL;
+}
+
+/**
+ * Whether it can run at all, which is now only a question about the database.
+ * Whether any given business has something to run on is decided per business.
+ */
+export const reporterEnabled = () => databaseEnabled;
 
 /**
  * Everything written in one business since it was last looked at.
@@ -147,47 +184,40 @@ function isCategory(value: unknown): value is (typeof CATEGORIES)[number] {
  * truncated. A model that decided to invent a report about somebody who was not
  * in the conversation should not be able to write that row.
  */
-async function review(batch: Reviewable[]): Promise<Finding[]> {
-  const key = serverKey();
-  if (!key || batch.length === 0) return [];
+async function review(
+  batch: Reviewable[],
+  credentials: { provider: Provider; key: string; model: string },
+): Promise<Finding[]> {
+  if (batch.length === 0) return [];
 
   const known = new Map(batch.map((item) => [item.id, item]));
   const transcript = batch
     .map((item) => `[${item.id}] ${item.author}: ${item.body.slice(0, 2_000)}`)
     .join("\n");
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 2_000,
-      system: [
-        {
-          type: "text",
-          text: INSTRUCTIONS,
-          // The instructions are identical on every run and for every business,
-          // so this is the one part worth holding between them.
-          cache_control: { type: "ephemeral", ttl: "1h" },
-        },
-      ],
-      messages: [{ role: "user", content: transcript }],
-    }),
+  /*
+   * Its own instructions and nothing else.
+   *
+   * No writing rules, no company profile, no persona, no memory. This is not
+   * one of the heads and it is not answering anybody: it reads, it classifies,
+   * and it returns JSON. Handing it the house voice would be asking a smoke
+   * alarm to match the curtains, and every extra sentence in here is one more
+   * thing that could talk it into a different answer about somebody's conduct.
+   */
+  const answer = await askOnce({
+    provider: credentials.provider,
+    model: credentials.model,
+    apiKey: credentials.key,
+    system: INSTRUCTIONS,
+    question: transcript,
+    maxTokens: 2_000,
+    // Identical on every run and for every business, so it is the one part
+    // worth holding between them where the provider can.
+    cacheSystem: true,
   });
 
-  if (!response.ok) {
-    console.error("[reporter] model refused", response.status, await response.text());
-    return [];
-  }
-
-  const body = (await response.json()) as {
-    content?: { type: string; text?: string }[];
-  };
-  const text = body.content?.find((block) => block.type === "text")?.text ?? "";
+  if (!answer) return [];
+  const text = answer.text;
 
   // Models sometimes wrap JSON in a fence however plainly they are asked not
   // to, so the object is located rather than assumed to be the whole reply.
@@ -247,10 +277,44 @@ export interface RunResult {
 const MAX_BATCHES = 5;
 
 /** Writes what one pass found, and moves the cursor to what it actually read. */
+/** How many messages either side of the flagged one are worth keeping. */
+const CONTEXT_LINES = 6;
+
+/** Nothing past this, so one long message cannot become the whole column. */
+const CONTEXT_CHARS = 4_000;
+
+/**
+ * What was said around the message that was raised.
+ *
+ * Either side of it rather than only before, because the reply to a remark is
+ * often what settles whether it landed as a joke or as a threat, and an
+ * operator reading only the run up gets the half that makes everything look
+ * worse.
+ */
+export function contextFor(sourceId: string, batch: Reviewable[]): string {
+  const at = batch.findIndex((item) => item.id === sourceId);
+  if (at === -1) return "";
+
+  const from = Math.max(0, at - CONTEXT_LINES);
+  const to = Math.min(batch.length, at + CONTEXT_LINES + 1);
+
+  return batch
+    .slice(from, to)
+    .map((item) => {
+      const when = new Date(item.sentAt).toISOString().slice(0, 16).replace("T", " ");
+      // The raised line is marked, so it is findable without counting.
+      const mark = item.id === sourceId ? ">> " : "   ";
+      return `${mark}${when}  ${item.author}: ${item.body}`;
+    })
+    .join("\n")
+    .slice(0, CONTEXT_CHARS);
+}
+
 async function record(
   space: { id: string; name: string },
   findings: Finding[],
   through: number,
+  batch: Reviewable[],
 ): Promise<void> {
   const database = requireDb();
 
@@ -267,6 +331,7 @@ async function record(
         severity: finding.severity,
         reason: finding.reason,
         quote: finding.quote,
+        transcript: contextFor(finding.sourceId, batch),
       })),
     );
   }
@@ -304,6 +369,11 @@ export async function runReview(): Promise<RunResult> {
 
   for (const space of spaces) {
     try {
+      const credentials = await keyFor(space.id);
+      // Nothing to review with. Not a failure, and not worth a line in the
+      // failed list for an operator to go hunting the cause of.
+      if (!credentials) continue;
+
       const [cursor] = await db
         .select()
         .from(t.reviewCursors)
@@ -317,13 +387,13 @@ export async function runReview(): Promise<RunResult> {
         if (batch.length === 0) break;
 
         reviewed += batch.length;
-        const findings = await review(batch);
+        const findings = await review(batch, credentials);
 
         // The cursor moves whether or not anything was raised, and only as far
         // as the batch actually read, so nothing is skipped and nothing is
         // read twice.
         since = batch[batch.length - 1].sentAt;
-        await record(space, findings, since);
+        await record(space, findings, since, batch);
         raised += findings.length;
 
         // A short batch means that was everything there was.

@@ -59,7 +59,7 @@ export async function GET(request: Request) {
 
   if (!reporterEnabled()) {
     return Response.json(
-      { ok: false, skipped: "REVIEWER_API_KEY is not set on this deployment." },
+      { ok: false, skipped: "There is no database on this deployment." },
       { status: 200 },
     );
   }

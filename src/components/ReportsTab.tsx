@@ -14,6 +14,7 @@ interface ReportRow {
   severity: "low" | "medium" | "high";
   reason: string;
   quote: string;
+  transcript: string;
   status: string;
   createdAt: number;
 }
@@ -132,7 +133,7 @@ export function ReportsTab() {
             <p className="md-label-sm mt-2 text-on-variant/75">
               {enabled
                 ? "Runs on its own once a day. "
-                : "Off. Needs REVIEWER_API_KEY on the deployment. "}
+                : "Off. This deployment has no database. "}
               {lastRunAt ? `Last pass ${formatRelativeTime(lastRunAt)}.` : "Not run yet."}
             </p>
           </div>
@@ -189,6 +190,32 @@ export function ReportsTab() {
                   >
                     {row.quote}
                   </blockquote>
+                ) : null}
+
+                {/*
+                  * Folded away rather than shown.
+                  *
+                  * The quote is what the reviewer thought was wrong and the
+                  * transcript is what surrounded it. Open by default this
+                  * screen becomes pages of other people's conversation to
+                  * scroll past, and the point of opening it deliberately is
+                  * that reading somebody's messages should be a thing you
+                  * chose to do.
+                  */}
+                {row.transcript ? (
+                  <details className="mt-2 group">
+                    <summary className="md-label-sm inline-flex items-center gap-1 text-primary">
+                      What was said around it
+                    </summary>
+                    <pre
+                      className={cx(
+                        "md-label-sm mt-2 max-h-72 overflow-auto rounded-xl bg-lowest p-3",
+                        "whitespace-pre-wrap [overflow-wrap:anywhere] text-on-variant",
+                      )}
+                    >
+                      {row.transcript}
+                    </pre>
+                  </details>
                 ) : null}
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
