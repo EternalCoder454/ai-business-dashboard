@@ -26,6 +26,7 @@ import {
 } from "@/components/ui";
 import { EFFORT_OPTIONS, WRITING_RULES } from "@/lib/seed";
 import { useStore } from "@/lib/store";
+import { useTypedField } from "@/lib/useTypedField";
 import type { Department, DepartmentStatus, Effort, SearchShortcut, SidebarSide, ThemeMode } from "@/lib/types";
 
 type DeptDraft = Partial<Department> & { isNew?: boolean };
@@ -48,6 +49,24 @@ export default function SettingsPage() {
     updateDepartment,
     deleteDepartment,
   } = useStore();
+
+  /*
+   * The four text fields, each saving once you stop rather than once per key.
+   * They wrote through on every keystroke, so one edit of the writing rules was
+   * a couple of hundred transactions.
+   */
+  const companyName = useTypedField(settings.companyName, (value) =>
+    void updateSettings({ companyName: value }),
+  );
+  const companySubtitle = useTypedField(settings.companySubtitle, (value) =>
+    void updateSettings({ companySubtitle: value }),
+  );
+  const companyMark = useTypedField(settings.companyMark, (value) =>
+    void updateSettings({ companyMark: value }),
+  );
+  const writingRules = useTypedField(settings.writingRules, (value) =>
+    void updateSettings({ writingRules: value }),
+  );
 
   const [keyDraft, setKeyDraft] = useState(settings.apiKey);
   const [keyVisible, setKeyVisible] = useState(false);
@@ -229,12 +248,10 @@ export default function SettingsPage() {
             <div className="mt-5 grid grid-cols-1 gap-4 medium:grid-cols-3">
               <Field label="Letters">
                 <TextInput
-                  value={settings.companyMark}
+                  value={companyMark.value}
                   maxLength={2}
                   className="text-center uppercase"
-                  onChange={(event) =>
-                    void updateSettings({ companyMark: event.target.value.toUpperCase() })
-                  }
+                  onChange={(event) => companyMark.onChange(event.target.value.toUpperCase())}
                 />
               </Field>
 
@@ -274,18 +291,14 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Company name">
                 <TextInput
-                  value={settings.companyName}
-                  onChange={(event) =>
-                    void updateSettings({ companyName: event.target.value })
-                  }
+                  value={companyName.value}
+                  onChange={(event) => companyName.onChange(event.target.value)}
                 />
               </Field>
               <Field label="Subtitle">
                 <TextInput
-                  value={settings.companySubtitle}
-                  onChange={(event) =>
-                    void updateSettings({ companySubtitle: event.target.value })
-                  }
+                  value={companySubtitle.value}
+                  onChange={(event) => companySubtitle.onChange(event.target.value)}
                 />
               </Field>
             </div>
@@ -387,8 +400,8 @@ export default function SettingsPage() {
               <Button
                 size="sm"
                 variant="outlined"
-                disabled={settings.writingRules === WRITING_RULES}
-                onClick={() => void updateSettings({ writingRules: WRITING_RULES })}
+                disabled={writingRules.value === WRITING_RULES}
+                onClick={() => writingRules.replace(WRITING_RULES)}
               >
                 Restore defaults
               </Button>
@@ -396,15 +409,15 @@ export default function SettingsPage() {
             <p className="md-body mb-4 text-on-variant">
               Injected last into every department prompt, so they beat any department
               prompt or skill that disagrees. Roughly{" "}
-              {Math.round(settings.writingRules.length / 3.7).toLocaleString()} tokens,
+              {Math.round(writingRules.value.length / 3.7).toLocaleString()} tokens,
               charged once per cache write and then read back at about a tenth. Trim them
               if replies start feeling stiff: a long rule list constrains voice as well as
               format.
             </p>
             <TextArea
               rows={16}
-              value={settings.writingRules}
-              onChange={(event) => void updateSettings({ writingRules: event.target.value })}
+              value={writingRules.value}
+              onChange={(event) => writingRules.onChange(event.target.value)}
               className="font-mono text-[0.8125rem]"
             />
           </Card>
