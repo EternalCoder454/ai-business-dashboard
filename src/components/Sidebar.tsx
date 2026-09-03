@@ -144,7 +144,7 @@ export const SETUP_LINKS: NavLink[] = [
     icon: <GearIcon className="h-5 w-5" />,
   },
   {
-    href: "/onboarding",
+    href: "/wiki",
     label: "Internal Wiki",
     short: "Wiki",
     icon: <BookIcon className="h-5 w-5" />,

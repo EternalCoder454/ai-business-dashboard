@@ -65,11 +65,15 @@ const nextConfig = {
   // two servers never share (and corrupt) the same .next directory.
   distDir: process.env.NEXT_DIST_DIR || ".next",
 
-  // The Library absorbed these two, and old links should not 404.
+  // Screens that moved. Old links should not 404, and somebody has one of these
+  // open in a tab right now.
   async redirects() {
     return [
       { source: "/skills", destination: "/library/skills", permanent: false },
       { source: "/deliverables", destination: "/library/deliverables", permanent: false },
+      // The wiki was at /onboarding, which described who it was written for
+      // rather than what it is, and it is read long after anybody is new.
+      { source: "/onboarding", destination: "/wiki", permanent: false },
     ];
   },
 

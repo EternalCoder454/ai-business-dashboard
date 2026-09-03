@@ -41,7 +41,7 @@ export interface SearchCorpus {
 
 const PAGES: { title: string; subtitle: string; href: string }[] = [
   { title: "Inbox", subtitle: "Direct messages with colleagues", href: "/messages" },
-  { title: "Internal Wiki", subtitle: "How this works and what not to do", href: "/onboarding" },
+  { title: "Internal Wiki", subtitle: "How this works and what not to do", href: "/wiki" },
   { title: "Dashboard", subtitle: "The numbers, what is open, and who to ask", href: "/" },
   { title: "Tasks", subtitle: "What is outstanding, by state", href: "/tasks" },
   { title: "Chief of Staff", subtitle: "Talk to Ruth", href: "/ceo" },

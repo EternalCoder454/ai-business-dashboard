@@ -6,6 +6,7 @@ import { PlusIcon, TrashIcon, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { HeadProfile } from "./HeadProfile";
+import { ProfileMenu } from "./ProfileMenu";
 import { conversationHref, departmentHrefById, formatRelativeTime } from "@/lib/routes";
 import type { Conversation, Department } from "@/lib/types";
 
@@ -67,6 +68,19 @@ export function ConversationList({
           <p className="md-label-sm truncate text-on-variant/75">
             {conversations.length} conversation{conversations.length === 1 ? "" : "s"}
           </p>
+        </div>
+
+        {/*
+          * The account, as on every other screen.
+          *
+          * This header was written as a page header and forgot that from medium
+          * up there is no app bar above it carrying one. So arriving here, which
+          * is now the ordinary way into a department, took away sign out, send
+          * feedback and the wiki with no way to reach them but going somewhere
+          * else first.
+          */}
+        <div className="hidden flex-none medium:block">
+          <ProfileMenu />
         </div>
       </header>
 

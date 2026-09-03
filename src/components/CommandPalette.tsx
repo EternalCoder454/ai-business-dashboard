@@ -247,7 +247,7 @@ function ResultIcon({ kind, href }: { kind: ResultKind; href: string }) {
 
   if (kind === "page") {
     const byHref: [string, ReactNode][] = [
-      ["/onboarding", <BookIcon key="onboarding" className={className} />],
+      ["/wiki", <BookIcon key="wiki" className={className} />],
       ["/ceo", <BriefcaseIcon key="ceo" className={className} />],
       ["/all-hands", <UsersIcon key="room" className={className} />],
       ["/messages", <MailIcon key="messages" className={className} />],

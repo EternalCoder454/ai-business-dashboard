@@ -2,6 +2,7 @@
 
 import { PlusIcon, TrashIcon, UsersIcon, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
+import { ProfileMenu } from "./ProfileMenu";
 import { formatRelativeTime } from "@/lib/routes";
 import type { AllHandsRun } from "@/lib/types";
 
@@ -49,6 +50,12 @@ export function MeetingList({
           <p className="md-label-sm truncate text-on-variant/75">
             {runs.length} meeting{runs.length === 1 ? "" : "s"}
           </p>
+        </div>
+
+        {/* As on every other screen. Built with the same gap as the department
+            list, and for the same reason. */}
+        <div className="hidden flex-none medium:block">
+          <ProfileMenu />
         </div>
       </header>
 

@@ -216,7 +216,7 @@ const ROUTE_TITLES: [string, string][] = [
   ["/ceo", "Chief of Staff"],
   ["/all-hands", "Meetings"],
   ["/messages", "Inbox"],
-  ["/onboarding", "Internal Wiki"],
+  ["/wiki", "Internal Wiki"],
   ["/tasks", "Tasks"],
   ["/projects", "Projects"],
   ["/admin", "Operator"],

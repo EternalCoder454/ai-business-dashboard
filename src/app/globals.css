@@ -200,6 +200,31 @@
     border-color: var(--md-outline-variant);
   }
 
+  /*
+   * Anything you can press says so.
+   *
+   * Tailwind 4 changed its reset: a button used to inherit the browser's
+   * pointer and now gets `cursor: default`, which is the same cursor as the
+   * page around it. Nothing in this app set one, so every button in it looked
+   * like text: the account picture, sign out, send feedback, the wiki, a head's
+   * own picture. It reads as a dead interface rather than a broken one, which
+   * is why it survived this long without being reported as a bug.
+   *
+   * Base rather than a class, because the alternative is remembering it on
+   * thirty files' worth of buttons and forgetting it on the thirty first.
+   *
+   * A disabled control keeps the default arrow: it is not pressable, and a hand
+   * over something that will not respond is a worse lie than no hand at all.
+   * Modal backdrops are deliberately left out; they close on click, but a
+   * pointer over the dimmed half of the screen suggests something is there.
+   */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
   html,
   body {
     height: 100%;

@@ -100,7 +100,7 @@ export function Setup() {
       {
         title: settings.wikiTitle || "Internal Wiki",
         body: "How this business works, written for whoever joins next. An administrator can rewrite every page, so it says what your people need rather than anything about the panel.",
-        href: "/onboarding",
+        href: "/wiki",
       },
       {
         title: "Your key, and everything else",

@@ -35,7 +35,7 @@ const LINKS = [
   { href: "/profile", label: "Company profile", icon: <BuildingIcon className="h-4 w-4" /> },
   { href: "/settings", label: "Settings", icon: <GearIcon className="h-4 w-4" /> },
   { href: "/integrations", label: "Integrations", icon: <PuzzleIcon className="h-4 w-4" /> },
-  { href: "/onboarding", label: "Internal wiki", icon: <BookIcon className="h-4 w-4" /> },
+  { href: "/wiki", label: "Internal wiki", icon: <BookIcon className="h-4 w-4" /> },
 ];
 
 /**
