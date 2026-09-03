@@ -3,6 +3,7 @@
 import { hasKeyFor } from "@/lib/hasKey";
 import Link from "next/link";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
+import { MeetingList } from "@/components/MeetingList";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Markdown } from "@/components/ChatView";
 import {
@@ -63,7 +64,6 @@ export default function AllHandsPage() {
   const [synthesize, setSynthesize] = useState(true);
   const [live, setLive] = useState<AllHandsRun | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [showThreads, setShowThreads] = useState(false);
   // Explicit "starting a fresh room" state. Without it, clearing the selection
   // just falls back to the newest thread and the empty room never shows.
   const [composingNew, setComposingNew] = useState(false);
@@ -100,12 +100,31 @@ export default function AllHandsPage() {
 
   const running = live?.status === "running";
 
+  /*
+   * Meetings that actually happened, which is what decides whether the list is
+   * worth showing at all.
+   */
+  const held = useMemo(() => allHandsRuns.filter((r) => r.rounds.length > 0), [allHandsRuns]);
+
+  /*
+   * The list, once the room has met.
+   *
+   * This screen used to fall back to the newest meeting whenever nothing was
+   * chosen, so every visit for the rest of the month reopened the same one: a
+   * second subject went into the middle of the first, and the way to a clean
+   * room was to delete what was there. The fallback is gone, and with nothing
+   * open you get the list instead.
+   */
+  const showList = !live && !composingNew && !openId && held.length > 0;
+
   const thread: AllHandsRun | undefined = useMemo(() => {
     if (live) return live;
     if (composingNew) return undefined;
-    if (openId) return allHandsRuns.find((r) => r.id === openId) ?? allHandsRuns[0];
-    return allHandsRuns[0];
-  }, [live, composingNew, openId, allHandsRuns]);
+    // No fallback to the newest. Nothing chosen means the list, not whichever
+    // meeting happened to be last.
+    if (openId) return allHandsRuns.find((r) => r.id === openId);
+    return held.length > 0 ? undefined : allHandsRuns[0];
+  }, [live, composingNew, openId, allHandsRuns, held.length]);
 
   const departmentOf = useCallback(
     (id: string) => allDepartments.find((d) => d.id === id),
@@ -180,29 +199,51 @@ export default function AllHandsPage() {
 
   const usage = thread ? runUsage(thread) : null;
 
+  if (showList) {
+    return (
+      <MeetingList
+        runs={allHandsRuns}
+        onOpen={(id) => setOpenId(id)}
+        onNew={() => {
+          setOpenId(null);
+          setComposingNew(true);
+        }}
+        onDelete={(id) => void deleteAllHandsRun(id)}
+      />
+    );
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Header doubles as the thread switcher, so past threads never sit at
           the bottom of the scroll where you have to hunt for them. */}
       <header className="flex flex-none items-center gap-3 border-b border-outline-variant px-4 medium:px-6 expanded:px-8 py-3.5">
-        <div className="grid h-10 w-10 flex-none place-items-center rounded-2xl bg-primary-container text-on-primary-container">
-          <UsersIcon className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h1 className="md-title truncate">{thread?.title ?? "New thread"}</h1>
-            {allHandsRuns.length > 0 ? (
-              <button
-                onClick={() => setShowThreads((value) => !value)}
-                className="md-state md-label-sm flex flex-none items-center gap-1 rounded-lg px-1.5 py-0.5 text-on-variant"
-              >
-                <ChevronIcon
-                  className={cx("h-3.5 w-3.5 transition-transform", showThreads && "rotate-90")}
-                />
-                {allHandsRuns.length} thread{allHandsRuns.length === 1 ? "" : "s"}
-              </button>
-            ) : null}
+        {/* Back to every meeting. The phone's own back gesture goes wherever
+            they came from; this always goes to the list. */}
+        {held.length > 0 ? (
+          <button
+            type="button"
+            aria-label="All meetings"
+            onClick={(event) => {
+              createRipple(event);
+              setOpenId(null);
+              setComposingNew(false);
+            }}
+            className="md-state md-target grid flex-none place-items-center rounded-full text-on-variant"
+          >
+            <ChevronIcon className="h-5 w-5 rotate-180" />
+          </button>
+        ) : (
+          <div className="grid h-10 w-10 flex-none place-items-center rounded-2xl bg-primary-container text-on-primary-container">
+            <UsersIcon className="h-5 w-5" />
           </div>
+        )}
+        <div className="min-w-0 flex-1">
+          {/* The switcher that used to live here, a chevron and a count that
+              unfolded a panel over the transcript, is the list now. Two ways to
+              reach the same meetings, one of them hidden inside a heading, was
+              one too many. */}
+          <h1 className="md-title truncate">{thread?.title ?? "New meeting"}</h1>
           <p className="md-label-sm truncate text-on-variant">
             {thread
               ? `${thread.rounds.length} question${thread.rounds.length === 1 ? "" : "s"}`
@@ -220,8 +261,9 @@ export default function AllHandsPage() {
               createRipple(event);
               await deleteAllHandsRun(thread.id);
               setOpenId(null);
+              setComposingNew(false);
             }}
-            title="Delete this thread"
+            title="Delete this meeting"
             className="md-state md-target grid h-9 w-9 flex-none place-items-center rounded-full text-on-variant"
           >
             <TrashIcon className="h-4 w-4" />
@@ -230,18 +272,17 @@ export default function AllHandsPage() {
         <Button
           variant="outlined"
           size="sm"
-          aria-label="New thread"
+          aria-label="New meeting"
           className="flex-none px-2 medium:px-3"
           icon={<PlusIcon className="h-4 w-4" />}
           onClick={() => {
             setLive(null);
             setOpenId(null);
             setComposingNew(true);
-            setShowThreads(false);
             inputRef.current?.focus();
           }}
         >
-          <span className="hidden medium:inline">New thread</span>
+          <span className="hidden medium:inline">New meeting</span>
         </Button>
         {/* The top app bar carries it on compact, so this would be the second
             avatar on the same screen. */}
@@ -249,33 +290,6 @@ export default function AllHandsPage() {
           <ProfileMenu />
         </div>
       </header>
-
-      {showThreads ? (
-        <ul className="max-h-48 flex-none overflow-y-auto border-b border-outline-variant bg-low px-4 medium:px-6 py-2">
-          {allHandsRuns.map((run) => (
-            <li key={run.id}>
-              <button
-                onClick={() => {
-                  setLive(null);
-                  setComposingNew(false);
-                  setOpenId(run.id);
-                  setShowThreads(false);
-                  stickToBottom.current = true;
-                }}
-                className={cx(
-                  "md-state flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left",
-                  thread?.id === run.id && "text-primary",
-                )}
-              >
-                <span className="md-body min-w-0 flex-1 truncate">{run.title}</span>
-                <span className="md-label-sm flex-none text-on-variant/75">
-                  {run.rounds.length}q · {formatRelativeTime(run.updatedAt)}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
 
       <div className="flex min-h-0 flex-1">
         {/* Below the large window class the roster pane is gone, so the same
