@@ -2,7 +2,7 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { useEffect, useState } from "react";
-import { Markdown } from "@/components/ChatView";
+import { Markdown } from "@/components/Markdown";
 import { BookIcon, Button, CloseIcon, EditIcon, EmptyState, cx } from "@/components/ui";
 import { WikiEditor } from "@/components/WikiEditor";
 import { createRipple } from "@/components/ui/ripple";

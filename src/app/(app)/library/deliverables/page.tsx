@@ -21,7 +21,7 @@ import {
   TrashIcon,
   cx,
 } from "@/components/ui";
-import { Markdown } from "@/components/ChatView";
+import { Markdown } from "@/components/Markdown";
 import { LibraryTabs } from "@/components/LibraryTabs";
 import { conversationHref, formatRelativeTime } from "@/lib/routes";
 import { DELIVERABLE_COLUMNS, useStore } from "@/lib/store";

@@ -8,8 +8,6 @@ import { allToBlob } from "@/lib/blobUpload";
 import { useRouter, useSearchParams } from "next/navigation";
 import { setConversationOpen, showsConversationList } from "@/lib/chatRoute";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { newId } from "@/lib/ids";
 import { hasKeyFor } from "@/lib/hasKey";
 import {
@@ -59,6 +57,7 @@ import {
   TrashIcon,
   cx,
 } from "./ui";
+import { Markdown } from "./Markdown";
 import { createRipple } from "./ui/ripple";
 
 interface StreamState {
@@ -1452,36 +1451,6 @@ function PaperclipIcon({ className }: { className?: string }) {
   );
 }
 
-export function Markdown({ children }: { children: string }) {
-  return (
-    <div className="prose-md3">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          /**
-           * A table gets its own scrolling wrapper.
-           *
-           * Making the table itself `display: block` to let it scroll is the
-           * usual shortcut, and it is why these read as cramped: a block box
-           * stops laying out as a table, so the columns collapse to their
-           * content instead of sharing the width.
-           */
-          table: ({ node: _node, ...props }) => (
-            <div className="prose-scroll">
-              <table {...props} />
-            </div>
-          ),
-          /** Anything a department links to is external and opens elsewhere. */
-          a: ({ node: _node, ...props }) => (
-            <a {...props} target="_blank" rel="noreferrer noopener" />
-          ),
-        }}
-      >
-        {children}
-      </ReactMarkdown>
-    </div>
-  );
-}
 
 /**
  * One action a department has proposed.

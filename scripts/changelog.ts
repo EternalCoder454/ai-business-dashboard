@@ -1,45 +1,104 @@
 /**
  * Turns the commit history into the Changelog people read in the panel.
  *
- * Generated rather than hand kept, because a hand kept one goes stale the first
- * week somebody is busy. The commit subjects in this repository are already
- * written as plain sentences about what changed, which is the only reason this
- * works; a repository full of "fix bug" would need release notes written by
- * hand.
+ * Two views come out of this, from two sources.
+ *
+ * Technical is the commit history itself: subject and full message. It is
+ * generated, so it cannot go stale, and it is for whoever wants to know what
+ * actually happened.
+ *
+ * Simple is changelog.plain.json, written by hand and keyed by commit. A
+ * commit with no entry there does not appear in Simple at all, which is how
+ * refactors, lint passes and migrations stay out of a customer's changelog.
+ * Keying by commit means an entry is written once and survives every later
+ * regeneration.
  *
  * Committed as a file rather than read at runtime. Vercel builds from a shallow
- * clone and the running app has no git at all, so the history has to be baked
- * in while it is still available.
+ * clone and the running app has no git, so the history has to be baked in while
+ * it is still available.
  *
  * Run with: npm run changelog
  */
 import { execFileSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
 /** Separates fields inside a line, and entries from each other. */
 const FIELD = "";
 const ENTRY = "";
 
 /**
- * Commits nobody outside this repository benefits from reading.
+ * Commits that are not news even to somebody reading the technical view.
  *
- * A changelog is for the people using the panel. Formatting passes, comment
- * edits, and tooling changes are real work and are not news, and a list padded
- * with them is one people stop opening.
+ * A conventional prefix is only a prefix when a colon follows it. Matching the
+ * bare word dropped three real releases, because "Build the operator screen"
+ * and "Merge workspaces" are features that happen to open with one. The plain
+ * language file naming a commit that was not in the history is what surfaced
+ * it, which is why that warning exists.
  */
-const NOISE =
-  /^(chore|docs|style|refactor|test|ci|build|bump|merge|wip|typo|lint|format|comment)\b/i;
+const NOISE = /^(chore|docs|style|ci|build|bump|wip|typo|lint|format|refactor|test)(\(.+\))?:/i;
+const MERGE_COMMIT = /^Merge (pull request|branch|remote-tracking|commit)\b/i;
 
 const SKIP_TRAILER = /^(co-authored-by|signed-off-by|🤖|generated with)/i;
 
-interface Entry {
-  id: string;
-  date: string;
+type Kind = "new" | "better" | "fixed";
+
+interface Plain {
+  kind: Kind;
   title: string;
   detail: string;
 }
 
-function history(): Entry[] {
+interface Entry {
+  id: string;
+  date: string;
+  /** The commit subject. */
+  title: string;
+  /** The whole commit message, as markdown. */
+  detail: string;
+  plain?: Plain;
+}
+
+const KINDS: Kind[] = ["new", "better", "fixed"];
+
+function plainEntries(): Map<string, Plain> {
+  const raw = JSON.parse(readFileSync("changelog.plain.json", "utf8")) as Record<
+    string,
+    unknown
+  >;
+  const out = new Map<string, Plain>();
+  for (const [id, value] of Object.entries(raw)) {
+    if (id.startsWith("_") || !value || typeof value !== "object") continue;
+    const entry = value as Partial<Plain>;
+    if (!entry.title || !entry.kind || !KINDS.includes(entry.kind)) {
+      throw new Error(`changelog.plain.json: ${id} needs a title and a kind`);
+    }
+    out.set(id, { kind: entry.kind, title: entry.title, detail: entry.detail ?? "" });
+  }
+  return out;
+}
+
+/**
+ * The commit message as markdown.
+ *
+ * Paragraphs are rejoined because git wraps them at seventy odd characters and
+ * markdown would otherwise render the wrapping as the paragraph. Lines that
+ * already look like markdown, a bullet or a quote, keep their own line break.
+ */
+function body(raw: string): string {
+  const paragraphs: string[] = [];
+  for (const chunk of raw.split(/\n\s*\n/)) {
+    const lines = chunk
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line && !SKIP_TRAILER.test(line));
+    if (!lines.length) continue;
+    const structured = lines.some((line) => /^([-*>]|\d+\.)\s/.test(line));
+    paragraphs.push(structured ? lines.join("\n") : lines.join(" "));
+  }
+  return paragraphs.join("\n\n");
+}
+
+function history(plain: Map<string, Plain>): Entry[] {
   const raw = execFileSync(
     "git",
     ["log", `--pretty=format:%h${FIELD}%ad${FIELD}%s${FIELD}%b${ENTRY}`, "--date=short"],
@@ -50,56 +109,43 @@ function history(): Entry[] {
   for (const chunk of raw.split(ENTRY)) {
     const line = chunk.trim();
     if (!line) continue;
-    const [id, date, title, body = ""] = line.split(FIELD);
+    const [id, date, title, message = ""] = line.split(FIELD);
     if (!id || !date || !title) continue;
-    if (NOISE.test(title)) continue;
-
-    entries.push({ id, date, title: title.trim(), detail: summarise(body) });
+    if (NOISE.test(title) || MERGE_COMMIT.test(title)) continue;
+    entries.push({ id, date, title: title.trim(), detail: body(message), plain: plain.get(id) });
   }
   return entries;
 }
 
-/**
- * The first paragraph of the message, which is where the commits here say what
- * changed. Everything after it is reasoning for whoever reads the diff.
- */
-function summarise(body: string): string {
-  const paragraphs = body
-    .split(/\n\s*\n/)
-    .map((p) =>
-      p
-        .split("\n")
-        .map((l) => l.trim())
-        .filter((l) => l && !SKIP_TRAILER.test(l))
-        .join(" ")
-        .trim(),
-    )
-    .filter(Boolean);
-
-  const first = paragraphs[0] ?? "";
-  if (first.length <= 320) return first;
-  // Cut at a sentence rather than mid word, so it reads as an end.
-  const cut = first.slice(0, 320);
-  const stop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("? "));
-  return stop > 120 ? cut.slice(0, stop + 1) : `${cut.trimEnd()}…`;
-}
-
-const entries = history();
+const plain = plainEntries();
+const entries = history(plain);
+const withPlain = entries.filter((entry) => entry.plain);
 
 const file = `// Generated by scripts/changelog.ts. Run \`npm run changelog\` after a release.
-// Edit the commit messages, not this file.
+// Technical entries come from the commit history. Simple entries come from
+// changelog.plain.json, which is where to edit them.
+
+export type ChangeKind = "new" | "better" | "fixed";
 
 export interface ChangelogEntry {
   /** The short commit hash, which is also a stable key for the list. */
   id: string;
   /** ISO date, so entries group by day without parsing anything. */
   date: string;
+  /** The commit subject. */
   title: string;
-  /** The first paragraph of the commit message, or empty. */
+  /** The whole commit message, as markdown. */
   detail: string;
+  /** Absent when this release is not worth telling a customer about. */
+  plain?: {
+    kind: ChangeKind;
+    title: string;
+    /** Markdown. Bullets and emphasis are rendered. */
+    detail: string;
+  };
 }
 
-/** Newest first, which is the order the screen shows them in. */
+/** Newest first, which is the order both views show them in. */
 export const CHANGELOG: ChangelogEntry[] = ${JSON.stringify(entries, null, 2)};
 
 /** What the newest entry is, for deciding whether somebody has seen it. */
@@ -107,5 +153,15 @@ export const LATEST = ${JSON.stringify(entries[0]?.id ?? "")};
 `;
 
 writeFileSync("src/lib/changelog.data.ts", file);
-console.log(`wrote ${entries.length} entries to src/lib/changelog.data.ts`);
-console.log(`newest: ${entries[0]?.date} ${entries[0]?.title}`);
+
+console.log(`${entries.length} releases, ${withPlain.length} of them written up in plain language`);
+const missing = entries.filter((entry) => !entry.plain).length;
+if (missing) {
+  console.log(`${missing} have no Simple entry and are hidden from that view.`);
+  console.log("Add them to changelog.plain.json if they are worth telling a customer about.");
+}
+const orphans = [...plain.keys()].filter((id) => !entries.some((entry) => entry.id === id));
+if (orphans.length) {
+  console.log(`\nWarning: ${orphans.length} entries name a commit that is not in the history:`);
+  console.log(`  ${orphans.join(", ")}`);
+}

@@ -89,3 +89,46 @@ export function baselineChangelog(): void {
 export function seenChangelog(): string | null {
   return read();
 }
+
+/**
+ * Which of the two views somebody last chose.
+ *
+ * Simple by default, because most people reading a changelog did not write the
+ * software. Remembered per browser, so whoever wants the technical view is not
+ * asked to pick it every time.
+ */
+export type ChangelogView = "simple" | "technical";
+
+const VIEW_KEY = "eterneon:changelog-view";
+
+const viewListeners = new Set<() => void>();
+
+function readView(): ChangelogView {
+  try {
+    return window.localStorage.getItem(VIEW_KEY) === "technical" ? "technical" : "simple";
+  } catch {
+    return "simple";
+  }
+}
+
+export function setChangelogView(view: ChangelogView): void {
+  try {
+    window.localStorage.setItem(VIEW_KEY, view);
+  } catch {
+    // Then the choice lasts as long as the page does, which is still a choice.
+  }
+  for (const listener of viewListeners) listener();
+}
+
+function subscribeView(listener: () => void): () => void {
+  viewListeners.add(listener);
+  window.addEventListener("storage", listener);
+  return () => {
+    viewListeners.delete(listener);
+    window.removeEventListener("storage", listener);
+  };
+}
+
+export function useChangelogView(): ChangelogView {
+  return useSyncExternalStore(subscribeView, readView, () => "simple" as const);
+}

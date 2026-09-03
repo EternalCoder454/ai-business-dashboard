@@ -1,0 +1,622 @@
+{
+  "_readme": [
+    "Plain language versions of each release, for the Simple view of the Changelog.",
+    "Keyed by commit so they survive `npm run changelog` and are only written once.",
+    "kind is one of: new, better, fixed.",
+    "A commit with no entry here does not appear in the Simple view at all, which",
+    "is how internal work stays out of a customer's changelog.",
+    "With ANTHROPIC_API_KEY set, `npm run changelog` drafts missing ones for review."
+  ],
+  "1a23338": {
+    "kind": "new",
+    "title": "Changelog",
+    "detail": "This page. Every update to the panel, newest first.\n\n- **Simple** shows what changed and what it means for you.\n- **Technical** shows the full engineering detail behind each release."
+  },
+  "1fef674": {
+    "kind": "new",
+    "title": "Permissions for each person",
+    "detail": "An administrator can now decide what each colleague gets to use:\n\n- **Which department heads** they work with, or all of them.\n- **Which parts of the panel** they see, such as the calendar, the file library or the inbox.\n\nNobody is restricted by default, so nothing changes until you choose to change it."
+  },
+  "bf10c24": {
+    "kind": "better",
+    "title": "Signing out takes effect straight away",
+    "detail": "Removing someone, or signing out on a shared computer, now ends the session **immediately**. It used to stay valid for a while afterwards."
+  },
+  "b84c6b9": {
+    "kind": "better",
+    "title": "Clearer labels",
+    "detail": "Headings and buttons across the panel now say what they are in a couple of words instead of a sentence."
+  },
+  "02b2047": {
+    "kind": "fixed",
+    "title": "Library uploads no longer go missing",
+    "detail": "A file added to the Library is now always stored, and you are **told when an upload fails** instead of it disappearing quietly."
+  },
+  "8dceb8d": {
+    "kind": "new",
+    "title": "Belong to more than one business",
+    "detail": "If you work with several businesses on the panel, switch between them from the **account menu** without signing out."
+  },
+  "15e88c3": {
+    "kind": "better",
+    "title": "Faster files, and larger ones",
+    "detail": "Uploads are kept in proper file storage now, so:\n\n- Pages carrying attachments **load quicker**.\n- **Bigger documents** are accepted."
+  },
+  "4aab530": {
+    "kind": "fixed",
+    "title": "The operator screen no longer flickers",
+    "detail": "Opening the operator panel used to show a refusal for a moment before loading."
+  },
+  "c9e9bb4": {
+    "kind": "better",
+    "title": "The operator panel opens on Overview",
+    "detail": "It used to open on the wrong tab, and the Reports tab could load into a blank screen."
+  },
+  "480f854": {
+    "kind": "better",
+    "title": "The Overview leads with what needs attention",
+    "detail": "Rather than a wall of numbers, it now starts with anything waiting on a person."
+  },
+  "8448b06": {
+    "kind": "better",
+    "title": "Conduct review costs about half as much",
+    "detail": "The review sends far less text to do the same job, so it costs about **half as much** to run, and its reports are easier to read at a glance."
+  },
+  "ae176a6": {
+    "kind": "fixed",
+    "title": "Conduct review gives consistent answers",
+    "detail": "The same messages now produce the **same result every time**. If you hit the limit, it tells you exactly how long to wait rather than saying *try again later*."
+  },
+  "50d7e39": {
+    "kind": "new",
+    "title": "Each business sees its own conduct reports",
+    "detail": "An administrator can read and act on reports about **their own people**, instead of only the operator being able to."
+  },
+  "ac9004c": {
+    "kind": "better",
+    "title": "Conduct review runs on your own key",
+    "detail": "It no longer needs separate setup before it will work."
+  },
+  "9a6253b": {
+    "kind": "better",
+    "title": "Everything that can be pressed looks like it",
+    "detail": "Buttons and rows across the panel now respond properly, and your account is reachable from every screen."
+  },
+  "e2eeaf4": {
+    "kind": "new",
+    "title": "Profiles for each department head",
+    "detail": "Open a head to read what they are for and what they can do before you ask them anything.\n\nAll Hands is now called a **Meeting**."
+  },
+  "3d8a1fd": {
+    "kind": "new",
+    "title": "A list of past meetings",
+    "detail": "Meetings are kept and listed the way department conversations are, instead of only the most recent one being reachable."
+  },
+  "3efb060": {
+    "kind": "new",
+    "title": "Choose who is in the room",
+    "detail": "Pick **which heads answer** before you ask a question of the whole company, rather than always asking everybody."
+  },
+  "135f383": {
+    "kind": "fixed",
+    "title": "Navigation restored on the conversation list",
+    "detail": "Also fixes the bar at the bottom of the screen on a phone."
+  },
+  "a7e2cae": {
+    "kind": "better",
+    "title": "The tour walks with you",
+    "detail": "It now **takes you to each screen** as it describes it, and asks you for nothing."
+  },
+  "433fb66": {
+    "kind": "new",
+    "title": "A guided start for a new business",
+    "detail": "A short walk through the panel the first time you sign in."
+  },
+  "39dbfad": {
+    "kind": "new",
+    "title": "Usage and health for the operator",
+    "detail": "Sign in counts, activity, error rates, and how the nightly work is doing."
+  },
+  "8e35280": {
+    "kind": "fixed",
+    "title": "Settings no longer save on every keystroke",
+    "detail": "Typing in Settings was writing to the database letter by letter."
+  },
+  "f96f742": {
+    "kind": "fixed",
+    "title": "A head knows when it cannot see your calendar",
+    "detail": "A head used to say it had *no access to your calendar* when it could see a perfectly working one with a free week in it."
+  },
+  "f76322e": {
+    "kind": "fixed",
+    "title": "The Health tab appears",
+    "detail": "It existed but could not be reached."
+  },
+  "0639f57": {
+    "kind": "better",
+    "title": "Pages load much faster",
+    "detail": "Work the panel could do at the same time was being done one thing after another.\n\n> A warm page load went from about **two seconds** to **under a tenth of one**."
+  },
+  "de4118e": {
+    "kind": "new",
+    "title": "Sent and seen on messages",
+    "detail": "A message to a colleague now shows whether it **arrived** and whether they have **read it**."
+  },
+  "60560b2": {
+    "kind": "better",
+    "title": "The conversation list reads like a list",
+    "detail": "Titles, dates and previews instead of a wall of rows."
+  },
+  "766a95b": {
+    "kind": "new",
+    "title": "Several conversations with each head",
+    "detail": "Start a **new conversation** with a head rather than everything living in one endless thread."
+  },
+  "b53666b": {
+    "kind": "better",
+    "title": "The heads follow the writing rules",
+    "detail": "House style now actually reaches every head instead of being ignored."
+  },
+  "a2f7a7b": {
+    "kind": "better",
+    "title": "Better answers from Finance and Legal",
+    "detail": "Both now reason about the whole picture, and a fault that was quietly stopping their guidance arriving is fixed."
+  },
+  "eecf457": {
+    "kind": "better",
+    "title": "Every head checks its own work",
+    "detail": "Four checks each head runs before answering, drawn from graded example conversations."
+  },
+  "eae4a0d": {
+    "kind": "fixed",
+    "title": "Invited colleagues stop being told there is no key",
+    "detail": "The panel was reporting the business had no model key to everyone except the person who set it."
+  },
+  "2a11503": {
+    "kind": "fixed",
+    "title": "A clear message when you are in no business yet",
+    "detail": "Rather than an empty panel with nothing to press."
+  },
+  "05b8913": {
+    "kind": "fixed",
+    "title": "Several stability fixes",
+    "detail": "Two memory leaks, a blank screen after a failed load, and stored files that were never cleaned up."
+  },
+  "3149528": {
+    "kind": "fixed",
+    "title": "Two places one business could see another",
+    "detail": "Two places where one business could see another, found by an audit of **every query in the product**, and closed."
+  },
+  "86d6ef1": {
+    "kind": "new",
+    "title": "Your calendar beside your work",
+    "detail": "Connect **Google Calendar** and the heads can see what your week actually looks like before advising you on it."
+  },
+  "36aa91a": {
+    "kind": "new",
+    "title": "Briefings on a schedule",
+    "detail": "Set a question to repeat **daily, weekly or monthly**, and the answer is waiting when you next sign in."
+  },
+  "e92af6f": {
+    "kind": "new",
+    "title": "Export a deliverable",
+    "detail": "Anything a head writes can leave the panel as a **Word document**, **Markdown** or **plain text**."
+  },
+  "9e0f63f": {
+    "kind": "better",
+    "title": "Faster page loads",
+    "detail": "The panel no longer loads every message in the business on every page."
+  },
+  "6ab219b": {
+    "kind": "better",
+    "title": "A developer API that holds up",
+    "detail": "Rate limits, scopes and repeat protection for anything built against the panel."
+  },
+  "f00f848": {
+    "kind": "better",
+    "title": "Conduct review runs nightly on its own",
+    "detail": "It no longer needs anybody to press a button."
+  },
+  "6db2edd": {
+    "kind": "better",
+    "title": "Model keys are encrypted",
+    "detail": "A key a business gives the panel is encrypted before it is stored."
+  },
+  "792010c": {
+    "kind": "better",
+    "title": "A model key never comes back out",
+    "detail": "Nothing returns a stored key to a browser, **not even to the administrator who set it**. Two ways it could have are closed."
+  },
+  "76f5eec": {
+    "kind": "better",
+    "title": "A clearer invitation email",
+    "detail": "Rewritten so somebody receiving one knows what it is and what to do."
+  },
+  "5545d90": {
+    "kind": "fixed",
+    "title": "No more flash of the wrong company name",
+    "detail": "The panel briefly showed a previous business's name while loading."
+  },
+  "171b1f9": {
+    "kind": "better",
+    "title": "Faster pages with images",
+    "detail": "Images are no longer read out of the database on every page load."
+  },
+  "c94d828": {
+    "kind": "better",
+    "title": "See who a client actually is",
+    "detail": "The operator's client list shows real details rather than blank rows."
+  },
+  "15bdcca": {
+    "kind": "fixed",
+    "title": "Export gives you everything",
+    "detail": "It was leaving things out."
+  },
+  "f19bd18": {
+    "kind": "new",
+    "title": "Each business gets its own admin screen",
+    "detail": "Add colleagues, set roles and manage access **without going through the operator**."
+  },
+  "aae6209": {
+    "kind": "fixed",
+    "title": "A save cannot land in the wrong business",
+    "detail": "A security fix in how saved records choose where they belong."
+  },
+  "dc42247": {
+    "kind": "fixed",
+    "title": "Reply length capped on every provider",
+    "detail": "It was only capped on one, so a runaway reply could be expensive elsewhere."
+  },
+  "38fe019": {
+    "kind": "new",
+    "title": "Send feedback from the account menu",
+    "detail": "Tell us what is wrong or missing **without leaving the panel**."
+  },
+  "032840d": {
+    "kind": "better",
+    "title": "People renamed to Clients",
+    "detail": "The two names for the same thing now match everywhere."
+  },
+  "5761b15": {
+    "kind": "better",
+    "title": "Running a business and running the panel are separate",
+    "detail": "Being an administrator of your own company no longer touches anything belonging to another."
+  },
+  "7f422d6": {
+    "kind": "new",
+    "title": "More than one business on one panel",
+    "detail": "Each business has its own data, its own people and its own settings, kept **fully apart** from every other."
+  },
+  "7769044": {
+    "kind": "fixed",
+    "title": "The first sign in reaches a workspace",
+    "detail": "A brand new installation used to sign you in to nothing."
+  },
+  "3d41ec8": {
+    "kind": "new",
+    "title": "Invitations by email",
+    "detail": "Add somebody and they get an **email with a link**, instead of being told to find the panel themselves."
+  },
+  "e6bcc4b": {
+    "kind": "better",
+    "title": "A customer's administrator is not an operator",
+    "detail": "Running your own business no longer gives access to anybody else's."
+  },
+  "55f13d9": {
+    "kind": "new",
+    "title": "The model key belongs to the business",
+    "detail": "An administrator sets it **once**, and everybody they invite can use the panel **without ever holding the key** themselves."
+  },
+  "1593137": {
+    "kind": "new",
+    "title": "Eighteen skills, ready to use",
+    "detail": "General purpose skills any business can switch on, with a plain description of what each is and is not."
+  },
+  "d755c22": {
+    "kind": "better",
+    "title": "Field hints describe the field",
+    "detail": "Placeholder text no longer describes somebody else's business."
+  },
+  "0197f62": {
+    "kind": "better",
+    "title": "Page content lines up with its heading"
+  },
+  "09147ae": {
+    "kind": "new",
+    "title": "Three layouts for the Library",
+    "detail": "Choose how files and documents are listed."
+  },
+  "c2ea0c8": {
+    "kind": "fixed",
+    "title": "File pickers work",
+    "detail": "They did nothing at all when pressed."
+  },
+  "9a2b6a5": {
+    "kind": "fixed",
+    "title": "Saves no longer revert silently",
+    "detail": "A rejected save used to look as though it had worked and then quietly undo itself."
+  },
+  "11fb408": {
+    "kind": "fixed",
+    "title": "Mobile layout fixes",
+    "detail": "Landscape, the meetings screen, and long words running off the side."
+  },
+  "da75de9": {
+    "kind": "better",
+    "title": "Wiki pages as cards",
+    "detail": "Easier to scan than one long body of text."
+  },
+  "82c5743": {
+    "kind": "new",
+    "title": "An editable internal wiki",
+    "detail": "Write down how your business works, for whoever joins next."
+  },
+  "4e6be70": {
+    "kind": "new",
+    "title": "Actions work on OpenAI and Gemini too",
+    "detail": "Not only on Anthropic models."
+  },
+  "82b3930": {
+    "kind": "new",
+    "title": "Heads can act, with your approval",
+    "detail": "A head can propose creating a task or saving a decision. **Nothing happens until you approve it.**"
+  },
+  "320c7dd": {
+    "kind": "fixed",
+    "title": "Company wide notes always reach the heads",
+    "detail": "They were being dropped when a department had a lot of its own."
+  },
+  "e5cbf90": {
+    "kind": "new",
+    "title": "A different model per department",
+    "detail": "Choose between **Anthropic**, **OpenAI** and **Google** for each head."
+  },
+  "820ccb4": {
+    "kind": "better",
+    "title": "Messages laid out as a chat",
+    "detail": "And your branding now reaches the icons."
+  },
+  "8a4ca7e": {
+    "kind": "better",
+    "title": "A tidier account menu"
+  },
+  "d37d3fb": {
+    "kind": "better",
+    "title": "Less text on every screen",
+    "detail": "Cut back to what is actually useful, with setup moved into the account menu."
+  },
+  "4ec017c": {
+    "kind": "better",
+    "title": "A rebuilt colour scheme",
+    "detail": "Better contrast throughout, and a finished dashboard and wiki."
+  },
+  "245d3fb": {
+    "kind": "new",
+    "title": "Tasks",
+    "detail": "Keep track of outstanding work, and every head can see **what is already on the list** before suggesting more."
+  },
+  "2ae63cd": {
+    "kind": "new",
+    "title": "Rearrange the sidebar",
+    "detail": "Reorder it and hide what you do not use."
+  },
+  "0dec428": {
+    "kind": "new",
+    "title": "A dashboard",
+    "detail": "Replaces the org chart as the first thing you see."
+  },
+  "e5efb68": {
+    "kind": "new",
+    "title": "The panel remembers decisions",
+    "detail": "Record what was decided and what it was measured against, and the heads **reason from it** in later answers."
+  },
+  "6a8fba6": {
+    "kind": "fixed",
+    "title": "No more claiming things are missing while loading",
+    "detail": "The panel used to say a screen was empty before it had finished loading."
+  },
+  "022a658": {
+    "kind": "better",
+    "title": "Collapse the sidebar",
+    "detail": "And no stale content flashing on reload."
+  },
+  "fec7a14": {
+    "kind": "better",
+    "title": "A colour for each head",
+    "detail": "So they can be told apart at a glance."
+  },
+  "efe49a6": {
+    "kind": "better",
+    "title": "A tighter skill library",
+    "detail": "Seventy two skills consolidated down to **fifty six**, with the overlap removed."
+  },
+  "9c913a5": {
+    "kind": "better",
+    "title": "Heads stop listing what they cannot do",
+    "detail": "Every reply used to end with a disclaimer about what the head could not do."
+  },
+  "472991a": {
+    "kind": "better",
+    "title": "Colour coded meeting replies",
+    "detail": "Eight answers at once are now possible to tell apart."
+  },
+  "bea2232": {
+    "kind": "better",
+    "title": "Easier to read replies",
+    "detail": "Looser spacing, and tables that lay out as tables."
+  },
+  "f6962d4": {
+    "kind": "fixed",
+    "title": "A silent delete and misleading status dots",
+    "detail": "Also a slow query behind the department list."
+  },
+  "7b09781": {
+    "kind": "new",
+    "title": "Work together in a project",
+    "detail": "Conversations inside a shared project are **visible to everybody on it**."
+  },
+  "2f63f7a": {
+    "kind": "new",
+    "title": "Share projects with colleagues",
+    "detail": "One copy of each conversation rather than a duplicate per person."
+  },
+  "9816850": {
+    "kind": "fixed",
+    "title": "Sign out works",
+    "detail": "It never had."
+  },
+  "6e2db55": {
+    "kind": "better",
+    "title": "Grouped navigation",
+    "detail": "Five groups instead of eleven separate entries."
+  },
+  "bf8f2b8": {
+    "kind": "new",
+    "title": "See what each skill costs",
+    "detail": "Each skill now shows **what it costs**, so switching one off is an informed choice."
+  },
+  "214fd12": {
+    "kind": "new",
+    "title": "Make the panel yours",
+    "detail": "Editable **company mark**, your **own colours**, and a **keyboard shortcut**."
+  },
+  "b0e8c10": {
+    "kind": "better",
+    "title": "Tell the heads more about you",
+    "detail": "Tell the heads **what you know**, **how you like answers**, and **what you are working on**, so their advice fits you."
+  },
+  "ea4ff1d": {
+    "kind": "new",
+    "title": "The business handbook as skills"
+  },
+  "2329b01": {
+    "kind": "new",
+    "title": "A leadership coach",
+    "detail": "A **private** head, for the things you would not put in front of the room."
+  },
+  "cb4f028": {
+    "kind": "better",
+    "title": "Library files belong to departments",
+    "detail": "Share a document with the heads that need it rather than with all of them."
+  },
+  "fdffbd3": {
+    "kind": "fixed",
+    "title": "Centred text sits centred"
+  },
+  "714cb20": {
+    "kind": "fixed",
+    "title": "Headings no longer sit flush against the edge"
+  },
+  "e867085": {
+    "kind": "better",
+    "title": "Messages renamed to Inbox",
+    "detail": "Messages is now the **Inbox**. Link previews added, and the settings button fixed."
+  },
+  "75c29ae": {
+    "kind": "fixed",
+    "title": "The sign in page no longer lists who has access",
+    "detail": "The sign in page was listing **every address with access**. It no longer does."
+  },
+  "13073e8": {
+    "kind": "new",
+    "title": "An onboarding page",
+    "detail": "Something to send somebody on their first day."
+  },
+  "e3cd52c": {
+    "kind": "new",
+    "title": "What replies cost",
+    "detail": "The panel now records **what each answer costs**, so spend can be attributed later."
+  },
+  "6064962": {
+    "kind": "fixed",
+    "title": "A clearer message when no key is set",
+    "detail": "It now says which side is missing one."
+  },
+  "a792cd0": {
+    "kind": "new",
+    "title": "An administrator can review conversations",
+    "detail": "Across the accounts in their own business."
+  },
+  "fa6e5ec": {
+    "kind": "better",
+    "title": "Consistent width on every screen"
+  },
+  "6be0012": {
+    "kind": "better",
+    "title": "One less line of noise from every head",
+    "detail": "And lists that sit properly."
+  },
+  "2e65f54": {
+    "kind": "new",
+    "title": "Pictures for department heads",
+    "detail": "Replaces the emoji, and you can change them."
+  },
+  "346718f": {
+    "kind": "new",
+    "title": "Message a colleague",
+    "detail": "**Direct messages** between colleagues, inside the panel. Also fixes messages vanishing when sent."
+  },
+  "57bcc29": {
+    "kind": "fixed",
+    "title": "No empty key field when the server holds one",
+    "detail": "It now says so instead."
+  },
+  "d4a3902": {
+    "kind": "better",
+    "title": "A faster, lighter panel"
+  },
+  "1a60dfa": {
+    "kind": "better",
+    "title": "A hardened deployment",
+    "detail": "Security headers and stricter defaults, with **no change to how you sign in**."
+  },
+  "9ca031d": {
+    "kind": "new",
+    "title": "Projects",
+    "detail": "Group work that spans **more than one department**."
+  },
+  "14880f9": {
+    "kind": "better",
+    "title": "Somewhere to keep the API key"
+  },
+  "c221e1f": {
+    "kind": "better",
+    "title": "No more hunting for a workspace id",
+    "detail": "The panel looks it up for you."
+  },
+  "b4e0e49": {
+    "kind": "new",
+    "title": "An account page",
+    "detail": "Your **name, pronouns, timezone** and what you are working on, plus **personal API keys**."
+  },
+  "5085df3": {
+    "kind": "fixed",
+    "title": "Deleting something removes everything with it",
+    "detail": "The panel and the database disagreed about what a delete should take."
+  },
+  "147196f": {
+    "kind": "new",
+    "title": "Sign in with Google",
+    "detail": "**Sign in with Google**, with the model key held on the server rather than in your browser."
+  },
+  "e72dd11": {
+    "kind": "new",
+    "title": "The Library, with PDFs and Word files",
+    "detail": "Upload a **PDF** or **Word** document and the heads can read it."
+  },
+  "8db1bea": {
+    "kind": "new",
+    "title": "Company wide skills and search",
+    "detail": "Company wide skills, and a **search palette** across everything in the panel."
+  },
+  "f6ec389": {
+    "kind": "fixed",
+    "title": "Attach images, and stop billing on disconnect",
+    "detail": "A **cancelled reply is no longer paid for**. Image attachments added."
+  },
+  "dc55329": {
+    "kind": "new",
+    "title": "Eterneon",
+    "detail": "The first version of the panel: *a room of department heads you can go and ask*."
+  }
+}

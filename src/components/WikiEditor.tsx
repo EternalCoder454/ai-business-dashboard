@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Markdown } from "./ChatView";
+import { Markdown } from "./Markdown";
 import {
   Button,
   Card,

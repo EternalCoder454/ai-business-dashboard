@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { Markdown } from "@/components/ChatView";
+import { Markdown } from "@/components/Markdown";
 import {
   Button,
   Card,

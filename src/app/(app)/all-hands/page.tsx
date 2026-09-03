@@ -5,7 +5,7 @@ import Link from "next/link";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { MeetingList } from "@/components/MeetingList";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Markdown } from "@/components/ChatView";
+import { Markdown } from "@/components/Markdown";
 import {
   BookmarkIcon,
   Button,
