@@ -18,6 +18,7 @@ import {
 import { createRipple } from "./ui/ripple";
 import { signOutAction } from "@/app/auth-actions";
 import { useNotifications } from "@/lib/notifications";
+import { baselineChangelog, useUnseenChangelog } from "@/lib/changelogSeen";
 import { useStore } from "@/lib/store";
 
 /**
@@ -37,6 +38,7 @@ const LINKS = [
   { href: "/settings", label: "Settings", icon: <GearIcon className="h-4 w-4" /> },
   { href: "/integrations", label: "Integrations", icon: <PuzzleIcon className="h-4 w-4" /> },
   { href: "/wiki", label: "Internal wiki", icon: <BookIcon className="h-4 w-4" /> },
+  { href: "/changelog", label: "Changelog", icon: <SparkIcon className="h-4 w-4" /> },
 ];
 
 /**
@@ -57,6 +59,13 @@ const ADMIN = {
 export function ProfileMenu() {
   const { account, isOperator, workspaceRole, accountEmail, canOpenPath } = useStore();
   const [open, setOpen] = useState(false);
+
+  /*
+   * Read after mount, not during render. localStorage does not exist on the
+   * server, and reading it while rendering would make the first paint differ
+   * from the markup that was sent.
+   */
+
 
   /*
    * Loaded when the menu is first opened, not on mount.
@@ -116,6 +125,11 @@ export function ProfileMenu() {
   };
   const notifications = useNotifications();
   const pathname = usePathname();
+  const unseen = useUnseenChangelog();
+
+  // A browser that has never looked starts caught up, so the badge means
+  // "since you were last here" rather than "every change ever made".
+  useEffect(baselineChangelog, []);
 
   const [confirming, setConfirming] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -205,6 +219,16 @@ export function ProfileMenu() {
         >
           {notifications.length}
         </span>
+      ) : null}
+
+      {notifications.length === 0 && unseen > 0 ? (
+        <span
+          aria-hidden
+          className={cx(
+            "pointer-events-none absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full",
+            "bg-primary ring-2 ring-[color:var(--badge-ring,var(--md-surface))]",
+          )}
+        />
       ) : null}
 
       {open ? (
@@ -330,7 +354,12 @@ export function ProfileMenu() {
                 className="md-state flex items-center gap-2.5 rounded-lg px-2 py-2 text-on-variant"
               >
                 {link.icon}
-                <span className="md-body">{link.label}</span>
+                <span className="md-body flex-1">{link.label}</span>
+                {link.href === "/changelog" && unseen > 0 ? (
+                  <span className="md-label-sm rounded-full bg-primary px-1.5 text-on-primary">
+                    {unseen === 9 ? "9+" : unseen}
+                  </span>
+                ) : null}
               </Link>
             ))}
           </nav>

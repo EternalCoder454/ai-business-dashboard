@@ -1,3 +1,4 @@
+import { schedulesBody } from "@/lib/schemas";
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { auth, authEnabled } from "@/auth";
@@ -5,7 +6,8 @@ import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { membershipFor } from "@/db/tenancy";
 import { allowsArea } from "@/lib/permissions";
-import { readJsonWithin, withinRate } from "@/lib/guard";
+import { readJson } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 import { listBriefings } from "@/lib/schedules";
 
 export const runtime = "nodejs";
@@ -103,17 +105,7 @@ export async function POST(request: Request) {
   const who = await whoever();
   if (!who.ok) return Response.json({ error: who.error }, { status: who.status });
 
-  const parsed = await readJsonWithin<{
-    action?: string;
-    id?: string;
-    name?: string;
-    departmentId?: string;
-    prompt?: string;
-    cadence?: string;
-    weekday?: number;
-    dayOfMonth?: number;
-    enabled?: boolean;
-  }>(request, 20_000);
+  const parsed = await readJson(request, schedulesBody, 20_000);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
 
   const body = parsed.body;
@@ -137,7 +129,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!withinRate(`schedules:${who.email}`, 30, 60_000)) {
+  if (!(await withinRate(`schedules:${who.email}`, 30, 60_000))) {
     return Response.json({ error: "Too many changes at once." }, { status: 429 });
   }
 

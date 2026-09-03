@@ -7,30 +7,17 @@ import { askOnce } from "./askOnce";
 import type { Provider } from "./providers";
 
 /**
- * The reviewer.
+ * The reviewer: reads internal messages and raises a hand at conduct rather
+ * than work. A safety net, not a productivity tool and not a leak detector.
  *
- * It reads what people write to each other inside a business and raises a hand
- * when something looks like conduct rather than work: threatening a colleague,
- * pressuring somebody sexually, organising an attack on a system. It is a
- * safety net for the operator, not a productivity tool and not a leak detector.
+ * Three things it must never start doing:
  *
- * What it deliberately does not do:
- *
- * - It does not look for secrets, client names, figures, or anything else
- *   confidential. That is the business's own information and none of ours; a
- *   tool that flagged it would be a tool that read it.
- * - It does not judge tone, swearing, bluntness, disagreement, or gossip. A
- *   panel that reported people for being short with each other would be worse
- *   than one that reported nothing.
- * - It does not store the conversation. A report holds a category, a sentence
- *   of reasoning, and one short quote, so somebody can decide whether to open
- *   the original. Building a second, searchable copy of everyone's messages
- *   would be the actual privacy harm here.
- *
- * It runs on the deployment's own key rather than the customer's. This is the
- * operator's duty of care, and charging a business for the review of itself
- * would be both strange and a way of telling them it was happening by way of
- * an invoice.
+ * - Look for secrets, client names or figures. That is the business's own
+ *   information, and a tool that flagged it would be a tool that read it.
+ * - Judge tone, swearing, bluntness or disagreement.
+ * - Store the conversation. A report holds a category, a sentence, and one
+ *   short quote. A second searchable copy of everyone's messages would be the
+ *   actual privacy harm.
  */
 
 const MODEL = "claude-haiku-4-5";
@@ -119,22 +106,15 @@ export interface Reviewable {
 }
 
 /**
- * What one business's review runs on, in order.
+ * What one business's review runs on, in order: REVIEWER_API_KEY, then the
+ * business's own key, then ANTHROPIC_API_KEY.
  *
- * The business's own key is the point of the change. This used to need
- * REVIEWER_API_KEY set on the deployment, and without it the reviewer did not
- * run at all: it never read a single message here in the months it has
- * existed, and nothing said so. A panel where every customer already brings a
- * key should not need a second one bolted on before a safety feature works.
+ * REVIEWER_API_KEY wins because an operator who sets it is saying they will
+ * pay for reviews rather than spend a customer's key. ANTHROPIC_API_KEY is
+ * last for the same reason: checked earlier it would quietly move every review
+ * onto the deployment's account.
  *
- * REVIEWER_API_KEY still wins where it is set, because an operator who sets it
- * is saying they want to pay for reviews themselves rather than spend a
- * customer's key on them. And ANTHROPIC_API_KEY is last rather than first,
- * which is the whole reason a separate variable existed: checked first it
- * would quietly move every review onto the deployment's own account.
- *
- * A business with no key of any kind is skipped rather than failed. There is
- * nothing to review with and nothing broken about that.
+ * A business with no key at all is skipped, not failed.
  */
 export async function keyFor(
   workspaceId: string,
@@ -218,17 +198,12 @@ function isCategory(value: unknown): value is (typeof CATEGORIES)[number] {
 /**
  * The batch, written as cheaply as it can be written.
  *
- * Every message used to carry its own UUID and its author's full address, so a
- * two word reply cost about eighty characters of scaffolding around six
- * characters of message. Direct messages are mostly short, which made the
- * framing the majority of what was being paid for.
+ * Ids become line numbers and authors become a number with a legend, since the
+ * model only has to point at a line and the caller holds the mapping back.
+ * Worth about half the tokens on short messages, which is most of them.
  *
- * The id becomes its position and the author becomes a number with a legend at
- * the top. The model never needs to see a UUID: it only has to point at a line,
- * and the caller already holds the mapping back.
- *
- * A total budget as well as a per message one, so a single enormous message
- * cannot crowd out the two hundred it was sitting among.
+ * A total budget as well as a per message one, so one enormous message cannot
+ * crowd out the two hundred it sits among.
  */
 const MAX_MESSAGE_CHARS = 1_200;
 const MAX_TRANSCRIPT_CHARS = 60_000;
@@ -417,15 +392,9 @@ async function record(
 
   if (findings.length > 0) {
     /*
-     * Never twice about the same message.
-     *
-     * The cursor normally makes this impossible, and normally is not a
-     * guarantee: two administrators pressing Run at the same moment read the
-     * same batch, and an operator rewinding a cursor to re-read a period does
-     * it deliberately. Found by doing exactly that, which put the same threat
-     * in front of somebody twice with two differently worded reasons, and a
-     * queue of accusations that grows every time anybody presses a button is
-     * one nobody trusts.
+     * Never twice about the same message. The cursor usually prevents it, but
+     * two administrators pressing Run together read the same batch, and
+     * rewinding a cursor re-reads a period on purpose.
      */
     const already = await database
       .select({ sourceId: t.reports.sourceId })
@@ -469,15 +438,10 @@ async function record(
 }
 
 /**
- * One pass over every business.
- *
- * Sequential rather than parallel: this runs on a schedule with nobody waiting
- * for it, and a hosted database with a connection ceiling is a worse thing to
- * exhaust than a few seconds are to save.
- *
- * Each business is wrapped on its own. Unattended work that stops at the first
- * error stops silently, and the businesses after the broken one would go
- * unreviewed for as long as it stayed broken without anything saying so.
+ * One pass over every business. Sequential, because nobody is waiting and a
+ * connection ceiling is worse to exhaust than seconds are to save. Each
+ * business is wrapped on its own so one failure does not silently stop the
+ * rest.
  */
 export async function runReview(only?: string): Promise<RunResult> {
   if (!reporterEnabled() || !db) {

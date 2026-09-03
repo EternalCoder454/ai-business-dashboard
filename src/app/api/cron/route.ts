@@ -4,6 +4,7 @@ import { isOperator } from "@/lib/admin";
 import { reporterEnabled, runReview } from "@/lib/reporter";
 import { runSchedules } from "@/lib/schedules";
 import { DEPLOYMENT, flush, kindOf, prune, record } from "@/lib/telemetry";
+import { rateLimitPrune } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -101,6 +102,13 @@ export async function GET(request: Request) {
   // Telemetry keeps itself in bounds here rather than in a job of its own.
   // Buckets past the retention window go, and whatever this instance has
   // buffered is written out before it is thrown away with the instance.
+  // Rate limit windows nothing can be counted against any more. Cheap, and
+  // the table only grows otherwise.
+  const rateRows = await rateLimitPrune().catch((error) => {
+    console.error("[cron] rate limit prune failed", error);
+    return 0;
+  });
+
   const pruned = await prune().catch((error) => {
     console.error("[cron] telemetry prune failed", error);
     return 0;
@@ -130,8 +138,8 @@ export async function GET(request: Request) {
   // this has been running at all.
   console.log(
     `[cron] ${schedules?.ran ?? 0} briefings, ${review?.raised ?? 0} raised, ` +
-      `${pruned} telemetry rows dropped, ${ms}ms`,
+      `${pruned} telemetry rows and ${rateRows} rate limit rows dropped, ${ms}ms`,
   );
 
-  return Response.json({ ok: true, schedules, review, pruned, ms });
+  return Response.json({ ok: true, schedules, review, pruned, rateRows, ms });
 }

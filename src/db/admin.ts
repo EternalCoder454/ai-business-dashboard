@@ -7,15 +7,11 @@ import type { Message } from "@/lib/types";
 /**
  * Read-only views across every account, for an administrator.
  *
- * Deliberately its own module with no write path. Everything else in the app
- * reaches the database through a repository scoped to one signed-in address;
- * this is the one place that reads past that boundary, so it is easier to audit
- * if it cannot do anything but read.
+ * The one place that reads past the per-address boundary, so it deliberately
+ * has no write path and is easier to audit for it.
  *
- * Direct messages are not here. A conversation with a department head is work
- * product on a company tool; a message to a colleague is not the same thing,
- * and reading one should be a separate, deliberate decision rather than
- * something that arrives with an unrelated feature.
+ * Direct messages stay out. Reading a colleague's messages should be a
+ * separate, deliberate decision, not something that arrives with a feature.
  */
 
 export interface AdminUsage {
@@ -514,19 +510,9 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
   const blobs: string[] = [];
 
   /*
-   * Everything, and the list is checked against the schema rather than
-   * remembered.
-   *
-   * Two of these used to compare a workspace id to an email column, left over
-   * from when the scope key was an address: `accounts.userEmail = owner` and
-   * the direct message delete both matched nothing, so deleting a business
-   * kept every message its people had sent each other. Eleven more tables have
-   * been added since and none of them were here at all, including api_keys,
-   * whose tokens went on authenticating against a business that no longer
-   * existed.
-   *
    * Anything holding a workspace_id belongs in this list. `npm run
-   * tenancy-audit` compares the two and says so when they disagree.
+   * tenancy-audit` compares it against the schema and fails when they
+   * disagree, because a table missed here outlives the business it belonged to.
    */
   await db.transaction(async (tx) => {
     // The work.
@@ -581,15 +567,9 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
     await tx.delete(t.profiles).where(eq(t.profiles.workspaceId, owner));
 
     /*
-     * Accounts and feedback are deliberately not here.
-     *
-     * An account is the person, not the business: their name, pronouns, and
-     * notes follow them if they are ever added to another one, and deleting a
-     * company should not delete a person. Feedback is about the product and
-     * was written to us rather than to them.
-     *
-     * The access rows are removed by deleteWorkspace, which calls this and
-     * then takes the workspace row itself.
+     * Accounts and feedback stay: an account is the person rather than the
+     * business, and feedback was written to us rather than to them. Access
+     * rows are removed by deleteWorkspace, which calls this first.
      */
   });
 

@@ -1,8 +1,9 @@
+import { keysBody } from "@/lib/schemas";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { keySummaries, setWorkspaceKey } from "@/db/keys";
 import { membershipFor } from "@/db/tenancy";
-import { readJsonWithin } from "@/lib/guard";
+import { readJson } from "@/lib/guard";
 import { PROVIDERS, type Provider } from "@/lib/providers";
 
 export const runtime = "nodejs";
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
     return Response.json({ error: admin.error }, { status: admin.status });
   }
 
-  const parsed = await readJsonWithin<{ provider?: string; key?: string }>(request, 8_000);
+  const parsed = await readJson(request, keysBody, 8_000);
   if (!parsed.ok) {
     return Response.json({ error: parsed.error }, { status: parsed.status });
   }

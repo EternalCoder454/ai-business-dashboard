@@ -1,10 +1,12 @@
+import { telemetryBody } from "@/lib/schemas";
 import { desc, gte, sql } from "drizzle-orm";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { membershipFor } from "@/db/tenancy";
 import { isOperator } from "@/lib/admin";
-import { readJsonWithin, withinRate } from "@/lib/guard";
+import { readJson } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 import { DEPLOYMENT, HOUR_MS, record } from "@/lib/telemetry";
 
 export const runtime = "nodejs";
@@ -45,20 +47,14 @@ export async function POST(request: Request) {
   const email = session?.user?.email?.toLowerCase();
   if (!email) return Response.json({ ok: false }, { status: 401 });
 
-  if (!withinRate(`beacon:${email}`, BEACON_LIMIT, 60_000)) {
+  if (!(await withinRate(`beacon:${email}`, BEACON_LIMIT, 60_000))) {
     // Quietly. A client that is over the limit is usually one in a failure
     // loop, and answering it with an error it will also report is a way of
     // making a bad minute worse.
     return Response.json({ ok: true });
   }
 
-  const parsed = await readJsonWithin<{
-    operation?: string;
-    ms?: number;
-    ok?: boolean;
-    errorKind?: string;
-    errorNote?: string;
-  }>(request, 4_000);
+  const parsed = await readJson(request, telemetryBody, 4_000);
   if (!parsed.ok) return Response.json({ ok: false }, { status: parsed.status });
 
   const { operation, ms, ok, errorKind, errorNote } = parsed.body;

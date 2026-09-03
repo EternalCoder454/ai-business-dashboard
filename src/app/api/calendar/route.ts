@@ -1,7 +1,7 @@
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { upcoming } from "@/lib/google";
-import { withinRate } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 import { record, refused } from "@/lib/telemetry";
 import { membershipFor } from "@/db/tenancy";
 import { allowsArea } from "@/lib/permissions";
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
   // Every call refreshes an access token against Google, so this is worth a
   // ceiling even though the caller is a page somebody opened.
-  if (!withinRate(`calendar:${email}`, 30, 60_000)) {
+  if (!(await withinRate(`calendar:${email}`, 30, 60_000))) {
     const mine = await membershipFor(email);
     refused("calendar.read", mine?.workspaceId, "RateLimited");
     return Response.json({ events: [], problem: "unavailable" });

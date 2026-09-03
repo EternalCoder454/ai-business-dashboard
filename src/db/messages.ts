@@ -6,19 +6,13 @@ import type { Colleague, DirectMessage, MessageThread, PresenceStatus } from "@/
 /**
  * Every read here is fenced to one business as well as to the two addresses.
  *
- * The pair alone looks sufficient, because an address belongs to exactly one
- * workspace at a time. It is not. Somebody moved from one business to another,
- * which this product supports and an operator can do in two clicks, would open
- * their inbox and find their old colleagues and everything they had said to
- * each other, inside their new employer's panel. The workspace column was
- * being written on every row and read on none of them.
+ * The pair alone is not enough: somebody moved between businesses would
+ * otherwise open their new employer's inbox and find their old colleagues and
+ * everything said to them.
  *
- * Direct messages sit apart from the workspace repository on purpose.
- *
- * Everything in repo.ts belongs to exactly one account and is loaded as one
- * snapshot. A message belongs to two accounts and arrives while you are looking
- * at it, so it is queried directly and polled rather than folded into a
- * snapshot that would then be stale the moment someone replied.
+ * These sit apart from repo.ts because a message belongs to two accounts and
+ * arrives while you are looking at it, so it is polled rather than folded into
+ * a snapshot that would be stale the moment anybody replied.
  */
 
 /** Addresses are compared lowercased everywhere, so they are stored that way. */
@@ -73,17 +67,10 @@ export async function touchPresence(email: string): Promise<void> {
       .where(eq(t.accounts.userEmail, who));
 
     /*
-     * And the arrival, if nothing recorded one.
-     *
-     * `markSignedIn` runs in the OAuth callback, which fires when somebody
-     * completes a fresh sign in and never again while their session holds. So
-     * anybody signed in from before that code existed, or simply signed in for
-     * a long time, kept a null there, and the screens that read it told them to
-     * their face that they had never signed in. Whoever is sending this
-     * heartbeat is, self evidently, signed in.
-     *
-     * Only when it is null, so this stays a backfill and not a second
-     * timestamp competing with the real one.
+     * Backfills the arrival when nothing recorded one, since `markSignedIn`
+     * only fires on a fresh sign in and a long lived session never sees it.
+     * Only when null, so it does not become a second timestamp competing with
+     * the real one.
      */
     await database
       .update(t.access)
@@ -308,15 +295,12 @@ export async function markThreadRead(
 /**
  * The newest thing I sent in this thread that the other person has read.
  *
- * A watermark rather than a flag per message, because markThreadRead clears the
- * whole thread in one statement: read state only ever moves forwards, so one
- * number settles every message in the thread and the poll carries eight bytes
- * instead of a row each.
+ * A watermark rather than a flag per message: read state only moves forwards,
+ * so one number settles the thread and the poll carries eight bytes.
  *
- * It exists at all because the thread poll asks for `sent_at > since`. A
- * message that was already fetched and is then read never appears in that
- * answer again, so without this the tick would never arrive and everything you
- * sent would read as unseen forever.
+ * It has to be separate because the thread poll asks for `sent_at > since`, and
+ * a message already fetched and then read never appears in that answer again.
+ * Without it the tick would never arrive.
  */
 export async function seenThrough(
   workspaceId: string,

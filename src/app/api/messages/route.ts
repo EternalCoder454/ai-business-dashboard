@@ -1,3 +1,4 @@
+import { messagesBody } from "@/lib/schemas";
 import { randomUUID } from "node:crypto";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
@@ -11,7 +12,8 @@ import {
   touchPresence,
   unreadTotal,
 } from "@/db/messages";
-import { readJsonWithin, withinRate } from "@/lib/guard";
+import { readJson } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 import { track } from "@/lib/telemetry";
 import { membershipFor, type Membership } from "@/db/tenancy";
 import { allowsArea } from "@/lib/permissions";
@@ -159,10 +161,7 @@ export async function POST(request: Request) {
     return Response.json({ error: sender.error }, { status: sender.status });
   }
 
-  const parsed = await readJsonWithin<{ to?: string; body?: string; markRead?: string }>(
-    request,
-    MAX_REQUEST_BYTES,
-  );
+  const parsed = await readJson(request, messagesBody, MAX_REQUEST_BYTES);
   if (!parsed.ok) {
     return Response.json({ error: parsed.error }, { status: parsed.status });
   }
@@ -202,7 +201,7 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     }
-    if (!withinRate(`dm:${sender.email}`, SEND_LIMIT, 60_000)) {
+    if (!(await withinRate(`dm:${sender.email}`, SEND_LIMIT, 60_000))) {
       return Response.json({ error: "Slow down a moment." }, { status: 429 });
     }
 

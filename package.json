@@ -49,7 +49,12 @@
     "db:apply": "tsx --env-file=.env.local scripts/apply-sql.ts",
     "auth-test": "tsx scripts/auth-test.ts",
     "title-test": "tsx scripts/title-test.ts",
-    "permissions-test": "tsx scripts/permissions-test.ts"
+    "permissions-test": "tsx scripts/permissions-test.ts",
+    "rate-test": "tsx --env-file=.env.local scripts/rate-test.ts",
+    "schema-test": "tsx scripts/schema-test.ts",
+    "test": "npm run guard-test && npm run schema-test && npm run auth-test && npm run permissions-test && npm run tenancy-audit && npm run skills-test && npm run memory-test && npm run contrast-test && npm run providers-test && npm run tools-test && npm run export-test && npm run schedules-test && npm run google-test && npm run haskey-test && npm run reach-test && npm run route-test && npm run delivery-test && npm run telemetry-test && npm run calendar-test && npm run reporter-test && npm run blob-test && npm run workspaces-test && npm run title-test",
+    "test:db": "npm run rate-test && npm run tenancy-test && npm run messages-test && npm run keys-test && npm run admin-test && npm run api-test",
+    "changelog": "tsx scripts/changelog.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",
@@ -66,7 +71,8 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.13",

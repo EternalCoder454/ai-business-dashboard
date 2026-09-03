@@ -9,7 +9,8 @@
  */
 import { readFileSync } from "node:fs";
 
-import { readJsonWithin, withinRate } from "../src/lib/guard";
+// Rate limiting moved to the database, and to rate-test, which needs one.
+import { readJsonWithin } from "../src/lib/guard";
 import { OPERATOR_EMAILS, isOperator } from "../src/lib/admin";
 import { safeDestination } from "../src/app/signin/page";
 import { WRITABLE_TABLES, applyOp, emptyWorkspace } from "../src/lib/workspace";
@@ -69,15 +70,6 @@ async function main() {
   const broken = await readJsonWithin(post("{not json"), 1000);
   check("rejected", !broken.ok);
   check("status is 400", !broken.ok && broken.status === 400);
-
-  console.log("\nrate limiting counts per key and expires");
-  const key = `test:${Math.random()}`;
-  let allowed = 0;
-  for (let i = 0; i < 5; i += 1) if (withinRate(key, 3, 60_000)) allowed += 1;
-  check("stopped at the limit", allowed === 3, String(allowed));
-  check("a different key is unaffected", withinRate(`${key}:other`, 3, 60_000));
-  // A window that has already closed lets the next call through.
-  check("expired window reopens", withinRate(key, 3, -1));
 
   console.log("\nonly same-site paths survive the sign-in redirect");
   check("a normal path passes through", safeDestination("/projects") === "/projects");

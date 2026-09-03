@@ -1,8 +1,10 @@
+import { apiKeysBody } from "@/lib/schemas";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { ALL_SCOPES, createKey, isScope, listKeys, revokeKey } from "@/db/apiKeys";
 import { membershipFor } from "@/db/tenancy";
-import { readJsonWithin, withinRate } from "@/lib/guard";
+import { readJson } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,16 +66,11 @@ export async function POST(request: Request) {
   const admin = await requireAdmin();
   if (!admin.ok) return Response.json({ error: admin.error }, { status: admin.status });
 
-  if (!withinRate(`apikeys:${admin.email}`, 20, 60_000)) {
+  if (!(await withinRate(`apikeys:${admin.email}`, 20, 60_000))) {
     return Response.json({ error: "Too many changes at once." }, { status: 429 });
   }
 
-  const parsed = await readJsonWithin<{
-    action?: string;
-    id?: string;
-    name?: string;
-    scopes?: unknown;
-  }>(request, 8_000);
+  const parsed = await readJson(request, apiKeysBody, 8_000);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
 
   try {

@@ -1,10 +1,12 @@
+import { reportsBody } from "@/lib/schemas";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { membershipFor } from "@/db/tenancy";
 import { isOperator } from "@/lib/admin";
-import { readJsonWithin, retryAfter } from "@/lib/guard";
+import { readJson } from "@/lib/guard";
+import { retryAfter } from "@/lib/rateLimit";
 import { reporterEnabled, runReview } from "@/lib/reporter";
 
 export const runtime = "nodejs";
@@ -173,12 +175,7 @@ async function listing(who: { email: string; workspaceId: string | null }) {
 
 /** Run a pass now, or mark one report as dealt with. */
 export async function POST(request: Request) {
-  const parsed = await readJsonWithin<{
-    action?: string;
-    id?: string;
-    status?: string;
-    scope?: string;
-  }>(request, 4_000);
+  const parsed = await readJson(request, reportsBody, 4_000);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
 
   const who = await reader(parsed.body.scope);
@@ -194,7 +191,7 @@ export async function POST(request: Request) {
        * on the cheap model, which is fractions of a penny. The limit is there
        * to stop a loop, not to ration.
        */
-      const wait = retryAfter(`review:${who.email}`, 10, 10 * 60_000);
+      const wait = await retryAfter(`review:${who.email}`, 10, 10 * 60_000);
       if (wait > 0) {
         return Response.json(
           {
@@ -254,7 +251,16 @@ export async function POST(request: Request) {
       }
       const id = parsed.body.id?.trim();
       if (!id) return Response.json({ error: "Nothing named." }, { status: 400 });
-      await requireDb().delete(t.reports).where(eq(t.reports.id, id));
+      // tenancy-audit: keyed to one business whenever the caller asked within
+      // one, which includes an operator on their own panel. Only the operator
+      // screen, which asks across every business, deletes by id alone.
+      await requireDb()
+        .delete(t.reports)
+        .where(
+          who.workspaceId
+            ? and(eq(t.reports.id, id), eq(t.reports.workspaceId, who.workspaceId))
+            : eq(t.reports.id, id),
+        );
       return Response.json({ ok: true });
     }
 

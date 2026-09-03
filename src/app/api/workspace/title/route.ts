@@ -1,8 +1,10 @@
+import { titleBody } from "@/lib/schemas";
 import { auth } from "@/auth";
 import { workspaceKey } from "@/db/keys";
 import { membershipFor } from "@/db/tenancy";
 import { askOnce } from "@/lib/askOnce";
-import { readJsonWithin, retryAfter } from "@/lib/guard";
+import { readJson } from "@/lib/guard";
+import { retryAfter } from "@/lib/rateLimit";
 import { deriveConversationTitle, tidyTitle } from "@/lib/prompts";
 import type { Provider } from "@/lib/providers";
 import { track } from "@/lib/telemetry";
@@ -70,10 +72,7 @@ async function credentials(
 }
 
 export async function POST(request: Request) {
-  const parsed = await readJsonWithin<{ question?: string; answer?: string }>(
-    request,
-    MAX_BODY,
-  );
+  const parsed = await readJson(request, titleBody, MAX_BODY);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
 
   const question = (parsed.body.question ?? "").trim();
@@ -90,7 +89,7 @@ export async function POST(request: Request) {
    * ration. Thirty an hour is more conversations than anybody starts and far
    * fewer than a page refreshing in a cycle would make.
    */
-  if (retryAfter(`title:${email}`, 30, 60 * 60_000) > 0) {
+  if ((await retryAfter(`title:${email}`, 30, 60 * 60_000)) > 0) {
     return Response.json({ title: fallback });
   }
 

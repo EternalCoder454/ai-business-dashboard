@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { resolveBearer, touchKey, type Bearer, type Scope } from "@/db/apiKeys";
 import { databaseEnabled } from "@/db/client";
-import { rateState } from "@/lib/guard";
+import { rateLimit } from "@/lib/rateLimit";
 
 /**
  * The shape every /api/v1 route answers in.
@@ -205,7 +205,7 @@ export async function authorize(
     };
   }
 
-  const rate = rateState(`v1:${bearer.keyId}`, LIMIT, WINDOW);
+  const rate = await rateLimit(`v1:${bearer.keyId}`, LIMIT, WINDOW);
   const rateHeaders = {
     "RateLimit-Limit": String(rate.limit),
     "RateLimit-Remaining": String(rate.remaining),

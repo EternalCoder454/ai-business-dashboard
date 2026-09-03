@@ -201,19 +201,12 @@ export function buildToolsBlock(tools: { name: string }[]): string {
  * company context, and the house rules every department follows.
  */
 /**
- * What the person's next few days look like.
+ * What the person's next few days look like, so a head answering "what should
+ * I focus on" knows the week they actually have.
  *
- * The reason the calendar is worth putting in a prompt at all: "what should I
- * focus on this week" is usually answered by "you have four hours of meetings
- * on Tuesday". A head that cannot see the diary gives advice for a week the
- * person does not have.
- *
- * Titles, times, and whether something is all day. Not the guest list, not the
- * description, not the joining link. Those belong to other people who did not
+ * Titles, times, and whether something is all day. Never the guest list, the
+ * description, or the joining link: those belong to other people who did not
  * agree to be described to a model, and none of them change the advice.
- *
- * Shaped so it is skimmable rather than parsed: a model reads a day with times
- * under it the same way a person does, and it costs fewer tokens than JSON.
  */
 export interface PromptCalendarEvent {
   title: string;
@@ -358,15 +351,10 @@ export function buildSystemPrompt(
 }
 
 /**
- * The run of words people type before they get to the point.
+ * The run of words people type before they get to the point. Stripped only as
+ * a leading run, so the rest of the sentence survives intact.
  *
- * Only a leading run, and only courtesy and self reference. The version before
- * this one stripped these words wherever they appeared and then joined what was
- * left, which is how "I need pricing for websites to sell" became "Pricing
- * Websites Sell": every word in the title was in the message, and the sentence
- * they made was not. A title nobody wrote is worse than a long one.
- *
- * Question words are not here on purpose. "What should we charge for a five
+ * Question words are deliberately absent: "What should we charge for a five
  * page site" is a title already, and cutting into it leaves a fragment.
  */
 const TITLE_OPENERS = new Set([
@@ -380,16 +368,11 @@ const TITLE_OPENERS = new Set([
 const TITLE_LENGTH = 48;
 
 /**
- * A short label for a conversation, taken from its first message.
+ * A short label for a conversation, from its first message. Instant, since the
+ * sidebar shows it the moment somebody presses send; /api/workspace/title asks
+ * a model for a better one afterwards, and this stands if that fails.
  *
- * Written straight from the text, and instant, because it is what the sidebar
- * shows the moment somebody presses send. A better one is asked for afterwards
- * by the namer, which reads the answer as well as the question; this is what
- * stands until that comes back, and what stands for good if it does not.
- *
- * It keeps the sentence rather than harvesting words out of it. The subject
- * usually starts a word or two in, so a leading run of openers comes off and
- * everything after it is left exactly as written.
+ * It keeps the sentence rather than harvesting words out of it.
  */
 export function deriveConversationTitle(text: string): string {
   const cleaned = text.replace(/\s+/g, " ").trim();

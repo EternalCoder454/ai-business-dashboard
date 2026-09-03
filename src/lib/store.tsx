@@ -413,17 +413,9 @@ export function StoreProvider({
   }, []);
 
   /*
-   * The calendar, once, if there is one.
-   *
-   * The status is kept, not just the events. This used to store the events and
-   * only when there were some, which quietly folded three different situations
-   * into one: nobody connected a calendar, somebody connected one and has a
-   * free week, and somebody connected one we cannot read. The prompt saw the
-   * same empty array for all three, so a head told a person with a working
-   * calendar that it had no access to their calendar.
-   *
-   * Still silent on screen about not being connected, which is not a failure
-   * and not worth a message about a feature nobody switched on.
+   * The calendar, once, if there is one. The status is kept alongside the
+   * events because an empty array otherwise means three different things: no
+   * calendar, a free week, and one we cannot read.
    */
   useEffect(() => {
     let cancelled = false;
@@ -581,17 +573,9 @@ export function StoreProvider({
     };
 
     /*
-     * Try again, then say so.
-     *
-     * This used to catch the failure and do nothing, on the grounds that a
-     * loading state beats an empty workspace that is not really empty. That is
-     * true and it was still the wrong end of the trade: one dropped request, a
-     * cold start that timed out, a Neon blip, and the app sat on a blank screen
-     * for the rest of the session with nothing to say and nothing to press.
-     * Somebody who does not think to refresh concludes it is broken.
-     *
-     * Three attempts with a widening gap, which covers the transient case,
-     * then a state the shell can offer a retry from.
+     * Three attempts with a widening gap, then a state the shell can offer a
+     * retry from. Failing silently leaves a blank screen for the rest of the
+     * session, which reads as broken rather than as busy.
      */
     const attempt = async (left: number): Promise<void> => {
       try {

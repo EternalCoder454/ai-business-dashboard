@@ -80,90 +80,41 @@ export async function readJsonWithin<T>(
 }
 
 /**
- * A per-instance sliding window, keyed by whoever is calling.
+ * Reads a JSON body and checks it is the shape the route expects.
  *
- * Deliberately in memory: this deployment is serverless, so each instance keeps
- * its own counter and the real ceiling is looser than the number below. That is
- * still worth having, because the failure it guards against is a runaway client
- * loop rather than a determined attacker, and the allowlist already handles the
- * second case. A shared limiter would mean a Redis instance for one user.
- */
-const windows = new Map<string, number[]>();
-
-export interface RateState {
-  allowed: boolean;
-  limit: number;
-  /** Requests left in this window, after counting the one being answered. */
-  remaining: number;
-  /** Unix seconds when the window frees up. */
-  resetAt: number;
-}
-
-/**
- * The same limiter, but it says where you stand.
+ * `readJsonWithin` casts, which is a promise the runtime never checks: every
+ * field it hands back is typed and none of it is verified, so a handler reads
+ * `body.email.trim()` on whatever arrived and a number where a string belongs
+ * is a 500 rather than a 400. That is the gap this closes.
  *
- * `withinRate` answers yes or no, which is all a page needs. A public API
- * should say how much is left and when it frees up, so a client can pace
- * itself instead of discovering the ceiling by hitting it.
- */
-export function rateState(key: string, limit: number, windowMs: number): RateState {
-  const now = Date.now();
-  const cutoff = now - windowMs;
-  const hits = (windows.get(key) ?? []).filter((at) => at > cutoff);
-  const oldest = hits[0] ?? now;
-  const resetAt = Math.ceil((oldest + windowMs) / 1000);
-
-  if (hits.length >= limit) {
-    windows.set(key, hits);
-    return { allowed: false, limit, remaining: 0, resetAt };
-  }
-
-  hits.push(now);
-  windows.set(key, hits);
-  prune(cutoff);
-  return { allowed: true, limit, remaining: Math.max(0, limit - hits.length), resetAt };
-}
-
-export function withinRate(key: string, limit: number, windowMs: number): boolean {
-  return retryAfter(key, limit, windowMs) === 0;
-}
-
-/**
- * Zero when the call is allowed, otherwise the seconds until it will be.
+ * The size guard is the same one, run first, because a body too large to
+ * accept should be refused before it is parsed rather than after.
  *
- * "Wait a few minutes" is not something anybody can act on: it does not say
- * how many, so the only way to find out is to keep pressing the thing that is
- * already refusing. The limiter knows exactly when the oldest hit falls out of
- * the window, so it may as well say.
+ * The message names the field and what was wrong with it. A caller who gets
+ * "Invalid request" has to guess, and the only people calling these routes are
+ * this app and whoever is writing against the public API.
  */
-export function retryAfter(key: string, limit: number, windowMs: number): number {
-  const now = Date.now();
-  const cutoff = now - windowMs;
-  const hits = (windows.get(key) ?? []).filter((at) => at > cutoff);
+export async function readJson<T>(
+  request: Request,
+  schema: { safeParse: (value: unknown) => SafeParse<T> },
+  limit: number,
+): Promise<{ ok: true; body: T } | { ok: false; status: number; error: string }> {
+  const read = await readJsonWithin<unknown>(request, limit);
+  if (!read.ok) return read;
 
-  if (hits.length >= limit) {
-    windows.set(key, hits);
-    return Math.max(1, Math.ceil((hits[0] + windowMs - now) / 1000));
-  }
+  const checked = schema.safeParse(read.body);
+  if (checked.success) return { ok: true, body: checked.data };
 
-  hits.push(now);
-  windows.set(key, hits);
-
-  prune(cutoff);
-  return 0;
+  const first = checked.error.issues[0];
+  const where = first?.path?.length ? first.path.join(".") : "";
+  return {
+    ok: false,
+    status: 400,
+    error: where ? `${where}: ${first?.message ?? "not valid"}` : (first?.message ?? "Invalid request."),
+  };
 }
 
-/**
- * Drops keys whose window has passed.
- *
- * Called from both limiters, because they share one map. It used to live inside
- * `withinRate` alone, so an instance serving only the developer API, which uses
- * `rateState`, never pruned at all and kept one entry per key for the life of
- * the process.
- */
-function prune(cutoff: number): void {
-  if (windows.size <= 500) return;
-  for (const [entry, times] of windows) {
-    if (!times.some((at) => at > cutoff)) windows.delete(entry);
-  }
-}
+/** The part of a zod result this uses, named so the import stays a type. */
+type SafeParse<T> =
+  | { success: true; data: T }
+  | { success: false; error: { issues: { path: PropertyKey[]; message: string }[] } };

@@ -1,3 +1,4 @@
+import { adminDeleteBody, operatorBody } from "@/lib/schemas";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import {
@@ -13,7 +14,8 @@ import { OPERATOR_EMAILS, isOperator } from "@/lib/admin";
 import { grantAccess, listAccess, revokeAccess } from "@/db/access";
 import { createWorkspace, deleteWorkspace, listWorkspaces, renameWorkspace } from "@/db/tenancy";
 import { emailEnabled, sendInvite } from "@/lib/email";
-import { readJsonWithin, withinRate } from "@/lib/guard";
+import { readJson } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -110,7 +112,7 @@ export async function DELETE(request: Request) {
     return Response.json({ error: admin.error }, { status: admin.status });
   }
 
-  const parsed = await readJsonWithin<{ person?: string; confirm?: string }>(request, 4_000);
+  const parsed = await readJson(request, adminDeleteBody, 4_000);
   if (!parsed.ok) {
     return Response.json({ error: parsed.error }, { status: parsed.status });
   }
@@ -161,15 +163,7 @@ export async function POST(request: Request) {
     return Response.json({ error: admin.error }, { status: admin.status });
   }
 
-  const parsed = await readJsonWithin<{
-    action?: string;
-    email?: string;
-    workspaceId?: string;
-    role?: string;
-    note?: string;
-    name?: string;
-    invite?: boolean;
-  }>(request, 4_000);
+  const parsed = await readJson(request, operatorBody, 4_000);
   if (!parsed.ok) {
     return Response.json({ error: parsed.error }, { status: parsed.status });
   }
@@ -179,7 +173,7 @@ export async function POST(request: Request) {
    * an email or destroy a workspace, so a runaway loop costs real money or
    * real data.
    */
-  if (!withinRate(`operator:${admin.email}`, 30, 60_000)) {
+  if (!(await withinRate(`operator:${admin.email}`, 30, 60_000))) {
     return Response.json({ error: "Slow down a moment." }, { status: 429 });
   }
 

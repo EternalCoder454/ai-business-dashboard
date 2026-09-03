@@ -1,10 +1,12 @@
+import { membersBody } from "@/lib/schemas";
 import { and, eq } from "drizzle-orm";
 import { auth, authEnabled, OPERATOR_EMAILS } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { grantAccess, revokeAccess } from "@/db/access";
 import { countAdmins, listMembers, membershipFor } from "@/db/tenancy";
-import { readJsonWithin, withinRate } from "@/lib/guard";
+import { readJson } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 import { sendInvite } from "@/lib/email";
 import { parsePermissions } from "@/lib/permissions";
 
@@ -88,18 +90,11 @@ export async function POST(request: Request) {
   const admin = await requireAdmin();
   if (!admin.ok) return Response.json({ error: admin.error }, { status: admin.status });
 
-  if (!withinRate(`members:${admin.email}`, 30, 60_000)) {
+  if (!(await withinRate(`members:${admin.email}`, 30, 60_000))) {
     return Response.json({ error: "Too many changes at once." }, { status: 429 });
   }
 
-  const parsed = await readJsonWithin<{
-    action?: string;
-    email?: string;
-    role?: string;
-    note?: string;
-    invite?: boolean;
-    permissions?: unknown;
-  }>(request, 8_000);
+  const parsed = await readJson(request, membersBody, 8_000);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
 
   const action = parsed.body.action;

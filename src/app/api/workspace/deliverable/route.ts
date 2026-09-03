@@ -4,7 +4,7 @@ import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { membershipFor } from "@/db/tenancy";
 import { buildDocx } from "@/lib/export/docx";
-import { withinRate } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
 
     // Building a .docx is a zip and a compress, which is the only real CPU work
     // this deployment does on a request. Downloads are occasional by nature.
-    if (!withinRate(`doc:${email}`, 30, 60_000)) {
+    if (!(await withinRate(`doc:${email}`, 30, 60_000))) {
       return Response.json({ error: "Too many at once." }, { status: 429 });
     }
 

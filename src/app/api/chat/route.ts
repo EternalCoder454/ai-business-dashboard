@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
-import { readJsonWithin, requireSession, withinRate } from "@/lib/guard";
+import { readJsonWithin, requireSession } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 import { kindOf, record, refused } from "@/lib/telemetry";
 import { workspaceKey } from "@/db/keys";
 import { membershipFor } from "@/db/tenancy";
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: session.error }, { status: session.status });
   }
 
-  if (!withinRate(`chat:${session.email ?? "local"}`, RATE_LIMIT, RATE_WINDOW_MS)) {
+  if (!(await withinRate(`chat:${session.email ?? "local"}`, RATE_LIMIT, RATE_WINDOW_MS))) {
     // Counted against chat.stream rather than as an operation of its own, so a
     // refusal sits beside the calls it belongs to instead of adding a row.
     // Worth the lookup: being turned away here is the most visible refusal in
@@ -665,15 +666,9 @@ function describeProviderError(provider: Provider, error: unknown): string {
     return `${info.label} had a problem at their end. Try again in a moment.`;
   }
   /*
-   * Anything unrecognised is described, not forwarded.
-   *
-   * This used to return `error.message` straight through to the browser. That
-   * string comes from a third party's SDK and nobody here decides what is in
-   * it: a request URL, an internal hostname, whatever a future version starts
-   * including. None of that is the customer's to see, and the one case where
-   * it would have helped is already covered by the statuses above. The real
-   * error is logged where it is caught, which is where somebody debugging
-   * would look anyway.
+   * Anything unrecognised is described, not forwarded. An SDK's message can
+   * carry a request URL or an internal hostname, and none of that is the
+   * customer's to see. The real error is logged where it is caught.
    */
   return `${info.label} could not be reached.`;
 }

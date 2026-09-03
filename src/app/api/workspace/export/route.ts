@@ -2,7 +2,7 @@ import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { loadWorkspace } from "@/db/repo";
 import { membershipFor } from "@/db/tenancy";
-import { withinRate } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,7 +38,7 @@ export async function GET() {
   // An export reads the whole business. It is a thing somebody presses once in
   // a while, so a ceiling costs nobody anything and stops one stuck client
   // from reading everything over and over.
-  if (!withinRate(`export:${email}`, 5, 10 * 60_000)) {
+  if (!(await withinRate(`export:${email}`, 5, 10 * 60_000))) {
     return Response.json(
       { error: "Too many exports. Try again shortly." },
       { status: 429 },

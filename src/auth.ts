@@ -7,33 +7,18 @@ import * as t from "@/db/schema";
 import { siteUrl } from "@/lib/site";
 
 /**
- * Signing in.
+ * Signing in, on better-auth with Google as the only provider.
  *
- * This was next-auth v5, which spent its whole life here as a beta: beta
- * software on the one path that must not break, chosen when the deployment had
- * one user and never revisited. Moving off it while there are four accounts
- * rather than forty is the entire reason it happened now, because the cost of
- * moving an auth library is paid in people signing in again.
- *
- * The exported surface is deliberately unchanged. `auth()`, `authEnabled`,
- * `OPERATOR_EMAILS` and `parseEmailList` mean exactly what they meant, and
- * `auth()` returns the same `{ user: { email, name, image } }` shape, so the
- * twenty six routes that only ask who is signed in were not touched. Four files
- * changed: this one, the handler, the sign-in page, and signing out.
- *
- * The real behavioural change is that a session is a row rather than a signed
- * token. Sessions used to be JWTs, so signing somebody out or removing them
- * took effect whenever the token expired; now it takes effect on their next
- * request. That is a better answer for a product where an administrator can
- * revoke a colleague's access and reasonably expect it to mean something.
+ * Sessions are rows rather than signed tokens, so revoking somebody's access
+ * takes effect on their next request instead of whenever a JWT would have
+ * expired.
  */
 
 /**
  * Splits an address list on commas, newlines, semicolons, or spaces.
  *
- * A dashboard's environment field is a textarea, so writing one address a line
- * is the obvious guess. Accepting only commas would turn that guess into a
- * lockout, or worse, into an allowlist that silently matches nobody.
+ * Lenient because the value is typed into a dashboard textarea, where a
+ * stricter parser silently matches nobody.
  */
 export function parseEmailList(value: string | undefined, fallback = ""): string[] {
   return (value ?? fallback)
@@ -43,27 +28,14 @@ export function parseEmailList(value: string | undefined, fallback = ""): string
 }
 
 /**
- * The operator's own addresses, which are also the only ones that can sign in
- * without an invitation.
- *
- * There used to be a second list, ALLOWED_EMAILS, from when a workspace was a
- * person and getting in and being in charge were the same act. Everybody else
- * now arrives through a row in the access table that names the workspace they
- * belong to, so a separate allowlist was two answers to one question.
- *
- * No default. It used to fall back to one hardcoded address, which is a
- * stranger's deployment quietly trusting the person who wrote it.
+ * Whoever runs this deployment, and the only addresses that can sign in
+ * without an access row. No default: an unset value means nobody.
  */
 export const OPERATOR_EMAILS = parseEmailList(process.env.OPERATOR_EMAILS);
 
 /**
- * Auth turns itself on only once it is configured. Without the Google
- * credentials the app runs exactly as it does today, so local development does
- * not need an OAuth client just to open a chat.
- *
- * The variable names are the ones that were already set. better-auth reads
- * BETTER_AUTH_SECRET by default and the deployment has AUTH_SECRET, so the
- * value is passed in below rather than renamed in three environments.
+ * Whether auth is configured at all. Unset credentials leave the app open
+ * locally rather than broken, so a checkout runs without an OAuth client.
  */
 export const authEnabled = Boolean(
   process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET && process.env.AUTH_SECRET,
@@ -73,12 +45,10 @@ export const authEnabled = Boolean(
 export type Admission = { error: string; errorDescription?: string } | undefined;
 
 /**
- * The three ways somebody may be checked against, in the order they are asked.
+ * What `admit` checks against. Passed in rather than imported so the decision
+ * can be tested without a database.
  *
- * Passed in rather than imported so the decision can be tested without a
- * database, which matters more here than anywhere else in this codebase: this
- * function is the whole difference between a private panel and a public one,
- * and "I read it and it looked right" is not a way to know that.
+ * @see scripts/auth-test.ts
  */
 export interface Doorkeeper {
   operators: string[];
@@ -90,24 +60,15 @@ export interface Doorkeeper {
 /**
  * Three ways in, checked in order, and nothing else opens the door.
  *
- * This is the next-auth `signIn` callback, moved. It runs on a first sign-in,
- * on a returning one, and on an account being linked, which matters: gating
- * only the creation of a user would let somebody removed from every business
- * carry on signing in forever.
+ * Runs on every sign-in, not only the first, so somebody removed from every
+ * business stops getting in.
  *
- * OPERATOR_EMAILS first, because it lives in the environment rather than the
- * database: if the access table is empty, a row is revoked by mistake, or Neon
- * is unreachable at the moment somebody tries to sign in, the operator still
- * gets through. Checking it first also means their sign-in never waits on a
- * query.
+ * Order matters. OPERATOR_EMAILS is checked before the database so the person
+ * who can fix a broken deployment still gets in when Neon is unreachable or a
+ * row was revoked by mistake.
  *
- * Then the access table, which is how everybody else is actually invited, from
- * the operator screen and without a redeploy. Then first run, which closes the
- * moment the first row exists.
- *
- * Getting in is all this decides. Which workspace the person then opens is
- * `membershipFor`, asked again on every request, so revoking a row takes effect
- * on the next call rather than at sign-in.
+ * This decides entry only. Which workspace they land in is `membershipFor`,
+ * asked again on every request.
  */
 export async function admit(
   rawEmail: string | undefined,
@@ -176,38 +137,23 @@ const instance =
   authEnabled && db
     ? betterAuth({
         secret: process.env.AUTH_SECRET,
-        /*
-         * The app's own origin, from the one helper that already works it out.
-         *
-         * I wrote a second copy of this before noticing: it read VERCEL_URL,
-         * which is the per deployment hostname, so every preview would have
-         * built a redirect URI that is not registered with Google and sign in
-         * would have failed there while looking fine in production. siteUrl
-         * reads VERCEL_PROJECT_PRODUCTION_URL, which is the stable one, and is
-         * what every other absolute link in this app is built from.
-         */
+        // siteUrl reads VERCEL_PROJECT_PRODUCTION_URL, not VERCEL_URL: the
+        // per deployment hostname is not a registered Google redirect URI, so
+        // building from it breaks sign in on previews only.
+
         baseURL: siteUrl(),
-        /*
-         * The origin the request actually arrived on.
-         *
-         * Every Vercel preview gets its own hostname, so a fixed list would
-         * mean sign-in working in production and failing on every branch. The
-         * request is optional in the signature because better-auth also calls
-         * this outside a request, where there is no origin to trust.
-         */
+        // Every preview has its own hostname, so the list cannot be fixed.
+        // The request is optional because better-auth also calls this outside
+        // one, where there is no origin to trust.
+
         trustedOrigins: (request) =>
           request ? [new URL(request.url).origin] : [],
 
         database: drizzleAdapter(db, {
           provider: "pg",
-          /*
-           * Named explicitly rather than handed the whole schema module.
-           *
-           * The adapter looks tables up by better-auth's model names, and this
-           * schema calls them `auth_user` and so on: `user` is a reserved word
-           * in Postgres and `account` is already taken here by something
-           * completely different. Mapping them here is what lets both be true.
-           */
+          // Mapped by hand: better-auth's model names collide with a reserved
+          // word (`user`) and with a table this app already has (`account`).
+
           schema: {
             user: t.authUser,
             session: t.authSession,
@@ -223,43 +169,15 @@ const instance =
           },
         },
 
-        /*
-         * Sessions last a fortnight and are extended a day at a time.
-         *
-         * Extending on use rather than on every request, so an open tab does
-         * not write a row to Postgres every time somebody clicks something.
-         */
+        // A fortnight, extended a day at a time rather than on every request,
+        // so an open tab does not write a row on each click.
+
         session: {
           expiresIn: 60 * 60 * 24 * 14,
           updateAge: 60 * 60 * 24,
         },
 
-        /**
-         * Three ways in, checked in order, and nothing else opens the door.
-         *
-         * This is the next-auth `signIn` callback, moved. It runs on a first
-         * sign-in, on a returning one, and on an account being linked, which
-         * matters: gating only the creation of a user would let somebody
-         * removed from every business carry on signing in forever.
-         *
-         * OPERATOR_EMAILS first, because it lives in the environment rather
-         * than the database: if the access table is empty, a row is revoked by
-         * mistake, or Neon is unreachable at the moment somebody tries to sign
-         * in, the operator still gets through. Checking it first also means
-         * their sign-in never waits on a query.
-         *
-         * Then the access table, which is how everybody else is actually
-         * invited, from the operator screen and without a redeploy. Then first
-         * run, which closes the moment the first row exists.
-         *
-         * Getting in is all this decides. Which workspace the person then
-         * opens is `membershipFor`, asked again on every request, so revoking a
-         * row takes effect on the next call rather than at sign-in.
-         *
-         * The database module is imported inside rather than at the top of the
-         * file so that the proxy, which imports this on every request, does not
-         * pull a Postgres client into a check it never performs.
-         */
+        // The whole gate. See admit above.
         user: {
           async validateUserInfo({ user, source }) {
             const profile = source.oauth?.profile as

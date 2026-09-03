@@ -1044,3 +1044,27 @@ export const authVerification = pgTable(
   },
   (table) => [index("auth_verification_identifier_idx").on(table.identifier)],
 );
+
+/**
+ * One counter per limiter bucket per window.
+ *
+ * Rate limits used to be a Map in the process, which on a platform that runs
+ * as many instances as it likes meant the real ceiling was the limit times
+ * however many instances were up, and instances go up under load. Here the
+ * count is shared, so a limit means the number it says.
+ */
+export const rateLimits = pgTable(
+  "rate_limits",
+  {
+    /** What is being limited, and for whom. Built by the caller. */
+    bucket: text("bucket").notNull(),
+    /** Epoch milliseconds at the start of the window this row counts. */
+    windowStart: bigint("window_start", { mode: "number" }).notNull(),
+    hits: integer("hits").notNull().default(0),
+  },
+  (table) => [
+    primaryKey({ columns: [table.bucket, table.windowStart] }),
+    // Pruning reads by age alone, across every bucket there is.
+    index("rate_limits_window_idx").on(table.windowStart),
+  ],
+);

@@ -1,8 +1,9 @@
+import { googleIntegrationBody } from "@/lib/schemas";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { membershipFor } from "@/db/tenancy";
 import { connectionFor, consentUrl, disconnect, googleEnabled } from "@/lib/google";
-import { readJsonWithin } from "@/lib/guard";
+import { readJson } from "@/lib/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
   const who = await requireMember();
   if (!who.ok) return Response.json({ error: who.error }, { status: who.status });
 
-  const parsed = await readJsonWithin<{ action?: string }>(request, 2_000);
+  const parsed = await readJson(request, googleIntegrationBody, 2_000);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
 
   if (parsed.body.action === "disconnect") {

@@ -1,10 +1,12 @@
+import { feedbackBody, feedbackDeleteBody, feedbackPatchBody } from "@/lib/schemas";
 import { randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { membershipFor } from "@/db/tenancy";
-import { readJsonWithin, withinRate } from "@/lib/guard";
+import { readJson } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 import { isOperator } from "@/lib/admin";
 
 export const runtime = "nodejs";
@@ -36,14 +38,14 @@ export async function POST(request: Request) {
   const who = await signedIn();
   if (!who.ok) return Response.json({ error: who.error }, { status: who.status });
 
-  if (!withinRate(`feedback:${who.email}`, 5, 10 * 60_000)) {
+  if (!(await withinRate(`feedback:${who.email}`, 5, 10 * 60_000))) {
     return Response.json(
       { error: "Too many in a row. Try again shortly." },
       { status: 429 },
     );
   }
 
-  const parsed = await readJsonWithin<{ body?: string }>(request, MAX_BODY + 1_000);
+  const parsed = await readJson(request, feedbackBody, MAX_BODY + 1_000);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
 
   const body = parsed.body.body?.trim() ?? "";
@@ -139,7 +141,7 @@ export async function DELETE(request: Request) {
     return Response.json({ error: "Not found." }, { status: 404 });
   }
 
-  const parsed = await readJsonWithin<{ id?: string }>(request, 2_000);
+  const parsed = await readJson(request, feedbackDeleteBody, 2_000);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
 
   const id = parsed.body.id?.trim();
@@ -162,7 +164,7 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Not found." }, { status: 404 });
   }
 
-  const parsed = await readJsonWithin<{ id?: string; status?: string }>(request, 2_000);
+  const parsed = await readJson(request, feedbackPatchBody, 2_000);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
 
   const id = parsed.body.id?.trim();

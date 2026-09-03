@@ -691,20 +691,13 @@ export async function applyMutations(
           if (op.action === "delete") {
             if (op.ids.length) {
               /*
-               * The attachments go with the messages that carried them.
+               * The attachments go with the messages that carried them. A chat
+               * attachment is not in the Library, so nothing else lists or
+               * deletes it, and they are the largest rows there are.
                *
-               * A file attached in a chat is stored with `origin: "chat"` and
-               * is deliberately left out of the Library, which is the right
-               * call: it is part of a conversation, not a document somebody
-               * filed. The consequence nobody noticed is that nothing listed it
-               * and nothing deleted it, so every image and PDF ever attached to
-               * a chat stayed in the database for good, including after the
-               * conversation was deleted. They are the largest rows there are,
-               * and there was no way to reclaim one.
-               *
-               * Only chat-origin files. A Library upload can be referenced by a
-               * message too, and it belongs to the Library rather than to the
-               * conversation that happened to mention it.
+               * Only chat-origin files: a Library upload can be referenced by a
+               * message too and belongs to the Library, not to the conversation
+               * that mentioned it.
                */
               const carried = await tx
                 .select({ ids: t.messages.attachmentIds })
@@ -1120,28 +1113,16 @@ export async function applyMutations(
 
         case "settings": {
           /*
-           * Only the fields that were sent, and never the ones that are not
-           * the client's to send.
+           * An allow list, applied only to the keys actually present.
            *
-           * Two mistakes have been made here, in opposite directions.
+           * Both halves matter and both have been got wrong. Spreading the row
+           * lets it choose its own workspaceId and write into another company's
+           * settings. Writing every column instead makes a partial save like
+           * `{ theme }` also write a defaulted companyName, which renames the
+           * business.
            *
-           * The first was `{ workspaceId, ...op.row }`: the spread came second,
-           * so a row carrying its own `workspaceId` chose the business it
-           * landed in, and any signed-in account could write into any other
-           * company's settings, which is also where the model keys live.
-           *
-           * The fix for that named every column, which introduced the second
-           * mistake and a worse-feeling one. Every column meant every column,
-           * so a partial save like `{ theme: "light" }` also wrote a defaulted
-           * `companyName` of "Your Company" and, because a settings write
-           * renames the business to match, quietly renamed the company every
-           * time somebody changed their theme. Two customers lost their name
-           * that way before anybody connected it to a theme toggle.
-           *
-           * So: an allow list, applied to the keys actually present. The scope
-           * key is still the server's, the three model keys are still refused
-           * because they are written only by /api/workspace/keys, and a field
-           * nobody sent is a field nobody changes.
+           * The scope key stays the server's, and the three model keys are
+           * refused here because /api/workspace/keys is the only writer.
            */
           const WRITABLE = [
             "model",

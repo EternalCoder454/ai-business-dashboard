@@ -3,7 +3,7 @@ import { auth, authEnabled } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { membershipFor } from "@/db/tenancy";
-import { withinRate } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 import { conversationHref } from "@/lib/routes";
 
 export const runtime = "nodejs";
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
 
   // A palette searches on every keystroke, so this is the one route somebody
   // reaches by typing rather than by choosing to.
-  if (!withinRate(`search:${email}`, 60, 60_000)) {
+  if (!(await withinRate(`search:${email}`, 60, 60_000))) {
     return Response.json({ results: [] });
   }
 

@@ -4,17 +4,17 @@ on:
   push:
     branches: [main]
   pull_request:
-  workflow_dispatch:
 
-# A newer push to the same branch makes the in-flight run irrelevant.
+# A newer push makes an older run pointless. Cancelling frees the runner and
+# stops two results arriving for the same branch in the wrong order.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  verify:
+  check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -24,29 +24,28 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install
-        run: npm ci
+      - run: npm ci
 
-      # Its own gate. `next build` is not a substitute: it does not fail on a
-      # type error in code that is never imported by a route.
-      - name: Typecheck
+      # Types first. Everything below it is slower and most of what it would
+      # catch, it catches here.
+      - name: Types
         run: npm run typecheck
 
-      # Here for react-hooks/exhaustive-deps above all. A missing dependency in
-      # the store silently stopped the context value updating, and neither the
-      # typecheck nor the build could see it.
       - name: Lint
         run: npm run lint
 
-      # Pure functions, no database and no network, so this can gate every push.
-      # The database suites (smoke, messages-test, admin-test) need a real
-      # DATABASE_URL and are run locally after any schema or repository change.
-      - name: Guard tests
-        run: npm run guard-test
+      # The checks that need nothing but the source: the door, the schemas,
+      # permissions, the tenancy audit, and the rest. Anything needing a
+      # database or a key lives in test:db and is not run here.
+      - name: Checks
+        run: npm test
 
+      # Last, because it is the slowest and a type error would have stopped it
+      # anyway. Also the only step that would catch a bad import path in a
+      # server component.
       - name: Build
+        env:
+          # Enough to build. Nothing here reaches a real service: the build
+          # must not depend on secrets, or a fork's pull request cannot run it.
+          NEXT_TELEMETRY_DISABLED: "1"
         run: npm run build
-
-      # The database round trip is not run here: it needs a real DATABASE_URL,
-      # and CI has no business holding production credentials. Run npm run
-      # smoke locally after any change to the schema or the repository layer.

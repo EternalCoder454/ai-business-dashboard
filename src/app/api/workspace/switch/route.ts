@@ -1,7 +1,9 @@
+import { switchBody } from "@/lib/schemas";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { chooseWorkspace, membershipFor, membershipsFor } from "@/db/tenancy";
-import { readJsonWithin, withinRate } from "@/lib/guard";
+import { readJson } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,11 +44,11 @@ export async function POST(request: Request) {
   if (!email) return Response.json({ error: "Not signed in." }, { status: 401 });
 
   // Switching reloads the whole workspace, so it is worth a ceiling.
-  if (!withinRate(`switch:${email}`, 20, 60_000)) {
+  if (!(await withinRate(`switch:${email}`, 20, 60_000))) {
     return Response.json({ error: "Too many at once." }, { status: 429 });
   }
 
-  const parsed = await readJsonWithin<{ workspaceId?: string }>(request, 2_000);
+  const parsed = await readJson(request, switchBody, 2_000);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
 
   const wanted = parsed.body.workspaceId?.trim();

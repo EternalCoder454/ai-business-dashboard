@@ -2,7 +2,7 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { membershipFor } from "@/db/tenancy";
-import { withinRate } from "@/lib/guard";
+import { withinRate } from "@/lib/rateLimit";
 import { MAX_UPLOAD_BYTES } from "@/lib/workspace";
 
 export const runtime = "nodejs";
@@ -48,7 +48,7 @@ export async function POST(request: Request): Promise<Response> {
 
   // Uploading is cheap for the person doing it and not for the person paying
   // for the store.
-  if (!withinRate(`upload:${email}`, 60, 60_000)) {
+  if (!(await withinRate(`upload:${email}`, 60, 60_000))) {
     return Response.json({ error: "Too many uploads at once." }, { status: 429 });
   }
 
