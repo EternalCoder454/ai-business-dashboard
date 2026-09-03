@@ -42,8 +42,31 @@ interface WireTask {
   id: string;
 }
 
+/**
+ * Everything this test creates, removed.
+ *
+ * Its own function because it has to run whether or not the checks passed. It
+ * did not, and two runs that failed part way through left four live API keys
+ * behind, each naming a workspace that had since been deleted. A key is a
+ * credential, so test debris of that shape is worth more care than a stray row.
+ *
+ * Safe to run before the test as well as after, which is what clears anything
+ * an earlier crash left.
+ */
+async function cleanUp(): Promise<void> {
+  const db = requireDb();
+  for (const space of [WS, OTHER]) {
+    await db.delete(t.tasks).where(eq(t.tasks.workspaceId, space));
+    await db.delete(t.idempotency).where(eq(t.idempotency.workspaceId, space));
+    await db.delete(t.apiKeys).where(eq(t.apiKeys.workspaceId, space));
+    await db.delete(t.workspaces).where(eq(t.workspaces.id, space));
+  }
+}
+
 async function main() {
   const db = requireDb();
+  // Anything a previous run left behind, before this one adds to it.
+  await cleanUp();
   await db.insert(t.workspaces).values({ id: WS, name: "API Test Co" }).onConflictDoNothing();
   await db
     .insert(t.workspaces)
@@ -283,12 +306,7 @@ async function main() {
 
   console.log("\ncleaning up");
   await revokeKey(WS, readOnly.key.id);
-  await db.delete(t.tasks).where(eq(t.tasks.workspaceId, WS));
-  await db.delete(t.tasks).where(eq(t.tasks.workspaceId, OTHER));
-  await db.delete(t.idempotency).where(eq(t.idempotency.workspaceId, WS));
-  await db.delete(t.apiKeys).where(eq(t.apiKeys.workspaceId, WS));
-  await db.delete(t.workspaces).where(eq(t.workspaces.id, WS));
-  await db.delete(t.workspaces).where(eq(t.workspaces.id, OTHER));
+  await cleanUp();
   check(
     "nothing left",
     (await db.select().from(t.apiKeys).where(eq(t.apiKeys.workspaceId, WS))).length === 0,
@@ -298,7 +316,9 @@ async function main() {
   process.exit(failures ? 1 : 0);
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
+  // The run died part way through, so nothing below the failure cleaned up.
+  await cleanUp().catch(() => {});
   console.error("api test threw:", error);
   process.exit(1);
 });

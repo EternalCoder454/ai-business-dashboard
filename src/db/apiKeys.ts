@@ -149,12 +149,25 @@ export async function resolveBearer(token: string | null): Promise<Bearer | null
   if (!token || !token.startsWith(PREFIX) || !databaseEnabled || !db) return null;
 
   const digest = hash(token);
-  // tenancy-audit: found by the hash of the token, which is the credential
-  // itself and is unique across every business. The workspace comes out of
-  // this lookup; it cannot be an input to it.
+  /*
+   * tenancy-audit: found by the hash of the token, which is the credential
+   * itself and is unique across every business. The workspace comes out of
+   * this lookup; it cannot be an input to it.
+   *
+   * Joined to the business so a key cannot outlive it. Deleting a workspace
+   * removes its keys, but a key written before that delete learned about the
+   * table is still a live credential naming a business that is gone, and this
+   * is what makes that inert rather than merely empty.
+   */
   const [row] = await db
-    .select()
+    .select({
+      id: t.apiKeys.id,
+      workspaceId: t.apiKeys.workspaceId,
+      scopes: t.apiKeys.scopes,
+      tokenHash: t.apiKeys.tokenHash,
+    })
     .from(t.apiKeys)
+    .innerJoin(t.workspaces, eq(t.workspaces.id, t.apiKeys.workspaceId))
     .where(and(eq(t.apiKeys.tokenHash, digest), isNull(t.apiKeys.revokedAt)))
     .limit(1);
   if (!row) return null;
