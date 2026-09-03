@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { databaseEnabled, db, requireDb } from "./client";
 import * as t from "./schema";
 
@@ -46,10 +46,28 @@ function newWorkspaceId(): string {
 export async function membershipFor(email: string): Promise<Membership | null> {
   if (!databaseEnabled || !db) return null;
   try {
+    /*
+     * The one they are currently in, out of however many they belong to.
+     *
+     * A person can be in more than one business now, so "their workspace" is a
+     * choice rather than a fact. The choice lives on their account row, and is
+     * joined here rather than read separately because this runs on nearly every
+     * request and a second round trip for one nullable column is not worth it.
+     *
+     * Ordered so the chosen one wins if it is still a membership they have, and
+     * their oldest one wins if it is not. That second case is the one that
+     * matters: somebody removed from the business they were last in should land
+     * somewhere they still belong rather than nowhere at all.
+     */
     const [row] = await db
       .select({ workspaceId: t.access.workspaceId, role: t.access.role })
       .from(t.access)
+      .leftJoin(t.accounts, eq(t.accounts.userEmail, t.access.email))
       .where(and(eq(t.access.email, clean(email)), isNull(t.access.revokedAt)))
+      .orderBy(
+        desc(sql`${t.access.workspaceId} = ${t.accounts.activeWorkspaceId}`),
+        asc(t.access.createdAt),
+      )
       .limit(1);
     if (!row) return null;
     return { workspaceId: row.workspaceId, role: row.role === "admin" ? "admin" : "member" };
@@ -57,6 +75,71 @@ export async function membershipFor(email: string): Promise<Membership | null> {
     console.error("[tenancy] could not resolve a workspace", error);
     return null;
   }
+}
+
+/** Every business one address can open, oldest first. */
+export async function membershipsFor(
+  email: string,
+): Promise<{ workspaceId: string; name: string; role: "member" | "admin" }[]> {
+  if (!databaseEnabled || !db) return [];
+  try {
+    // tenancy-audit: by address across businesses on purpose. This is the list
+    // of what one person may open, which is the question the switcher asks.
+    const rows = await db
+      .select({
+        workspaceId: t.access.workspaceId,
+        role: t.access.role,
+        name: t.workspaces.name,
+      })
+      .from(t.access)
+      .leftJoin(t.workspaces, eq(t.workspaces.id, t.access.workspaceId))
+      .where(and(eq(t.access.email, clean(email)), isNull(t.access.revokedAt)))
+      .orderBy(asc(t.access.createdAt));
+
+    return rows.map((row) => ({
+      workspaceId: row.workspaceId,
+      name: row.name ?? "Untitled",
+      role: row.role === "admin" ? "admin" : "member",
+    }));
+  } catch (error) {
+    console.error("[tenancy] could not list workspaces", error);
+    return [];
+  }
+}
+
+/**
+ * Moves somebody into one of their own businesses.
+ *
+ * Refuses anything they are not a member of, so the choice cannot be used to
+ * reach a workspace by naming it. Returns whether it took.
+ */
+export async function chooseWorkspace(email: string, workspaceId: string): Promise<boolean> {
+  if (!databaseEnabled || !db) return false;
+  const who = clean(email);
+
+  const [allowed] = await db
+    .select({ id: t.access.workspaceId })
+    .from(t.access)
+    .where(
+      and(
+        eq(t.access.email, who),
+        eq(t.access.workspaceId, workspaceId),
+        isNull(t.access.revokedAt),
+      ),
+    )
+    .limit(1);
+  if (!allowed) return false;
+
+  // tenancy-audit: keyed by the person, because which business they are looking
+  // at is a property of them rather than of any one business.
+  await db
+    .insert(t.accounts)
+    .values({ userEmail: who, activeWorkspaceId: workspaceId })
+    .onConflictDoUpdate({
+      target: t.accounts.userEmail,
+      set: { activeWorkspaceId: workspaceId },
+    });
+  return true;
 }
 
 /**
@@ -86,7 +169,7 @@ export async function provisionFor(email: string, name: string): Promise<Members
       .values({ email: address, workspaceId, role: "admin", invitedBy: address })
       // Two tabs opening at once would otherwise race here, and the loser
       // would throw on a primary key that is already exactly what it wanted.
-      .onConflictDoNothing({ target: t.access.email });
+      .onConflictDoNothing({ target: [t.access.email, t.access.workspaceId] });
   });
 
   return (await membershipFor(address)) ?? { workspaceId, role: "admin" };

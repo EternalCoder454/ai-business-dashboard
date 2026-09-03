@@ -197,7 +197,9 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-      await revokeAccess(email);
+      // This business only. An administrator removing somebody from their own
+      // company has no business removing them from anybody else's.
+      await revokeAccess(email, admin.workspaceId);
       return done();
     }
 

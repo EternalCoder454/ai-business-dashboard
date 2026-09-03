@@ -44,7 +44,8 @@
     "calendar-test": "tsx scripts/calendar-test.ts",
     "reporter-test": "tsx scripts/reporter-test.ts",
     "reporter-live": "tsx --env-file=.env.local scripts/reporter-live.ts",
-    "blob-test": "tsx scripts/blob-test.ts"
+    "blob-test": "tsx scripts/blob-test.ts",
+    "workspaces-test": "tsx scripts/workspaces-test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

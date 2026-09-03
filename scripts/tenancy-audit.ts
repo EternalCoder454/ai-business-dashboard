@@ -18,6 +18,8 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 /** Tables holding one business's own data. Reading one unfenced is a leak. */
+const ALLOWED_TO_NAME = ["api/admin/route.ts", "api/workspace/switch/route.ts"];
+
 const SCOPED = [
   "departments",
   "projects",
@@ -225,12 +227,24 @@ function main() {
   );
 
   report(
-    "only the operator route takes a workspace id from a request",
+    "only the routes allowed to may take a workspace id from a request",
     fromRequest,
-    // The operator screen creates, renames, and deletes businesses, so it has
-    // to name one. It is gated on OPERATOR_EMAILS, which is read from the
-    // environment and cannot be granted by anything the app does.
-    (f) => f.file.replace(/\\/g, "/").includes("api/admin/route.ts"),
+    /*
+     * Two routes may, and both are named here rather than pattern matched, so
+     * adding a third is a decision somebody has to make on purpose.
+     *
+     * The operator screen creates, renames, and deletes businesses, so it has
+     * to name one. It is gated on OPERATOR_EMAILS, which is read from the
+     * environment and cannot be granted by anything the app does.
+     *
+     * The switch route takes one because a person in more than one business
+     * has to be able to say which. It is not a fence of the same kind: the id
+     * is checked against that person's own memberships before anything moves,
+     * so naming a workspace is not a way of reaching one. An id they do not
+     * have comes back as a 404, because whether a business exists is not
+     * something to confirm to somebody outside it.
+     */
+    (f) => ALLOWED_TO_NAME.some((route) => f.file.split("\\").join("/").includes(route)),
     fromRequest.length,
   );
 

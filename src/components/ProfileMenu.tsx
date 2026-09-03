@@ -11,6 +11,7 @@ import {
   PuzzleIcon,
   ShieldIcon,
   SparkIcon,
+  CheckIcon,
   UsersIcon,
   cx,
 } from "./ui";
@@ -55,10 +56,67 @@ const ADMIN = {
 
 export function ProfileMenu() {
   const { account, isOperator, workspaceRole, accountEmail } = useStore();
+  const [open, setOpen] = useState(false);
+
+  /*
+   * Loaded when the menu is first opened, not on mount.
+   *
+   * Almost nobody is in two businesses, and every signed in person on every
+   * page would otherwise pay a round trip to find that out. Opening this menu
+   * is the first moment the answer is worth anything.
+   */
+  const [workspaces, setWorkspaces] = useState<
+    { workspaceId: string; name: string; role: "member" | "admin" }[]
+  >([]);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [switching, setSwitching] = useState(false);
+  const asked = useRef(false);
+
+  useEffect(() => {
+    if (!open || asked.current) return;
+    asked.current = true;
+    void fetch("/api/workspace/switch")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { workspaces?: typeof workspaces; current?: string } | null) => {
+        if (!body?.workspaces) return;
+        setWorkspaces(body.workspaces);
+        setWorkspaceId(body.current ?? null);
+      })
+      .catch(() => {
+        // One business, or the request failed. Either way the section stays
+        // hidden and nothing else on this menu is affected.
+      });
+  }, [open]);
+
+  /*
+   * A full reload rather than a refetch.
+   *
+   * Every list on screen belongs to the business being left: departments,
+   * conversations, tasks, the lot. Swapping the store underneath a rendered
+   * page and hoping each screen notices is how one business's conversation
+   * titles end up briefly on another's dashboard.
+   */
+  const switchTo = async (id: string) => {
+    if (id === workspaceId || switching) return;
+    setSwitching(true);
+    try {
+      const response = await fetch("/api/workspace/switch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: id }),
+      });
+      if (!response.ok) {
+        setSwitching(false);
+        return;
+      }
+      window.location.assign("/");
+    } catch {
+      setSwitching(false);
+    }
+  };
   const notifications = useNotifications();
   const pathname = usePathname();
 
-  const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const wrapper = useRef<HTMLDivElement | null>(null);
@@ -199,6 +257,49 @@ export function ProfileMenu() {
               </ul>
             )}
           </div>
+
+          {/*
+            * Only when there is somewhere to switch to.
+            *
+            * A person can belong to more than one business: somebody who owns a
+            * company and works at another, or an accountant with two clients.
+            * One membership means no choice to make, so the section is not
+            * there at all rather than being a list of one.
+            */}
+          {workspaces.length > 1 ? (
+            <div className="border-t border-outline-variant px-2 py-2">
+              <p className="md-label-sm px-2 pb-1 text-on-variant/70">Workspace</p>
+              {workspaces.map((space) => {
+                const here = space.workspaceId === workspaceId;
+                return (
+                  <button
+                    key={space.workspaceId}
+                    role="menuitem"
+                    disabled={here || switching}
+                    onClick={(event) => {
+                      createRipple(event);
+                      void switchTo(space.workspaceId);
+                    }}
+                    className={cx(
+                      "md-state flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left",
+                      here ? "text-primary" : "text-on-variant",
+                    )}
+                  >
+                    <BuildingIcon className="h-4 w-4 flex-none" />
+                    <span className="min-w-0 flex-1">
+                      <span className="md-body block truncate">{space.name}</span>
+                      {space.role === "admin" ? (
+                        <span className="md-label-sm block text-on-variant/70">
+                          Administrator
+                        </span>
+                      ) : null}
+                    </span>
+                    {here ? <CheckIcon className="h-4 w-4 flex-none" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
 
           <nav className="px-2 py-2">
             {/* A button rather than a link: the form is small enough that a

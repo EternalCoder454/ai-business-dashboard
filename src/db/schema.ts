@@ -298,6 +298,16 @@ export const allHandsRounds = pgTable(
  */
 export const accounts = pgTable("accounts", {
   userEmail: text("user_email").primaryKey(),
+  /**
+   * Which of their workspaces they are currently in.
+   *
+   * On the account rather than in a cookie, because it is a property of the
+   * person and not of the laptop: somebody who switches to a second business on
+   * their desktop should not be back in the first on their phone. Null, or
+   * pointing at a membership that has since been revoked, falls back to their
+   * oldest one rather than to nothing.
+   */
+  activeWorkspaceId: text("active_workspace_id"),
   displayName: text("display_name").notNull().default(""),
   roleTitle: text("role_title").notNull().default("Founder"),
   pronouns: text("pronouns").notNull().default(""),
@@ -535,8 +545,16 @@ export const access = pgTable(
   "access",
   {
     /** Lowercased. Google's address is the whole identity, as everywhere else. */
-    email: text("email").primaryKey(),
-    /** The workspace this address opens. One each, for now. */
+    email: text("email").notNull(),
+    /**
+     * A workspace this address can open. One row per membership.
+     *
+     * The address used to be the primary key on its own, so a person belonged
+     * to exactly one business and being added to a second silently moved them
+     * out of the first: the invite upserted on the address and overwrote the
+     * workspace. An accountant with two clients, or somebody who owns a company
+     * and works at another, had no way to be in both.
+     */
     workspaceId: text("workspace_id").notNull(),
     /** member or admin. Admin adds reviewing other people's conversations. */
     role: text("role").notNull().default("member"),
@@ -548,7 +566,14 @@ export const access = pgTable(
     /** Set on each successful sign-in, so an unused invite is visible as one. */
     lastSignedInAt: timestamp("last_signed_in_at", { withTimezone: true }),
   },
-  (table) => [index("access_revoked_idx").on(table.revokedAt)],
+  (table) => [
+    // One row per person per business, which is what makes two possible.
+    primaryKey({ columns: [table.email, table.workspaceId] }),
+    index("access_revoked_idx").on(table.revokedAt),
+    // Every membership one address has, which is now a question with more than
+    // one answer and is asked on nearly every request.
+    index("access_email_idx").on(table.email, table.revokedAt),
+  ],
 );
 
 /**

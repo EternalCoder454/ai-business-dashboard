@@ -98,15 +98,23 @@ export async function grantAccess(input: {
     invitedBy: clean(input.invitedBy),
     revokedAt: null,
   };
+  /*
+   * One row per person per business, and the conflict is on both.
+   *
+   * This used to key on the address alone and overwrite the workspace, so
+   * inviting somebody who already worked somewhere silently moved them: they
+   * lost the first business the moment they were added to the second, and
+   * nothing anywhere said so. Inviting the same person to the same business
+   * twice still updates that one row rather than making another.
+   */
   await db
     .insert(t.access)
     .values(values)
     .onConflictDoUpdate({
-      target: t.access.email,
+      target: [t.access.email, t.access.workspaceId],
       // createdAt and lastSignedInAt are left alone: when this address was
       // first invited, and whether they ever arrived, are still true.
       set: {
-        workspaceId: values.workspaceId,
         role: values.role,
         note: values.note,
         revokedAt: null,
@@ -120,13 +128,27 @@ export async function grantAccess(input: {
  * Their workspace is untouched. Deleting that is a separate, louder action in
  * Admin, because taking someone's sign-in away and destroying their work are
  * different decisions and should never be one click.
+ *
+ * Scoped to one business unless the caller asks for all of them, and that
+ * distinction became load bearing the moment a person could be in two. An
+ * administrator removing somebody from their own company must not also remove
+ * them from a company they have nothing to do with, which is precisely what
+ * this did while the address was the only key. Only an operator, offboarding a
+ * person from the whole deployment, passes nothing.
  */
-export async function revokeAccess(email: string): Promise<void> {
+export async function revokeAccess(email: string, workspaceId?: string): Promise<void> {
   if (!databaseEnabled || !db) throw new Error("No database.");
+  const who = clean(email);
   await db
     .update(t.access)
     .set({ revokedAt: new Date() })
-    .where(eq(t.access.email, clean(email)));
+    .where(
+      workspaceId
+        ? and(eq(t.access.email, who), eq(t.access.workspaceId, workspaceId))
+        : // tenancy-audit: every business on purpose, which is what taking
+          // somebody off the deployment means. Only the operator route asks.
+          eq(t.access.email, who),
+    );
 }
 
 /**
