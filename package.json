@@ -42,7 +42,8 @@
     "telemetry-test": "tsx scripts/telemetry-test.ts",
     "telemetry-merge-check": "tsx --env-file=.env.local scripts/telemetry-merge-check.ts",
     "calendar-test": "tsx scripts/calendar-test.ts",
-    "reporter-test": "tsx scripts/reporter-test.ts"
+    "reporter-test": "tsx scripts/reporter-test.ts",
+    "reporter-live": "tsx --env-file=.env.local scripts/reporter-live.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

@@ -125,20 +125,32 @@ export function rateState(key: string, limit: number, windowMs: number): RateSta
 }
 
 export function withinRate(key: string, limit: number, windowMs: number): boolean {
+  return retryAfter(key, limit, windowMs) === 0;
+}
+
+/**
+ * Zero when the call is allowed, otherwise the seconds until it will be.
+ *
+ * "Wait a few minutes" is not something anybody can act on: it does not say
+ * how many, so the only way to find out is to keep pressing the thing that is
+ * already refusing. The limiter knows exactly when the oldest hit falls out of
+ * the window, so it may as well say.
+ */
+export function retryAfter(key: string, limit: number, windowMs: number): number {
   const now = Date.now();
   const cutoff = now - windowMs;
   const hits = (windows.get(key) ?? []).filter((at) => at > cutoff);
 
   if (hits.length >= limit) {
     windows.set(key, hits);
-    return false;
+    return Math.max(1, Math.ceil((hits[0] + windowMs - now) / 1000));
   }
 
   hits.push(now);
   windows.set(key, hits);
 
   prune(cutoff);
-  return true;
+  return 0;
 }
 
 /**

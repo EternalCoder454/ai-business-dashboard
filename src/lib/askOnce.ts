@@ -34,6 +34,17 @@ export interface AskOptions {
    * block that is identical on every run, which is what both callers have.
    */
   cacheSystem?: boolean;
+  /**
+   * No sampling. For anything classifying rather than writing.
+   *
+   * The reviewer ran at the model's default temperature and gave two different
+   * answers about the same sentence on two passes: "I am going to touch you
+   * tonight" was left alone once and raised as sexual harassment the next time.
+   * A judgement about somebody's conduct that changes when you press the button
+   * again is not a judgement, and the person it is about deserves better than a
+   * coin.
+   */
+  exact?: boolean;
   signal?: AbortSignal;
 }
 
@@ -64,6 +75,7 @@ async function anthropic(o: AskOptions): Promise<Answer | null> {
     body: JSON.stringify({
       model: o.model,
       max_tokens: o.maxTokens ?? DEFAULT_MAX_TOKENS,
+      ...(o.exact ? { temperature: 0 } : {}),
       system: o.cacheSystem
         ? [{ type: "text", text: o.system, cache_control: { type: "ephemeral", ttl: "1h" } }]
         : o.system,
@@ -97,6 +109,7 @@ async function openai(o: AskOptions): Promise<Answer | null> {
     body: JSON.stringify({
       model: o.model,
       max_completion_tokens: o.maxTokens ?? DEFAULT_MAX_TOKENS,
+      ...(o.exact ? { temperature: 0 } : {}),
       messages: [
         { role: "system", content: o.system },
         { role: "user", content: o.question },
@@ -131,7 +144,10 @@ async function google(o: AskOptions): Promise<Answer | null> {
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: o.system }] },
       contents: [{ role: "user", parts: [{ text: o.question }] }],
-      generationConfig: { maxOutputTokens: o.maxTokens ?? DEFAULT_MAX_TOKENS },
+      generationConfig: {
+        maxOutputTokens: o.maxTokens ?? DEFAULT_MAX_TOKENS,
+        ...(o.exact ? { temperature: 0 } : {}),
+      },
     }),
   });
   if (!response.ok) return refused("google", response);

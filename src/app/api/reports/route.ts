@@ -4,7 +4,7 @@ import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { membershipFor } from "@/db/tenancy";
 import { isOperator } from "@/lib/admin";
-import { readJsonWithin, withinRate } from "@/lib/guard";
+import { readJsonWithin, retryAfter } from "@/lib/guard";
 import { reporterEnabled, runReview } from "@/lib/reporter";
 
 export const runtime = "nodejs";
@@ -118,11 +118,23 @@ export async function POST(request: Request) {
 
   try {
     if (parsed.body.action === "run") {
-      // A pass costs money and takes time, so it is not something to hold down
-      // the button on.
-      if (!withinRate(`review:${who.email}`, 3, 10 * 60_000)) {
+      /*
+       * A pass costs money, so it is still not something to hold down the
+       * button on, but three in ten minutes was set when one pass swept every
+       * business on the operator's own key. An administrator's pass now reads
+       * one business, on their key, over at most a hundred and twenty messages
+       * on the cheap model, which is fractions of a penny. The limit is there
+       * to stop a loop, not to ration.
+       */
+      const wait = retryAfter(`review:${who.email}`, 10, 10 * 60_000);
+      if (wait > 0) {
         return Response.json(
-          { error: "A pass has just run. Give it a few minutes." },
+          {
+            error:
+              wait > 60
+                ? `That is ten passes in ten minutes. Try again in ${Math.ceil(wait / 60)} minutes.`
+                : `That is ten passes in ten minutes. Try again in ${wait} seconds.`,
+          },
           { status: 429 },
         );
       }

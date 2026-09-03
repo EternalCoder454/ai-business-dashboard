@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, gt } from "drizzle-orm";
+import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import { databaseEnabled, db, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { workspaceKey } from "@/db/keys";
@@ -60,7 +60,7 @@ const INSTRUCTIONS = `You are reviewing internal messages between colleagues at 
 
 Raise something ONLY when it is one of these:
 - harassment: sustained personal abuse, demeaning someone for who they are, bullying
-- sexual-harassment: unwanted advances, sexual comments about a colleague, pressure of a sexual nature
+- sexual-harassment: unwanted advances, sexual comments about a colleague, pressure of a sexual nature, or any unwanted statement of sexual intent towards them. A joking tone, an emoticon, a smiley or "just kidding" does not make one of these acceptable and is not a reason to leave it alone: what matters is that somebody said it to a colleague, not how lightly they dressed it up
 - threat: threatening violence or serious harm to a person
 - malware: writing, obtaining, or deploying software meant to damage or break into systems without permission
 - fraud: arranging to deceive someone for money, forge records, or steal
@@ -105,7 +105,7 @@ export interface Reviewable {
  * A business with no key of any kind is skipped rather than failed. There is
  * nothing to review with and nothing broken about that.
  */
-async function keyFor(
+export async function keyFor(
   workspaceId: string,
 ): Promise<{ provider: Provider; key: string; model: string } | null> {
   const override = process.env.REVIEWER_API_KEY?.trim();
@@ -184,7 +184,7 @@ function isCategory(value: unknown): value is (typeof CATEGORIES)[number] {
  * truncated. A model that decided to invent a report about somebody who was not
  * in the conversation should not be able to write that row.
  */
-async function review(
+export async function review(
   batch: Reviewable[],
   credentials: { provider: Provider; key: string; model: string },
 ): Promise<Finding[]> {
@@ -211,6 +211,8 @@ async function review(
     system: INSTRUCTIONS,
     question: transcript,
     maxTokens: 2_000,
+    // Same messages, same answer, every time.
+    exact: true,
     // Identical on every run and for every business, so it is the one part
     // worth holding between them where the provider can.
     cacheSystem: true,
@@ -312,11 +314,40 @@ export function contextFor(sourceId: string, batch: Reviewable[]): string {
 
 async function record(
   space: { id: string; name: string },
-  findings: Finding[],
+  incoming: Finding[],
   through: number,
   batch: Reviewable[],
 ): Promise<void> {
+  let findings = incoming;
   const database = requireDb();
+
+  if (findings.length > 0) {
+    /*
+     * Never twice about the same message.
+     *
+     * The cursor normally makes this impossible, and normally is not a
+     * guarantee: two administrators pressing Run at the same moment read the
+     * same batch, and an operator rewinding a cursor to re-read a period does
+     * it deliberately. Found by doing exactly that, which put the same threat
+     * in front of somebody twice with two differently worded reasons, and a
+     * queue of accusations that grows every time anybody presses a button is
+     * one nobody trusts.
+     */
+    const already = await database
+      .select({ sourceId: t.reports.sourceId })
+      .from(t.reports)
+      .where(
+        and(
+          eq(t.reports.workspaceId, space.id),
+          inArray(
+            t.reports.sourceId,
+            findings.map((finding) => finding.sourceId),
+          ),
+        ),
+      );
+    const seen = new Set(already.map((row) => row.sourceId));
+    findings = findings.filter((finding) => !seen.has(finding.sourceId));
+  }
 
   if (findings.length > 0) {
     await database.insert(t.reports).values(
