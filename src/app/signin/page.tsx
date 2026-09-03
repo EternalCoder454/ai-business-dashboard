@@ -1,7 +1,7 @@
 import { loadBranding } from "@/lib/branding";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { auth, authEnabled, signIn } from "@/auth";
+import { auth, authEnabled, authInstance } from "@/auth";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -75,10 +75,28 @@ export default async function SignInPage({
           </p>
         ) : null}
 
+        {/*
+          * A server action rather than a link to the endpoint.
+          *
+          * better-auth's sign-in is a POST that answers with the Google URL to
+          * go to, so something has to make that call and then redirect. Doing
+          * it here keeps the button a plain form submit, which works with
+          * JavaScript disabled and does not need a client bundle on the one
+          * page that must always load.
+          */}
         <form
           action={async () => {
             "use server";
-            await signIn("google", { redirectTo: from });
+            const { redirect: goTo } = await import("next/navigation");
+            if (!authInstance) goTo("/");
+
+            const { url } = await authInstance!.api.signInSocial({
+              body: { provider: "google", callbackURL: from, errorCallbackURL: "/signin" },
+            });
+
+            // No URL means the provider is misconfigured rather than the person
+            // being refused, so the sign-in page says so instead of looping.
+            goTo(url ?? "/signin?error=Configuration");
           }}
         >
           <button

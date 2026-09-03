@@ -921,3 +921,117 @@ export const telemetry = pgTable(
     index("telemetry_bucket_idx").on(table.bucket),
   ],
 );
+
+/* -------------------------------------------------------------------------- *
+ * Sign in
+ *
+ * Four tables better-auth owns. Written by hand rather than generated, because
+ * everything else in this file is, and a generated file that nobody reads is
+ * where a column with the wrong nullability hides.
+ *
+ * Prefixed `auth_` for two reasons. `user`, `session` and `account` are poor
+ * table names in Postgres, where `user` is a reserved word, and this schema
+ * already has an `accounts` table that means something completely different:
+ * who a person is, their name and pronouns and notes. Two tables called
+ * something like `account` holding unrelated things is a mistake waiting for
+ * somebody in a hurry.
+ *
+ * The property names are better-auth's and cannot be changed: the adapter looks
+ * up fields by them. The column names are this project's convention.
+ * -------------------------------------------------------------------------- */
+
+export const authUser = pgTable("auth_user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  /** The identity everything else in this app keys off. */
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const authSession = pgTable(
+  "auth_session",
+  {
+    id: text("id").primaryKey(),
+    /**
+     * The cookie's value, looked up on every request.
+     *
+     * A row per session rather than a signed token holding its own claims,
+     * which is the real behavioural change in moving off next-auth: signing
+     * somebody out, or removing them, takes effect on the next request instead
+     * of whenever a token happens to expire.
+     */
+    token: text("token").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // The lookup on every authenticated request.
+    index("auth_session_token_idx").on(table.token),
+    index("auth_session_user_idx").on(table.userId),
+  ],
+);
+
+export const authAccount = pgTable(
+  "auth_account",
+  {
+    id: text("id").primaryKey(),
+    /** Who Google says this is, which is not the same as who we call them. */
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    /** Present in 1.7 and up. Absent for providers that do not issue one. */
+    issuer: text("issuer"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    /*
+     * Google's own tokens for this person.
+     *
+     * Not the same thing as the calendar connection in googleConnections, which
+     * is a separate consent for a separate scope and stays where it is. This is
+     * whatever the sign-in itself returned, and nothing in the app reads it.
+     */
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+    scope: text("scope"),
+    /** Unused: this deployment has no password sign-in and is not getting one. */
+    password: text("password"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("auth_account_user_idx").on(table.userId),
+    index("auth_account_provider_idx").on(table.providerId, table.accountId),
+  ],
+);
+
+/**
+ * Short lived tokens for flows this deployment does not use.
+ *
+ * Kept because better-auth expects the table to exist and a missing one is an
+ * error at the moment somebody signs in, which is the worst possible moment to
+ * find out. It stays empty.
+ */
+export const authVerification = pgTable(
+  "auth_verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("auth_verification_identifier_idx").on(table.identifier)],
+);

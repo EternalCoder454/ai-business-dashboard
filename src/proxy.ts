@@ -1,5 +1,6 @@
+import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
-import { auth, authEnabled } from "@/auth";
+import { authEnabled } from "@/auth";
 
 /**
  * Everything is private except the sign-in page and the auth endpoints.
@@ -7,14 +8,27 @@ import { auth, authEnabled } from "@/auth";
  * Next 16 renamed this convention from middleware to proxy. Behaviour and the
  * matcher are unchanged.
  *
- * When auth is not configured the middleware steps aside entirely, so a local
+ * When auth is not configured the proxy steps aside entirely, so a local
  * checkout with no OAuth client behaves exactly as it did before.
+ *
+ * This looks for the session cookie rather than loading the session, and that
+ * is a deliberate downgrade from what it did under next-auth. A proxy runs on
+ * every request including every asset, it cannot use `next/headers`, and
+ * reaching Postgres from here would put a database round trip in front of the
+ * whole app. So it asks the cheap question: does this request carry a session
+ * cookie at all.
+ *
+ * Which means a forged or expired cookie gets past this and is refused a moment
+ * later by the route it reached. That is not a hole, because nothing here was
+ * ever the real check: every API route calls `requireSession` for itself and
+ * every page loads through `auth()`, both of which read the session properly.
+ * What this does is send somebody without one to the sign-in page instead of to
+ * a screen that cannot answer them.
  */
 export default async function proxy(request: NextRequest) {
   if (!authEnabled) return NextResponse.next();
 
-  const session = await auth();
-  if (session?.user) return NextResponse.next();
+  if (getSessionCookie(request)) return NextResponse.next();
 
   const signIn = new URL("/signin", request.url);
   // Come back to where they were trying to go once they are through.
