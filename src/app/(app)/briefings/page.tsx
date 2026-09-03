@@ -161,7 +161,7 @@ export default function BriefingsPage() {
         }
       />
 
-      <div className="measure flex flex-col gap-5 p-4 sm:p-6">
+      <div className="measure flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-6">
         {error ? <p className="md-label text-error">{error}</p> : null}
 
         {briefings.length === 0 && (schedules?.length ?? 0) === 0 ? (

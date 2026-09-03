@@ -171,11 +171,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {isConversation ? null : (
-          <TopAppBar
-            title={title}
-            onOpenDrawer={() => setDrawerOpen(true)}
-            onOpenSearch={() => setSearchOpen(true)}
-          />
+          <TopAppBar title={title} />
         )}
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</main>
         {/* Above the bottom bar rather than over it. Fixed to the viewport, it
@@ -273,42 +269,23 @@ function useEdgeSwipe(onOpen: () => void) {
  * and the current destination. From medium up the rail takes over, and each
  * page's own header already shows the title, so this would be duplication.
  */
-function TopAppBar({
-  title,
-  onOpenDrawer,
-  onOpenSearch,
-}: {
-  title: string;
-  onOpenDrawer: () => void;
-  onOpenSearch: () => void;
-}) {
+/**
+ * The title and the account, on a phone.
+ *
+ * It used to carry a menu button and a search button as well, and both were
+ * already somewhere else: the bottom bar's last slot opens the same drawer, and
+ * the drawer has the same search at the top of it. Two hamburgers on one screen
+ * is not a choice, it is a question about which one is the real one.
+ *
+ * The account menu stays because it has nowhere else to be on compact. In the
+ * page header it had to wrap onto a line of its own behind whatever buttons the
+ * page already had.
+ */
+function TopAppBar({ title }: { title: string }) {
   return (
-    <header className="safe-top safe-x flex flex-none items-center gap-1 border-b border-outline-variant bg-low px-1 medium:hidden">
-      <button
-        onClick={(event) => {
-          createRipple(event);
-          onOpenDrawer();
-        }}
-        aria-label="Open navigation drawer"
-        className="md-state my-1 grid h-12 w-12 flex-none place-items-center rounded-full text-on-surface"
-      >
-        <MenuIcon />
-      </button>
-      <span className="md-title truncate">{title}</span>
-      <button
-        onClick={(event) => {
-          createRipple(event);
-          onOpenSearch();
-        }}
-        aria-label="Search"
-        className="md-state ml-auto grid h-12 w-12 flex-none place-items-center rounded-full text-on-variant"
-      >
-        <SearchIcon className="h-5 w-5" />
-      </button>
-      {/* The account menu belongs up here on a phone rather than in the page
-          header, where it had to wrap onto a line of its own behind whatever
-          buttons the page already had. */}
-      <div className="mr-2 flex-none [--badge-ring:var(--md-container-low)]">
+    <header className="safe-top safe-x flex flex-none items-center gap-2 border-b border-outline-variant bg-low px-3 py-1 medium:hidden">
+      <span className="md-title min-w-0 flex-1 truncate">{title}</span>
+      <div className="flex-none [--badge-ring:var(--md-container-low)]">
         <ProfileMenu />
       </div>
     </header>
@@ -335,6 +312,7 @@ function NavigationRail({
   collapsed: boolean;
   onExpand: () => void;
 }) {
+  const { canOpenPath } = useStore();
   return (
     <nav
       className={cx(
@@ -394,7 +372,7 @@ function NavigationRail({
         <SearchIcon className="h-5 w-5" />
       </button>
 
-      {PRIMARY_LINKS.map((link) => (
+      {PRIMARY_LINKS.filter((link) => canOpenPath(link.href)).map((link) => (
         <RailItem key={link.href} link={link} active={isActive(pathname, link.href)} />
       ))}
     </nav>
@@ -453,10 +431,15 @@ function BottomBar({
   onOpenHeads: () => void;
 }) {
   const { unread } = useMessages();
-  // Home, then the heads picker is spliced in, then these two.
+  const { canOpenPath } = useStore();
+  // Home, then the heads picker is spliced in, then these two, minus whichever
+  // of them this person's business has switched off.
   const links = [
     PRIMARY_LINKS[0],
-    ...PRIMARY_LINKS.filter((link) => link.href === "/all-hands" || link.href === "/messages"),
+    ...PRIMARY_LINKS.filter(
+      (link) =>
+        (link.href === "/all-hands" || link.href === "/messages") && canOpenPath(link.href),
+    ),
   ];
   return (
     <nav className="safe-bottom safe-x flex flex-none items-stretch border-t border-outline-variant bg-low medium:hidden">
@@ -576,10 +559,10 @@ function BarButton({
  * immediately leave is a screen that should not have been one.
  */
 function HeadsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { allDepartments } = useStore();
+  const { allDepartments, canOpenHead } = useStore();
   if (!open) return null;
 
-  const heads = allDepartments.filter((d) => !d.personal);
+  const heads = allDepartments.filter((d) => !d.personal && canOpenHead(d.id));
 
   return (
     <div className="fixed inset-0 z-50 medium:hidden">
@@ -587,11 +570,11 @@ function HeadsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Your heads"
+        aria-label="Heads"
         className="safe-bottom absolute inset-x-0 bottom-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-low shadow-e3"
       >
         <div className="flex items-center justify-between px-4 pt-4">
-          <h2 className="md-title">Your heads</h2>
+          <h2 className="md-title">Heads</h2>
           <button
             onClick={onClose}
             aria-label="Close"

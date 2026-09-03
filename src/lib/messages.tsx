@@ -57,7 +57,17 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const response = await fetch("/api/messages");
-      if (response.status === 503 || response.status === 401) {
+      /*
+       * Three permanent answers, and 403 is the new one: a business can switch
+       * the inbox off for one person, and somebody signed in outside a
+       * workspace gets the same. None of them changes on the next poll, so
+       * this stops rather than asking every twenty five seconds forever.
+       */
+      if (
+        response.status === 503 ||
+        response.status === 401 ||
+        response.status === 403
+      ) {
         setEnabled(false);
         setReady(true);
         return;
@@ -83,6 +93,10 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Once the server has said there is no inbox here, there is nothing to
+    // poll for and no answer that would change it.
+    if (!enabled) return;
+
     void refresh();
 
     const tick = () => {
@@ -97,7 +111,7 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", tick);
     };
-  }, [refresh]);
+  }, [refresh, enabled]);
 
   const clearUnreadFor = useCallback((email: string) => {
     setThreads((current) => {

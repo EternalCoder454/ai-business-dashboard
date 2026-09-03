@@ -1,10 +1,13 @@
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { databaseEnabled, db, requireDb } from "./client";
 import * as t from "./schema";
+import { parsePermissions, type Permissions } from "@/lib/permissions";
 
 export interface Membership {
   workspaceId: string;
   role: "member" | "admin";
+  /** What this person may open in it. Null means everything. */
+  permissions: Permissions | null;
 }
 
 export interface WorkspaceRow {
@@ -60,7 +63,11 @@ export async function membershipFor(email: string): Promise<Membership | null> {
      * somewhere they still belong rather than nowhere at all.
      */
     const [row] = await db
-      .select({ workspaceId: t.access.workspaceId, role: t.access.role })
+      .select({
+        workspaceId: t.access.workspaceId,
+        role: t.access.role,
+        permissions: t.access.permissions,
+      })
       .from(t.access)
       .leftJoin(t.accounts, eq(t.accounts.userEmail, t.access.email))
       .where(and(eq(t.access.email, clean(email)), isNull(t.access.revokedAt)))
@@ -70,7 +77,11 @@ export async function membershipFor(email: string): Promise<Membership | null> {
       )
       .limit(1);
     if (!row) return null;
-    return { workspaceId: row.workspaceId, role: row.role === "admin" ? "admin" : "member" };
+    return {
+      workspaceId: row.workspaceId,
+      role: row.role === "admin" ? "admin" : "member",
+      permissions: parsePermissions(row.permissions),
+    };
   } catch (error) {
     console.error("[tenancy] could not resolve a workspace", error);
     return null;
@@ -172,7 +183,7 @@ export async function provisionFor(email: string, name: string): Promise<Members
       .onConflictDoNothing({ target: [t.access.email, t.access.workspaceId] });
   });
 
-  return (await membershipFor(address)) ?? { workspaceId, role: "admin" };
+  return (await membershipFor(address)) ?? { workspaceId, role: "admin", permissions: null };
 }
 
 /** Every workspace with the people who can open it. The operator's list. */
@@ -380,6 +391,8 @@ export interface MemberRow {
   lastSignedInAt: number | null;
   invitedBy: string | null;
   createdAt: number;
+  /** What they may open. Null means everything, which is most people. */
+  permissions: Permissions | null;
 }
 
 /**
@@ -403,6 +416,7 @@ export async function listMembers(workspaceId: string): Promise<MemberRow[]> {
       invitedBy: t.access.invitedBy,
       createdAt: t.access.createdAt,
       lastSignedInAt: t.access.lastSignedInAt,
+      permissions: t.access.permissions,
       displayName: t.accounts.displayName,
       roleTitle: t.accounts.roleTitle,
       presence: t.accounts.presence,
@@ -426,6 +440,7 @@ export async function listMembers(workspaceId: string): Promise<MemberRow[]> {
     lastSignedInAt: row.lastSignedInAt?.getTime() ?? null,
     invitedBy: row.invitedBy,
     createdAt: row.createdAt.getTime(),
+    permissions: parsePermissions(row.permissions),
   }));
 }
 

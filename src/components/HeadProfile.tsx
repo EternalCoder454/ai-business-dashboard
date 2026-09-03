@@ -19,6 +19,10 @@ import type { Department } from "@/lib/types";
  * wrote about them afterwards. Reading "you push back when a brief is fuzzy"
  * tells you more about what you will get than any polished third person summary
  * of the same sentence, and it is the truth rather than a rendering of it.
+ *
+ * The model is not here. It is already named in the footer under every answer
+ * the head gives, and saying it twice on one screen made it look like a setting
+ * rather than a fact.
  */
 export function HeadProfile({
   department,
@@ -29,9 +33,8 @@ export function HeadProfile({
   open: boolean;
   onClose: () => void;
 }) {
-  const { skillsFor, settings, workspaceRole } = useStore();
+  const { skillsFor, workspaceRole } = useStore();
   const skills = skillsFor(department.id).filter((skill) => skill.enabled);
-  const model = department.model || settings.model;
 
   return (
     <Dialog
@@ -63,7 +66,7 @@ export function HeadProfile({
       </div>
 
       {department.persona?.trim() ? (
-        <Section title="Their brief">
+        <Section title="Brief">
           <p className="md-body whitespace-pre-wrap text-on-variant">
             {department.persona.trim()}
           </p>
@@ -71,7 +74,7 @@ export function HeadProfile({
       ) : null}
 
       {skills.length > 0 ? (
-        <Section title={`What they can do (${skills.length})`}>
+        <Section title={`Skills (${skills.length})`}>
           <ul className="flex flex-col gap-2">
             {skills.map((skill) => (
               <li key={skill.id}>
@@ -85,9 +88,6 @@ export function HeadProfile({
         </Section>
       ) : null}
 
-      <Section title="Answers with">
-        <p className="md-body text-on-variant">{model}</p>
-      </Section>
     </Dialog>
   );
 }

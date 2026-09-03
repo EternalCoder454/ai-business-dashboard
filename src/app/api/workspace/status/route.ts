@@ -82,6 +82,13 @@ export async function GET() {
   // key: nothing returns that, to an administrator or anyone else.
   const membership = await membershipFor(email);
   const workspaceRole = membership?.role ?? null;
+  /*
+   * What this person may open, for hiding what they cannot. Sent as it is
+   * stored rather than resolved into a list of allowed screens, because the
+   * client already knows which screens exist and the server should not have to
+   * be redeployed when one is added.
+   */
+  const permissions = membership?.permissions ?? null;
 
   // Together, not one after another. None of the three needs an answer from
   // the other two, and this route runs on every page load.
@@ -107,6 +114,7 @@ export async function GET() {
       serverKeys: serverKeys(),
       workspaceKeys,
       workspaceRole,
+      permissions,
       workspacePeople,
       isOperator: operator,
       isOwner,
@@ -123,6 +131,7 @@ export async function GET() {
       serverKeys: serverKeys(),
       workspaceKeys,
       workspaceRole,
+      permissions,
       workspacePeople,
       isOperator: operator,
       isOwner,

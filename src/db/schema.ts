@@ -11,6 +11,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import type { Permissions } from "@/lib/permissions";
 import type {
   AllHandsResponse,
   Attachment,
@@ -558,6 +559,14 @@ export const access = pgTable(
     workspaceId: text("workspace_id").notNull(),
     /** member or admin. Admin adds reviewing other people's conversations. */
     role: text("role").notNull().default("member"),
+    /**
+     * What this person may open, or null for everything.
+     *
+     * Null rather than a filled object by default, so every row written before
+     * this existed means exactly what it meant then: no restrictions. See
+     * lib/permissions for the shape and for what it does and does not fence.
+     */
+    permissions: jsonb("permissions").$type<Permissions>(),
     /** Who this is, in the inviter's words. Shown in Admin, never sent anywhere. */
     note: text("note"),
     invitedBy: text("invited_by"),

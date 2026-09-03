@@ -4,6 +4,7 @@ import { upcoming } from "@/lib/google";
 import { withinRate } from "@/lib/guard";
 import { record, refused } from "@/lib/telemetry";
 import { membershipFor } from "@/db/tenancy";
+import { allowsArea } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,20 @@ export async function GET(request: Request) {
     return Response.json({ events: [], problem: "unavailable" });
   }
 
+  /*
+   * A calendar the business has switched off for this person.
+   *
+   * Answered as not connected rather than refused, because that is what it is
+   * from where they are standing: there is no calendar for this account to
+   * read, and every screen and prompt already knows how to say nothing about
+   * one. A 403 would put an error on a dashboard about a thing they cannot
+   * change.
+   */
+  const membership = await membershipFor(email);
+  if (!allowsArea(membership?.role, membership?.permissions, "calendar")) {
+    return Response.json({ events: [], problem: "not-connected" });
+  }
+
   const raw = Number(new URL(request.url).searchParams.get("days") ?? "7");
   const days = Number.isFinite(raw) ? Math.min(Math.max(Math.trunc(raw), 1), 31) : 7;
 
@@ -50,11 +65,10 @@ export async function GET(request: Request) {
    * is not a failure and should not appear as a call at all.
    */
   if (result.problem !== "not-connected") {
-    const mine = await membershipFor(email);
-    if (mine) {
+    if (membership) {
       record({
         operation: "calendar.read",
-        workspaceId: mine.workspaceId,
+        workspaceId: membership.workspaceId,
         ms: Date.now() - startedAt,
         outcome: result.problem === "unavailable" ? "error" : "ok",
         errorKind: result.problem === "unavailable" ? "CalendarUnavailable" : undefined,

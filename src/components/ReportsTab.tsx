@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, Card, Chip, EmptyState, ReportIcon, cx } from "./ui";
 import { formatRelativeTime } from "@/lib/routes";
+import { useStore } from "@/lib/store";
 
 interface ReportRow {
   id: string;
@@ -61,8 +62,20 @@ const CATEGORY_LABEL: Record<string, string> = {
  * two buttons record that somebody did, which is the point. An automated
  * judgement about a real person's conduct should never be the last word, and
  * this screen is built so it cannot be.
+ *
+ * The same screen twice, and `scope` is which one. On the operator panel it is
+ * every business; under a business's own people it is that business, including
+ * when the person reading it happens to be the operator. Without that an
+ * operator opening their own panel got the whole deployment's reports under
+ * their own company name, and a pass run from there read every customer.
  */
-export function ReportsTab() {
+export function ReportsTab({
+  scope = "deployment",
+}: {
+  scope?: "deployment" | "workspace";
+}) {
+  const { isOperator } = useStore();
+  const mineOnly = scope === "workspace";
   const [rows, setRows] = useState<ReportRow[] | null>(null);
   const [enabled, setEnabled] = useState(true);
   const [lastRunAt, setLastRunAt] = useState<number | null>(null);
@@ -84,14 +97,16 @@ export function ReportsTab() {
     async (id: string) => {
       if (transcripts[id] !== undefined) return;
       try {
-        const response = await fetch(`/api/reports?transcript=${encodeURIComponent(id)}`);
+        const response = await fetch(
+          `/api/reports?transcript=${encodeURIComponent(id)}${mineOnly ? "&scope=workspace" : ""}`,
+        );
         const body = (await response.json()) as { transcript?: string };
         setTranscripts((current) => ({ ...current, [id]: body.transcript ?? "" }));
       } catch {
         setTranscripts((current) => ({ ...current, [id]: "Could not load it." }));
       }
     },
-    [transcripts],
+    [transcripts, mineOnly],
   );
 
   /*
@@ -104,7 +119,7 @@ export function ReportsTab() {
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch("/api/reports");
+      const response = await fetch(mineOnly ? "/api/reports?scope=workspace" : "/api/reports");
       if (!response.ok) throw new Error(String(response.status));
       const body = await response.json();
       setRows(body.reports ?? []);
@@ -113,7 +128,7 @@ export function ReportsTab() {
     } catch {
       setError("Could not read the reports.");
     }
-  }, []);
+  }, [mineOnly]);
 
   useEffect(() => {
     void load();
@@ -126,8 +141,31 @@ export function ReportsTab() {
     await fetch("/api/reports", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "status", id, status }),
+      body: JSON.stringify({ action: "status", id, status, scope }),
     }).catch(() => {});
+  };
+
+  /*
+   * The operator's alone, and immediate.
+   *
+   * Dismissing keeps the row, which is what an administrator does with a report
+   * about their own business. This removes it, which is for the duplicates and
+   * the false alarms that would otherwise sit at the top of the list forever.
+   * The row goes from the screen before the request answers because the only
+   * failure worth reporting is one where it comes back.
+   */
+  const remove = async (id: string) => {
+    const before = rows;
+    setRows((current) => (current ? current.filter((row) => row.id !== id) : current));
+    const response = await fetch("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", id, scope }),
+    }).catch(() => null);
+    if (!response?.ok) {
+      setRows(before);
+      setError("Could not delete that.");
+    }
   };
 
   const run = async () => {
@@ -138,7 +176,7 @@ export function ReportsTab() {
       const response = await fetch("/api/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "run" }),
+        body: JSON.stringify({ action: "run", scope }),
       });
       const body = (await response.json().catch(() => null)) as {
         error?: string;
@@ -203,12 +241,13 @@ export function ReportsTab() {
           <ReportIcon className="mt-0.5 h-5 w-5 flex-none text-on-variant" />
           <div className="min-w-0 flex-1">
             <p className="md-title">Conduct review</p>
+            {/* One line rather than the paragraph that was here. It filled a
+                phone screen before a single report was visible, and everything
+                it said beyond the scope of the pass was already obvious from
+                the rows underneath it. */}
             <p className="md-body mt-1 text-on-variant">
-              Reads internal messages for harassment, threats, fraud, malware, and
-              anyone who may be at risk. It does not look at business secrets, client
-              information, or figures, and it does not judge tone. It reads on a
-              schedule and raises what it finds here; acting on any of it is a
-              person&apos;s job, and every row is a prompt to go and look.
+              Harassment, threats, fraud, malware, and anyone at risk. Not client
+              information, business secrets, or figures.
             </p>
             <p className="md-label-sm mt-2 text-on-variant/75">
               {enabled
@@ -327,30 +366,40 @@ export function ReportsTab() {
                   <span className="md-label-sm text-on-variant/75">
                     Written by {row.authorEmail}
                   </span>
-                  {row.status === "new" ? (
-                    <>
+                  <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {isOperator ? (
                       <Button
                         size="sm"
                         variant="text"
-                        className="ml-auto"
-                        onClick={() => void setStatus(row.id, "dismissed")}
+                        className="text-error"
+                        onClick={() => void remove(row.id)}
                       >
-                        Not a problem
+                        Delete
                       </Button>
-                      <Button size="sm" onClick={() => void setStatus(row.id, "reviewed")}>
-                        Looked at it
+                    ) : null}
+                    {row.status === "new" ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="text"
+                          onClick={() => void setStatus(row.id, "dismissed")}
+                        >
+                          Dismiss
+                        </Button>
+                        <Button size="sm" onClick={() => void setStatus(row.id, "reviewed")}>
+                          Reviewed
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="text"
+                        onClick={() => void setStatus(row.id, "new")}
+                      >
+                        Reopen
                       </Button>
-                    </>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="text"
-                      className="ml-auto"
-                      onClick={() => void setStatus(row.id, "new")}
-                    >
-                      Reopen
-                    </Button>
-                  )}
+                    )}
+                  </div>
                 </div>
               </Card>
             </li>

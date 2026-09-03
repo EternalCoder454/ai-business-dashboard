@@ -358,33 +358,38 @@ export function buildSystemPrompt(
 }
 
 /**
- * Words that carry no meaning in a title, only in a sentence.
+ * The run of words people type before they get to the point.
  *
- * A title made by truncating the first message reads like half a sentence,
- * because it keeps the scaffolding: "I need pricing for websites to sell"
- * rather than "Website Pricing". Stripping the framing and the grammar leaves
- * the subject, which is the only part worth putting in a list.
+ * Only a leading run, and only courtesy and self reference. The version before
+ * this one stripped these words wherever they appeared and then joined what was
+ * left, which is how "I need pricing for websites to sell" became "Pricing
+ * Websites Sell": every word in the title was in the message, and the sentence
+ * they made was not. A title nobody wrote is worse than a long one.
+ *
+ * Question words are not here on purpose. "What should we charge for a five
+ * page site" is a title already, and cutting into it leaves a fragment.
  */
-const TITLE_NOISE = new Set([
-  // Openings people type before getting to the point.
-  "i", "we", "you", "need", "want", "would", "like", "could", "can", "should",
-  "please", "help", "me", "us", "my", "our", "your", "give", "get", "make",
-  "write", "draft", "do", "let", "just", "quick", "question", "about",
-  "think", "know", "find", "tell", "show", "explain", "look", "check", "going",
-  // Grammar that is not the subject.
-  "a", "an", "the", "of", "for", "to", "in", "on", "at", "with", "and", "or",
-  "is", "are", "be", "it", "that", "this", "some", "any", "how", "what",
+const TITLE_OPENERS = new Set([
+  "hi", "hey", "hello", "morning", "please", "thanks", "ok", "okay", "so",
+  "um", "uh", "just", "quick", "question", "i", "im", "i'm", "we", "you",
+  "can", "could", "would", "will", "need", "want", "help", "me", "us", "my",
+  "our", "let", "lets", "let's", "give", "tell",
 ]);
 
-const TITLE_WORDS = 5;
+/** About as much as a sidebar row shows before it truncates. */
+const TITLE_LENGTH = 48;
 
 /**
  * A short label for a conversation, taken from its first message.
  *
- * Deliberately not a model call: a title is worth about nothing and a request
- * costs real money, so this is done from the text. It reads the subject rather
- * than the sentence, so "I need pricing for websites to sell" files itself as
- * "Pricing Websites Sell" rather than as the whole sentence with an ellipsis.
+ * Written straight from the text, and instant, because it is what the sidebar
+ * shows the moment somebody presses send. A better one is asked for afterwards
+ * by the namer, which reads the answer as well as the question; this is what
+ * stands until that comes back, and what stands for good if it does not.
+ *
+ * It keeps the sentence rather than harvesting words out of it. The subject
+ * usually starts a word or two in, so a leading run of openers comes off and
+ * everything after it is left exactly as written.
  */
 export function deriveConversationTitle(text: string): string {
   const cleaned = text.replace(/\s+/g, " ").trim();
@@ -393,20 +398,63 @@ export function deriveConversationTitle(text: string): string {
   // Only the first sentence, since anything after it is detail.
   const first = cleaned.split(/(?<=[.!?])\s/)[0] ?? cleaned;
 
-  const words = first
-    .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
-    .split(/\s+/)
+  const words = first.split(" ").filter(Boolean);
+  let from = 0;
+  while (
+    from < words.length - 1 &&
+    TITLE_OPENERS.has(words[from]!.toLowerCase().replace(/[^\p{L}\p{N}']/gu, ""))
+  ) {
+    from += 1;
+  }
+
+  const kept = words
+    .slice(from)
+    // Standalone "i" is the one word worth correcting: it is the only letter
+    // that is wrong in lower case, and people type it that way constantly.
+    .map((word) => (word.toLowerCase() === "i" ? "I" : word))
+    .join(" ")
+    // Trailing punctuation belongs to the sentence, not to the label.
+    .replace(/[\s.,;:!?-]+$/u, "");
+
+  if (!kept) return "New conversation";
+
+  const title = kept.length > TITLE_LENGTH ? cutToWord(kept, TITLE_LENGTH) : kept;
+  return title.charAt(0).toUpperCase() + title.slice(1);
+}
+
+/** Cuts at the last whole word inside the limit, rather than mid word. */
+function cutToWord(text: string, limit: number): string {
+  const slice = text.slice(0, limit);
+  const lastSpace = slice.lastIndexOf(" ");
+  const cut = lastSpace > limit / 2 ? slice.slice(0, lastSpace) : slice;
+  return cut.replace(/[\s.,;:!?-]+$/u, "") + "…";
+}
+
+/**
+ * A model's reply, made into a label.
+ *
+ * Models add things to a short answer however plainly they are asked not to: a
+ * pair of quotes, a full stop, a line of preamble above it. This takes the
+ * first line with anything on it and strips the decoration, and returns an
+ * empty string for anything that came back too long or as the refusal word, so
+ * the caller falls back to the title it already has rather than putting a
+ * sentence in the sidebar.
+ */
+export function tidyTitle(raw: string): string {
+  const lines = raw
+    .split("\n")
+    .map((entry) => entry.trim())
     .filter(Boolean);
-
-  const kept = words.filter((word) => !TITLE_NOISE.has(word.toLowerCase()));
-  // Everything was filler, so the original is more use than nothing.
-  const chosen = (kept.length ? kept : words).slice(0, TITLE_WORDS);
-  if (!chosen.length) return "New conversation";
-
-  return chosen
-    .map((word) =>
-      // A word already carrying capitals is a name or an acronym: UE5, NeoForge.
-      /[A-Z]/.test(word.slice(1)) ? word : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
-    )
-    .join(" ");
+  // A preamble announces itself with a colon and is always above the answer,
+  // so where the first line ends in one the label is the last line instead.
+  const line = (lines[0]?.endsWith(":") && lines.length > 1 ? lines.at(-1) : lines[0]) ?? "";
+  const stripped = line
+    .replace(/^["'`“‘]+|["'`”’]+$/g, "")
+    .replace(/[.:\s]+$/u, "")
+    .replace(/\s+/g, " ");
+  const words = stripped.split(" ").filter(Boolean).slice(0, 6);
+  const title = words.join(" ");
+  if (!title || title.length > 60) return "";
+  if (title.toLowerCase() === "unclear") return "";
+  return title.charAt(0).toUpperCase() + title.slice(1);
 }

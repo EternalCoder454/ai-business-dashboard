@@ -55,7 +55,7 @@ const ADMIN = {
 };
 
 export function ProfileMenu() {
-  const { account, isOperator, workspaceRole, accountEmail } = useStore();
+  const { account, isOperator, workspaceRole, accountEmail, canOpenPath } = useStore();
   const [open, setOpen] = useState(false);
 
   /*
@@ -318,7 +318,7 @@ export function ProfileMenu() {
             </button>
 
             {[
-              ...LINKS,
+              ...LINKS.filter((link) => canOpenPath(link.href)),
               ...(workspaceRole === "admin" ? [ADMIN] : []),
               ...(isOperator ? [OPERATOR] : []),
             ].map((link) => (

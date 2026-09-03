@@ -121,6 +121,39 @@ export async function GET() {
   }
 }
 
+/**
+ * Throwing one away.
+ *
+ * Marking a note done keeps it, which is right for a note that was acted on and
+ * wrong for a duplicate, a test, or a line somebody typed into the wrong box.
+ * Those accumulate at the top of a screen that is meant to be read, so there
+ * has to be a way to be rid of them.
+ *
+ * The operator only, and gone for good: a note is a few hundred characters and
+ * a bin to empty later is another list to look at.
+ */
+export async function DELETE(request: Request) {
+  const who = await signedIn();
+  if (!who.ok) return Response.json({ error: who.error }, { status: who.status });
+  if (!isOperator(who.email)) {
+    return Response.json({ error: "Not found." }, { status: 404 });
+  }
+
+  const parsed = await readJsonWithin<{ id?: string }>(request, 2_000);
+  if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
+
+  const id = parsed.body.id?.trim();
+  if (!id) return Response.json({ error: "Nothing named." }, { status: 400 });
+
+  try {
+    await requireDb().delete(t.feedback).where(eq(t.feedback.id, id));
+    return Response.json({ ok: true });
+  } catch (error) {
+    console.error("[api/feedback] delete", error);
+    return Response.json({ error: "Could not delete that." }, { status: 500 });
+  }
+}
+
 /** Marking one done, which is the only thing an operator changes about it. */
 export async function PATCH(request: Request) {
   const who = await signedIn();

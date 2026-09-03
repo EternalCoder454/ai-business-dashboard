@@ -13,7 +13,8 @@ import {
 } from "@/db/messages";
 import { readJsonWithin, withinRate } from "@/lib/guard";
 import { track } from "@/lib/telemetry";
-import { membershipFor } from "@/db/tenancy";
+import { membershipFor, type Membership } from "@/db/tenancy";
+import { allowsArea } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +33,8 @@ const SEND_LIMIT = 30;
  * like nobody has written.
  */
 async function resolveSender(): Promise<
-  { ok: true; email: string } | { ok: false; status: number; error: string }
+  | { ok: true; email: string; membership: Membership }
+  | { ok: false; status: number; error: string }
 > {
   if (!authEnabled || !databaseEnabled) {
     return {
@@ -46,7 +48,20 @@ async function resolveSender(): Promise<
   const email = session?.user?.email?.toLowerCase();
   if (!email) return { ok: false, status: 401, error: "Not signed in." };
 
-  return { ok: true, email };
+  /*
+   * Resolved once here rather than at each branch below, which asked for it
+   * again every time. It is also where the inbox can be switched off for one
+   * person: every path through this route needs the membership, so a business
+   * that has taken messages away from somebody takes them away everywhere
+   * rather than from the four places anybody remembered to check.
+   */
+  const membership = await membershipFor(email);
+  if (!membership) return { ok: false, status: 403, error: "You are not in a workspace." };
+  if (!allowsArea(membership.role, membership.permissions, "messages")) {
+    return { ok: false, status: 403, error: "Messages are not open to your account." };
+  }
+
+  return { ok: true, email, membership };
 }
 
 /**
@@ -58,10 +73,15 @@ async function resolveSender(): Promise<
  *
  * Checked on the server on every send. A recipient picked out of the directory
  * always passes; this is for the request that did not come from the directory.
+ *
+ * Somebody whose inbox has been switched off cannot receive either. Otherwise
+ * a business that took messages away from a person would still be filling an
+ * inbox they can never open.
  */
 async function canReceive(workspaceId: string, email: string): Promise<boolean> {
   const theirs = await membershipFor(email.trim().toLowerCase());
-  return theirs?.workspaceId === workspaceId;
+  if (theirs?.workspaceId !== workspaceId) return false;
+  return allowsArea(theirs.role, theirs.permissions, "messages");
 }
 
 /**
@@ -87,8 +107,8 @@ export async function GET(request: Request) {
 
   try {
     if (other) {
-      const mine = await membershipFor(sender.email);
-      if (!mine || !(await canReceive(mine.workspaceId, other))) {
+      const mine = sender.membership;
+      if (!(await canReceive(mine.workspaceId, other))) {
         return Response.json({ error: "No such person here." }, { status: 404 });
       }
       const rawSince = Number(url.searchParams.get("since") ?? "");
@@ -105,10 +125,7 @@ export async function GET(request: Request) {
       return Response.json({ messages, seenThrough: seen });
     }
 
-    const workspace = await membershipFor(sender.email);
-    if (!workspace) {
-      return Response.json({ error: "You are not in a workspace." }, { status: 403 });
-    }
+    const workspace = sender.membership;
 
     // The overview is already polled on a timer, so it is the heartbeat. A
     // second endpoint doing nothing but saying "still here" would be one more
@@ -155,8 +172,8 @@ export async function POST(request: Request) {
   try {
     if (markRead) {
       const other = markRead.trim().toLowerCase();
-      const mine = await membershipFor(sender.email);
-      if (!mine || !(await canReceive(mine.workspaceId, other))) {
+      const mine = sender.membership;
+      if (!(await canReceive(mine.workspaceId, other))) {
         return Response.json({ error: "No such person here." }, { status: 404 });
       }
       await markThreadRead(mine.workspaceId, sender.email, other);
@@ -178,10 +195,7 @@ export async function POST(request: Request) {
     if (recipient === sender.email) {
       return Response.json({ error: "You cannot message yourself." }, { status: 400 });
     }
-    const mine = await membershipFor(sender.email);
-    if (!mine) {
-      return Response.json({ error: "You are not in a workspace." }, { status: 403 });
-    }
+    const mine = sender.membership;
     if (!(await canReceive(mine.workspaceId, recipient))) {
       return Response.json(
         { error: "That address is not on the allowlist for this workspace." },

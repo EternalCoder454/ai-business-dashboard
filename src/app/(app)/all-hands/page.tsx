@@ -535,19 +535,19 @@ export default function AllHandsPage() {
                   void ask(false);
                 }
               }}
-              className="md-body max-h-[200px] min-h-10 w-full min-w-0 resize-none bg-transparent py-2 text-on-surface placeholder:text-on-variant/70 focus:outline-none"
+              className="md-body md-composer-field max-h-[200px] w-full min-w-0 resize-none bg-transparent text-on-surface placeholder:text-on-variant/70 focus:outline-none"
             />
             {running ? (
               <Button
                 variant="outlined"
-                className="flex-none"
+                className="md-target flex-none"
                 onClick={() => abortRef.current?.abort()}
               >
                 Stop
               </Button>
             ) : (
               <Button
-                className="flex-none"
+                className="md-target flex-none"
                 disabled={!question.trim() || asking.length === 0}
                 onClick={() => void ask(false)}
               >

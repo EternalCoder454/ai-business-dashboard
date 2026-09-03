@@ -24,7 +24,7 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-3 border-b border-outline-variant px-4 py-4 medium:px-6 medium:py-6 expanded:px-8">
+    <header className="flex flex-none flex-wrap items-start justify-between gap-x-3 gap-y-3 border-b border-outline-variant px-4 py-4 medium:px-6 medium:py-6 expanded:px-8">
       {/* A basis rather than a fixed width: the heading and the actions share
           a line while both fit, and the actions drop to their own line once
           they do not. 10rem is about where a title starts looking cramped. */}

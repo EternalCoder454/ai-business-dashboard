@@ -4,6 +4,7 @@ import { auth, authEnabled } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { membershipFor } from "@/db/tenancy";
+import { allowsArea } from "@/lib/permissions";
 import { readJsonWithin, withinRate } from "@/lib/guard";
 import { listBriefings } from "@/lib/schedules";
 
@@ -30,6 +31,12 @@ async function whoever(): Promise<
 
   const membership = await membershipFor(email);
   if (!membership) return { ok: false, status: 403, error: "You are not in a workspace." };
+
+  // Briefings are a schedule of their own, on their own endpoint, so the check
+  // that covers the tables in the workspace batch does not reach them.
+  if (!allowsArea(membership.role, membership.permissions, "briefings")) {
+    return { ok: false, status: 403, error: "Briefings are not open to your account." };
+  }
 
   return {
     ok: true,

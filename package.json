@@ -47,7 +47,9 @@
     "blob-test": "tsx scripts/blob-test.ts",
     "workspaces-test": "tsx scripts/workspaces-test.ts",
     "db:apply": "tsx --env-file=.env.local scripts/apply-sql.ts",
-    "auth-test": "tsx scripts/auth-test.ts"
+    "auth-test": "tsx scripts/auth-test.ts",
+    "title-test": "tsx scripts/title-test.ts",
+    "permissions-test": "tsx scripts/permissions-test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

@@ -120,7 +120,9 @@ export function UsageTab() {
 
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[42rem] border-collapse">
+          {/* Every column carries its own side padding, so the columns need
+              the width to sit apart rather than sharing an edge. */}
+          <table className="w-full min-w-[52rem] border-collapse">
             <thead>
               <tr className="border-b border-outline-variant text-left">
                 <Th>Business</Th>
@@ -188,7 +190,7 @@ function Th({ children, align }: { children: React.ReactNode; align?: "right" })
   return (
     <th
       className={cx(
-        "md-label-sm pb-2 font-normal text-on-variant",
+        "md-label-sm whitespace-nowrap px-3 pb-2 font-normal text-on-variant first:pl-0 last:pr-0",
         align === "right" ? "text-right" : "text-left",
       )}
     >
@@ -209,8 +211,8 @@ function Td({
   return (
     <td
       className={cx(
-        "md-body py-2 align-top",
-        align === "right" ? "text-right tabular-nums" : "min-w-0",
+        "md-body px-3 py-2 align-top first:pl-0 last:pr-0",
+        align === "right" ? "whitespace-nowrap text-right tabular-nums" : "min-w-0",
         tone === "bad" && "text-error",
       )}
     >

@@ -217,6 +217,8 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     settings,
     account,
     workspacePeople,
+    canOpenHead,
+    can,
   } = useStore();
   const store = useStore();
 
@@ -474,7 +476,8 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     // The count, not what is loaded: a thread that has messages but has not
     // been fetched yet is not a new one, and renaming it here would rename
     // somebody's conversation out from under them.
-    if (conversation.messageCount === 0 && prior.length === 0) {
+    const firstExchange = conversation.messageCount === 0 && prior.length === 0;
+    if (firstExchange) {
       await updateConversation(conversation.id, { title: deriveConversationTitle(text) });
     }
 
@@ -566,6 +569,32 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     );
     setStream(EMPTY_STREAM);
     inputRef.current?.focus();
+
+    /*
+     * A better name for the thread, once there is something to name it from.
+     *
+     * The title written when the message was sent is a shortened version of the
+     * question, which is all it can be from one sentence. This reads the answer
+     * as well and says what the conversation turned out to be about. It happens
+     * after the reply is on the screen and its result is only a rename, so a
+     * slow or failed call costs nothing anybody is waiting on.
+     */
+    if (firstExchange && collectedText) {
+      void (async () => {
+        try {
+          const response = await fetch("/api/workspace/title", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question: text, answer: collectedText }),
+          });
+          const body = (await response.json()) as { title?: string };
+          const named = body.title?.trim();
+          if (named) await updateConversation(conversation.id, { title: named });
+        } catch {
+          // The title written from the text stays, which is the whole cost.
+        }
+      })();
+    }
   }, [
     draft,
     pending,
@@ -595,6 +624,30 @@ export function ChatView({ departmentId }: { departmentId: string }) {
    * the route's Suspense boundary uses, so nothing moves when it resolves.
    */
   if (!ready) return <div className="flex-1" />;
+
+  /*
+   * A head this person was not given.
+   *
+   * Said plainly rather than as "not found", because it is not missing and
+   * they may well have been sent the link by somebody who can open it. The
+   * business decides who talks to which head, and pretending otherwise sends
+   * them looking for a bug.
+   */
+  if (department && !canOpenHead(department.id)) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-10 text-center">
+        <div>
+          <p className="md-title-lg">Not available</p>
+          <p className="md-body mt-2 text-on-variant">
+            An administrator of this business decides who works with each head.
+          </p>
+          <Link href="/" className="md-label mt-5 inline-block text-primary underline">
+            Back to the org chart
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (!department) {
     return (
@@ -901,23 +954,28 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           ) : null}
 
           {attachError ? <p className="md-label mb-2 text-error">{attachError}</p> : null}
-          {/* items-end, so every control has to be the same height as one line
-              of the composer or its icon sits low against the text. */}
+          {/* items-end keeps the buttons on the last line as the field grows,
+              which needs every control in the row to be the same height as one
+              line. md-target and md-composer-field are that height. */}
           <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-lowest py-2 pl-3 pr-2 transition-colors focus-within:border-primary">
-            <button
-              onClick={() => fileRef.current?.click()}
-              aria-label="Attach a file"
-              title="Images, PDFs, Word documents and text files."
-              className="md-state md-target grid h-10 w-10 flex-none place-items-center self-end rounded-full text-on-variant"
-            >
-              <PaperclipIcon className="h-5 w-5" />
-            </button>
-            {shared.length ? (
+            {/* Uploads can be switched off for one person, and the Library
+                picker goes with them: both put a file into the business. */}
+            {can("files") ? (
+              <button
+                onClick={() => fileRef.current?.click()}
+                aria-label="Attach a file"
+                title="Images, PDFs, Word documents and text files."
+                className="md-state md-target grid h-10 w-10 flex-none place-items-center rounded-full text-on-variant"
+              >
+                <PaperclipIcon className="h-5 w-5" />
+              </button>
+            ) : null}
+            {shared.length && can("library") ? (
               <button
                 onClick={() => setPickerOpen(true)}
                 aria-label="Attach from the Library"
                 title={`${shared.length} file${shared.length === 1 ? "" : "s"} shared with this department`}
-                className="md-state md-target grid h-10 w-10 flex-none place-items-center self-end rounded-full text-on-variant"
+                className="md-state md-target grid h-10 w-10 flex-none place-items-center rounded-full text-on-variant"
               >
                 <DocIcon className="h-5 w-5" />
               </button>
@@ -944,15 +1002,13 @@ export function ChatView({ departmentId }: { departmentId: string }) {
                   void send();
                 }
               }}
-              /* py-2 centres a single line against the 40px send button; the
-                 field grows from there as lines are added. */
-              className="md-body max-h-[220px] min-h-10 w-full resize-none bg-transparent py-2 text-on-surface placeholder:text-on-variant/70 focus:outline-none"
+              className="md-body md-composer-field max-h-[220px] w-full resize-none bg-transparent text-on-surface placeholder:text-on-variant/70 focus:outline-none"
             />
             {isStreaming ? (
               <Button
                 variant="outlined"
                 onClick={() => abortRef.current?.abort()}
-                className="flex-none"
+                className="md-target flex-none"
               >
                 Stop
               </Button>
@@ -965,7 +1021,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
                 disabled={!draft.trim() && pending.length === 0}
                 aria-label="Send message"
                 className={cx(
-                  "md-state grid h-10 w-10 flex-none place-items-center rounded-full transition-colors",
+                  "md-state md-target grid h-10 w-10 flex-none place-items-center rounded-full transition-colors",
                   "bg-primary text-on-primary shadow-e1",
                   "disabled:bg-highest disabled:text-on-variant/75 disabled:shadow-none",
                 )}

@@ -8,6 +8,7 @@ import { membershipFor, provisionFor } from "@/db/tenancy";
 import { OPERATOR_EMAILS } from "@/auth";
 import { readJsonWithin } from "@/lib/guard";
 import { refused, track } from "@/lib/telemetry";
+import { allowsArea, allowsHead, areaOfTable, type Permissions } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +21,12 @@ export const dynamic = "force-dynamic";
  * shared account.
  */
 async function resolveOwner(): Promise<
-  | { workspaceId: string; email: string; role: "member" | "admin" }
+  | {
+      workspaceId: string;
+      email: string;
+      role: "member" | "admin";
+      permissions: Permissions | null;
+    }
   | { error: string; status: number; reason?: "no-workspace" }
 > {
   if (!databaseEnabled) {
@@ -35,7 +41,14 @@ async function resolveOwner(): Promise<
   if (!email) return { error: "Not signed in.", status: 401 };
 
   const membership = await membershipFor(email);
-  if (membership) return { workspaceId: membership.workspaceId, email, role: membership.role };
+  if (membership) {
+    return {
+      workspaceId: membership.workspaceId,
+      email,
+      role: membership.role,
+      permissions: membership.permissions,
+    };
+  }
 
   /*
    * Signed in and in no workspace.
@@ -65,7 +78,12 @@ async function resolveOwner(): Promise<
   }
 
   const provisioned = await provisionFor(email, "Your Company");
-  return { workspaceId: provisioned.workspaceId, email, role: provisioned.role };
+  return {
+    workspaceId: provisioned.workspaceId,
+    email,
+    role: provisioned.role,
+    permissions: provisioned.permissions,
+  };
 }
 
 export async function GET() {
@@ -130,6 +148,53 @@ export async function POST(request: Request) {
     refused("workspace.save", owner.workspaceId, "NotAnAdministrator");
     return Response.json(
       { error: "Only an administrator of this workspace can edit the wiki." },
+      { status: 403 },
+    );
+  }
+
+  /*
+   * A screen somebody cannot open is also a screen they cannot write to.
+   *
+   * Hiding the navigation is what makes a restriction usable and this is what
+   * makes it a restriction: the writes all arrive here, on one endpoint, in a
+   * batch that names its table, so one check covers every area that maps onto
+   * a table rather than a check per screen that somebody forgets to add.
+   *
+   * Reads are not fenced here and deliberately so. The workspace loads as one
+   * document, so this decides what a person is shown and may change, not what
+   * their browser could be made to fetch. Anyone who must not see something at
+   * all belongs in their own workspace.
+   */
+  const denied = ops
+    .map((op) => areaOfTable(op.table))
+    .find((area) => area && !allowsArea(owner.role, owner.permissions, area));
+  if (denied) {
+    refused("workspace.save", owner.workspaceId, "AreaNotAllowed");
+    return Response.json(
+      { error: "That part of the panel is not open to your account." },
+      { status: 403 },
+    );
+  }
+
+  /*
+   * And a conversation with a head they were not given.
+   *
+   * The head itself is answered by whoever holds the key, so somebody willing
+   * to build their own request can talk to any of them whatever this says.
+   * What this stops is the part that lasts: a thread with a head outside their
+   * list cannot be saved, so it cannot appear in the sidebar, in search, in
+   * the reviewer's reading, or in anybody else's copy of the workspace.
+   */
+  const wrongHead = ops.some(
+    (op) =>
+      op.table === "conversations" &&
+      op.action === "upsert" &&
+      op.rows.some((row) => !allowsHead(owner.role, owner.permissions, row.departmentId)),
+  );
+  if (wrongHead) {
+    refused("workspace.save", owner.workspaceId, "HeadNotAllowed");
+    return Response.json(
+      { error: "That head is not open to your account." },
       { status: 403 },
     );
   }

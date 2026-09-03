@@ -366,7 +366,7 @@ function Thread({
             value={draft}
             rows={1}
             placeholder={`Message ${person?.displayName || other}`}
-            className="min-h-10 resize-none py-2"
+            className="md-composer-field [--composer-border:1px] resize-none"
             onChange={(event) => {
               setDraft(event.target.value);
               const el = event.target;
@@ -386,7 +386,7 @@ function Thread({
             aria-label="Send"
             disabled={!draft.trim() || sending}
             onClick={() => void submit()}
-            className="h-10 flex-none"
+            className="md-target flex-none"
             icon={<SendIcon className="h-4 w-4" />}
           >
             Send

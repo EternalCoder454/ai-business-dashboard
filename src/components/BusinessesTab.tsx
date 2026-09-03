@@ -88,12 +88,7 @@ export function BusinessesTab({
   return (
     <div className="measure flex flex-col gap-5">
       <Card>
-        <h2 className="md-title-lg mb-1">New business</h2>
-        <p className="md-body mb-4 text-on-variant">
-          Creates a workspace and, given an address, puts that person in it as its
-          administrator{emailReady ? " and emails them" : ""}. They sign in with
-          Google, and there is nothing for them to set up.
-        </p>
+        <h2 className="md-title-lg mb-4">New business</h2>
 
         <div className="grid grid-cols-1 gap-4 medium:grid-cols-2">
           <Field label="Business name">

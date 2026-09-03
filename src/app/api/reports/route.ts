@@ -34,9 +34,19 @@ export const maxDuration = 300;
  * can see and dismiss a report about themselves. The operator's own view still
  * shows every row from every business, so nothing disappears by being
  * dismissed, and that is the check on it.
+ *
+ * An operator also runs a business, and the two are asked for separately. The
+ * operator screen wants every row; the panel for their own business wants their
+ * own, which is what `scope` selects. Without it an operator opening their own
+ * business got the whole deployment's reports on a screen headed with their
+ * company name, and running a pass from there swept every customer.
+ *
+ * `operator` is carried alongside the fence rather than inferred from it, since
+ * asking for one business does not stop somebody being the operator, and
+ * deleting a report is theirs either way.
  */
-async function reader(): Promise<
-  | { ok: true; email: string; workspaceId: string | null }
+async function reader(scope?: string | null): Promise<
+  | { ok: true; email: string; workspaceId: string | null; operator: boolean }
   | { ok: false; status: number; error: string }
 > {
   if (!authEnabled || !databaseEnabled) {
@@ -46,11 +56,18 @@ async function reader(): Promise<
   const email = session?.user?.email?.toLowerCase();
   if (!email) return { ok: false, status: 401, error: "Not signed in." };
 
-  // null means every business.
-  if (isOperator(email)) return { ok: true, email, workspaceId: null };
+  if (isOperator(email)) {
+    // null means every business.
+    if (scope !== "workspace") return { ok: true, email, workspaceId: null, operator: true };
+    const own = await membershipFor(email);
+    if (!own) return { ok: false, status: 404, error: "Not found." };
+    return { ok: true, email, workspaceId: own.workspaceId, operator: true };
+  }
 
   const mine = await membershipFor(email);
-  if (mine?.role === "admin") return { ok: true, email, workspaceId: mine.workspaceId };
+  if (mine?.role === "admin") {
+    return { ok: true, email, workspaceId: mine.workspaceId, operator: false };
+  }
 
   // 404 rather than 403, so the route does not confirm it exists to somebody
   // who should not know that it does.
@@ -58,7 +75,8 @@ async function reader(): Promise<
 }
 
 export async function GET(request: Request) {
-  const who = await reader();
+  const query = new URL(request.url).searchParams;
+  const who = await reader(query.get("scope"));
   if (!who.ok) return Response.json({ error: who.error }, { status: who.status });
 
   /*
@@ -68,7 +86,7 @@ export async function GET(request: Request) {
    * administrator, so an id from another business matches nothing rather than
    * matching and being refused.
    */
-  const wanted = new URL(request.url).searchParams.get("transcript")?.trim();
+  const wanted = query.get("transcript")?.trim();
   if (wanted) {
     const [row] = await requireDb()
       .select({ transcript: t.reports.transcript })
@@ -155,14 +173,16 @@ async function listing(who: { email: string; workspaceId: string | null }) {
 
 /** Run a pass now, or mark one report as dealt with. */
 export async function POST(request: Request) {
-  const who = await reader();
-  if (!who.ok) return Response.json({ error: who.error }, { status: who.status });
-
-  const parsed = await readJsonWithin<{ action?: string; id?: string; status?: string }>(
-    request,
-    4_000,
-  );
+  const parsed = await readJsonWithin<{
+    action?: string;
+    id?: string;
+    status?: string;
+    scope?: string;
+  }>(request, 4_000);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
+
+  const who = await reader(parsed.body.scope);
+  if (!who.ok) return Response.json({ error: who.error }, { status: who.status });
 
   try {
     if (parsed.body.action === "run") {
@@ -217,6 +237,24 @@ export async function POST(request: Request) {
             ? and(eq(t.reports.id, id), eq(t.reports.workspaceId, who.workspaceId))
             : eq(t.reports.id, id),
         );
+      return Response.json({ ok: true });
+    }
+
+    if (parsed.body.action === "delete") {
+      /*
+       * The operator only, and not an administrator.
+       *
+       * Dismissing is what an administrator does with a report about their own
+       * business, and it leaves the row where it is. Deleting removes the
+       * record of somebody having been reported, which is not a thing to hand
+       * to the person the report may be about.
+       */
+      if (!who.operator) {
+        return Response.json({ error: "Not found." }, { status: 404 });
+      }
+      const id = parsed.body.id?.trim();
+      if (!id) return Response.json({ error: "Nothing named." }, { status: 400 });
+      await requireDb().delete(t.reports).where(eq(t.reports.id, id));
       return Response.json({ ok: true });
     }
 

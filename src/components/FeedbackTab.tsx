@@ -53,6 +53,28 @@ export function FeedbackTab() {
     }).catch(() => {});
   };
 
+  /*
+   * Gone rather than filed away.
+   *
+   * Marking a note done is for one that was acted on. A duplicate, a test line,
+   * or something typed into the wrong box is not done, it is noise, and leaving
+   * it behind the "Everything" chip means it is still there the next time
+   * anybody looks.
+   */
+  const remove = async (id: string) => {
+    const before = rows;
+    setRows((current) => (current ? current.filter((row) => row.id !== id) : current));
+    const response = await fetch("/api/feedback", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    }).catch(() => null);
+    if (!response?.ok) {
+      setRows(before);
+      setError("Could not delete that.");
+    }
+  };
+
   if (error) return <p className="md-label text-error">{error}</p>;
   if (rows === null) return null;
 
@@ -92,14 +114,23 @@ export function FeedbackTab() {
                 <span className="md-label-sm text-on-variant/75">
                   {formatRelativeTime(row.createdAt)}
                 </span>
-                <Button
-                  size="sm"
-                  variant="text"
-                  className="ml-auto"
-                  onClick={() => void setStatus(row.id, row.status === "done" ? "new" : "done")}
-                >
-                  {row.status === "done" ? "Reopen" : "Mark done"}
-                </Button>
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="text"
+                    className="text-error"
+                    onClick={() => void remove(row.id)}
+                  >
+                    Delete
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="text"
+                    onClick={() => void setStatus(row.id, row.status === "done" ? "new" : "done")}
+                  >
+                    {row.status === "done" ? "Reopen" : "Mark done"}
+                  </Button>
+                </div>
               </div>
 
               {/* Kept as typed: line breaks are how somebody separates two

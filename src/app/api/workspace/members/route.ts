@@ -6,6 +6,7 @@ import { grantAccess, revokeAccess } from "@/db/access";
 import { countAdmins, listMembers, membershipFor } from "@/db/tenancy";
 import { readJsonWithin, withinRate } from "@/lib/guard";
 import { sendInvite } from "@/lib/email";
+import { parsePermissions } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
     role?: string;
     note?: string;
     invite?: boolean;
+    permissions?: unknown;
   }>(request, 8_000);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
 
@@ -172,6 +174,32 @@ export async function POST(request: Request) {
       await requireDb()
         .update(t.access)
         .set({ role })
+        .where(and(eq(t.access.email, email), eq(t.access.workspaceId, admin.workspaceId)));
+      return done();
+    }
+
+    if (action === "permissions") {
+      /*
+       * What this colleague may open, set by whoever runs the business.
+       *
+       * Read through the parser rather than stored as sent, so a hand written
+       * body cannot put a shape in the column that every reader then has to
+       * defend against. An empty result is written as null, which is the one
+       * value meaning no restrictions.
+       *
+       * Not applied to an administrator. They can lift any of it in a click,
+       * so a restriction on them is not a rule, only a way to lock the last
+       * person out of the screen that sets them.
+       */
+      if (existing.role === "admin") {
+        return Response.json(
+          { error: "An administrator of this business is not restricted." },
+          { status: 400 },
+        );
+      }
+      await requireDb()
+        .update(t.access)
+        .set({ permissions: parsePermissions(parsed.body.permissions) })
         .where(and(eq(t.access.email, email), eq(t.access.workspaceId, admin.workspaceId)));
       return done();
     }

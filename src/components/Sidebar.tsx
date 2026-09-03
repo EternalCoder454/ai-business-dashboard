@@ -238,8 +238,19 @@ export function SidebarContent({
     personalDepartments,
     serverKeys,
     workspaceKeys,
+    canOpenPath,
+    canOpenHead,
   } = useStore();
   const { unread } = useMessages();
+
+  /*
+   * Only the heads this person was given.
+   *
+   * A business can restrict somebody to one or two of them, and the sidebar is
+   * where that has to be true first: a name in a list you cannot open is worse
+   * than the name not being there.
+   */
+  const visibleHeads = departments.filter((department) => canOpenHead(department.id));
 
   // A dot that always says Online is worse than no dot. This one reflects
   // whether a request could actually succeed, and whether one is in flight.
@@ -377,7 +388,7 @@ export function SidebarContent({
       content: (
         <>
               <ul className="mb-5 space-y-0.5">
-                {WORK_LINKS.map((link) => (
+                {WORK_LINKS.filter((link) => canOpenPath(link.href)).map((link) => (
                   <li key={link.href}>
                     <NavRow
                       href={link.href}
@@ -403,7 +414,7 @@ export function SidebarContent({
       content: (
         <>
                 <ul className="mb-5 space-y-0.5">
-                  {WORKSPACE_LINKS.map((link) => (
+                  {WORKSPACE_LINKS.filter((link) => canOpenPath(link.href)).map((link) => (
                     <li key={link.href}>
                       <NavRow
                         href={link.href}
@@ -423,14 +434,14 @@ export function SidebarContent({
     },
     departments: {
       label: "Departments",
-      count: departments.length,
+      count: visibleHeads.length,
       content: (
         <>
               <ul className="mb-5 space-y-0.5">
-                {!ready && departments.length === 0 ? (
+                {!ready && visibleHeads.length === 0 ? (
                   <li className="md-body px-3 py-2 text-on-variant/75">Loading…</li>
                 ) : null}
-                {departments.map((department) => (
+                {visibleHeads.map((department) => (
                   <li key={department.id}>
                     <NavRow
                       href={departmentHref(department)}

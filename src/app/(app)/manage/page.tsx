@@ -11,6 +11,7 @@ import {
   Field,
   PlusIcon,
   PolicyIcon,
+  ShieldIcon,
   Select,
   TextInput,
   TrashIcon,
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui";
 import { ReportsTab } from "@/components/ReportsTab";
 import { useStore } from "@/lib/store";
+import { AREAS, unrestricted, type Area, type Permissions } from "@/lib/permissions";
 import { formatRelativeTime } from "@/lib/routes";
 
 interface Member {
@@ -31,6 +33,7 @@ interface Member {
   lastSignedInAt: number | null;
   invitedBy: string | null;
   createdAt: number;
+  permissions: Permissions | null;
 }
 
 /**
@@ -69,7 +72,7 @@ function presenceOf(member: Member): { label: string; tone: "on" | "busy" | "off
  * a colleague or hand over the keys.
  */
 export default function ManagePage() {
-  const { workspaceRole, statusReady, settings } = useStore();
+  const { workspaceRole, statusReady, settings, allDepartments } = useStore();
   const [tab, setTab] = useState<"people" | "reports">("people");
 
   const [members, setMembers] = useState<Member[] | null>(null);
@@ -82,6 +85,7 @@ export default function ManagePage() {
   const [draftEmail, setDraftEmail] = useState("");
   const [draftRole, setDraftRole] = useState<"member" | "admin">("member");
   const [removing, setRemoving] = useState<Member | null>(null);
+  const [editing, setEditing] = useState<Member | null>(null);
 
   const load = useCallback(async () => {
     const response = await fetch("/api/workspace/members");
@@ -147,7 +151,7 @@ export default function ManagePage() {
     return (
       <>
         <PageHeader eyebrow={settings.companyName} title="Your people" />
-        <div className="measure p-4 sm:p-6">
+        <div className="measure min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
           <EmptyState
             icon={<UsersIcon className="h-8 w-8" />}
             title="An administrator looks after this"
@@ -203,11 +207,11 @@ export default function ManagePage() {
       </div>
 
       {tab === "reports" ? (
-        <div className="measure p-4 sm:p-6">
-          <ReportsTab />
+        <div className="measure min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+          <ReportsTab scope="workspace" />
         </div>
       ) : (
-      <div className="measure flex flex-col gap-4 p-4 sm:p-6">
+      <div className="measure flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
         {error ? <p className="md-label text-error">{error}</p> : null}
         {notice ? <p className="md-label text-primary">{notice}</p> : null}
 
@@ -279,6 +283,19 @@ export default function ManagePage() {
                         <option value="member">Member</option>
                         <option value="admin">Administrator</option>
                       </Select>
+
+                      {member.role === "member" ? (
+                        <Button
+                          size="sm"
+                          variant="outlined"
+                          disabled={busy}
+                          onClick={() => setEditing(member)}
+                        >
+                          <ShieldIcon className="h-4 w-4" />
+                          Permissions
+                          {unrestricted(member.permissions) ? "" : " · set"}
+                        </Button>
+                      ) : null}
 
                       {!isYou && !lastAdmin ? (
                         <Button
@@ -390,6 +407,135 @@ export default function ManagePage() {
           this. Their messages and work stay where they are.
         </p>
       </Dialog>
+
+      <PermissionsDialog
+        key={editing?.email ?? "closed"}
+        member={editing}
+        heads={allDepartments.filter((department) => !department.personal)}
+        busy={busy}
+        onClose={() => setEditing(null)}
+        onSave={async (permissions) => {
+          if (!editing) return;
+          const ok = await act(
+            { action: "permissions", email: editing.email, permissions },
+            "Saved.",
+          );
+          if (ok) setEditing(null);
+        }}
+      />
     </>
+  );
+}
+
+/**
+ * What one colleague may open.
+ *
+ * Two questions, and they are different shapes on purpose. Heads are named,
+ * because "only these two" is what a business means; areas are switched off,
+ * because everything is open by default and stays that way as the panel grows.
+ *
+ * The whole thing is chips rather than a form of switches. There are twenty of
+ * them and every one is the same yes or no, so a grid of them can be read at a
+ * glance and set in a few clicks, which is not true of twenty labelled rows.
+ */
+function PermissionsDialog({
+  member,
+  heads,
+  busy,
+  onClose,
+  onSave,
+}: {
+  member: Member | null;
+  heads: { id: string; name: string; personaName?: string }[];
+  busy: boolean;
+  onClose: () => void;
+  onSave: (permissions: Permissions) => void | Promise<void>;
+}) {
+  /*
+   * Read from the member once, at mount, because the caller gives this a key
+   * per person. Editing one colleague and then another would otherwise open on
+   * the first one's answers, which is a quiet way to hand somebody else's
+   * restrictions to the wrong account; copying them across in an effect works
+   * and costs a second render of the whole dialog every time it opens.
+   */
+  const held = member?.permissions;
+  const [everyHead, setEveryHead] = useState(!held?.heads);
+  const [chosen, setChosen] = useState<string[]>(held?.heads ?? []);
+  const [open, setOpen] = useState<Area[]>(
+    AREAS.map((area) => area.key).filter((key) => !held?.denied?.includes(key)),
+  );
+
+  const toggle = <T,>(list: T[], value: T): T[] =>
+    list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
+
+  const save = () => {
+    const permissions: Permissions = {};
+    if (!everyHead && chosen.length > 0) permissions.heads = chosen;
+    const denied = AREAS.map((area) => area.key).filter((key) => !open.includes(key));
+    if (denied.length > 0) permissions.denied = denied;
+    void onSave(permissions);
+  };
+
+  return (
+    <Dialog
+      open={Boolean(member)}
+      title="Permissions"
+      onClose={onClose}
+      width="max-w-lg"
+      footer={
+        <>
+          <Button variant="text" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            disabled={busy || (!everyHead && chosen.length === 0)}
+            onClick={save}
+          >
+            Save
+          </Button>
+        </>
+      }
+    >
+      <p className="md-body text-on-variant">{member?.displayName || member?.email}</p>
+
+      <p className="md-label-sm mb-2 mt-5 text-on-variant/70">Heads</p>
+      <div className="flex flex-wrap gap-2">
+        <Chip selected={everyHead} onClick={() => setEveryHead(true)}>
+          All heads
+        </Chip>
+        <Chip selected={!everyHead} onClick={() => setEveryHead(false)}>
+          Only these
+        </Chip>
+      </div>
+
+      {!everyHead ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {heads.map((head) => (
+            <Chip
+              key={head.id}
+              wrap
+              selected={chosen.includes(head.id)}
+              onClick={() => setChosen((current) => toggle(current, head.id))}
+            >
+              {head.personaName || head.name}
+            </Chip>
+          ))}
+        </div>
+      ) : null}
+
+      <p className="md-label-sm mb-2 mt-6 text-on-variant/70">Areas</p>
+      <div className="flex flex-wrap gap-2">
+        {AREAS.map((area) => (
+          <Chip
+            key={area.key}
+            wrap
+            selected={open.includes(area.key)}
+            onClick={() => setOpen((current) => toggle(current, area.key))}
+          >
+            {area.label}
+          </Chip>
+        ))}
+      </div>
+    </Dialog>
   );
 }

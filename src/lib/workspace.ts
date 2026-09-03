@@ -1,3 +1,4 @@
+import type { Permissions } from "./permissions";
 import type {
   AllHandsRun,
   CompanyProfile,
@@ -305,6 +306,8 @@ export interface WorkspaceStatus {
   workspaceKeys?: Record<"anthropic" | "openai" | "google", { set: boolean; tail: string }>;
   /** Admin of this workspace, as opposed to of the deployment. */
   workspaceRole?: "member" | "admin" | null;
+  /** What this person may open in it. Absent or null means everything. */
+  permissions?: Permissions | null;
   /** How many people share it. One means nobody else can write here. */
   workspacePeople?: number;
   /** Whether this account may review other people's conversations. */

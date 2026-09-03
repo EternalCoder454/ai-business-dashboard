@@ -17,6 +17,14 @@ import {
   type Credentials,
 } from "./credentials";
 import { newId } from "./ids";
+import {
+  allowsArea,
+  allowsHead,
+  allowsHref,
+  parsePermissions,
+  type Area,
+  type Permissions,
+} from "./permissions";
 import type { CalendarStatus, PromptCalendarEvent } from "./prompts";
 import {
   applyOp,
@@ -98,6 +106,20 @@ export interface StoreValue {
   workspaceKeys: Record<"anthropic" | "openai" | "google", { set: boolean; tail: string }>;
   /** Admin of this workspace, which is what lets someone change its keys. */
   workspaceRole: "member" | "admin" | null;
+  /**
+   * What this person may open, or null for everything.
+   *
+   * Read through `can` and `canOpenHead` rather than directly, so the
+   * administrator exemption is applied in one place instead of at every screen
+   * that asks.
+   */
+  permissions: Permissions | null;
+  /** Whether an area of the panel is open to this person. */
+  can: (area: Area) => boolean;
+  /** Whether one head is. */
+  canOpenHead: (departmentId: string) => boolean;
+  /** Whether a screen is, by its path. For filtering the navigation. */
+  canOpenPath: (href: string) => boolean;
   /** How many people share this workspace, including you. */
   workspacePeople: number;
   /** Sets or clears the business's key. Administrators only, enforced server side. */
@@ -275,6 +297,7 @@ export function StoreProvider({
     google: { set: false, tail: "" },
   });
   const [workspaceRole, setWorkspaceRole] = useState<"member" | "admin" | null>(null);
+  const [permissions, setPermissions] = useState<Permissions | null>(null);
   const [workspacePeople, setWorkspacePeople] = useState(1);
   const [serverKeys, setServerKeys] = useState({
     anthropic: false,
@@ -370,6 +393,7 @@ export function StoreProvider({
         if (status?.serverKeys) setServerKeys(status.serverKeys);
         if (status?.workspaceKeys) setWorkspaceKeys(status.workspaceKeys);
         setWorkspaceRole(status?.workspaceRole ?? null);
+        setPermissions(parsePermissions(status?.permissions));
         setWorkspacePeople(status?.workspacePeople ?? 1);
         setIsOperator(Boolean(status?.isOperator));
         setIsOwner(Boolean(status?.isOwner));
@@ -772,6 +796,16 @@ export function StoreProvider({
       serverKeys,
       workspaceKeys,
       workspaceRole,
+      permissions,
+      /*
+       * Asked here rather than at each screen, so the one exemption that
+       * matters lives in one place: an administrator is never restricted by a
+       * list they can edit themselves.
+       */
+      can: (area: Area) => allowsArea(workspaceRole, permissions, area),
+      canOpenHead: (departmentId: string) =>
+        allowsHead(workspaceRole, permissions, departmentId),
+      canOpenPath: (href: string) => allowsHref(workspaceRole, permissions, href),
       workspacePeople,
       setWorkspaceKey: async (provider, key) => {
         const response = await fetch("/api/workspace/keys", {
@@ -1366,6 +1400,7 @@ export function StoreProvider({
     serverKeys,
     workspaceKeys,
     workspaceRole,
+    permissions,
     workspacePeople,
     mode,
     signedInEmail,

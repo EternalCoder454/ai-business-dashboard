@@ -367,6 +367,28 @@
   min-height: 44px;
 }
 
+/*
+ * The text field in a composer, sized to match the buttons beside it.
+ *
+ * The row is laid out items-end so the controls stay on the last line as the
+ * field grows. That only looks right while a single line of text is exactly as
+ * tall as a button, and it stopped being true when the icon buttons took a
+ * touch target: they became 44px, then 48px on a phone, while the field and the
+ * send button stayed 40. The row took its height from the tallest thing in it
+ * and everything shorter hung off the bottom of it.
+ *
+ * So the height comes from the same numbers the touch target uses, and the
+ * padding is whatever is left over once the 24px line has its place in the
+ * middle. Every further line adds 24px and the buttons follow the last one.
+ */
+.md-composer-field {
+  /* A field that draws a border sets this, since the border counts toward the
+     height. Read with a fallback rather than declared with a default, because a
+     default here is written after the utility that would set it and wins. */
+  min-height: 44px;
+  padding-block: calc((44px - 1.5rem - var(--composer-border, 0px) * 2) / 2);
+}
+
 /* ------------------------------------------------------------------
    Touch and installed-app behaviour
    ------------------------------------------------------------------ */
@@ -376,6 +398,11 @@
   .md-target {
     min-width: 48px;
     min-height: 48px;
+  }
+
+  .md-composer-field {
+    min-height: 48px;
+    padding-block: calc((48px - 1.5rem - var(--composer-border, 0px) * 2) / 2);
   }
 
   /* Chips sit in wrapping rows, so they cannot take the full 48 without

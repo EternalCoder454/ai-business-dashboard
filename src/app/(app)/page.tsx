@@ -23,16 +23,27 @@ export default function DashboardPage() {
         eyebrow="Dashboard"
         title={settings.companyName}
         actions={
-          <>
+          /*
+           * One row on a phone rather than two.
+           *
+           * Both labels plus both icons are wider than 375px, so they wrapped,
+           * and a wrapped button in a fixed height row is the worst of both.
+           * On compact the pair takes the full width and splits it, and the
+           * icons stand down: the words are what identify the button and they
+           * are what the space is spent on. From medium up nothing changes.
+           */
+          <div className="flex w-full gap-2 medium:w-auto">
             <Button
               variant="outlined"
-              icon={<UsersIcon className="h-4 w-4" />}
+              icon={<UsersIcon className="hidden h-4 w-4 medium:block" />}
+              className="min-w-0 flex-1 medium:flex-none"
               onClick={() => router.push("/all-hands")}
             >
-              Hold a meeting
+              New meeting
             </Button>
             <Button
-              icon={<PlusIcon className="h-4 w-4" />}
+              icon={<PlusIcon className="hidden h-4 w-4 medium:block" />}
+              className="min-w-0 flex-1 medium:flex-none"
               onClick={async () => {
                 const conversation = await createConversation(CEO_ID);
                 router.push(conversationHref(CEO_ID, conversation.id));
@@ -40,7 +51,7 @@ export default function DashboardPage() {
             >
               New conversation
             </Button>
-          </>
+          </div>
         }
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
