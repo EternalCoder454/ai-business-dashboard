@@ -106,6 +106,8 @@ export interface StoreValue {
   ) => Promise<string | null>;
   /** Whether this account may review other people's conversations. */
   isOperator: boolean;
+  /** False until the server has said who this is. Gate refusals on it. */
+  statusReady: boolean;
   /** Department heads only. The CEO is excluded. */
   departments: Department[];
   /** Yours alone: outside the org chart and out of All Hands. */
@@ -306,6 +308,15 @@ export function StoreProvider({
   const [reloadKey, setReloadKey] = useState(0);
   const [calendar, setCalendar] = useState<PromptCalendarEvent[]>([]);
   const [calendarStatus, setCalendarStatus] = useState<CalendarStatus>("not-connected");
+  /**
+   * Whether we have heard back about who this is yet.
+   *
+   * Everything below starts false, which is indistinguishable from a real no.
+   * Screens gated on those flags therefore rendered their refusal first and
+   * corrected themselves a moment later, so an operator opening the operator
+   * screen was told they were not one, briefly, every single time.
+   */
+  const [statusReady, setStatusReady] = useState(false);
   const [isOperator, setIsOperator] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [remote, setRemote] = useState<Workspace | null>(null);
@@ -362,9 +373,14 @@ export function StoreProvider({
         setIsOperator(Boolean(status?.isOperator));
         setIsOwner(Boolean(status?.isOwner));
         setMode(status?.hosted && status.signedIn ? "hosted" : "local");
+        setStatusReady(true);
       })
       .catch(() => {
-        if (!cancelled) setMode("local");
+        if (cancelled) return;
+        setMode("local");
+        // Answered, badly, which is still an answer: a screen that waits for
+        // this must not wait forever because the request failed.
+        setStatusReady(true);
       });
     return () => {
       cancelled = true;
@@ -770,6 +786,7 @@ export function StoreProvider({
         return null;
       },
       isOperator,
+      statusReady,
       calendar,
       calendarStatus,
       allDepartments: departmentList,
@@ -1350,6 +1367,7 @@ export function StoreProvider({
     signedInEmail,
     serverKey,
     isOperator,
+    statusReady,
     calendar,
     calendarStatus,
     loadFailed,

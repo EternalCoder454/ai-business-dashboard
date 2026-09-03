@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { BusinessesTab, type WorkspaceRow } from "@/components/BusinessesTab";
 import { FeedbackTab } from "@/components/FeedbackTab";
@@ -136,7 +137,7 @@ const bytes = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : n >= 1_000 ? `${Math.round(n / 1_000)} KB` : `${n} B`;
 
 export default function AdminPage() {
-  const { isOperator, storage, accountEmail } = useStore();
+  const { isOperator, statusReady, storage, accountEmail } = useStore();
 
   // The first tab, which is also the one that says whether anything needs
   // doing. It opened on a list of businesses even after that list stopped
@@ -202,16 +203,46 @@ export default function AdminPage() {
     [person],
   );
 
+  /*
+   * Nothing until the server has said who this is.
+   *
+   * isOperator starts false, which is the same value as a real no, so this
+   * screen told an operator they were not one for the length of a round trip,
+   * every time they opened it. A blank moment is the honest thing to show while
+   * the answer is genuinely unknown.
+   */
+  if (!statusReady) return null;
+
   if (storage !== "hosted" || !isOperator) {
     return (
       <div className="flex h-full min-h-0 flex-col">
         <PageHeader eyebrow="Oversight" title="Operator" />
         <div className="page-x py-6">
-          <EmptyState
-            icon={<PersonIcon className="h-8 w-8" />}
-            title="Not an operator"
-            description="Requires an email address listed in OPERATOR_EMAILS."
-          />
+          {/*
+            * A locked door rather than an empty room.
+            *
+            * The plain empty state read like a screen with nothing on it yet,
+            * which is the wrong idea entirely: this is the one screen in the
+            * product that reaches across every business, and being turned away
+            * from it should look like being turned away.
+            *
+            * Stopping short of a full red screen on purpose. A customer who
+            * types the URL is not doing anything wrong and should not be shown
+            * something that looks like an alarm going off.
+            */}
+          <div className="measure rounded-2xl border border-error/40 bg-error-container/10 p-8 text-center">
+            <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-error-container/30 text-error">
+              <ShieldIcon className="h-7 w-7" />
+            </div>
+            <h2 className="md-title-lg text-error">Restricted</h2>
+            <p className="md-body mt-2 text-on-variant">
+              This screen reads across every business on the deployment. It is
+              limited to the addresses in OPERATOR_EMAILS.
+            </p>
+            <Link href="/" className="md-label mt-5 inline-block text-primary underline">
+              Back to the dashboard
+            </Link>
+          </div>
         </div>
       </div>
     );

@@ -69,7 +69,7 @@ function presenceOf(member: Member): { label: string; tone: "on" | "busy" | "off
  * a colleague or hand over the keys.
  */
 export default function ManagePage() {
-  const { workspaceRole, settings } = useStore();
+  const { workspaceRole, statusReady, settings } = useStore();
   const [tab, setTab] = useState<"people" | "reports">("people");
 
   const [members, setMembers] = useState<Member[] | null>(null);
@@ -138,6 +138,10 @@ export default function ManagePage() {
       setBusy(false);
     }
   };
+
+  // Same reason as the operator screen: the role is null until the server says
+  // otherwise, and null is not the same as "no".
+  if (!statusReady) return null;
 
   if (workspaceRole !== "admin") {
     return (

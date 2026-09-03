@@ -133,7 +133,17 @@ export function TelemetryTab() {
   // The cron is daily. A bucket is an hour wide, so anything past about a day
   // and a bit means a night was missed rather than a clock being off.
   const OVERDUE_MS = 26 * 60 * 60 * 1000;
-  const tickLate = !tick || Date.now() - tick.lastBucket > OVERDUE_MS;
+  /*
+   * The clock, read once on mount.
+   *
+   * Calling Date.now() while rendering makes the output depend on when React
+   * happened to render, which is not a pure thing to do and is what the
+   * compiler objects to. A screen left open past a boundary shows the old
+   * reckoning until it is reloaded, which is the right trade here.
+   */
+  const [now] = useState(() => Date.now());
+
+  const tickLate = !tick || now - tick.lastBucket > OVERDUE_MS;
 
   if (error) {
     return <p className="md-body text-error">{error}</p>;

@@ -36,12 +36,23 @@ export function useTypedField(
   const [value, setValue] = useState(remote);
   const dirty = useRef(false);
   const saver = useRef(save);
-  saver.current = save;
-
   /** Whether a save is owed. Read by the flush on the way out. */
   const owed = useRef(false);
   const latest = useRef(value);
-  latest.current = value;
+
+  /*
+   * Both kept current in an effect rather than assigned while rendering.
+   *
+   * Writing a ref during render is what the compiler objects to, and it is
+   * right to: a render can be thrown away and rerun, and a ref written during
+   * one that was discarded has still been written. Nothing here reads either of
+   * these during render. The timer callback and the flush on the way out both
+   * run after the effects, so they see the latest values either way.
+   */
+  useEffect(() => {
+    saver.current = save;
+    latest.current = value;
+  });
 
   useEffect(() => {
     if (!dirty.current) setValue(remote);

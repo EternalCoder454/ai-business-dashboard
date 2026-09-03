@@ -46,6 +46,16 @@ const DAY = 86_400_000;
  */
 export function UsageTab() {
   const [days, setDays] = useState(30);
+  /*
+   * The clock, read once on mount.
+   *
+   * Calling Date.now() while rendering makes the output depend on when React
+   * happened to render, which is not a pure thing to do and is what the
+   * compiler objects to. A screen left open past a boundary shows the old
+   * reckoning until it is reloaded, which is the right trade here.
+   */
+  const [now] = useState(() => Date.now());
+
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +82,7 @@ export function UsageTab() {
 
   const totals = useMemo(() => {
     const list = rows ?? [];
-    const cutoff = Date.now() - days * DAY;
+    const cutoff = now - days * DAY;
     return {
       businesses: list.length,
       active: list.filter((r) => (r.lastActivityAt ?? 0) >= cutoff).length,
@@ -80,12 +90,12 @@ export function UsageTab() {
       seats: list.reduce((n, r) => n + r.seats, 0),
       people: list.reduce((n, r) => n + r.activePeople, 0),
     };
-  }, [rows, days]);
+  }, [rows, days, now]);
 
   if (error) return <p className="md-body text-error">{error}</p>;
   if (!rows) return null;
 
-  const cutoff = Date.now() - days * DAY;
+  const cutoff = now - days * DAY;
 
   return (
     <div className="flex flex-col gap-4">
