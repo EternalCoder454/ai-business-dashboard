@@ -133,19 +133,6 @@ export default function AllHandsPage() {
 
   const currentRound = thread?.rounds[thread.rounds.length - 1];
 
-  /*
-   * Who the two roster panels show.
-   *
-   * The round that happened, when there is one, rather than every head in the
-   * company. Both panels used to list everybody and mark anyone without a
-   * response as idle, which after the room became something you choose read as
-   * four heads permanently thinking about a question nobody asked them.
-   */
-  const room = useMemo(() => {
-    if (!currentRound) return asking;
-    const present = new Set(currentRound.responses.map((r) => r.departmentId));
-    return departments.filter((d) => present.has(d.id));
-  }, [currentRound, departments, asking]);
   const answeredCount = currentRound
     ? currentRound.responses.filter((r) => !r.pending).length
     : 0;
@@ -297,30 +284,64 @@ export default function AllHandsPage() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {thread ? (
             <div className="flex flex-none gap-1.5 overflow-x-auto border-b border-outline-variant px-4 py-2 large:hidden">
-              {room.map((department) => {
+              {departments.map((department) => {
                 const response = currentRound?.responses.find(
                   (r) => r.departmentId === department.id,
                 );
                 const done = response && !response.pending && !response.error;
                 const failed = response?.error;
+                const inRoom = !excluded.has(department.id);
                 return (
-                  <button
+                  /*
+                   * The chip is a container with two buttons rather than one
+                   * button doing two jobs. Tapping it takes the head in or out
+                   * of the meeting; the arrow, once they have answered, jumps
+                   * to what they said. A button inside a button is invalid, so
+                   * the toggle stretches over the chip and the arrow sits above
+                   * it.
+                   */
+                  <span
                     key={department.id}
-                    onClick={() => jumpTo(department.id)}
-                    title={`${department.personaName}, ${department.roleTitle}`}
                     className={cx(
-                      "md-state flex flex-none items-center gap-1.5 rounded-full border px-2.5 py-1",
-                      failed
-                        ? "border-error/40 text-error"
-                        : done
-                          ? "border-transparent bg-secondary-container text-on-secondary-container"
-                          : "border-outline-variant text-on-variant",
+                      "relative flex flex-none items-center gap-1.5 rounded-full border py-1 pl-2.5",
+                      done ? "pr-1" : "pr-2.5",
+                      !inRoom
+                        ? "border-outline-variant text-on-variant/50"
+                        : failed
+                          ? "border-error/40 text-error"
+                          : done
+                            ? "border-transparent bg-secondary-container text-on-secondary-container"
+                            : "border-outline-variant text-on-variant",
                     )}
                   >
-                    <DepartmentAvatar department={department} size={18} />
-                    <span className="md-label-sm">{department.personaName}</span>
-                    {response?.pending ? <span className="typing-dot" /> : null}
-                  </button>
+                    <button
+                      type="button"
+                      aria-pressed={inRoom}
+                      onClick={() => toggle(department.id)}
+                      title={
+                        inRoom
+                          ? `${department.personaName}, ${department.roleTitle}. Tap to leave out.`
+                          : `${department.personaName} is not in this meeting. Tap to include.`
+                      }
+                      className="md-state flex items-center gap-1.5 before:absolute before:inset-0 before:rounded-full"
+                    >
+                      <span className={cx(!inRoom && "opacity-40")}>
+                        <DepartmentAvatar department={department} size={18} />
+                      </span>
+                      <span className="md-label-sm">{department.personaName}</span>
+                      {response?.pending ? <span className="typing-dot" /> : null}
+                    </button>
+                    {done ? (
+                      <button
+                        type="button"
+                        aria-label={`Jump to ${department.personaName}`}
+                        onClick={() => jumpTo(department.id)}
+                        className="md-state relative z-10 grid h-5 w-5 place-items-center rounded-full"
+                      >
+                        <ChevronIcon className="h-3.5 w-3.5 rotate-90" />
+                      </button>
+                    ) : null}
+                  </span>
                 );
               })}
             </div>
@@ -384,9 +405,20 @@ export default function AllHandsPage() {
         {/* Who is in the room. Keeps the cast visible without scrolling, and
             gives an answer to "has Desmond replied yet" at a glance. */}
         <aside className="hidden w-[13.75rem] flex-none flex-col border-l border-outline-variant bg-low large:flex">
-          <p className="md-label-sm px-4 pb-1 pt-4 text-on-variant/70">In the room</p>
+          <div className="flex items-baseline justify-between gap-2 px-4 pb-1 pt-4">
+            <p className="md-label-sm text-on-variant/70">In the room</p>
+            {excluded.size > 0 ? (
+              <button
+                type="button"
+                onClick={() => setExcluded(new Set())}
+                className="md-state md-label-sm rounded-lg px-1.5 py-0.5 text-primary"
+              >
+                Everyone
+              </button>
+            ) : null}
+          </div>
           <ul className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-            {room.map((department) => {
+            {departments.map((department) => {
               const response = currentRound?.responses.find(
                 (r) => r.departmentId === department.id,
               );
@@ -399,11 +431,30 @@ export default function AllHandsPage() {
                   : response.error
                     ? "failed"
                     : "done";
+              const inRoom = !excluded.has(department.id);
               return (
-                <li key={department.id}>
+                /*
+                 * Clicking a head takes them out of the meeting and clicking
+                 * again puts them back, which is where anybody would look for
+                 * it: this list is already headed "in the room".
+                 *
+                 * Two buttons in the row rather than one doing both jobs. The
+                 * name toggles, and the arrow beside it jumps to what they said
+                 * once there is something to jump to.
+                 */
+                <li
+                  key={department.id}
+                  className="relative flex items-center gap-2.5 rounded-xl px-2.5 py-2"
+                >
                   <button
-                    onClick={() => jumpTo(department.id)}
-                    className="md-state flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left"
+                    type="button"
+                    aria-pressed={inRoom}
+                    onClick={() => toggle(department.id)}
+                    className={cx(
+                      "md-state flex min-w-0 flex-1 items-center gap-2.5 text-left",
+                      "before:absolute before:inset-0 before:rounded-xl",
+                      !inRoom && "opacity-45",
+                    )}
                   >
                     <DepartmentAvatar department={department} size={20} />
                     <span className="min-w-0 flex-1">
@@ -411,28 +462,38 @@ export default function AllHandsPage() {
                         {department.personaName || department.name}
                       </span>
                       <span className="md-label-sm block truncate text-on-variant/75">
-                        {state === "typing"
-                          ? "typing…"
-                          : state === "waiting"
-                            ? "thinking…"
-                            : state === "failed"
-                              ? "failed"
-                              : state === "done"
-                                ? "answered"
-                                : department.name}
+                        {!inRoom
+                          ? "Not in this meeting"
+                          : state === "typing"
+                            ? "typing…"
+                            : state === "waiting"
+                              ? "thinking…"
+                              : state === "failed"
+                                ? "failed"
+                                : state === "done"
+                                  ? "answered"
+                                  : department.name}
                       </span>
                     </span>
-                    {state === "done" ? (
-                      <CheckIcon className="h-3.5 w-3.5 flex-none text-success" />
-                    ) : state === "failed" ? (
-                      <span className="md-label-sm flex-none text-error">!</span>
-                    ) : (
-                      <StatusDot
-                        status={state === "idle" ? "offline" : "busy"}
-                        animate={state !== "idle"}
-                      />
-                    )}
                   </button>
+
+                  {!inRoom ? null : state === "done" ? (
+                    <button
+                      type="button"
+                      aria-label={`Jump to ${department.personaName || department.name}`}
+                      onClick={() => jumpTo(department.id)}
+                      className="md-state relative z-10 grid h-7 w-7 flex-none place-items-center rounded-full text-success"
+                    >
+                      <CheckIcon className="h-3.5 w-3.5" />
+                    </button>
+                  ) : state === "failed" ? (
+                    <span className="md-label-sm flex-none text-error">!</span>
+                  ) : (
+                    <StatusDot
+                      status={state === "idle" ? "offline" : "busy"}
+                      animate={state !== "idle"}
+                    />
+                  )}
                 </li>
               );
             })}
@@ -452,60 +513,6 @@ export default function AllHandsPage() {
                 .map((r) => departmentOf(r.departmentId)?.personaName ?? "")
                 .filter(Boolean)}
             />
-          ) : null}
-
-          {/*
-            * Who is in the room, above the box you type in.
-            *
-            * A question about pricing does not need Legal, Social and the
-            * Engineering head each spending a call to say it is not their area.
-            * Turning them off is the difference between a room and a mailing
-            * list, and on a bring your own key panel it is also the customer's
-            * own money.
-            *
-            * Off rather than removed: a head switched off stays on screen, so
-            * the room you are about to ask is always the whole company with
-            * some of it dimmed, rather than a list you have to remember what
-            * is missing from.
-            */}
-          {!running && departments.length > 1 ? (
-            <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              {departments.map((department) => {
-                const inRoom = !excluded.has(department.id);
-                return (
-                  <button
-                    key={department.id}
-                    type="button"
-                    aria-pressed={inRoom}
-                    title={`${department.personaName || department.name}, ${department.roleTitle}`}
-                    onClick={() => toggle(department.id)}
-                    className={cx(
-                      "md-state flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 transition-colors",
-                      inRoom
-                        ? "border-primary/40 bg-primary/10 text-on-surface"
-                        : "border-outline-variant text-on-variant/60",
-                    )}
-                  >
-                    <span className={cx(!inRoom && "opacity-40")}>
-                      <DepartmentAvatar department={department} size={22} />
-                    </span>
-                    <span className="md-label-sm">
-                      {department.personaName || department.name}
-                    </span>
-                  </button>
-                );
-              })}
-
-              {excluded.size > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setExcluded(new Set())}
-                  className="md-state md-label-sm rounded-full px-2.5 py-1 text-primary"
-                >
-                  Everyone
-                </button>
-              ) : null}
-            </div>
           ) : null}
 
           <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-lowest py-2 pl-4 pr-2 transition-colors focus-within:border-primary">

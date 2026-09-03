@@ -71,7 +71,7 @@ The departments, what they are called, and what each covers are all set in Setti
       },
       {
         title: "Asking everyone at once",
-        body: `Ask Everyone puts one question to every department simultaneously, with an optional summary read across the answers. It costs roughly one reply per department, so it is worth it for a question that genuinely crosses the whole company and wasteful otherwise.
+        body: `A meeting puts one question to every department at once, with an optional summary read across the answers. It costs roughly one reply per department, so it is worth it for a question that genuinely crosses the whole company and wasteful otherwise.
 
 Each answer is capped to a word count, set in Settings. For depth, use a normal conversation.`,
       },
@@ -193,7 +193,7 @@ A project can be shared with another approved account, which makes its conversat
 
 **One topic per conversation.** A conversation re-sends its full history on every message.
 
-**Ask Everyone costs about one reply per department.** Use it for company-wide questions.
+**A meeting costs about one reply per head taking part.** Use it for company-wide questions.
 
 **Attachments are large.** An image or PDF is thousands of tokens, re-sent with every later message in that conversation.
 

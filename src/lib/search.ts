@@ -45,7 +45,7 @@ const PAGES: { title: string; subtitle: string; href: string }[] = [
   { title: "Dashboard", subtitle: "The numbers, what is open, and who to ask", href: "/" },
   { title: "Tasks", subtitle: "What is outstanding, by state", href: "/tasks" },
   { title: "Chief of Staff", subtitle: "Talk to Ruth", href: "/ceo" },
-  { title: "Ask Everyone", subtitle: "Put one question to every head at once", href: "/all-hands" },
+  { title: "Meetings", subtitle: "Put one question to every head at once", href: "/all-hands" },
   { title: "Projects", subtitle: "Work grouped across departments", href: "/projects" },
   { title: "Library", subtitle: "Files, deliverables, and skills", href: "/library" },
   { title: "Skills", subtitle: "SKILL.md playbooks", href: "/library/skills" },
@@ -213,7 +213,7 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
         id: `room:${run.id}`,
         kind: "room",
         title: run.title,
-        subtitle: `Ask Everyone · ${run.rounds.length} ${
+        subtitle: `Meeting · ${run.rounds.length} ${
           run.rounds.length === 1 ? "question" : "questions"
         }`,
         snippet,
@@ -234,7 +234,7 @@ export const KIND_LABEL: Record<ResultKind, string> = {
   skill: "Skills",
   deliverable: "Deliverables",
   project: "Projects",
-  room: "Ask Everyone",
+  room: "Meeting",
 };
 
 /** Groups results for display while preserving the overall ranking. */

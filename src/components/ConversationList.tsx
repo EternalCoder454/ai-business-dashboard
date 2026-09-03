@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { PlusIcon, TrashIcon, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
 import { DepartmentAvatar } from "./DepartmentAvatar";
+import { HeadProfile } from "./HeadProfile";
 import { conversationHref, departmentHrefById, formatRelativeTime } from "@/lib/routes";
 import type { Conversation, Department } from "@/lib/types";
 
@@ -28,6 +30,7 @@ export function ConversationList({
   onDelete: (id: string) => void;
 }) {
   const who = department.personaName || department.name;
+  const [profileOpen, setProfileOpen] = useState(false);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -46,7 +49,15 @@ export function ConversationList({
           "px-4 py-4 medium:px-6",
         )}
       >
-        <DepartmentAvatar department={department} size={40} />
+        {/* Same as in a conversation: the picture is the way to who they are. */}
+        <button
+          type="button"
+          onClick={() => setProfileOpen(true)}
+          aria-label={`About ${who}`}
+          className="md-state flex-none rounded-full"
+        >
+          <DepartmentAvatar department={department} size={40} />
+        </button>
         <div className="min-w-0 flex-1">
           <p className="md-title truncate">
             {department.personaName
@@ -140,6 +151,12 @@ export function ConversationList({
           ))}
         </ul>
       </div>
+
+      <HeadProfile
+        department={department}
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+      />
     </div>
   );
 }

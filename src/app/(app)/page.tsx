@@ -29,7 +29,7 @@ export default function DashboardPage() {
               icon={<UsersIcon className="h-4 w-4" />}
               onClick={() => router.push("/all-hands")}
             >
-              Ask everyone
+              Hold a meeting
             </Button>
             <Button
               icon={<PlusIcon className="h-4 w-4" />}

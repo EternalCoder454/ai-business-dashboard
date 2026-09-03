@@ -78,7 +78,7 @@ export function Setup() {
         href: "/ceo",
       },
       {
-        title: "Ask everyone at once",
+        title: "Meetings",
         body: `One question to the whole room, every head answering from its own corner, and ${who} reading across the lot. For decisions that touch more than one area.`,
         href: "/all-hands",
       },

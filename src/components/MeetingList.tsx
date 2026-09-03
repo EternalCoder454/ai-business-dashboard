@@ -45,7 +45,7 @@ export function MeetingList({
           <UsersIcon className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="md-title truncate">Ask Everyone</p>
+          <p className="md-title truncate">Meetings</p>
           <p className="md-label-sm truncate text-on-variant/75">
             {runs.length} meeting{runs.length === 1 ? "" : "s"}
           </p>

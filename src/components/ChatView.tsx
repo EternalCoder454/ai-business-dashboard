@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ConversationList } from "./ConversationList";
 import { DepartmentAvatar } from "./DepartmentAvatar";
+import { HeadProfile } from "./HeadProfile";
 import { useRouter, useSearchParams } from "next/navigation";
 import { setConversationOpen, showsConversationList } from "@/lib/chatRoute";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -286,6 +287,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   const [pending, setPending] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   /**
    * A decision being captured out of a reply.
    *
@@ -654,11 +656,25 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           >
             <ChevronIcon className="h-5 w-5 rotate-180" />
           </Link>
-        ) : (
-          <div className="hidden flex-none medium:block">
-            <DepartmentAvatar department={department} size={44} />
-          </div>
-        )}
+        ) : null}
+
+        {/*
+          * The picture opens who they are.
+          *
+          * It used to be shown only when there was no back arrow, so on every
+          * screen with a list behind it the person you were talking to had no
+          * face at all. It is always here now, and it is the way in to their
+          * brief and what they can do, because a name and a job title above a
+          * chat box does not tell you which of them to ask.
+          */}
+        <button
+          type="button"
+          onClick={() => setProfileOpen(true)}
+          aria-label={`About ${department.personaName || department.name}`}
+          className="md-state hidden flex-none rounded-full medium:block"
+        >
+          <DepartmentAvatar department={department} size={44} />
+        </button>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h1 className="md-title-lg truncate">{department.name}</h1>
@@ -966,6 +982,12 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               </>
             ) : null}
           </p>
+
+          <HeadProfile
+            department={department}
+            open={profileOpen}
+            onClose={() => setProfileOpen(false)}
+          />
 
           <Dialog
             open={pickerOpen}

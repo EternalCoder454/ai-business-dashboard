@@ -73,8 +73,8 @@ export const WORK_LINKS: NavLink[] = [
   },
   {
     href: "/all-hands",
-    label: "Ask Everyone",
-    short: "Everyone",
+    label: "Meetings",
+    short: "Meetings",
     icon: <UsersIcon className="h-5 w-5" />,
   },
   {

@@ -204,7 +204,7 @@ export function Dashboard() {
         />
 
         <PaneList
-          title="Ask Everyone"
+          title="Meetings"
           icon={<UsersIcon className="h-3.5 w-3.5" />}
           href="/all-hands"
           empty="No threads."
