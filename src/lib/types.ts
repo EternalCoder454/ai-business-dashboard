@@ -447,7 +447,6 @@ export type SearchShortcut = "slash" | "k" | "none";
 export interface AllHandsResponse {
   departmentId: string;
   content: string;
-  thinking?: string;
   usage?: TokenUsage;
   error?: boolean;
   /** True while this department is still answering. */

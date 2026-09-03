@@ -463,6 +463,11 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
     await tx.delete(t.reports).where(eq(t.reports.workspaceId, owner));
     await tx.delete(t.reviewCursors).where(eq(t.reviewCursors.workspaceId, owner));
 
+    // How it behaved. Counts and timings rather than anything anybody wrote,
+    // but they are still this business's rows and a deleted business should
+    // not go on appearing in the health screen.
+    await tx.delete(t.telemetry).where(eq(t.telemetry.workspaceId, owner));
+
     // Settings last of the scoped tables, since the model keys live there.
     await tx.delete(t.settings).where(eq(t.settings.workspaceId, owner));
     await tx.delete(t.profiles).where(eq(t.profiles.workspaceId, owner));

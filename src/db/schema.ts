@@ -797,3 +797,58 @@ export const googleConnections = pgTable("google_connections", {
   createdAt: created(),
   updatedAt: updated(),
 });
+
+/**
+ * How the deployment is behaving, per business, in hourly buckets.
+ *
+ * Rolled up rather than one row per request. A row per request is a second
+ * database write on every request, and a table that grows faster than
+ * everything it is measuring, which is a strange thing to add during a
+ * performance pass. An hour of one operation in one business is one row no
+ * matter how many times it ran.
+ *
+ * The id is derived from those three things rather than random, so instances
+ * that never speak to each other still merge into the same row: every write is
+ * an upsert that adds to what is already there.
+ *
+ * What is deliberately not here: no email, no address, no title, no message,
+ * no prompt, no query string, no user agent. A workspace id and the name of an
+ * operation. The error note is scrubbed and truncated before it is stored, and
+ * the scrubbing happens where the error is caught rather than here.
+ */
+export const telemetry = pgTable(
+  "telemetry",
+  {
+    /** `${workspaceId}:${operation}:${bucket}`. */
+    id: text("id").primaryKey(),
+    workspaceId: workspace(),
+    /** `workspace.load`, `chat.stream`, and so on. Ours, never user text. */
+    operation: text("operation").notNull(),
+    /** Whether this came from a server route or a browser. */
+    source: text("source").notNull().default("server"),
+    /** Start of the hour this row covers, epoch ms. */
+    bucket: bigint("bucket", { mode: "number" }).notNull(),
+    calls: integer("calls").notNull().default(0),
+    errors: integer("errors").notNull().default(0),
+    /**
+     * Summed, not averaged. An average cannot be merged across instances
+     * without knowing how many each one saw; a sum and a count can.
+     */
+    totalMs: bigint("total_ms", { mode: "number" }).notNull().default(0),
+    maxMs: integer("max_ms").notNull().default(0),
+    /** Calls over the slow threshold. A cheap stand-in for a percentile. */
+    slow: integer("slow").notNull().default(0),
+    /** A short classification we assign, never the raw message. */
+    lastErrorKind: text("last_error_kind"),
+    /** Scrubbed and truncated. Empty when nothing has failed. */
+    lastErrorNote: text("last_error_note").notNull().default(""),
+    lastErrorAt: bigint("last_error_at", { mode: "number" }),
+    updatedAt: updated(),
+  },
+  (table) => [
+    // The operator view: one business, newest hours first.
+    index("telemetry_ws_idx").on(table.workspaceId, table.bucket),
+    // The prune, and the deployment-wide view across every business.
+    index("telemetry_bucket_idx").on(table.bucket),
+  ],
+);

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { CommandPalette, SearchIcon } from "./CommandPalette";
 import { useMessages } from "@/lib/messages";
+import { reportLoad, watchForErrors } from "@/lib/telemetryClient";
 import { useStore } from "@/lib/store";
 import { useKeyboardInset } from "@/lib/viewport";
 import { PRIMARY_LINKS, Sidebar, SidebarContent, isActive } from "./Sidebar";
@@ -73,6 +74,16 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [bareKey]);
+
+  /*
+   * Watching starts as late as this on purpose. Above the shell is the sign-in
+   * page, where there is no business to attribute anything to, so an error
+   * there would be recorded against nobody or dropped on the floor.
+   */
+  useEffect(() => {
+    reportLoad();
+    return watchForErrors();
+  }, []);
 
   useEffect(() => {
     if (!drawerOpen) return;

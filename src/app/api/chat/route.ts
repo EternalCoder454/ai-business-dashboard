@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
 import { readJsonWithin, requireSession, withinRate } from "@/lib/guard";
-import { auth } from "@/auth";
+import { kindOf, record } from "@/lib/telemetry";
 import { workspaceKey } from "@/db/keys";
 import { membershipFor } from "@/db/tenancy";
 import { DEFAULT_PROVIDER, providerInfo, providerOf, type Provider } from "@/lib/providers";
@@ -105,13 +105,10 @@ const RATE_WINDOW_MS = 60_000;
  * Empty for anyone signed in to nothing, and for a checkout with no database,
  * both of which fall through to the header below.
  */
-async function keyForRequester(provider: Provider): Promise<string> {
-  const session = await auth();
-  const email = session?.user?.email?.toLowerCase();
-  if (!email) return "";
+async function workspaceOf(email: string | undefined): Promise<string | undefined> {
+  if (!email) return undefined;
   const membership = await membershipFor(email);
-  if (!membership) return "";
-  return workspaceKey(membership.workspaceId, provider);
+  return membership?.workspaceId;
 }
 
 export async function POST(request: NextRequest) {
@@ -154,7 +151,12 @@ export async function POST(request: NextRequest) {
   const info = providerInfo(provider);
 
   const serverKey = process.env[info.envVar]?.trim();
-  const fromWorkspace = serverKey ? "" : await keyForRequester(provider);
+  // Resolved whether or not it is needed for a key, because the measurement at
+  // the end of the stream is per business and a chat is seconds long: one
+  // indexed lookup against it is not a cost worth avoiding.
+  const tenantId = await workspaceOf(session.email ?? undefined);
+  const fromWorkspace =
+    serverKey || !tenantId ? "" : await workspaceKey(tenantId, provider);
   const apiKey = serverKey || fromWorkspace || request.headers.get(info.header)?.trim();
 
   /**
@@ -461,6 +463,8 @@ export async function POST(request: NextRequest) {
             { fallbacks: false, cached: false },
           ];
 
+      const startedAt = Date.now();
+      let failure: unknown;
       try {
         let lastError: unknown;
         for (const attempt of attempts) {
@@ -484,11 +488,33 @@ export async function POST(request: NextRequest) {
         if (lastError) throw lastError;
         if (!clientGone) controller.enqueue(frame({ type: "done" }));
       } catch (error) {
+        failure = error;
         if (!clientGone) {
           console.error("[api/chat]", error);
           controller.enqueue(frame({ type: "error", message: describeError(error) }));
         }
       } finally {
+        /*
+         * Recorded here rather than around the route, because the route
+         * returns as soon as the stream is handed over and the answer takes
+         * the next several seconds. Measuring the handover would report that
+         * every chat took a millisecond.
+         *
+         * A reader who closes the tab is not a failure. Nothing broke, they
+         * left, and counting it as an error would make the error rate a
+         * measure of how often people change their minds.
+         */
+        if (!clientGone) {
+          record({
+            operation: "chat.stream",
+            workspaceId: tenantId ?? "",
+            ms: Date.now() - startedAt,
+            ok: !failure,
+            errorKind: failure ? kindOf(failure) : undefined,
+            errorNote:
+              failure instanceof Error ? failure.message : failure ? String(failure) : undefined,
+          });
+        }
         request.signal.removeEventListener("abort", stopUpstream);
         upstream = null;
         try {

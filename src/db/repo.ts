@@ -134,9 +134,15 @@ export async function loadConversationMessages(
   const kept = hasMore ? rows.slice(rows.length - window) : rows;
 
   // Only the files these messages point at, and never their bytes.
-  const wanted = new Set(kept.flatMap((row) => row.attachmentIds));
+  //
+  // Named in the query rather than filtered afterwards. Asking for the whole
+  // workspace and dropping most of it meant opening one conversation with one
+  // attachment read every file row in the business, and `text_content` is a
+  // whole PDF's extracted text, so the cost was the size of the Library rather
+  // than the size of the conversation.
+  const wanted = [...new Set(kept.flatMap((row) => row.attachmentIds))];
   const filesById = new Map<string, Attachment>();
-  if (wanted.size > 0) {
+  if (wanted.length > 0) {
     const files = await db
       .select({
         id: t.files.id,
@@ -149,9 +155,8 @@ export async function loadConversationMessages(
         size: t.files.size,
       })
       .from(t.files)
-      .where(eq(t.files.workspaceId, workspaceId));
+      .where(and(eq(t.files.workspaceId, workspaceId), inArray(t.files.id, wanted)));
     for (const file of files) {
-      if (!wanted.has(file.id)) continue;
       filesById.set(file.id, {
         id: file.id,
         kind: file.kind as Attachment["kind"],

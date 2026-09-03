@@ -38,6 +38,7 @@ const SCOPED = [
   "schedules",
   "briefings",
   "reports",
+  "telemetry",
 ];
 
 /**

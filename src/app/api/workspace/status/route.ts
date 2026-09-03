@@ -82,10 +82,16 @@ export async function GET() {
   // key: nothing returns that, to an administrator or anyone else.
   const membership = await membershipFor(email);
   const workspaceRole = membership?.role ?? null;
-  const workspaceKeys = membership ? await keySummaries(membership.workspaceId) : NO_KEYS;
-  // How many people share this workspace. A conversation is worth polling for
-  // somebody else's messages only when there is somebody else.
-  const workspacePeople = membership ? await countMembers(membership.workspaceId) : 0;
+
+  // Together, not one after another. None of the three needs an answer from
+  // the other two, and this route runs on every page load.
+  const [workspaceKeys, workspacePeople, empty] = await Promise.all([
+    // How many people share this workspace. A conversation is worth polling
+    // for somebody else's messages only when there is somebody else.
+    membership ? keySummaries(membership.workspaceId) : Promise.resolve(NO_KEYS),
+    membership ? countMembers(membership.workspaceId) : Promise.resolve(0),
+    isEmpty(email),
+  ]);
 
   const identity = {
     name: session.user?.name ?? undefined,
@@ -106,7 +112,7 @@ export async function GET() {
       isOwner,
       email,
       ...identity,
-      empty: await isEmpty(email),
+      empty,
     });
   } catch (error) {
     console.error("[api/workspace/status]", error);

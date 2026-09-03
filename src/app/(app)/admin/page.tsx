@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { BusinessesTab, type WorkspaceRow } from "@/components/BusinessesTab";
 import { FeedbackTab } from "@/components/FeedbackTab";
 import { ReportsTab } from "@/components/ReportsTab";
+import { TelemetryTab } from "@/components/TelemetryTab";
 import { useCallback, useEffect, useState } from "react";
 import {
   Button,
@@ -59,7 +60,7 @@ interface Thread {
   messages: Message[];
 }
 
-type Tab = "businesses" | "clients" | "reports" | "feedback" | "overview" | "access";
+type Tab = "businesses" | "clients" | "reports" | "feedback" | "overview" | "health" | "access";
 
 const TAB_LABEL: Record<Tab, string> = {
   businesses: "Businesses",
@@ -67,6 +68,7 @@ const TAB_LABEL: Record<Tab, string> = {
   clients: "Clients",
   reports: "Reports",
   feedback: "Feedback",
+  health: "Health",
   access: "Access",
 };
 
@@ -190,6 +192,8 @@ export default function AdminPage() {
         ) : null}
 
         {tab === "reports" ? <ReportsTab /> : null}
+
+        {tab === "health" ? <TelemetryTab /> : null}
 
         {tab === "feedback" ? <FeedbackTab /> : null}
 

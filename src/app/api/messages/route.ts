@@ -12,6 +12,7 @@ import {
   unreadTotal,
 } from "@/db/messages";
 import { readJsonWithin, withinRate } from "@/lib/guard";
+import { track } from "@/lib/telemetry";
 import { membershipFor } from "@/db/tenancy";
 
 export const runtime = "nodejs";
@@ -95,10 +96,12 @@ export async function GET(request: Request) {
       // Both every time, including on the polling call. `since` bounds the
       // messages, but the watermark has to come back unbounded or a tick on
       // something sent earlier would never reach the screen.
-      const [messages, seen] = await Promise.all([
-        listThread(mine.workspaceId, sender.email, other, since),
-        seenThrough(mine.workspaceId, sender.email, other),
-      ]);
+      const [messages, seen] = await track("messages.thread", mine.workspaceId, () =>
+        Promise.all([
+          listThread(mine.workspaceId, sender.email, other, since),
+          seenThrough(mine.workspaceId, sender.email, other),
+        ]),
+      );
       return Response.json({ messages, seenThrough: seen });
     }
 
@@ -112,11 +115,16 @@ export async function GET(request: Request) {
     // request per person per minute for the same fact.
     void touchPresence(sender.email);
 
-    const [threads, people, unread] = await Promise.all([
-      listThreads(workspace.workspaceId, sender.email),
-      listColleagues(workspace.workspaceId, sender.email),
-      unreadTotal(workspace.workspaceId, sender.email),
-    ]);
+    const [threads, people, unread] = await track(
+      "messages.overview",
+      workspace.workspaceId,
+      () =>
+        Promise.all([
+          listThreads(workspace.workspaceId, sender.email),
+          listColleagues(workspace.workspaceId, sender.email),
+          unreadTotal(workspace.workspaceId, sender.email),
+        ]),
+    );
     return Response.json({ threads, people, unread, self: sender.email });
   } catch (error) {
     console.error("[api/messages] read", error);

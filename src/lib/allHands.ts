@@ -220,10 +220,19 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
       { openai: settings.openaiKey, google: settings.googleKey },
     );
 
+    /*
+     * The reasoning is deliberately not kept.
+     *
+     * Nothing renders it. A chat message shows its thinking in a disclosure,
+     * but this screen never has, so every trace written here went into the
+     * responses column, came back in the workspace snapshot on every page load
+     * of every screen, and was dropped on the floor. It is usually longer than
+     * the answer it belongs to, and rounds are never deleted, so it was the
+     * fastest growing thing in the payload and none of it was ever read.
+     */
     round.responses[index] = {
       departmentId: department.id,
       content: result.text || result.error || "No response was returned.",
-      thinking: result.thinking || undefined,
       usage: result.usage,
       error: !result.text && Boolean(result.error),
       pending: false,

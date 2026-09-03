@@ -39,6 +39,7 @@ import { memoryFor as liveMemoryFor } from "./memory";
 import { skillReconciliation, writingRulesReplaceable } from "./shippedSkills";
 import { seedSkills } from "./seedSkills";
 import { seedWikiPages } from "./seedWiki";
+import { report } from "./telemetryClient";
 import type {
   AllHandsRun,
   CompanyProfile,
@@ -551,7 +552,7 @@ export function StoreProvider({
           return;
         }
         throw new Error("the workspace came back empty");
-      } catch {
+      } catch (error) {
         if (cancelled) return;
         // Nothing to retry when the answer is that they have no business.
         if (noWorkspaceRef.current) return;
@@ -560,6 +561,14 @@ export function StoreProvider({
           if (!cancelled) await attempt(left - 1);
           return;
         }
+        // Reported only once the retries are spent. A blip that recovered is
+        // not an outage, and counting it as one would bury the ones that are.
+        report({
+          operation: "client.load-failed",
+          ok: false,
+          errorKind: error instanceof Error ? error.name : "LoadFailed",
+          errorNote: error instanceof Error ? error.message : String(error),
+        });
         setLoadFailed(true);
       }
     };
@@ -696,6 +705,14 @@ export function StoreProvider({
         setWriteError(null);
       } catch (error) {
         console.error("[workspace] write failed, reloading", error);
+        // What the user experiences as work disappearing. Worth knowing about
+        // without waiting for somebody to write in about it.
+        report({
+          operation: "client.write",
+          ok: false,
+          errorKind: error instanceof Error ? error.name : "WriteFailed",
+          errorNote: error instanceof Error ? error.message : String(error),
+        });
         setWriteError(
           error instanceof Error && error.message
             ? error.message

@@ -36,7 +36,11 @@
     "haskey-test": "tsx scripts/haskey-test.ts",
     "reach-test": "tsx scripts/reach-test.ts",
     "route-test": "tsx scripts/route-test.ts",
-    "delivery-test": "tsx scripts/delivery-test.ts"
+    "delivery-test": "tsx scripts/delivery-test.ts",
+    "weigh": "tsx --env-file=.env.local scripts/weigh.ts",
+    "pipelining-test": "tsx --env-file=.env.local scripts/pipelining-test.ts",
+    "telemetry-test": "tsx scripts/telemetry-test.ts",
+    "telemetry-merge-check": "tsx --env-file=.env.local scripts/telemetry-merge-check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

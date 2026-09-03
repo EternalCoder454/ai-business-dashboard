@@ -3,6 +3,7 @@ import { auth, authEnabled } from "@/auth";
 import { isOperator } from "@/lib/admin";
 import { reporterEnabled, runReview } from "@/lib/reporter";
 import { runSchedules } from "@/lib/schedules";
+import { flush, prune } from "@/lib/telemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,13 +73,23 @@ export async function GET(request: Request) {
       })
     : null;
 
+  // Telemetry keeps itself in bounds here rather than in a job of its own.
+  // Buckets past the retention window go, and whatever this instance has
+  // buffered is written out before it is thrown away with the instance.
+  const pruned = await prune().catch((error) => {
+    console.error("[cron] telemetry prune failed", error);
+    return 0;
+  });
+  await flush();
+
   const ms = Date.now() - started;
   // Logged as well as returned, because the usual reader is a scheduler that
   // throws the body away. The log is where somebody looks to find out whether
   // this has been running at all.
   console.log(
-    `[cron] ${schedules?.ran ?? 0} briefings, ${review?.raised ?? 0} raised, ${ms}ms`,
+    `[cron] ${schedules?.ran ?? 0} briefings, ${review?.raised ?? 0} raised, ` +
+      `${pruned} telemetry rows dropped, ${ms}ms`,
   );
 
-  return Response.json({ ok: true, schedules, review, ms });
+  return Response.json({ ok: true, schedules, review, pruned, ms });
 }

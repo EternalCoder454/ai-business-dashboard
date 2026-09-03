@@ -7,6 +7,7 @@ import { MAX_WRITE_BYTES, WRITABLE_TABLES } from "@/lib/workspace";
 import { membershipFor, provisionFor } from "@/db/tenancy";
 import { OPERATOR_EMAILS } from "@/auth";
 import { readJsonWithin } from "@/lib/guard";
+import { track } from "@/lib/telemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,7 +78,11 @@ export async function GET() {
   }
 
   try {
-    return Response.json(await loadWorkspace(owner.workspaceId, owner.email));
+    return Response.json(
+      await track("workspace.load", owner.workspaceId, () =>
+        loadWorkspace(owner.workspaceId, owner.email),
+      ),
+    );
   } catch (error) {
     console.error("[api/workspace] load", error);
     return Response.json({ error: "Could not read the workspace." }, { status: 500 });
@@ -127,7 +132,9 @@ export async function POST(request: Request) {
   try {
     // One transaction for the batch, so a failure halfway cannot leave a
     // conversation saved with none of its messages.
-    await applyMutations(owner.workspaceId, owner.email, ops);
+    await track("workspace.save", owner.workspaceId, () =>
+      applyMutations(owner.workspaceId, owner.email, ops),
+    );
     return Response.json({ applied: ops.length });
   } catch (error) {
     console.error("[api/workspace] mutate", error);
