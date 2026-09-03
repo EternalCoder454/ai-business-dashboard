@@ -49,18 +49,26 @@ export interface NavLink {
   icon: ReactNode;
 }
 
+/*
+ * Home first.
+ *
+ * The Chief of Staff used to lead, which put Dashboard second in every
+ * navigation in the product including the bottom bar on a phone, where the
+ * first slot is the one a thumb finds without looking. Nobody expects to reach
+ * home by pressing the second thing.
+ */
 export const WORK_LINKS: NavLink[] = [
-  {
-    href: "/ceo",
-    label: "Chief of Staff",
-    short: "Staff",
-    icon: <BriefcaseIcon className="h-5 w-5" />,
-  },
   {
     href: "/",
     label: "Dashboard",
     short: "Home",
     icon: <DashboardIcon className="h-5 w-5" />,
+  },
+  {
+    href: "/ceo",
+    label: "Chief of Staff",
+    short: "Staff",
+    icon: <BriefcaseIcon className="h-5 w-5" />,
   },
   {
     href: "/all-hands",

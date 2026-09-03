@@ -31,10 +31,19 @@ export function ConversationList({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {/*
+       * No safe area padding of its own any more.
+       *
+       * This header was written when it was the top-most thing on the screen.
+       * It is not: on a phone the app bar sits above it, and adding the notch
+       * inset a second time pushed the whole list down by the height of a
+       * notch for no reason. The padding matches PageHeader, which is what
+       * every other screen under that bar uses.
+       */}
       <header
         className={cx(
-          "safe-top safe-pt-3 medium:safe-pt-4 safe-x safe-px-3 medium:safe-px-6",
-          "flex flex-none items-center gap-3 border-b border-outline-variant pb-3 medium:pb-4",
+          "flex flex-none items-center gap-3 border-b border-outline-variant",
+          "px-4 py-4 medium:px-6",
         )}
       >
         <DepartmentAvatar department={department} size={40} />

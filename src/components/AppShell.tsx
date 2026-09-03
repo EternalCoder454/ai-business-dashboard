@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSyncExternalStore } from "react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { CommandPalette, SearchIcon } from "./CommandPalette";
 import { useMessages } from "@/lib/messages";
@@ -9,6 +10,8 @@ import { reportLoad, watchForErrors } from "@/lib/telemetryClient";
 import { useStore } from "@/lib/store";
 import { useKeyboardInset } from "@/lib/viewport";
 import { PRIMARY_LINKS, Sidebar, SidebarContent, isActive } from "./Sidebar";
+import { DepartmentAvatar } from "./DepartmentAvatar";
+import { departmentHrefById } from "@/lib/routes";
 import { CompanyMark } from "./CompanyMark";
 import { ProfileMenu } from "./ProfileMenu";
 import { LoadFailed } from "./LoadFailed";
@@ -16,7 +19,12 @@ import { NoWorkspace } from "./NoWorkspace";
 import { Setup } from "./Setup";
 import { WriteError } from "./WriteError";
 import { setNavCollapsed, useNavCollapsed } from "@/lib/navCollapsed";
-import { ChevronIcon, CloseIcon, NavBadge, cx } from "./ui";
+import {
+  departmentIdOf,
+  readConversationOpen,
+  subscribeConversationOpen,
+} from "@/lib/chatRoute";
+import { BriefcaseIcon, ChevronIcon, CloseIcon, NavBadge, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
 
 /**
@@ -32,9 +40,10 @@ import { createRipple } from "./ui/ripple";
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [headsOpen, setHeadsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const { settings } = useStore();
+  const { settings, getDepartment } = useStore();
   const navCollapsed = useNavCollapsed();
 
   /** Cmd and Ctrl K always work. This is the bare key, which can be turned off. */
@@ -108,12 +117,27 @@ export function AppShell({ children }: { children: ReactNode }) {
    * A conversation is a detail view. On compact it takes the whole screen, with
    * a back arrow instead of the menu and no bottom bar, so the composer owns
    * the bottom edge the way it does in any messaging app.
+   *
+   * The list of conversations sits on the same routes and is not a detail view.
+   * Deciding this from the path alone stripped both bars off the list too, and
+   * a list has no back arrow and no composer: on a phone it arrived with
+   * nothing on screen that led anywhere, and the only way out was the browser's
+   * own back button.
    */
-  const isConversation = pathname === "/ceo" || pathname.startsWith("/dept/");
+  const departmentId = departmentIdOf(pathname);
+  const conversationOpen = useSyncExternalStore(
+    subscribeConversationOpen,
+    readConversationOpen,
+    () => false,
+  );
+  const isConversation = Boolean(departmentId) && conversationOpen;
 
+  // The head's own name rather than the word "Department", now that this bar
+  // shows above the list of their conversations and has room to say who.
+  const head = departmentId ? getDepartment(departmentId) : undefined;
   const title =
     ROUTE_TITLES.find(([href]) => isActive(pathname, href))?.[1] ??
-    (pathname.startsWith("/dept/") ? "Department" : settings.companyName);
+    (head ? head.personaName || head.name : settings.companyName);
 
   const edgeSwipe = useEdgeSwipe(() => setDrawerOpen(true));
   useKeyboardInset();
@@ -165,9 +189,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             administrator of a business nobody has filled in yet. */}
         <Setup />
         {isConversation ? null : (
-          <BottomBar pathname={pathname} onOpenDrawer={() => setDrawerOpen(true)} />
+          <BottomBar
+            pathname={pathname}
+            onOpenDrawer={() => setDrawerOpen(true)}
+            onOpenHeads={() => setHeadsOpen(true)}
+          />
         )}
       </div>
+
+      <HeadsSheet open={headsOpen} onClose={() => setHeadsOpen(false)} />
 
       <ModalDrawer
         open={drawerOpen}
@@ -404,18 +434,33 @@ function RailItem({
   );
 }
 
-/** Compact windows get a bottom bar. Five destinations is the Material maximum. */
+/**
+ * Compact windows get a bottom bar. Five slots is the Material maximum.
+ *
+ * Four of the five used to be the first four work links, which meant the one
+ * thing people are here to do, talk to a head, was not on it at all: every
+ * department sat behind the hamburger, two taps and a scroll away, while
+ * Briefings and Projects had a slot each. Heads takes the second slot now and
+ * opens a list of them.
+ */
 function BottomBar({
   pathname,
   onOpenDrawer,
+  onOpenHeads,
 }: {
   pathname: string;
   onOpenDrawer: () => void;
+  onOpenHeads: () => void;
 }) {
   const { unread } = useMessages();
+  // Home, then the heads picker is spliced in, then these two.
+  const links = [
+    PRIMARY_LINKS[0],
+    ...PRIMARY_LINKS.filter((link) => link.href === "/all-hands" || link.href === "/messages"),
+  ];
   return (
     <nav className="safe-bottom safe-x flex flex-none items-stretch border-t border-outline-variant bg-low medium:hidden">
-      {PRIMARY_LINKS.slice(0, 4).map((link) => {
+      {links.slice(0, 1).map((link) => {
         const active = isActive(pathname, link.href);
         return (
           <Link
@@ -445,19 +490,142 @@ function BottomBar({
         );
       })}
 
-      <button
-        onClick={(event) => {
-          createRipple(event);
-          onOpenDrawer();
-        }}
-        className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-on-variant"
-      >
-        <span className="md-state grid h-8 w-16 place-items-center rounded-full">
-          <MenuIcon />
-        </span>
-        <span className="md-label-sm">More</span>
-      </button>
+      {/* The main thing anybody came to do, in the slot next to home. */}
+      <BarButton
+        label="Heads"
+        active={Boolean(departmentIdOf(pathname))}
+        onClick={onOpenHeads}
+        icon={<BriefcaseIcon className="h-5 w-5" />}
+      />
+
+      {links.slice(1).map((link) => {
+        const active = isActive(pathname, link.href);
+        return (
+          <Link
+            key={link.href}
+            href={link.href}
+            onClick={createRipple}
+            aria-current={active ? "page" : undefined}
+            className="flex flex-1 flex-col items-center justify-center gap-1 py-2"
+          >
+            <span
+              className={cx(
+                "md-state relative grid h-8 w-16 place-items-center rounded-full transition-colors",
+                active
+                  ? "bg-secondary-container text-on-secondary-container"
+                  : "text-on-variant",
+              )}
+            >
+              {link.icon}
+              {link.href === "/messages" ? (
+                <NavBadge count={unread} label={`${unread} unread messages`} />
+              ) : null}
+            </span>
+            <span className={cx("md-label-sm", active ? "text-on-surface" : "text-on-variant")}>
+              {link.short}
+            </span>
+          </Link>
+        );
+      })}
+
+      <BarButton label="More" onClick={onOpenDrawer} icon={<MenuIcon />} />
     </nav>
+  );
+}
+
+/** A bar slot that opens something rather than going somewhere. */
+function BarButton({
+  label,
+  icon,
+  onClick,
+  active,
+}: {
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+  active?: boolean;
+}) {
+  return (
+    <button
+      onClick={(event) => {
+        createRipple(event);
+        onClick();
+      }}
+      className="flex flex-1 flex-col items-center justify-center gap-1 py-2"
+    >
+      <span
+        className={cx(
+          "md-state grid h-8 w-16 place-items-center rounded-full transition-colors",
+          active ? "bg-secondary-container text-on-secondary-container" : "text-on-variant",
+        )}
+      >
+        {icon}
+      </span>
+      <span className={cx("md-label-sm", active ? "text-on-surface" : "text-on-variant")}>
+        {label}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * The heads, as a sheet from the bottom.
+ *
+ * A sheet rather than a page, because this is a picker rather than a
+ * destination: you open it to get somewhere else, and a screen you always
+ * immediately leave is a screen that should not have been one.
+ */
+function HeadsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { allDepartments } = useStore();
+  if (!open) return null;
+
+  const heads = allDepartments.filter((d) => !d.personal);
+
+  return (
+    <div className="fixed inset-0 z-50 medium:hidden">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Your heads"
+        className="safe-bottom absolute inset-x-0 bottom-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-low shadow-e3"
+      >
+        <div className="flex items-center justify-between px-4 pt-4">
+          <h2 className="md-title">Your heads</h2>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="md-state grid h-10 w-10 place-items-center rounded-full text-on-variant"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </div>
+        <ul className="flex flex-col p-2 pb-4">
+          {heads.map((head) => (
+            <li key={head.id}>
+              <Link
+                href={departmentHrefById(head.id)}
+                onClick={(event) => {
+                  createRipple(event);
+                  onClose();
+                }}
+                className="md-state md-target flex items-center gap-3 rounded-xl px-3 py-2.5"
+              >
+                <DepartmentAvatar department={head} size={36} />
+                <span className="min-w-0">
+                  <span className="md-body block truncate">
+                    {head.personaName || head.name}
+                  </span>
+                  <span className="md-label-sm block truncate text-on-variant/75">
+                    {head.roleTitle}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }
 

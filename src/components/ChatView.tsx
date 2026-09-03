@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ConversationList } from "./ConversationList";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { useRouter, useSearchParams } from "next/navigation";
+import { setConversationOpen, showsConversationList } from "@/lib/chatRoute";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -250,7 +251,22 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     [conversations],
   );
 
-  const showList = !requestedId && started.length > 0;
+  const showList = showsConversationList(requestedId, started.length);
+
+  /*
+   * Tells the shell which of the two this is.
+   *
+   * The shell strips the top and bottom bars for a conversation, on the basis
+   * that a chat header carries a back arrow and a composer owns the bottom
+   * edge. A list has neither, and deciding from the path alone stripped them
+   * off the list too: on a phone it arrived with nothing on screen that led
+   * anywhere. Cleared on the way out so leaving a department does not leave the
+   * navigation hidden on whatever comes next.
+   */
+  useEffect(() => {
+    setConversationOpen(!showList);
+    return () => setConversationOpen(false);
+  }, [showList]);
 
   const active: Conversation | undefined = useMemo(() => {
     if (requestedId === "new") return undefined;

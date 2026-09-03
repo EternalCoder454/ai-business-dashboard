@@ -187,7 +187,20 @@ export default function AdminPage() {
         title="Operator"
       />
 
-      <div className="flex flex-none items-center gap-2 border-b border-outline-variant page-x py-3">
+      {/*
+        * Scrolls sideways rather than squeezing.
+        *
+        * Eight chips in a row that could neither wrap nor scroll had nowhere to
+        * put the overflow on a phone, so every one of them was crushed to a few
+        * characters and the labels spilled out of their own borders. They keep
+        * their size now and the row moves under a thumb.
+        */}
+      <div
+        className={cx(
+          "flex flex-none items-center gap-2 border-b border-outline-variant page-x py-3",
+          "overflow-x-auto [scrollbar-width:none] [&>*]:flex-none [&::-webkit-scrollbar]:hidden",
+        )}
+      >
         {TABS.map((key) => (
           <Chip
             key={key}

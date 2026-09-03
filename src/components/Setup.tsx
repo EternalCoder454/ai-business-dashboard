@@ -88,24 +88,29 @@ export function Setup() {
         href: "/library",
       },
       {
-        title: "Tasks and what was decided",
-        body: "What is outstanding, and the decisions the heads reason from. One that knows what you settled last month will not talk you out of it this month.",
+        title: "Tasks, and briefings on a rhythm",
+        body: "What is outstanding, and the decisions the heads reason from. Set a question to repeat and the answer is waiting under Briefings rather than something you remember to ask for.",
         href: "/tasks",
       },
       {
-        title: "Briefings on a schedule",
-        body: "Set a question and a rhythm. The answer is waiting when you open the panel instead of something you have to remember to ask.",
-        href: "/briefings",
+        title: "The Company Profile",
+        body: "Everything the heads know about the business: what it sells, who buys it, what is off the table. While this is empty they answer like a search engine, because there is nothing here to answer from. It is the single thing that most changes how good the replies are.",
+        href: "/profile",
       },
       {
-        title: "The part worth doing first",
-        body: "Settings holds the API key and the Company Profile. The profile is everything the heads know about you, and while it is empty they answer like a search engine.",
+        title: settings.wikiTitle || "Internal Wiki",
+        body: "How this business works, written for whoever joins next. An administrator can rewrite every page, so it says what your people need rather than anything about the panel.",
+        href: "/onboarding",
+      },
+      {
+        title: "Your key, and everything else",
+        body: "The panel runs on your own API key, so the conversations and the bill stay yours. Settings also holds the heads themselves, the theme, and the house writing rules.",
         href: "/settings",
         adminOnly: true,
       },
     ];
     return workspaceRole === "admin" ? all : all.filter((slide) => !slide.adminOnly);
-  }, [settings.companyName, who, workspaceRole]);
+  }, [settings.companyName, settings.wikiTitle, who, workspaceRole]);
 
   const current = slides[step];
   const last = step === slides.length - 1;
