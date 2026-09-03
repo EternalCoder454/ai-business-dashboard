@@ -75,8 +75,7 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
         {clear ? (
           <Card>
             <p className="md-body text-on-variant">
-              No open reports, no unread feedback, and every business has been
-              used this month. The nightly pass has run.
+              Nothing needs attention.
             </p>
           </Card>
         ) : (
@@ -84,11 +83,11 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
             {waiting.reports > 0 ? (
               <Alert
                 tone={waiting.urgentReports > 0 ? "bad" : "warn"}
-                title={`${waiting.reports} report${waiting.reports === 1 ? "" : "s"} to look at`}
+                title={`${waiting.reports} open report${waiting.reports === 1 ? "" : "s"}`}
                 body={
                   waiting.urgentReports > 0
-                    ? `${waiting.urgentReports} of them need attention today.`
-                    : "None of them are urgent."
+                    ? `${waiting.urgentReports} high severity.`
+                    : "None high severity."
                 }
               />
             ) : null}
@@ -96,19 +95,19 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
             {waiting.feedback > 0 ? (
               <Alert
                 tone="warn"
-                title={`${waiting.feedback} piece${waiting.feedback === 1 ? "" : "s"} of feedback`}
-                body="Submitted from inside the panel."
+                title={`${waiting.feedback} unread feedback`}
+                body="Awaiting review."
               />
             ) : null}
 
             {cronLate ? (
               <Alert
                 tone="bad"
-                title="The nightly pass has not run"
+                title="Nightly run overdue"
                 body={
                   waiting.cronAt
-                    ? `Last ran ${formatRelativeTime(waiting.cronAt)}. Briefings and the conduct review both depend on it.`
-                    : "It has never run here. Briefings and the conduct review both depend on it."
+                    ? `Last run ${formatRelativeTime(waiting.cronAt)}. Briefings and reports depend on it.`
+                    : "Never run. Briefings and reports depend on it."
                 }
               />
             ) : null}
@@ -116,8 +115,8 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
             {quiet > 0 ? (
               <Alert
                 tone="warn"
-                title={`${quiet} of ${businesses.total} businesses have gone quiet`}
-                body="No activity in the last 30 days."
+                title={`${quiet} of ${businesses.total} businesses inactive`}
+                body="No activity in 30 days."
               />
             ) : null}
           </div>
@@ -131,12 +130,12 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
           <Stat
             label="Errors"
             value={compact(health.errors)}
-            hint={health.calls > 0 ? `${errorRate.toFixed(2)} per cent` : undefined}
+            hint={health.calls > 0 ? `${errorRate.toFixed(2)}%` : undefined}
             tone={errorRate > 1 ? "bad" : undefined}
           />
           {/* Refused is the limits working, so it is never coloured. */}
           <Stat label="Refused" value={compact(health.refused)} />
-          <Stat label="Over a second" value={compact(health.slow)} />
+          <Stat label="Over 1s" value={compact(health.slow)} />
         </div>
       </section>
 
@@ -179,7 +178,7 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
       <Card>
         <h2 className="md-title-lg mb-1">Tokens</h2>
         <p className="md-body mb-4 text-on-variant">
-          Recorded since usage tracking began. Every business spends on its own key.
+Since usage tracking began. Each business spends on its own key.
         </p>
         <dl className="grid grid-cols-1 gap-3 medium:grid-cols-4">
           {(
@@ -198,8 +197,8 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
         </dl>
         {totalIn > 0 ? (
           <p className="md-label-sm mt-4 text-on-variant/75">
-            {Math.round((u.cacheRead / totalIn) * 100)} per cent of input tokens were
-            served from cache, at roughly a tenth of the price of new ones.
+            {Math.round((u.cacheRead / totalIn) * 100)}% of input tokens served from
+            cache, at roughly a tenth of the price.
           </p>
         ) : null}
       </Card>

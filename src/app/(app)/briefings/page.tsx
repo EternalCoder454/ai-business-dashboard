@@ -171,7 +171,7 @@ export default function BriefingsPage() {
             description={
               canEdit
                 ? "A schedule puts a question to one of your heads on a cadence, and the answer is waiting here when you next sign in."
-                : "An administrator of this business sets these up."
+                : "An administrator sets these up."
             }
           />
         ) : null}

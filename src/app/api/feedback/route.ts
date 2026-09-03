@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
   if (!withinRate(`feedback:${who.email}`, 5, 10 * 60_000)) {
     return Response.json(
-      { error: "That is a few in a row. Try again in a little while." },
+      { error: "Too many in a row. Try again shortly." },
       { status: 429 },
     );
   }

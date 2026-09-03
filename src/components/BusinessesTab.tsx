@@ -157,7 +157,7 @@ export function BusinessesTab({
         <EmptyState
           icon={<BuildingIcon className="h-6 w-6" />}
           title="No businesses yet"
-          description="Create one above. Each gets its own departments, skills, and memory."
+          description="Create one above."
         />
       ) : (
         <ul className="flex flex-col gap-3">

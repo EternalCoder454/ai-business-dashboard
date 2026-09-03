@@ -65,7 +65,7 @@ async function main() {
   const ok = together < ceiling;
   console.log(
     `\n  ${ok ? "ok  " : "FAIL"} ${TABLES.length} queries cost ${(together / Math.max(single, 1)).toFixed(1)}x one query` +
-      `${ok ? "" : `, expected under 4x — the prepare proxy in db/client.ts is not working`}`,
+      `${ok ? "" : `, expected under 4x. The prepare proxy in db/client.ts is not working`}`,
   );
   console.log(ok ? "\nall checks passed" : "\n1 failed");
   process.exit(ok ? 0 : 1);

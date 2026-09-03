@@ -215,7 +215,7 @@ export default function ManagePage() {
           <EmptyState
             icon={<UsersIcon className="h-8 w-8" />}
             title="Only you so far"
-            description="Add a colleague and they can sign in with the email you use here."
+            description="Add a colleague to message them."
           />
         ) : (
           <ul className="flex flex-col gap-3">

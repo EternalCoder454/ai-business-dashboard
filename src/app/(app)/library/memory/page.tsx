@@ -130,7 +130,7 @@ export default function MemoryPage() {
       <PageHeader
         eyebrow="Library"
         title="Memory"
-        description="Decisions and figures every department reads before answering."
+        description="Decisions and figures every head reads before answering."
         actions={
           <>
             <Button variant="outlined" icon={<PlusIcon className="h-4 w-4" />} onClick={() => openNew("figure")}>
@@ -166,7 +166,7 @@ export default function MemoryPage() {
             <EmptyState
               icon={<SparkIcon className="h-6 w-6" />}
               title="No entries"
-              description="Record a decision or a figure. Every department reads these before answering."
+              description="Decisions and figures every head reads before answering."
               action={<Button onClick={() => openNew("decision")}>Record a decision</Button>}
             />
           ) : null}

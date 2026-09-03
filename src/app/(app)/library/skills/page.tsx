@@ -215,7 +215,7 @@ function SkillsView() {
             <EmptyState
               icon={<SparkIcon className="h-8 w-8" />}
               title="No skills here yet"
-              description="Worth writing when you have corrected the same department the same way twice."
+              description="Write one after correcting the same head twice."
               action={
                 <Button
                   onClick={() =>
@@ -358,7 +358,7 @@ function SkillsView() {
               </Field>
               <Field
                 label="Owner"
-                hint="A company wide skill is injected into all eight prompts, so it costs its tokens eight times."
+                hint="A company wide skill is added to every head's prompt."
               >
                 <Select
                   value={draft.departmentId}
@@ -380,7 +380,7 @@ function SkillsView() {
 
             <Field
               label="When to use"
-              hint="The line a request is matched against, so write a trigger rather than a summary."
+              hint="The line a request is matched against."
             >
               <TextInput
                 value={draft.description ?? ""}
@@ -393,7 +393,7 @@ function SkillsView() {
 
             <Field
               label="SKILL.md body"
-              hint="Markdown. Numbered steps and explicit rules work better than description."
+              hint="Markdown. Numbered steps and explicit rules."
             >
               <TextArea
                 rows={18}

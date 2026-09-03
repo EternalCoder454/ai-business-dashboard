@@ -76,7 +76,7 @@ export function CalendarCard() {
       <Card>
         <h2 className="md-title-lg mb-1">Your calendar</h2>
         <p className="md-body text-on-variant">
-          Connected, but it could not be read just now.
+          Connected. Could not be read.
         </p>
       </Card>
     );

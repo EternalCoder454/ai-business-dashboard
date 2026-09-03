@@ -64,7 +64,7 @@ export function FeedbackTab() {
       <EmptyState
         icon={<SparkIcon className="h-8 w-8" />}
         title="Nothing yet"
-        description="Anyone using the panel can send a note from their account menu."
+        description="Sent from the account menu."
       />
     );
   }

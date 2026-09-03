@@ -120,7 +120,7 @@ export default function DeliverablesPage() {
           <EmptyState
             icon={<DocIcon className="h-8 w-8" />}
             title="Nothing captured yet"
-            description="Save any reply worth keeping straight from a chat with the bookmark button."
+            description="Save a reply from any chat with the bookmark button."
             action={<Button onClick={openNew}>Add one manually</Button>}
           />
         ) : (

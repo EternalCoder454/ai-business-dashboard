@@ -44,20 +44,20 @@ const FIELDS: {
     key: "brandVoice",
     label: "Brand voice",
     placeholder:
-      "How the company sounds, and what it never sounds like. Include a phrase you would and would not say.",
+      "How the company sounds, and what it never sounds like.",
     rows: 3,
   },
   {
     key: "stage",
     label: "Where the business is",
     placeholder:
-      "How long it has run, how many people, roughly what it turns over, and whether it is your main income.",
+      "Age, headcount, rough turnover, and whether it is your main income.",
     rows: 3,
   },
   {
     key: "goals",
     label: "What you are aiming at",
-    placeholder: "What has to be true in six months, and what would count as it going well.",
+    placeholder: "What has to be true in six months.",
     rows: 3,
   },
   {
@@ -71,7 +71,7 @@ const FIELDS: {
     key: "constraints",
     label: "Constraints",
     placeholder:
-      "Budget, hours, skills you do not have, anything off the table. Say what you will not do.",
+      "Budget, hours, skills, anything off the table.",
     rows: 3,
   },
   {

@@ -97,8 +97,8 @@ export default function MessagesPage() {
         <div className="px-4 py-6 medium:px-6 expanded:px-8">
           <EmptyState
             icon="✉️"
-            title="The inbox needs the hosted workspace"
-            description="A message belongs to two people, so it cannot live in one browser."
+            title="Inbox requires a hosted workspace"
+            description="Messages require a hosted workspace."
           />
         </div>
       </div>
@@ -130,7 +130,7 @@ export default function MessagesPage() {
               <EmptyState
                 icon="👤"
                 title="Nobody else yet"
-                description="Anyone else in this workspace appears here. An administrator adds them."
+                description="Colleagues appear here once an administrator adds them."
               />
             </div>
           ) : (

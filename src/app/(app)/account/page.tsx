@@ -291,7 +291,7 @@ export default function AccountPage() {
                 <TextArea
                   rows={2}
                   value={local.currentFocus}
-                  placeholder="What you are working on now, so answers land on the current thing."
+                  placeholder="What you are working on now."
                   onChange={(event) => set({ currentFocus: event.target.value })}
                 />
               </Field>
@@ -300,7 +300,7 @@ export default function AccountPage() {
                 <TextArea
                   rows={2}
                   value={local.notes}
-                  placeholder="Anything a department should know before it answers you."
+                  placeholder="Anything a head should know before answering."
                   onChange={(event) => set({ notes: event.target.value })}
                 />
               </Field>

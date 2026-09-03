@@ -154,7 +154,7 @@ export function TelemetryTab() {
       <EmptyState
         icon={<ReportIcon className="h-6 w-6" />}
         title="Nothing recorded yet"
-        description="Numbers appear here once the panel has been used."
+        description="Nothing recorded in this window."
       />
     );
   }
@@ -207,8 +207,8 @@ export function TelemetryTab() {
           <h3 className="md-title">Scheduled work</h3>
           <span className={cx("md-label", tickLate ? "text-error" : "text-on-variant")}>
             {tick
-              ? `Last ran ${formatRelativeTime(tick.lastBucket)}`
-              : `Has not run in the last ${hours >= 48 ? `${Math.round(hours / 24)} days` : `${hours} hours`}`}
+              ? `Last run ${formatRelativeTime(tick.lastBucket)}`
+              : `No run in the last ${hours >= 48 ? `${Math.round(hours / 24)} days` : `${hours} hours`}`}
           </span>
         </div>
         {tick ? (

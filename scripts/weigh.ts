@@ -44,7 +44,7 @@ async function main() {
     const snap = await loadWorkspace(space.id, "weigh@example.invalid");
     const took = Date.now() - started;
     const whole = Buffer.byteLength(JSON.stringify(snap), "utf8");
-    console.log(`\n${space.name} — ${kb(whole)} in ${took} ms`);
+    console.log(`\n${space.name}: ${kb(whole)} in ${took} ms`);
     const parts = Object.entries(snap)
       .map(([key, value]) => [key, Buffer.byteLength(JSON.stringify(value ?? null), "utf8")] as const)
       .sort((a, b) => b[1] - a[1]);

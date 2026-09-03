@@ -907,7 +907,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             <button
               onClick={() => fileRef.current?.click()}
               aria-label="Attach a file"
-              title="Attach an image, PDF, Word document, or text file. Images can be pasted straight in."
+              title="Images, PDFs, Word documents and text files."
               className="md-state md-target grid h-10 w-10 flex-none place-items-center self-end rounded-full text-on-variant"
             >
               <PaperclipIcon className="h-5 w-5" />
@@ -983,7 +983,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               <>
                 {" · "}
                 <span
-                  title="Prompt caching: tokens read from cache cost about a tenth of full price."
+                  title="Cached tokens cost about a tenth of full price."
                   className={lastUsage.cacheRead > 0 ? "text-success" : undefined}
                 >
                   {lastUsage.cacheRead > 0
@@ -1091,7 +1091,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
                     onChange={(e) => setCapture({ ...capture, label: e.target.value })}
                   />
                 </Field>
-                <Field label="Why" hint="The reasoning worth keeping, so it is not argued again.">
+                <Field label="Why" hint="Why it was decided.">
                   <TextArea
                     rows={3}
                     value={capture.detail}
@@ -1100,7 +1100,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
                 </Field>
                 <Field
                   label="Revisit when"
-                  hint="What would reopen this. A decision with no trigger is permanent."
+                  hint="What would reopen this."
                 >
                   <TextInput
                     value={capture.revisitWhen}

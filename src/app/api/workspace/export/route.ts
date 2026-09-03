@@ -40,7 +40,7 @@ export async function GET() {
   // from reading everything over and over.
   if (!withinRate(`export:${email}`, 5, 10 * 60_000)) {
     return Response.json(
-      { error: "That is a few exports in a row. Try again shortly." },
+      { error: "Too many exports. Try again shortly." },
       { status: 429 },
     );
   }

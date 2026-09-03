@@ -165,7 +165,7 @@ export async function POST(request: Request) {
     if (action === "role") {
       if (role === "member" && lastAdmin) {
         return Response.json(
-          { error: "Somebody has to be an administrator. Promote another person first." },
+          { error: "At least one administrator is required. Promote somebody first." },
           { status: 400 },
         );
       }
@@ -185,7 +185,7 @@ export async function POST(request: Request) {
       }
       if (lastAdmin) {
         return Response.json(
-          { error: "That is the last administrator. Promote somebody else first." },
+          { error: "Last administrator. Promote somebody else first." },
           { status: 400 },
         );
       }
@@ -193,7 +193,7 @@ export async function POST(request: Request) {
       // removing it here would report success and change nothing.
       if (OPERATOR_EMAILS.includes(email)) {
         return Response.json(
-          { error: "That email runs this deployment and cannot be removed here." },
+          { error: "That address runs this deployment and cannot be removed here." },
           { status: 400 },
         );
       }

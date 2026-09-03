@@ -24,10 +24,10 @@ async function resolveOwner(): Promise<
   | { error: string; status: number; reason?: "no-workspace" }
 > {
   if (!databaseEnabled) {
-    return { error: "No DATABASE_URL, so this instance stores everything locally.", status: 501 };
+    return { error: "No database configured on this instance.", status: 501 };
   }
   if (!authEnabled) {
-    return { error: "Auth is not configured, so there is no account to load.", status: 501 };
+    return { error: "Auth is not configured.", status: 501 };
   }
 
   const session = await auth();

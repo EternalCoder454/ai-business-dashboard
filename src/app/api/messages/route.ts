@@ -38,7 +38,7 @@ async function resolveSender(): Promise<
     return {
       ok: false,
       status: 503,
-      error: "Messages need the hosted workspace. This instance is running on local storage.",
+      error: "Messages require a hosted workspace.",
     };
   }
 

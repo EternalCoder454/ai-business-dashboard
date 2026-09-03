@@ -38,9 +38,9 @@ const SEVERITY: Record<string, { edge: string; label: string; chip: "error" | "p
 };
 
 const SEVERITY_LABEL: Record<string, string> = {
-  high: "Needs attention",
-  medium: "Worth a look",
-  low: "Noted",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -241,7 +241,7 @@ export function ReportsTab() {
         <EmptyState
           icon={<ReportIcon className="h-8 w-8" />}
           title="Nothing raised"
-          description="Which is the normal answer. A pass over a quiet week finds nothing at all."
+          description="Nothing raised in this period."
         />
       ) : (
         <ul className="flex flex-col gap-3">

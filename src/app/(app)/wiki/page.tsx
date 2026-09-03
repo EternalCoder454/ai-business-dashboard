@@ -85,7 +85,7 @@ export default function WikiPage() {
             description={
               canEdit
                 ? "Write the first one with Edit, above."
-                : "An administrator of this workspace has not written any yet."
+                : "An administrator has not written any yet."
             }
           />
         ) : (

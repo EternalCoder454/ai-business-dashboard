@@ -79,7 +79,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
       ) : (
         <Field
           label="What would you change?"
-          hint="An idea, or something that is broken. Sent with your name, email, and business."
+          hint="Sent with your name, email and business."
         >
           <TextArea
             autoFocus

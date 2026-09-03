@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     // anyway.
     refused("chat.stream", await workspaceOf(session.email ?? undefined), "RateLimited");
     return Response.json(
-      { error: "Too many requests in a row. Wait a moment and try again." },
+      { error: "Too many requests. Wait a moment and try again." },
       { status: 429 },
     );
   }

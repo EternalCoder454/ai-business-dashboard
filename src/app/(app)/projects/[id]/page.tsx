@@ -85,7 +85,7 @@ export default function ProjectPage() {
           <EmptyState
             icon={PROJECT_DEFAULT_ICON}
             title="This project is gone"
-            description="Anything it held is untouched and still sits with its department."
+            description="Its work is untouched and stays with its department."
             action={<Button onClick={() => router.push("/projects")}>Back to projects</Button>}
           />
         </div>

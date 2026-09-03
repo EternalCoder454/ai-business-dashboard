@@ -82,7 +82,7 @@ export function ProviderKey({ provider }: { provider: ProviderInfo }) {
         <p className="md-label-sm mt-1.5 text-on-variant/75">
           {ours.set
             ? "Set by an administrator of this workspace, and used by everyone in it."
-            : "An administrator of this workspace has not added one yet."}
+            : "An administrator has not added one yet."}
         </p>
       ) : null}
 

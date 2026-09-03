@@ -69,12 +69,12 @@ export function Setup() {
     const all: Slide[] = [
       {
         title: `Welcome to ${settings.companyName || "your panel"}`,
-        body: "A room of department heads, each answering in its own area from the same picture of the company. Two minutes on what is where.",
+        body: "A room of department heads, each answering in its own area. Two minutes on what is where.",
         href: "/",
       },
       {
         title: "Your heads",
-        body: "Pick one from the sidebar and ask. Each keeps its own conversations, so what you asked in March is still here in June.",
+        body: "Pick one from the sidebar and ask. Each keeps its own conversations.",
         href: "/ceo",
       },
       {
@@ -84,7 +84,7 @@ export function Setup() {
       },
       {
         title: "The Library",
-        body: "Anything a head writes can be kept here and exported as Word, Markdown or text. Files you upload live here too, and the heads can read them.",
+        body: "Anything a head writes, kept and exportable as Word, Markdown or text. Uploaded files live here too.",
         href: "/library",
       },
       {
@@ -94,17 +94,17 @@ export function Setup() {
       },
       {
         title: "The Company Profile",
-        body: "Everything the heads know about the business: what it sells, who buys it, what is off the table. While this is empty they answer like a search engine, because there is nothing here to answer from. It is the single thing that most changes how good the replies are.",
+        body: "Everything the heads know about the business. While it is empty they answer like a search engine.",
         href: "/profile",
       },
       {
         title: settings.wikiTitle || "Internal Wiki",
-        body: "How this business works, written for whoever joins next. An administrator can rewrite every page, so it says what your people need rather than anything about the panel.",
+        body: "How this business works, for whoever joins next. An administrator can rewrite every page.",
         href: "/wiki",
       },
       {
         title: "Settings",
-        body: "The panel runs on your own API key, so the conversations and the bill stay yours. Settings also holds the heads themselves, the theme, and the house writing rules.",
+        body: "The panel runs on your own API key. Settings also holds the heads, the theme and the writing rules.",
         href: "/settings",
         adminOnly: true,
       },

@@ -563,7 +563,7 @@ export default function AllHandsPage() {
           <div className="filter-row mt-2.5">
             <Chip
               selected={settings.roomBrevity !== "standard"}
-              title="Words each reply gets. Tight is the point of a room: breadth here, depth in a one to one."
+              title="Length of each reply."
               onClick={() =>
                 void updateSettings({
                   roomBrevity: settings.roomBrevity === "standard" ? "tight" : "standard",

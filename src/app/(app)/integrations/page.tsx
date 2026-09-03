@@ -210,8 +210,7 @@ export default function IntegrationsPage() {
         <section className="flex flex-col gap-2">
           <h2 className="md-title-lg">Reading the task list</h2>
           <p className="md-body text-on-variant">
-            This is the loop most addons run: ask what needs doing, do one of them, mark
-            it off.
+            The loop most addons run: ask what is open, do one, mark it off.
           </p>
           <pre className="overflow-x-auto rounded-xl border border-outline-variant bg-container p-3 text-[0.8125rem] leading-relaxed">
             <code>{`curl https://business.eterneon.net/api/v1/tasks?status=todo \\
@@ -302,8 +301,8 @@ curl -X PATCH https://business.eterneon.net/api/v1/tasks/TASK_ID \\
         footer={<Button onClick={() => setMinted(null)}>Done</Button>}
       >
         <p className="md-body mb-3 text-on-variant">
-          This is the only time the key is shown. It is stored as a hash, so nobody,
-          including us, can read it back. If it is lost, revoke it and make another.
+          Shown once. Stored as a hash and cannot be read back. If it is lost, revoke
+          it and issue another.
         </p>
         <div className="flex items-center gap-2">
           <code

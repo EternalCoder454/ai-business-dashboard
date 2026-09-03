@@ -236,7 +236,7 @@ export default function LibraryPage() {
             <EmptyState
               icon={<span className="text-3xl">📁</span>}
               title={files.length === 0 ? "Nothing in the Library" : "Nothing of that kind"}
-              description="Drop files anywhere on this page. Images and PDFs are read directly; Word and text files are converted on the way in."
+              description="Drop files anywhere on this page."
               action={
                 <Button onClick={() => inputRef.current?.click()}>Add files</Button>
               }
@@ -356,7 +356,7 @@ export default function LibraryPage() {
                 className="h-[50vh] w-full rounded-2xl border border-outline-variant"
               >
                 <p className="md-body p-4 text-on-variant">
-                  This browser will not preview the PDF inline. The heads can still read it.
+                  No inline preview in this browser. The heads can still read it.
                 </p>
               </object>
             ) : (

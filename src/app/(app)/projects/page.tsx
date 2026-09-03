@@ -127,8 +127,8 @@ export default function ProjectsPage() {
               title={projects.length ? "Nothing under this filter" : "No projects yet"}
               description={
                 projects.length
-                  ? "Every project is filed under a different status. Switch the filter to see the rest."
-                  : "Group a launch, a client build, or a release across every department that touches it, then open one page to see all of it at once."
+                  ? "All projects are under another status."
+                  : "Group a launch, a client build or a release across every department that touches it."
               }
               action={
                 projects.length ? null : (
