@@ -58,9 +58,29 @@ export function CalendarCard() {
     };
   }, []);
 
-  // Not connected, still loading, or Google is having a day. None of those are
-  // worth a card on somebody's dashboard.
-  if (events === null || problem) return null;
+  // Still loading, or nobody has connected one. Neither is worth a card.
+  if (events === null || problem === "not-connected") return null;
+
+  /*
+   * Connected, and we could not read it.
+   *
+   * This used to be hidden with everything else, which meant a calendar that
+   * had stopped working looked exactly like one nobody had set up: the card
+   * disappeared, the heads said they had no access, and there was nothing
+   * anywhere to suggest the connection was the problem. Somebody who went to
+   * the trouble of connecting a calendar is owed the difference between
+   * "nothing on" and "could not look".
+   */
+  if (problem) {
+    return (
+      <Card>
+        <h2 className="md-title-lg mb-1">Your calendar</h2>
+        <p className="md-body text-on-variant">
+          Connected, but it could not be read just now.
+        </p>
+      </Card>
+    );
+  }
 
   if (events.length === 0) {
     return (

@@ -17,7 +17,7 @@ import {
   type Credentials,
 } from "./credentials";
 import { newId } from "./ids";
-import type { PromptCalendarEvent } from "./prompts";
+import type { CalendarStatus, PromptCalendarEvent } from "./prompts";
 import {
   applyOp,
   type MutationOp,
@@ -199,6 +199,8 @@ export interface StoreValue {
    * for every question asked.
    */
   calendar: PromptCalendarEvent[];
+  /** Whether there is a calendar at all, which is not whether it has events. */
+  calendarStatus: CalendarStatus;
   /**
    * Loads one conversation's messages.
    *
@@ -303,6 +305,7 @@ export function StoreProvider({
   // Bumped by `retryLoad` to send the effect round again.
   const [reloadKey, setReloadKey] = useState(0);
   const [calendar, setCalendar] = useState<PromptCalendarEvent[]>([]);
+  const [calendarStatus, setCalendarStatus] = useState<CalendarStatus>("not-connected");
   const [isOperator, setIsOperator] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [remote, setRemote] = useState<Workspace | null>(null);
@@ -371,17 +374,24 @@ export function StoreProvider({
   /*
    * The calendar, once, if there is one.
    *
-   * Silent about every failure. Nobody has connected one, Google is having a
-   * day, the deployment has no OAuth client: in all three cases the right
-   * behaviour is a prompt without a calendar block in it, not an error on a
-   * screen about a feature the person may never have switched on.
+   * The status is kept, not just the events. This used to store the events and
+   * only when there were some, which quietly folded three different situations
+   * into one: nobody connected a calendar, somebody connected one and has a
+   * free week, and somebody connected one we cannot read. The prompt saw the
+   * same empty array for all three, so a head told a person with a working
+   * calendar that it had no access to their calendar.
+   *
+   * Still silent on screen about not being connected, which is not a failure
+   * and not worth a message about a feature nobody switched on.
    */
   useEffect(() => {
     let cancelled = false;
     void fetch("/api/calendar?days=7")
       .then((response) => (response.ok ? response.json() : null))
-      .then((body: { events?: PromptCalendarEvent[] } | null) => {
-        if (!cancelled && body?.events?.length) setCalendar(body.events);
+      .then((body: { events?: PromptCalendarEvent[]; problem?: CalendarStatus } | null) => {
+        if (cancelled || !body) return;
+        setCalendar(body.events ?? []);
+        setCalendarStatus(body.problem ?? "connected");
       })
       .catch(() => {});
     return () => {
@@ -761,6 +771,7 @@ export function StoreProvider({
       },
       isOperator,
       calendar,
+      calendarStatus,
       allDepartments: departmentList,
       departments: departmentList.filter((d) => !d.isCeo && !d.personal),
       personalDepartments: departmentList.filter((d) => d.personal),
@@ -1340,6 +1351,7 @@ export function StoreProvider({
     serverKey,
     isOperator,
     calendar,
+    calendarStatus,
     loadFailed,
     noWorkspace,
     remote,

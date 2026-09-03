@@ -222,8 +222,55 @@ export interface PromptCalendarEvent {
   allDay: boolean;
 }
 
-export function buildCalendarBlock(events: PromptCalendarEvent[]): string {
-  if (events.length === 0) return "";
+/**
+ * Whether we have a calendar at all, which is not the same as whether it has
+ * anything in it.
+ *
+ * Three states, because collapsing them is how a connected calendar with a
+ * quiet week became "I do not have access to your calendar". Nobody had
+ * connected one and nobody had a free week looked identical from inside the
+ * prompt, and the head told the person the wrong one.
+ */
+export type CalendarStatus = "connected" | "not-connected" | "unavailable";
+
+export function buildCalendarBlock(
+  events: PromptCalendarEvent[],
+  status: CalendarStatus = "not-connected",
+): string {
+  // Nothing connected. No block, and the head correctly has no calendar.
+  if (status === "not-connected") return "";
+
+  /*
+   * Connected, and we could not read it. This has to be said rather than left
+   * blank, because the dangerous answer is not "I cannot see it", it is a head
+   * cheerfully telling somebody their week is clear when it never managed to
+   * look.
+   */
+  if (status === "unavailable") {
+    return [
+      "## Their calendar",
+      "",
+      "They have connected a calendar, but it could not be read just now. Do",
+      "not say their diary is clear or that they have nothing on: you do not",
+      "know. If the answer depends on what is booked, say that the calendar is",
+      "connected but unavailable and answer without it.",
+    ].join("\n");
+  }
+
+  /*
+   * Connected and genuinely empty, which is a real answer and a useful one.
+   * "You have nothing booked for the next week" is worth saying, and it is a
+   * different sentence from "I cannot see your calendar".
+   */
+  if (events.length === 0) {
+    return [
+      "## Their calendar",
+      "",
+      "Their calendar is connected and there is nothing booked in the next few",
+      "days. That is a real answer: if they ask what is on, tell them the diary",
+      "is clear rather than that you cannot see it.",
+    ].join("\n");
+  }
 
   const midnight = (at: number) => {
     const d = new Date(at);
@@ -277,6 +324,7 @@ export function buildSystemPrompt(
   tasks: Task[] = [],
   tools: { name: string }[] = [],
   calendar: PromptCalendarEvent[] = [],
+  calendarStatus: CalendarStatus = "not-connected",
 ): string {
   const context = buildCompanyContext(profile, companyName);
 
@@ -300,7 +348,7 @@ export function buildSystemPrompt(
     buildTasksBlock(tasks, department.id),
     // After the record and the board, because it changes every day and would
     // otherwise push everything below it out of the cached prefix daily.
-    buildCalendarBlock(calendar),
+    buildCalendarBlock(calendar, calendarStatus),
     buildToolsBlock(tools),
     SHARED_OPERATING_RULES,
     writingRules.trim(),

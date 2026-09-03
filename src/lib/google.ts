@@ -297,7 +297,20 @@ export async function upcoming(email: string, days = 7): Promise<CalendarResult>
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) {
-      console.error("[google] calendar refused", response.status);
+      /*
+       * The status on its own is not diagnosable. A 403 here is almost never a
+       * permission the person failed to grant: the common one is the Calendar
+       * API being switched off in the Google Cloud project, which returns 403
+       * with an explanation and a link, and which no amount of reconnecting
+       * will fix. Logging the number alone sent somebody looking at the wrong
+       * end of it for a while, so the reason goes in the log.
+       */
+      const detail = await response.text().catch(() => "");
+      console.error(
+        "[google] calendar refused",
+        response.status,
+        detail.slice(0, 300).replace(/\s+/g, " "),
+      );
       return { events: [], problem: "unavailable" };
     }
 
