@@ -6,18 +6,24 @@ import { FeedbackTab } from "@/components/FeedbackTab";
 import { ReportsTab } from "@/components/ReportsTab";
 import { TelemetryTab } from "@/components/TelemetryTab";
 import { UsageTab } from "@/components/UsageTab";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   Button,
+  BuildingIcon,
   Card,
   Chip,
+  DashboardIcon,
   Dialog,
   EmptyState,
+  FeedbackIcon,
   Field,
-  BuildingIcon,
   PersonIcon,
+  PolicyIcon,
+  PulseIcon,
+  ShieldIcon,
   TextInput,
   TrashIcon,
+  TrendIcon,
   cx,
 } from "@/components/ui";
 import { createRipple } from "@/components/ui/ripple";
@@ -93,6 +99,23 @@ const TAB_LABEL: Record<Tab, string> = {
   health: "Health",
   usage: "Usage",
   access: "Access",
+};
+
+/*
+ * An icon each, because eight words in a row on a phone is eight words in a row
+ * on a phone. The label stays beside the icon from medium up, where there is
+ * room for it, and drops on compact where the icon carries it and the name is
+ * on the heading of whatever the tab opened anyway.
+ */
+const TAB_ICON: Record<Tab, ReactNode> = {
+  businesses: <BuildingIcon className="h-4 w-4" />,
+  overview: <DashboardIcon className="h-4 w-4" />,
+  clients: <PersonIcon className="h-4 w-4" />,
+  reports: <PolicyIcon className="h-4 w-4" />,
+  feedback: <FeedbackIcon className="h-4 w-4" />,
+  health: <PulseIcon className="h-4 w-4" />,
+  usage: <TrendIcon className="h-4 w-4" />,
+  access: <ShieldIcon className="h-4 w-4" />,
 };
 
 const compact = (n: number) =>
@@ -205,13 +228,26 @@ export default function AdminPage() {
           <Chip
             key={key}
             selected={tab === key}
+            title={TAB_LABEL[key]}
+            aria-label={TAB_LABEL[key]}
             onClick={() => {
               setTab(key);
               setPerson(undefined);
               setThread(null);
             }}
           >
-            {TAB_LABEL[key]}
+            <span className="flex items-center gap-1.5">
+              {TAB_ICON[key]}
+              {/*
+                * On a phone only the selected tab says its name. A row of eight
+                * unlabelled icons is a guess, and there is no hover on a touch
+                * screen to resolve it, but eight labels is the squeeze this
+                * replaced. The one you are on is the one you need named.
+                */}
+              <span className={cx(tab === key ? "inline" : "hidden medium:inline")}>
+                {TAB_LABEL[key]}
+              </span>
+            </span>
           </Chip>
         ))}
       </div>

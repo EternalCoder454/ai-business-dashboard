@@ -5,6 +5,7 @@ import Link from "next/link";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useMemo, useState } from "react";
 import {
+  ArchiveIcon,
   Button,
   Chip,
   Dialog,
@@ -16,6 +17,7 @@ import {
   TextArea,
   TextInput,
   TrashIcon,
+  UnarchiveIcon,
   cx,
 } from "@/components/ui";
 import { LibraryTabs } from "@/components/LibraryTabs";
@@ -405,8 +407,13 @@ function EntryCard({
           </button>
           <button
             onClick={onArchive}
-            className="md-state md-label-sm rounded-lg px-2 py-1 text-on-variant"
+            className="md-state md-label-sm flex items-center gap-1.5 rounded-lg px-2 py-1 text-on-variant"
           >
+            {entry.archived ? (
+              <UnarchiveIcon className="h-3.5 w-3.5" />
+            ) : (
+              <ArchiveIcon className="h-3.5 w-3.5" />
+            )}
             {entry.archived ? "Restore" : "Archive"}
           </button>
           <button

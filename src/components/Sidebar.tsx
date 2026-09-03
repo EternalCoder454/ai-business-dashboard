@@ -21,7 +21,7 @@ import { useStore } from "@/lib/store";
 import {
   BriefcaseIcon,
   BuildingIcon,
-  CheckIcon,
+  ChecklistIcon,
   ChevronIcon,
   BookIcon,
   DashboardIcon,
@@ -33,6 +33,7 @@ import {
   ShieldIcon,
   PersonIcon,
   PlusIcon,
+  ScheduleIcon,
   SparkIcon,
   StatusDot,
   UsersIcon,
@@ -86,13 +87,17 @@ export const WORK_LINKS: NavLink[] = [
     href: "/briefings",
     label: "Briefings",
     short: "Briefs",
-    icon: <SparkIcon className="h-5 w-5" />,
+    // A clock, because what makes a briefing a briefing is that it arrives on
+    // a rhythm rather than that a model wrote it.
+    icon: <ScheduleIcon className="h-5 w-5" />,
   },
   {
     href: "/tasks",
     label: "Tasks",
     short: "Tasks",
-    icon: <CheckIcon className="h-5 w-5" />,
+    // A list of things to do rather than one done thing, which is what a lone
+    // tick reads as.
+    icon: <ChecklistIcon className="h-5 w-5" />,
   },
   {
     href: "/projects",
