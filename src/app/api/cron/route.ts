@@ -118,13 +118,9 @@ export async function GET(request: Request) {
   const ms = Date.now() - started;
 
   /*
-   * One row for the tick itself, which is the point of the whole thing.
-   *
-   * The nightly work used to leave a console line and nothing else, so "did
-   * last night run" had no answer short of trawling the platform's logs.
-   * What makes this worth recording is not the row that appears but the one
-   * that does not: an hour with no cron.tick is a tick that never happened,
-   * and until now that looked exactly like a quiet night.
+   * One row for the tick itself. What makes it worth recording is not the row
+   * that appears but the one that does not: an hour with no cron.tick is a
+   * tick that never happened, which otherwise looks like a quiet night.
    */
   record({
     operation: "cron.tick",

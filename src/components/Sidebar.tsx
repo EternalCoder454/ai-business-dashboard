@@ -51,12 +51,9 @@ export interface NavLink {
 }
 
 /*
- * Home first.
- *
- * The Chief of Staff used to lead, which put Dashboard second in every
- * navigation in the product including the bottom bar on a phone, where the
- * first slot is the one a thumb finds without looking. Nobody expects to reach
- * home by pressing the second thing.
+ * Home first. This list is every navigation in the product, including the
+ * bottom bar on a phone, where the first slot is the one a thumb finds without
+ * looking.
  */
 export const WORK_LINKS: NavLink[] = [
   {
@@ -244,11 +241,8 @@ export function SidebarContent({
   const { unread } = useMessages();
 
   /*
-   * Only the heads this person was given.
-   *
-   * A business can restrict somebody to one or two of them, and the sidebar is
-   * where that has to be true first: a name in a list you cannot open is worse
-   * than the name not being there.
+   * Only the heads this person was given. A name in a list you cannot open is
+   * worse than the name not being there.
    */
   const visibleHeads = departments.filter((department) => canOpenHead(department.id));
 
@@ -489,12 +483,8 @@ export function SidebarContent({
       ),
     } : undefined,
     /*
-     * Recent conversations used to live here.
-     *
-     * A department opens to its own list now, so this was the same threads
-     * in a narrower column, and it was the only place they could be reached
-     * from back when a department reopened whichever one was most recent and
-     * would not let go of it.
+     * No recent conversations here: a department opens to its own list, so
+     * this would be the same threads in a narrower column.
      */
         }}
       />

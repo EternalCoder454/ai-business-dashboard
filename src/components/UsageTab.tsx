@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, Chip, cx } from "./ui";
 import { formatRelativeTime } from "@/lib/routes";
+import { useNow } from "@/lib/useNow";
 
 interface Row {
   id: string;
@@ -46,15 +47,7 @@ const DAY = 86_400_000;
  */
 export function UsageTab() {
   const [days, setDays] = useState(30);
-  /*
-   * The clock, read once on mount.
-   *
-   * Calling Date.now() while rendering makes the output depend on when React
-   * happened to render, which is not a pure thing to do and is what the
-   * compiler objects to. A screen left open past a boundary shows the old
-   * reckoning until it is reloaded, which is the right trade here.
-   */
-  const [now] = useState(() => Date.now());
+  const now = useNow();
 
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);

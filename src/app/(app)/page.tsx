@@ -24,13 +24,9 @@ export default function DashboardPage() {
         title={settings.companyName}
         actions={
           /*
-           * One row on a phone rather than two.
-           *
-           * Both labels plus both icons are wider than 375px, so they wrapped,
-           * and a wrapped button in a fixed height row is the worst of both.
-           * On compact the pair takes the full width and splits it, and the
-           * icons stand down: the words are what identify the button and they
-           * are what the space is spent on. From medium up nothing changes.
+           * One row on a phone rather than two. Both labels plus both icons
+           * are wider than 375px, so on compact the pair splits the full width
+           * and the icons stand down: the words identify the button.
            */
           <div className="flex w-full gap-2 medium:w-auto">
             <Button

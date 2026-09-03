@@ -82,11 +82,8 @@ export async function GET(request: Request) {
   if (!who.ok) return Response.json({ error: who.error }, { status: who.status });
 
   /*
-   * One transcript, on request.
-   *
-   * Keyed by the business as well as the id where the caller is an
-   * administrator, so an id from another business matches nothing rather than
-   * matching and being refused.
+   * One transcript, on request. Keyed by the business as well as the id where
+   * the caller is an administrator, so an id from elsewhere matches nothing.
    */
   const wanted = query.get("transcript")?.trim();
   if (wanted) {
@@ -113,14 +110,10 @@ async function listing(who: { email: string; workspaceId: string | null }) {
       // deliberately across all of them for an operator, which `reader` above
       // is the gate on.
       /*
-       * Every column except the transcript.
-       *
-       * A transcript is up to four thousand characters and there can be two
-       * hundred rows, so the list was carrying the better part of a megabyte of
-       * other people's conversations to render a page that shows none of it:
-       * it sits behind a disclosure nobody opens on most rows. Whether there is
-       * one comes back as a flag, and the text itself is fetched when somebody
-       * actually asks to read it.
+       * Every column except the transcript. Four thousand characters across
+       * two hundred rows is most of a megabyte of other people's conversations
+       * to render a page that shows none of it. A flag says whether there is
+       * one; the text is fetched when somebody asks to read it.
        */
       requireDb()
         .select({
@@ -184,12 +177,9 @@ export async function POST(request: Request) {
   try {
     if (parsed.body.action === "run") {
       /*
-       * A pass costs money, so it is still not something to hold down the
-       * button on, but three in ten minutes was set when one pass swept every
-       * business on the operator's own key. An administrator's pass now reads
-       * one business, on their key, over at most a hundred and twenty messages
-       * on the cheap model, which is fractions of a penny. The limit is there
-       * to stop a loop, not to ration.
+       * A pass reads one business, on their key, over at most a hundred and
+       * twenty messages on the cheap model. The limit is here to stop a loop
+       * rather than to ration.
        */
       const wait = await retryAfter(`review:${who.email}`, 10, 10 * 60_000);
       if (wait > 0) {
@@ -217,14 +207,9 @@ export async function POST(request: Request) {
           : "new";
       if (!id) return Response.json({ error: "Nothing named." }, { status: 400 });
       /*
-       * Fenced to the caller's business unless they are the operator.
-       *
-       * By id alone this was safe only while an operator was the one caller.
-       * The moment an administrator can post here, an id from another business
-       * would have worked: reports are not secret ids, they travel in support
-       * threads, and dismissing somebody else's report is a quiet way to bury
-       * one. Keyed by both, so an id from elsewhere matches nothing rather than
-       * matching and being refused.
+       * Fenced to the caller's business unless they are the operator. By id
+       * alone an administrator could dismiss another business's report, and a
+       * report id is not a secret: they travel in support threads.
        */
       await requireDb()
         .update(t.reports)
@@ -239,12 +224,10 @@ export async function POST(request: Request) {
 
     if (parsed.body.action === "delete") {
       /*
-       * The operator only, and not an administrator.
-       *
-       * Dismissing is what an administrator does with a report about their own
-       * business, and it leaves the row where it is. Deleting removes the
-       * record of somebody having been reported, which is not a thing to hand
-       * to the person the report may be about.
+       * The operator only. Dismissing leaves the row where it is, which is
+       * what an administrator does; deleting removes the record of somebody
+       * having been reported, which is not a thing to hand to the person the
+       * report may be about.
        */
       if (!who.operator) {
         return Response.json({ error: "Not found." }, { status: 404 });

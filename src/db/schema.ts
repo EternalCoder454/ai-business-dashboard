@@ -932,21 +932,13 @@ export const telemetry = pgTable(
 );
 
 /* -------------------------------------------------------------------------- *
- * Sign in
+ * Sign in: the four tables better-auth owns.
  *
- * Four tables better-auth owns. Written by hand rather than generated, because
- * everything else in this file is, and a generated file that nobody reads is
- * where a column with the wrong nullability hides.
+ * Prefixed `auth_` because `user` is reserved in Postgres and because this
+ * schema already has an `accounts` table meaning something else entirely.
  *
- * Prefixed `auth_` for two reasons. `user`, `session` and `account` are poor
- * table names in Postgres, where `user` is a reserved word, and this schema
- * already has an `accounts` table that means something completely different:
- * who a person is, their name and pronouns and notes. Two tables called
- * something like `account` holding unrelated things is a mistake waiting for
- * somebody in a hurry.
- *
- * The property names are better-auth's and cannot be changed: the adapter looks
- * up fields by them. The column names are this project's convention.
+ * The property names are better-auth's and cannot be changed, since the
+ * adapter looks fields up by them. The column names are this project's.
  * -------------------------------------------------------------------------- */
 
 export const authUser = pgTable("auth_user", {
@@ -1002,11 +994,9 @@ export const authAccount = pgTable(
       .notNull()
       .references(() => authUser.id, { onDelete: "cascade" }),
     /*
-     * Google's own tokens for this person.
-     *
-     * Not the same thing as the calendar connection in googleConnections, which
-     * is a separate consent for a separate scope and stays where it is. This is
-     * whatever the sign-in itself returned, and nothing in the app reads it.
+     * Whatever the sign-in itself returned, which nothing in the app reads.
+     * Not the calendar connection: that is a separate consent for a separate
+     * scope and lives in googleConnections.
      */
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),

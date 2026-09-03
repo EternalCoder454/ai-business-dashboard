@@ -51,14 +51,10 @@ async function resolveOwner(): Promise<
   }
 
   /*
-   * Signed in and in no workspace.
-   *
-   * Only reachable by an address in OPERATOR_EMAILS, since everyone else got in
-   * through an access row that names one. That list is the environment escape
-   * hatch, so it has to land somewhere rather than 403 the owner out of their
-   * own deployment; anyone else is told to ask, because inventing a workspace
-   * for them would quietly separate a colleague from the company they were
-   * meant to join.
+   * Signed in and in no workspace, which only an OPERATOR_EMAILS address can
+   * be. They have to land somewhere rather than be locked out of their own
+   * deployment. Anybody else is told to ask, since inventing a workspace would
+   * quietly separate a colleague from the company they meant to join.
    */
   /*
    * The same two cases sign-in allows: an operator, or the first person into
@@ -153,17 +149,14 @@ export async function POST(request: Request) {
   }
 
   /*
-   * A screen somebody cannot open is also a screen they cannot write to.
+   * A screen somebody cannot open is also a screen they cannot write to. Every
+   * write arrives here in a batch that names its table, so one check covers
+   * each area rather than a check per screen that somebody forgets to add.
    *
-   * Hiding the navigation is what makes a restriction usable and this is what
-   * makes it a restriction: the writes all arrive here, on one endpoint, in a
-   * batch that names its table, so one check covers every area that maps onto
-   * a table rather than a check per screen that somebody forgets to add.
-   *
-   * Reads are not fenced here and deliberately so. The workspace loads as one
-   * document, so this decides what a person is shown and may change, not what
-   * their browser could be made to fetch. Anyone who must not see something at
-   * all belongs in their own workspace.
+   * Reads are deliberately not fenced. The workspace loads as one document, so
+   * this decides what a person is shown and may change, not what their browser
+   * could be made to fetch. Anyone who must not see a thing at all belongs in
+   * their own workspace.
    */
   const denied = ops
     .map((op) => areaOfTable(op.table))
@@ -177,13 +170,11 @@ export async function POST(request: Request) {
   }
 
   /*
-   * And a conversation with a head they were not given.
-   *
-   * The head itself is answered by whoever holds the key, so somebody willing
-   * to build their own request can talk to any of them whatever this says.
-   * What this stops is the part that lasts: a thread with a head outside their
-   * list cannot be saved, so it cannot appear in the sidebar, in search, in
-   * the reviewer's reading, or in anybody else's copy of the workspace.
+   * And a conversation with a head they were not given. The reply itself comes
+   * from whoever holds the key, so a hand built request can still reach any
+   * head. What this stops is the part that lasts: the thread cannot be saved,
+   * so it reaches neither the sidebar, search, the reviewer, nor anybody
+   * else's copy of the workspace.
    */
   const wrongHead = ops.some(
     (op) =>

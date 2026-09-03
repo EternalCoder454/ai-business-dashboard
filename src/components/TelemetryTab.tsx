@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, Chip, EmptyState, ReportIcon, cx } from "./ui";
 import { formatRelativeTime } from "@/lib/routes";
+import { useNow } from "@/lib/useNow";
 
 interface Row {
   workspaceId: string;
@@ -121,27 +122,15 @@ export function TelemetryTab() {
   const peak = Math.max(1, ...byHour.map((h) => h.calls));
 
   /*
-   * The nightly work, called out on its own.
-   *
-   * Everything else here is read by looking at a number that is there. This one
-   * is read by noticing a number that is not: a tick that never ran leaves no
-   * row, and a table of rows cannot show you an absence. So it gets its own
-   * line that says when it last happened and goes red when that was too long
-   * ago, which is the only shape in which "it stopped running" is visible.
+   * The nightly work, called out on its own. A tick that never ran leaves no
+   * row, and a table of rows cannot show an absence, so this says when it last
+   * happened and goes red when that was too long ago.
    */
   const tick = (rows ?? []).find((row) => row.operation === "cron.tick");
   // The cron is daily. A bucket is an hour wide, so anything past about a day
   // and a bit means a night was missed rather than a clock being off.
   const OVERDUE_MS = 26 * 60 * 60 * 1000;
-  /*
-   * The clock, read once on mount.
-   *
-   * Calling Date.now() while rendering makes the output depend on when React
-   * happened to render, which is not a pure thing to do and is what the
-   * compiler objects to. A screen left open past a boundary shows the old
-   * reckoning until it is reloaded, which is the right trade here.
-   */
-  const [now] = useState(() => Date.now());
+  const now = useNow();
 
   const tickLate = !tick || now - tick.lastBucket > OVERDUE_MS;
 

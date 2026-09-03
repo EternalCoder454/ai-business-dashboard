@@ -41,13 +41,10 @@ export function useTypedField(
   const latest = useRef(value);
 
   /*
-   * Both kept current in an effect rather than assigned while rendering.
-   *
-   * Writing a ref during render is what the compiler objects to, and it is
-   * right to: a render can be thrown away and rerun, and a ref written during
-   * one that was discarded has still been written. Nothing here reads either of
-   * these during render. The timer callback and the flush on the way out both
-   * run after the effects, so they see the latest values either way.
+   * Both kept current in an effect rather than assigned while rendering: a
+   * render can be thrown away and rerun, and a ref written during a discarded
+   * one has still been written. The timer callback and the flush on the way
+   * out run after the effects, so they see the latest values either way.
    */
   useEffect(() => {
     saver.current = save;
@@ -69,12 +66,10 @@ export function useTypedField(
   }, [value, delay]);
 
   /*
-   * Anything still owed is written on the way out.
-   *
-   * Waiting to save opens a hole that saving on every keystroke did not have:
-   * type a company name, click away inside the delay, and the timer is cleared
-   * with the component and the edit is gone. Losing somebody's work is a worse
-   * bug than the one being fixed, so leaving flushes.
+   * Anything still owed is written on the way out. Debouncing opens a hole
+   * that saving on every keystroke did not have: type a name, click away
+   * inside the delay, and the timer is cleared with the component and the edit
+   * is gone.
    */
   useEffect(
     () => () => {

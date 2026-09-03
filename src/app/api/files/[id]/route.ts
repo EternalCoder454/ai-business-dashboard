@@ -52,17 +52,13 @@ export async function GET(
   if (!row) return Response.json({ error: "Not found." }, { status: 404 });
 
   /*
-   * The bytes, from wherever this row keeps them.
+   * The bytes, from wherever this row keeps them: newer rows point at the blob
+   * store and older ones still carry base64.
    *
-   * Newer rows point at the blob store and older ones still carry base64, so
-   * both are read here and nothing had to be migrated for the change to land.
-   *
-   * Still served through this route rather than by handing the browser the blob
-   * URL, which would have been faster and wrong. A blob URL is unguessable and
-   * permanent and answers to nobody: once it is out, it is out, and it is not
-   * checked against a workspace ever again. Everything this product says about
-   * one business's files not reaching another depends on the check a few lines
-   * above, and a redirect would route around it.
+   * Served through this route rather than by redirecting to the blob URL,
+   * which would be faster and wrong. That URL is permanent, answers to nobody,
+   * and is never checked against a workspace again, so a redirect would route
+   * around the tenancy check a few lines above.
    */
   const bytes = await load(row);
   if (!bytes) return Response.json({ error: "Not found." }, { status: 404 });
@@ -101,12 +97,9 @@ async function load(row: {
 
   try {
     /*
-     * Through the SDK rather than a plain fetch of the URL.
-     *
-     * The store is private: a blob URL answers nothing on its own, which is
-     * the property that makes it safe to keep a client's documents in. Reading
-     * one needs the deployment's own credential, which lives here and nowhere
-     * near a browser.
+     * Through the SDK rather than a plain fetch. The store is private, so a
+     * blob URL answers nothing on its own and reading one needs the
+     * deployment's credential, which lives here and nowhere near a browser.
      */
     const found = await get(row.blobUrl, { access: "private" });
     if (!found) {

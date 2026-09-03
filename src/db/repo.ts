@@ -32,11 +32,9 @@ const ms = (value: Date) => value.getTime();
  */
 /** Everything about a file except its bytes, which are fetched when opened. */
 /*
- * Everything a client is allowed to know about a file.
- *
- * Neither the bytes nor where they are kept. The browser fetches a file through
- * this app's own route, which checks the workspace first, so it has no use for
- * the blob URL and a URL it never receives is one it cannot leak.
+ * Neither the bytes nor where they are kept. A browser fetches a file through
+ * this app's own route, which checks the workspace first, so a blob URL it
+ * never receives is one it cannot leak.
  */
 type FileRow = Omit<typeof t.files.$inferSelect, "data" | "blobUrl">;
 
@@ -218,13 +216,9 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
     db.select().from(t.projects).where(eq(t.projects.workspaceId, workspaceId)).orderBy(desc(t.projects.updatedAt)),
     db.select().from(t.conversations).where(eq(t.conversations.workspaceId, workspaceId)).orderBy(desc(t.conversations.updatedAt)),
     /*
-     * How many messages each conversation has, not what they say.
-     *
-     * This used to be every message body in the business, on every page load,
-     * for every page. Measured against the real database with 1,200 messages
-     * across 40 conversations it was 438 ms of a 557 ms load, and it grew with
-     * the history rather than staying flat, so it got worse the longer somebody
-     * used the product. The bodies arrive when a conversation is opened.
+     * How many messages each conversation has, not what they say. Bodies are
+     * the largest thing in a workspace and grow forever, so they arrive when a
+     * conversation is opened rather than on every page load.
      */
     db
       .select({
@@ -236,12 +230,9 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       .groupBy(t.messages.conversationId),
     db.select().from(t.skills).where(eq(t.skills.workspaceId, workspaceId)).orderBy(desc(t.skills.updatedAt)),
     /*
-     * The opening of each document, not all of it.
-     *
-     * The Library card shows about 180 characters. Everything past that was
-     * being read out of Postgres, sent to the browser, and held there on every
-     * page load of every screen, growing with the business. `left` does the
-     * truncation in the database so the bytes never leave it.
+     * The opening of each document, not all of it. A Library card shows about
+     * 180 characters, and `left` truncates in the database so the rest never
+     * leaves it.
      */
     db
       .select({
@@ -263,14 +254,10 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
     db.select().from(t.tasks).where(eq(t.tasks.workspaceId, workspaceId)).orderBy(asc(t.tasks.sortOrder)),
     db.select().from(t.wikiPages).where(eq(t.wikiPages.workspaceId, workspaceId)).orderBy(asc(t.wikiPages.sortOrder)),
     /*
-     * Every column except `data`.
-     *
-     * `data` is the base64 of the image or PDF itself, and nothing built from
-     * these rows reads it: `toAttachment` never touches it, and the bytes are
-     * served on demand from /api/files/[id]. `select()` with no argument took
-     * it anyway, so a business with fifty megabytes in its Library pulled fifty
-     * megabytes out of Postgres, through the server, and dropped it on the
-     * floor on every single page load.
+     * Every column except `data`, which is the base64 of the file itself.
+     * Nothing built from these rows reads it, and the bytes are served on
+     * demand from /api/files/[id]. A bare `select()` would carry a business's
+     * whole Library on every page load.
      */
     db
       .select({
@@ -302,12 +289,9 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
     /*
      * Named columns, and deliberately not the three key ones.
      *
-     * The mapping below already field-lists what it returns, so nothing leaked.
-     * But a bare select() pulls the keys into this function's memory and leaves
-     * one edit away from a leak: somebody spreads the row instead of naming
-     * fields, and the workspace's credentials go out in the snapshot every
-     * member of the business receives. Not fetching them at all means that edit
-     * cannot be written.
+     * A bare select() would pull the workspace's credentials into memory here,
+     * one careless spread away from going out in the snapshot every member
+     * receives. Not fetching them means that edit cannot be written.
      */
     db
       .select({
@@ -538,12 +522,9 @@ export async function applyMutations(
   const now = new Date();
 
   /*
-   * Blobs whose rows are about to go, cleared once the transaction has.
-   *
-   * Gathered inside and deleted outside on purpose. A store that is unreachable
-   * must not roll back a delete the person asked for, and a row gone with its
-   * bytes left behind is a smaller problem than a file somebody deleted coming
-   * back.
+   * Gathered inside the transaction and deleted after it commits. An
+   * unreachable store must not roll back a delete somebody asked for: bytes
+   * left behind are a smaller problem than a deleted file coming back.
    */
   const orphaned: string[] = [];
 
@@ -691,13 +672,10 @@ export async function applyMutations(
           if (op.action === "delete") {
             if (op.ids.length) {
               /*
-               * The attachments go with the messages that carried them. A chat
-               * attachment is not in the Library, so nothing else lists or
-               * deletes it, and they are the largest rows there are.
-               *
-               * Only chat-origin files: a Library upload can be referenced by a
-               * message too and belongs to the Library, not to the conversation
-               * that mentioned it.
+               * Chat attachments go with the messages that carried them, since
+               * nothing else lists or deletes them. Only chat-origin files: a
+               * Library upload can be referenced by a message and still belongs
+               * to the Library.
                */
               const carried = await tx
                 .select({ ids: t.messages.attachmentIds })
@@ -1007,14 +985,9 @@ export async function applyMutations(
               name: row.name,
               data: row.data,
               /*
-               * Where the bytes went, which this forgot to write.
-               *
-               * The client uploads to the blob store and clears `data`, so
-               * leaving this out wrote a row with the bytes in neither place:
-               * the file appeared in the Library, opened as nothing, and the
-               * upload it came from sat in the store with nothing pointing at
-               * it. The chat path was given this and the Library path was not,
-               * which is what two nearly identical writes get you.
+               * Both write paths have to carry this. The client uploads to the
+               * blob store and clears `data`, so a row without it has the bytes
+               * in neither place and the file opens as nothing.
                */
               blobUrl: row.blobUrl ?? "",
               textContent: row.text ?? null,
@@ -1113,16 +1086,14 @@ export async function applyMutations(
 
         case "settings": {
           /*
-           * An allow list, applied only to the keys actually present.
+           * An allow list, applied only to the keys actually present. Both
+           * halves matter: spreading the row lets it choose its own
+           * workspaceId and write into another company's settings, and writing
+           * every column makes a partial save like `{ theme }` also write a
+           * defaulted companyName, which renames the business.
            *
-           * Both halves matter and both have been got wrong. Spreading the row
-           * lets it choose its own workspaceId and write into another company's
-           * settings. Writing every column instead makes a partial save like
-           * `{ theme }` also write a defaulted companyName, which renames the
-           * business.
-           *
-           * The scope key stays the server's, and the three model keys are
-           * refused here because /api/workspace/keys is the only writer.
+           * The three model keys are refused here; /api/workspace/keys is the
+           * only writer.
            */
           const WRITABLE = [
             "model",

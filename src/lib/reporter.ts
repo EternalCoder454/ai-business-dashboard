@@ -248,13 +248,10 @@ export async function review(
   const { transcript, known } = compose(batch);
 
   /*
-   * Its own instructions and nothing else.
-   *
-   * No writing rules, no company profile, no persona, no memory. This is not
-   * one of the heads and it is not answering anybody: it reads, it classifies,
-   * and it returns JSON. Handing it the house voice would be asking a smoke
-   * alarm to match the curtains, and every extra sentence in here is one more
-   * thing that could talk it into a different answer about somebody's conduct.
+   * Its own instructions and nothing else: no writing rules, no company
+   * profile, no persona, no memory. This is not one of the heads and is not
+   * answering anybody. Every extra sentence here is one more thing that could
+   * talk it into a different answer about somebody's conduct.
    */
   const answer = await askOnce({
     provider: credentials.provider,
@@ -295,12 +292,9 @@ export async function review(
     if (!entry || typeof entry !== "object") continue;
     const item = entry as Record<string, unknown>;
     /*
-     * A number or a string, because it is a line number now.
-     *
-     * The shape asks for it quoted and models return `"id": 4` about half the
-     * time anyway. Accepting only the string form would have dropped those
-     * findings silently: no error, no log, just a review that quietly raised
-     * nothing on the runs where the model felt like emitting a number.
+     * A number or a string. The shape asks for it quoted and models return
+     * `"id": 4` about half the time anyway, and accepting only the string form
+     * drops those findings silently: no error, no log, just a quiet review.
      */
     const label =
       typeof item.id === "string"

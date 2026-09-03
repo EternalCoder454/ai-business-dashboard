@@ -221,14 +221,9 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
     );
 
     /*
-     * The reasoning is deliberately not kept.
-     *
-     * Nothing renders it. A chat message shows its thinking in a disclosure,
-     * but this screen never has, so every trace written here went into the
-     * responses column, came back in the workspace snapshot on every page load
-     * of every screen, and was dropped on the floor. It is usually longer than
-     * the answer it belongs to, and rounds are never deleted, so it was the
-     * fastest growing thing in the payload and none of it was ever read.
+     * The reasoning is deliberately not kept. Nothing renders it, it is usually
+     * longer than the answer it belongs to, and rounds are never deleted, so
+     * storing it makes it the fastest growing thing in a payload nobody reads.
      */
     round.responses[index] = {
       departmentId: department.id,

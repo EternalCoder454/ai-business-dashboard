@@ -92,13 +92,9 @@ export default function LibraryPage() {
         failure =
           error instanceof AttachmentError ? error.message : `${file.name} could not be read.`;
         /*
-         * Recorded, because this was invisible.
-         *
-         * The catch here is why: a failed upload never reaches the window, so
-         * the browser error handler never sees it, and it never reaches the
-         * server, so nothing there sees it either. Somebody could fail to add a
-         * file every day for a month and the only trace would be their memory
-         * of it. The type is included because that is almost always the answer.
+         * Recorded, because a failure caught here reaches neither the window's
+         * error handler nor the server, so nothing else would ever count it.
+         * The file type is included because that is almost always the answer.
          */
         report({
           operation: "client.write",

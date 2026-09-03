@@ -452,11 +452,10 @@ function PermissionsDialog({
   onSave: (permissions: Permissions) => void | Promise<void>;
 }) {
   /*
-   * Read from the member once, at mount, because the caller gives this a key
-   * per person. Editing one colleague and then another would otherwise open on
-   * the first one's answers, which is a quiet way to hand somebody else's
-   * restrictions to the wrong account; copying them across in an effect works
-   * and costs a second render of the whole dialog every time it opens.
+   * Read once at mount, because the caller gives this a key per person.
+   * Without that, editing one colleague and then another opens on the first
+   * one's answers, which hands somebody else's restrictions to the wrong
+   * account.
    */
   const held = member?.permissions;
   const [everyHead, setEveryHead] = useState(!held?.heads);

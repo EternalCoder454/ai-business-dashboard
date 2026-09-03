@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { Card, cx } from "./ui";
 import { formatRelativeTime } from "@/lib/routes";
+import { useNow } from "@/lib/useNow";
 import type { AdminOverview } from "@/db/admin";
 
 /**
@@ -43,15 +43,7 @@ const bytes = (n: number) =>
 const CRON_OVERDUE_MS = 26 * 60 * 60 * 1000;
 
 export function OperatorOverview({ overview }: { overview: AdminOverview | null }) {
-  /*
-   * The clock, read once on mount.
-   *
-   * Calling Date.now() while rendering makes the output depend on when React
-   * happened to render, which is not a pure thing to do and is what the
-   * compiler objects to. A screen left open past a boundary shows the old
-   * reckoning until it is reloaded, which is the right trade here.
-   */
-  const [now] = useState(() => Date.now());
+  const now = useNow();
 
   // Below the hook, because a hook after a return is not called on every
   // render and React counts them by position.

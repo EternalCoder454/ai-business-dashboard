@@ -65,14 +65,11 @@ export async function POST(request: Request): Promise<Response> {
         allowedContentTypes: ALLOWED,
         maximumSizeInBytes: MAX_UPLOAD_BYTES,
         /*
-         * A random suffix on every name.
-         *
-         * Two people uploading `scan.pdf` must not collide, and a name that can
-         * be guessed from the one before it is a name somebody can walk. The
-         * workspace is in the path as well, which is for reading a listing
-         * rather than for access: what actually keeps one business out of
-         * another's files is that every read goes through this app and is
-         * checked against the session.
+         * A random suffix on every name, so two people uploading `scan.pdf` do
+         * not collide and no name can be walked from the one before it. The
+         * workspace in the path is for reading a listing, not for access: what
+         * keeps one business out of another's files is that every read goes
+         * through this app and is checked against the session.
          */
         addRandomSuffix: true,
         pathname: `workspaces/${mine.workspaceId}`,

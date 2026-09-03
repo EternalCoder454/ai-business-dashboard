@@ -43,26 +43,16 @@ export const config = {
      * generated assets, which have to load before anyone is signed in.
      */
     /*
-     * api/workspace/status is excluded because answering "you are not signed
-     * in" is its entire job. Redirecting it meant the store fetched the
-     * sign-in page as JSON, failed, and fell back by accident rather than by
-     * being told. It checks auth itself and reveals nothing else.
+     * Four exclusions, each because the caller cannot follow a redirect to a
+     * sign-in page and each gated more strictly by the route itself:
      *
-     * api/v1 is excluded because it authenticates with a bearer token rather
-     * than a session cookie. Left in, every call from an addon would be
-     * answered with a 307 to the sign-in page: an HTML body, a redirect a
-     * curl follows silently, and no way for the caller to tell a bad key from
-     * a wrong URL. Every route under it calls `authorize` for itself, which is
-     * a stricter gate than this one: it checks the key, the scope, and the
-     * rate limit, where the proxy only checks that somebody is signed in.
-     *
-     * api/cron and api/reports/run are excluded for the same reason and are
-     * worth naming separately, because the caller is a scheduler rather than a
-     * person and would never have reported the problem. Left in, the nightly pass was
-     * redirected to the sign-in page, Vercel recorded a 307 as a success, and
-     * the reviewer would have looked like it was running for as long as
-     * anybody cared to believe it. It checks its own bearer token in constant
-     * time and otherwise requires an operator session.
+     * - api/workspace/status: answering "you are not signed in" is its job.
+     * - api/v1: authenticates with a bearer token, and every route under it
+     *   calls `authorize`, which checks the key, the scope and the rate limit.
+     * - api/cron and api/reports/run: the caller is a scheduler, which follows
+     *   a 307 silently and would have reported the nightly pass as succeeding
+     *   for as long as anybody believed it. Both check their own bearer token
+     *   in constant time.
      */
     "/((?!api/auth|api/v1|api/cron|api/reports/run|api/workspace/status|signin|_next/static|_next/image|icon|apple-icon|manifest.webmanifest|opengraph-image|twitter-image|robots.txt|favicon.ico).*)",
   ],

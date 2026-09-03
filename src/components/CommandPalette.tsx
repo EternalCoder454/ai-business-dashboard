@@ -52,12 +52,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   );
 
   /*
-   * What was said, from the server, merged in when it arrives.
-   *
-   * Everything above is already in hand and stays instant. Message bodies are
-   * not in the snapshot any more, so they need a round trip, and making every
-   * keystroke wait on one to gain a handful of rows would be a bad trade. They
-   * appear a moment later instead, which is what a search feels like anyway.
+   * Message bodies, from the server, merged in when they arrive. Everything
+   * above is already in hand and stays instant; these need a round trip, and
+   * making every keystroke wait on one would be a bad trade.
    *
    * Each keystroke aborts the last request, so a fast typist does not get the
    * answer to a query they have already replaced.

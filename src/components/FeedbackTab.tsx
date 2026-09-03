@@ -54,12 +54,9 @@ export function FeedbackTab() {
   };
 
   /*
-   * Gone rather than filed away.
-   *
-   * Marking a note done is for one that was acted on. A duplicate, a test line,
-   * or something typed into the wrong box is not done, it is noise, and leaving
-   * it behind the "Everything" chip means it is still there the next time
-   * anybody looks.
+   * Gone rather than filed away. Marking a note done is for one that was acted
+   * on; a duplicate or a test line is noise, and leaving it behind the
+   * "Everything" chip means it is there the next time anybody looks.
    */
   const remove = async (id: string) => {
     const before = rows;

@@ -40,14 +40,9 @@ import type {
 } from "@/db/admin";
 
 /*
- * The server's own shapes, imported rather than restated.
- *
- * These were four hand-copied interfaces sitting a directory away from the ones
- * the API actually sends. They drifted, silently: the Clients tab spent a while
- * rendering nothing at all because this copy still said `email` where the
- * server had moved to `workspaceId`. It compiled, every row read `undefined`,
- * and nothing anywhere said so. `import type` is erased at build time, so this
- * costs the client bundle nothing and makes the drift a compile error.
+ * The server's own shapes, imported rather than restated, so drift is a
+ * compile error instead of a tab that renders undefined in every row.
+ * `import type` is erased at build time and costs the bundle nothing.
  */
 type Usage = AdminUsage;
 type Person = AdminPerson;
@@ -70,24 +65,16 @@ interface Thread {
 }
 
 /*
- * The order they appear in, and the only list of them.
- *
- * These used to be a union and a separate array literal cast to it, and the
- * cast is the problem: a subset of a union is a valid array of that union, so
- * adding a tab to the type and forgetting the array compiled clean and drew
- * no chip. The panel rendered perfectly and nothing could ever select it.
- * Deriving the union from the row means a tab that exists is a tab you can
- * reach.
+ * The order they appear in, and the only list of them. The union is derived
+ * from this row rather than declared beside it: a subset of a union is a valid
+ * array of that union, so a separate list can silently omit a tab and leave it
+ * rendered but unreachable.
  */
 /*
- * Overview first, because it is the one that says whether anything needs doing
- * and the rest are where you go once it does. It used to sit fifth, behind
- * three lists and a queue, which is a table of contents in the order the
- * screens happened to be written.
- *
- * After it: the two that have somebody waiting, then the two that answer how it
- * is behaving, then the two that are lists of people, then access, which is
- * opened deliberately or not at all.
+ * Overview first, because it says whether anything needs doing and the rest
+ * are where you go once it does. Then the two with somebody waiting, the two
+ * that say how it is behaving, the two that are lists of people, and access,
+ * which is opened deliberately or not at all.
  */
 const TABS = [
   "overview",
@@ -204,12 +191,9 @@ export default function AdminPage() {
   );
 
   /*
-   * Nothing until the server has said who this is.
-   *
-   * isOperator starts false, which is the same value as a real no, so this
-   * screen told an operator they were not one for the length of a round trip,
-   * every time they opened it. A blank moment is the honest thing to show while
-   * the answer is genuinely unknown.
+   * Nothing until the server has said who this is. `isOperator` starts false,
+   * which is the same value as a real no, so gating on it alone refuses an
+   * operator for the length of a round trip.
    */
   if (!statusReady) return null;
 

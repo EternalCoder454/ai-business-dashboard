@@ -529,11 +529,9 @@ export type ChatStreamEvent =
   | { type: "done" };
 
 /* ------------------------------------------------------------------ *
- * Messages
- *
- * Person to person, as opposed to the Message type above, which is a turn
- * in a conversation with a department head. These are the only records in
- * the app that belong to two accounts rather than one.
+ * Messages: person to person, as opposed to the Message type above, which is
+ * a turn in a conversation with a head. The only records in the app that
+ * belong to two accounts rather than one.
  * ------------------------------------------------------------------ */
 
 export interface DirectMessage {

@@ -78,13 +78,9 @@ const EMPTY_STREAM: StreamState = { text: "", thinking: "" };
 const byteCache = new Map<string, string>();
 
 /*
- * A ceiling on the cache, in characters of base64.
- *
- * Roughly 24 MB of held bytes, which is a long conversation's worth of images
- * and nowhere near enough to matter. Without it this grew for the life of the
- * tab: every attachment ever re-sent stayed in memory, so somebody working
- * through a thread full of screenshots would watch the tab get heavier all
- * afternoon and never lighter.
+ * A ceiling on the cache, in characters of base64: roughly 24 MB of held
+ * bytes. Without one it grows for the life of the tab, since every attachment
+ * ever re-sent stays in memory.
  */
 const MAX_CACHED_CHARS = 32_000_000;
 let cachedChars = 0;
@@ -239,15 +235,10 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   const requestedId = searchParams.get("c");
 
   /*
-   * What the department opens to.
-   *
-   * `?c=<id>` is that conversation. `?c=new` is a blank one. Nothing at all
-   * means the list, unless there is nothing to list, in which case it is a
-   * blank chat.
-   *
-   * It used to be `conversations[0]` with no way out: every visit for the rest
-   * of the month reopened whichever thread was most recent, so a second subject
-   * went into the middle of the first one or nowhere.
+   * What the department opens to. `?c=<id>` is that conversation, `?c=new` is
+   * a blank one, and nothing at all means the list, unless there is nothing to
+   * list. Deliberately never the newest thread, which leaves no way to start a
+   * second subject.
    */
   const started = useMemo(
     () => conversations.filter((c) => c.messageCount > 0),
@@ -257,13 +248,9 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   const showList = showsConversationList(requestedId, started.length);
 
   /*
-   * Tells the shell which of the two this is.
-   *
-   * The shell strips the top and bottom bars for a conversation, on the basis
-   * that a chat header carries a back arrow and a composer owns the bottom
-   * edge. A list has neither, and deciding from the path alone stripped them
-   * off the list too: on a phone it arrived with nothing on screen that led
-   * anywhere. Cleared on the way out so leaving a department does not leave the
+   * Tells the shell which of the two this is, because it strips the top and
+   * bottom bars for a conversation and a list needs them. The path alone
+   * cannot say. Cleared on the way out, or leaving a department leaves the
    * navigation hidden on whatever comes next.
    */
   useEffect(() => {
@@ -364,12 +351,9 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   }, []);
 
   /*
-   * Fetch the thread the moment it is opened.
-   *
-   * The workspace snapshot carries counts rather than message bodies, so a
-   * conversation arrives empty and fills in here. `openConversation` returns
-   * immediately for one already loaded, so this runs on every render of a new
-   * id and does nothing on the rest.
+   * The snapshot carries counts rather than message bodies, so a conversation
+   * arrives empty and fills in here. `openConversation` returns immediately
+   * for one already loaded.
    */
   useEffect(() => {
     if (active?.id) void openConversation(active.id);
@@ -427,13 +411,9 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     }
 
     /*
-     * Attachments go to the blob store on send, not on pick.
-     *
-     * Something attached and then removed before sending never reaches the
-     * store, which is the difference between paying for what people sent and
-     * paying for what they considered sending. The bytes are still in memory
-     * here either way, so the model gets them from the same place it always
-     * did.
+     * Attachments reach the blob store on send rather than on pick, so
+     * something attached and then removed is never paid for. The bytes are in
+     * memory either way, which is where the model reads them from.
      */
     const attached = pending.length ? await allToBlob(pending) : [];
 
@@ -446,15 +426,11 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     };
 
     /*
-     * The thread has to be in hand before anything is sent.
-     *
-     * The snapshot carries no message bodies, so a conversation opened and
-     * typed into within the same second still has an empty `messages`. Building
-     * the history from that would send the model a question with no
-     * conversation behind it, and leave the screen looking like the thread had
-     * emptied itself. `openConversation` returns what it loaded rather than
-     * relying on this closure, which is holding the conversation from before it
-     * ran.
+     * The thread has to be in hand before anything is sent: a conversation
+     * opened and typed into within the same second still has empty `messages`,
+     * and sending from that asks the model a question with no conversation
+     * behind it. Read from what `openConversation` returns rather than from
+     * this closure, which holds the conversation from before it ran.
      */
     const prior = conversation.loaded
       ? conversation.messages
@@ -570,13 +546,9 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     inputRef.current?.focus();
 
     /*
-     * A better name for the thread, once there is something to name it from.
-     *
-     * The title written when the message was sent is a shortened version of the
-     * question, which is all it can be from one sentence. This reads the answer
-     * as well and says what the conversation turned out to be about. It happens
-     * after the reply is on the screen and its result is only a rename, so a
-     * slow or failed call costs nothing anybody is waiting on.
+     * A better name for the thread, read from the answer as well as the
+     * question. After the reply is on screen, because the result is only a
+     * rename and nobody is waiting on it.
      */
     if (firstExchange && collectedText) {
       void (async () => {
@@ -625,12 +597,9 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   if (!ready) return <div className="flex-1" />;
 
   /*
-   * A head this person was not given.
-   *
-   * Said plainly rather than as "not found", because it is not missing and
-   * they may well have been sent the link by somebody who can open it. The
-   * business decides who talks to which head, and pretending otherwise sends
-   * them looking for a bug.
+   * A head this person was not given. Said plainly rather than as "not found",
+   * because it is not missing and they may have been sent the link by somebody
+   * who can open it.
    */
   if (department && !canOpenHead(department.id)) {
     return (
@@ -667,11 +636,8 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   }
 
   /*
-   * The list, once this head has been asked anything.
-   *
    * After the not-found branch, so a bad department id still says so, and
-   * before anything that assumes a conversation, because on this path there
-   * deliberately is not one.
+   * before anything that assumes a conversation, because there is not one.
    */
   if (showList) {
     return (

@@ -193,12 +193,9 @@ export async function runSchedules(now = new Date()): Promise<ScheduleRun> {
       }
 
       /*
-       * The calendar of whoever set the schedule up.
-       *
-       * A briefing is addressed to that person: they wrote the question and
-       * they are the one who will read the answer on Monday morning. Nobody
-       * else's diary is involved, and somebody who has not connected one
-       * simply gets a briefing without a calendar block in it.
+       * The calendar of whoever set the schedule up, since they wrote the
+       * question and will read the answer. Nobody else's diary is involved,
+       * and without one the briefing simply has no calendar block.
        */
       const { events } = await upcoming(schedule.createdBy, 7);
 

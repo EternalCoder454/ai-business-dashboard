@@ -68,11 +68,9 @@ export function ProfileMenu() {
 
 
   /*
-   * Loaded when the menu is first opened, not on mount.
-   *
-   * Almost nobody is in two businesses, and every signed in person on every
-   * page would otherwise pay a round trip to find that out. Opening this menu
-   * is the first moment the answer is worth anything.
+   * Loaded when the menu is first opened, not on mount. Almost nobody is in
+   * two businesses, and every page would otherwise pay a round trip to find
+   * that out.
    */
   const [workspaces, setWorkspaces] = useState<
     { workspaceId: string; name: string; role: "member" | "admin" }[]
@@ -98,12 +96,9 @@ export function ProfileMenu() {
   }, [open]);
 
   /*
-   * A full reload rather than a refetch.
-   *
-   * Every list on screen belongs to the business being left: departments,
-   * conversations, tasks, the lot. Swapping the store underneath a rendered
-   * page and hoping each screen notices is how one business's conversation
-   * titles end up briefly on another's dashboard.
+   * A full reload rather than a refetch. Every list on screen belongs to the
+   * business being left, and swapping the store underneath a rendered page is
+   * how one business's conversation titles end up on another's dashboard.
    */
   const switchTo = async (id: string) => {
     if (id === workspaceId || switching) return;

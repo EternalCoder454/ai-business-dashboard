@@ -115,11 +115,9 @@ export async function admit(
   }
 
   /*
-   * First run: an install with no operator configured and nobody in the access
-   * table belongs to whoever signs in first, and they become its operator.
-   *
-   * Without this, a deployment with OPERATOR_EMAILS unset can be signed in to
-   * by nobody at all, which is a locked door with the key inside. The window
+   * First run: an install with no operator and nobody in the access table
+   * belongs to whoever signs in first. Without it a deployment with
+   * OPERATOR_EMAILS unset is a locked door with the key inside. The window
    * closes the moment the first row exists.
    */
   if (door.operators.length === 0 && (await door.nobodyHasAccess())) {

@@ -99,13 +99,10 @@ export async function grantAccess(input: {
     revokedAt: null,
   };
   /*
-   * One row per person per business, and the conflict is on both.
-   *
-   * This used to key on the address alone and overwrite the workspace, so
-   * inviting somebody who already worked somewhere silently moved them: they
-   * lost the first business the moment they were added to the second, and
-   * nothing anywhere said so. Inviting the same person to the same business
-   * twice still updates that one row rather than making another.
+   * One row per person per business, and the conflict is on both. Keying on
+   * the address alone would move somebody out of the first business the moment
+   * they were added to a second. Inviting the same person to the same business
+   * twice still updates the one row.
    */
   await db
     .insert(t.access)

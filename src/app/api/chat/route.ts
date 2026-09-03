@@ -502,14 +502,10 @@ export async function POST(request: NextRequest) {
         }
       } finally {
         /*
-         * Recorded here rather than around the route, because the route
-         * returns as soon as the stream is handed over and the answer takes
-         * the next several seconds. Measuring the handover would report that
-         * every chat took a millisecond.
-         *
-         * A reader who closes the tab is not a failure. Nothing broke, they
-         * left, and counting it as an error would make the error rate a
-         * measure of how often people change their minds.
+         * Recorded here rather than around the route, which returns as soon as
+         * the stream is handed over: measuring that would report every chat as
+         * a millisecond. A reader who closes the tab is not a failure, or the
+         * error rate becomes a measure of how often people change their minds.
          */
         if (!clientGone) {
           record({

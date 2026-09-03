@@ -429,12 +429,10 @@ function MessageRow({
   const sendingNow = message.local === "sending";
 
   /*
-   * Once per run of mine, not once per message. The watermark means everything
-   * before the last one is settled too, so an eye on all six lines of a
-   * paragraph says the same thing six times.
-   *
-   * A failure is the exception and always shows: burying one in the middle of
-   * a run is how a message goes missing without anybody noticing.
+   * Once per run of mine, not once per message: the watermark settles
+   * everything before it, so a mark on all six lines says the same thing six
+   * times. A failure always shows, since burying one is how a message goes
+   * missing unnoticed.
    */
   const endsRun = !next || next.fromEmail !== message.fromEmail;
   const showDelivery = delivery && (delivery === "failed" || endsRun);

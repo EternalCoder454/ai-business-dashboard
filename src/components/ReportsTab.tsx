@@ -85,11 +85,9 @@ export function ReportsTab({
   const [showClosed, setShowClosed] = useState(false);
 
   /*
-   * Fetched when somebody opens one, not shipped with the list.
-   *
-   * A transcript is up to four thousand characters and the list can hold two
-   * hundred rows, so sending them all to render a page that shows none of them
-   * was most of the payload for none of the value.
+   * Fetched when somebody opens one, not shipped with the list: four thousand
+   * characters across two hundred rows is most of the payload to render a page
+   * that shows none of it.
    */
   const [transcripts, setTranscripts] = useState<Record<string, string>>({});
 
@@ -146,13 +144,10 @@ export function ReportsTab({
   };
 
   /*
-   * The operator's alone, and immediate.
-   *
-   * Dismissing keeps the row, which is what an administrator does with a report
-   * about their own business. This removes it, which is for the duplicates and
-   * the false alarms that would otherwise sit at the top of the list forever.
-   * The row goes from the screen before the request answers because the only
-   * failure worth reporting is one where it comes back.
+   * The operator's alone. Dismissing keeps the row, which is what an
+   * administrator does; this removes it, for the duplicates and false alarms
+   * that would otherwise sit at the top of the list forever. The row leaves
+   * the screen before the request answers and comes back if it fails.
    */
   const remove = async (id: string) => {
     const before = rows;
@@ -208,12 +203,9 @@ export function ReportsTab({
   if (error && rows === null) return <p className="md-label text-error">{error}</p>;
 
   /*
-   * Something on screen while it loads.
-   *
-   * This rendered nothing at all until the fetch came back, which is why this
-   * tab felt slower than the others: they draw from data the page already
-   * fetched on mount, and this one waits for its own round trip with a blank
-   * panel where the answer goes.
+   * Something on screen while it loads. Every other tab draws from data the
+   * page already has; this one waits on its own round trip, and a blank panel
+   * reads as slower than it is.
    */
   if (rows === null) {
     return (

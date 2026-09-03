@@ -183,13 +183,10 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
     }
 
     /*
-     * Message bodies are not here to search.
-     *
-     * They used to be, because the snapshot held every message in the business.
-     * It no longer does, and searching what happens to be loaded would be worse
-     * than not searching at all: the results would depend on which threads you
-     * had opened this session, and nothing would say so. `searchMessages` asks
-     * the server, and the palette merges those in when they arrive.
+     * Message bodies are deliberately not searched here. The snapshot does not
+     * hold them, and searching whatever happens to be loaded is worse than not
+     * searching: the results would depend on which threads you opened this
+     * session and nothing would say so. `searchMessages` asks the server.
      */
   }
 

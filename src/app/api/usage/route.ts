@@ -43,13 +43,11 @@ export async function GET(request: Request) {
     const db = requireDb();
 
     /*
-     * Seven aggregates, issued together.
-     *
-     * Together is now worth something: the driver pipelines prepared
-     * statements, so these cost about one round trip between them rather than
-     * seven. Written as separate grouped queries rather than one join, because
-     * joining several one-to-many tables in a single statement multiplies the
-     * rows and every count comes out wrong in a way that looks plausible.
+     * Seven aggregates, issued together: the driver pipelines prepared
+     * statements, so they cost about one round trip rather than seven.
+     * Separate grouped queries rather than one join, because joining several
+     * one-to-many tables multiplies the rows and every count comes out wrong
+     * in a way that looks plausible.
      */
     const [spaces, seats, signedIn, conversations, messages, deliverables, briefings] =
       await Promise.all([

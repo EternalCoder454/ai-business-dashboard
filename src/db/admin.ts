@@ -376,11 +376,10 @@ export async function overview(): Promise<AdminOverview> {
   const month = now - 30 * 86_400_000;
 
   /*
-   * The second half: what needs a person, and whether it is working.
-   *
-   * Separate from the totals above because they answer different questions. A
-   * count of conversations tells you how big this is; an open report tells you
-   * somebody is waiting. The screen leads with the second kind.
+   * The second half: what needs a person, and whether it is working. Separate
+   * from the totals above because a count tells you how big this is and an
+   * open report tells you somebody is waiting. The screen leads with the
+   * second kind.
    */
   // tenancy-audit: across every business, which is what an operator's overview
   // is, and the route above is gated on isOperator.

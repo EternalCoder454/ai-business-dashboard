@@ -51,11 +51,9 @@ async function resolveSender(): Promise<
   if (!email) return { ok: false, status: 401, error: "Not signed in." };
 
   /*
-   * Resolved once here rather than at each branch below, which asked for it
-   * again every time. It is also where the inbox can be switched off for one
-   * person: every path through this route needs the membership, so a business
-   * that has taken messages away from somebody takes them away everywhere
-   * rather than from the four places anybody remembered to check.
+   * Resolved once here rather than at each branch below, and the one place the
+   * inbox can be switched off: every path needs the membership, so the check
+   * cannot be missed from one of them.
    */
   const membership = await membershipFor(email);
   if (!membership) return { ok: false, status: 403, error: "You are not in a workspace." };

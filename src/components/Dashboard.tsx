@@ -85,18 +85,14 @@ export function Dashboard() {
   const openTasks = tasks.filter((task) => task.status !== "done");
 
   /*
-   * Open tasks split by when they are due.
+   * Open tasks split by when they are due, because "five open" is a fact you
+   * can do nothing with and "two overdue" is something you do today.
    *
-   * "Five tasks open" is a fact you can do nothing with. Two of them being
-   * overdue is a thing you do something about today, and the two numbers were
-   * the same grey line of eleven pixel text at the bottom of a row.
+   * Rolling windows rather than calendar weeks: on a Friday, "due this week"
+   * meaning the next twenty four hours is right and useless.
    *
-   * Rolling windows rather than calendar weeks. On a Friday, "due this week"
-   * meaning the next twenty four hours is technically right and useless.
-   *
-   * No date is its own column rather than being folded into later. A task
-   * nobody put a date on is the one that quietly never gets done, and hiding it
-   * in a bucket called later is how it stays that way.
+   * No date is its own column rather than folded into later, since a task
+   * nobody dated is the one that quietly never gets done.
    */
   const due = useMemo(() => {
     const day = 86_400_000;

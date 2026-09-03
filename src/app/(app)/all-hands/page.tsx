@@ -72,13 +72,10 @@ export default function AllHandsPage() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   /*
-   * Who is being asked, held as who is left out rather than who is in.
-   *
-   * Everyone by default, and a head added to the business later joins the room
-   * without anybody having to remember to tick it. Kept per visit rather than
-   * saved: a room picked for one question is rarely the room for the next, and
-   * a selection that quietly persists is one somebody sends a question to the
-   * wrong half of the company with.
+   * Who is being asked, held as who is left out rather than who is in, so a
+   * head added later joins the room without anybody ticking it. Kept per visit
+   * rather than saved: a selection that quietly persists is one somebody sends
+   * a question to the wrong half of the company with.
    */
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
 
@@ -107,13 +104,9 @@ export default function AllHandsPage() {
   const held = useMemo(() => allHandsRuns.filter((r) => r.rounds.length > 0), [allHandsRuns]);
 
   /*
-   * The list, once the room has met.
-   *
-   * This screen used to fall back to the newest meeting whenever nothing was
-   * chosen, so every visit for the rest of the month reopened the same one: a
-   * second subject went into the middle of the first, and the way to a clean
-   * room was to delete what was there. The fallback is gone, and with nothing
-   * open you get the list instead.
+   * The list, once the room has met. Deliberately no fallback to the newest
+   * meeting: that leaves no way to start a second subject except by deleting
+   * the first.
    */
   const showList = !live && !composingNew && !openId && held.length > 0;
 
@@ -293,12 +286,10 @@ export default function AllHandsPage() {
                 const inRoom = !excluded.has(department.id);
                 return (
                   /*
-                   * The chip is a container with two buttons rather than one
-                   * button doing two jobs. Tapping it takes the head in or out
-                   * of the meeting; the arrow, once they have answered, jumps
-                   * to what they said. A button inside a button is invalid, so
-                   * the toggle stretches over the chip and the arrow sits above
-                   * it.
+                   * Two buttons rather than one doing two jobs: the chip
+                   * toggles the head, the arrow jumps to what they said. A
+                   * button inside a button is invalid, so the toggle stretches
+                   * over the chip and the arrow sits above it.
                    */
                   <span
                     key={department.id}
@@ -434,13 +425,9 @@ export default function AllHandsPage() {
               const inRoom = !excluded.has(department.id);
               return (
                 /*
-                 * Clicking a head takes them out of the meeting and clicking
-                 * again puts them back, which is where anybody would look for
-                 * it: this list is already headed "in the room".
-                 *
                  * Two buttons in the row rather than one doing both jobs. The
-                 * name toggles, and the arrow beside it jumps to what they said
-                 * once there is something to jump to.
+                 * name takes the head in or out of the meeting, and the arrow
+                 * jumps to what they said once there is something to jump to.
                  */
                 <li
                   key={department.id}

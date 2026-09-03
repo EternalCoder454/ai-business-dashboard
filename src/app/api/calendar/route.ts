@@ -34,13 +34,10 @@ export async function GET(request: Request) {
   }
 
   /*
-   * A calendar the business has switched off for this person.
-   *
-   * Answered as not connected rather than refused, because that is what it is
-   * from where they are standing: there is no calendar for this account to
-   * read, and every screen and prompt already knows how to say nothing about
-   * one. A 403 would put an error on a dashboard about a thing they cannot
-   * change.
+   * A calendar the business has switched off for this person. Answered as not
+   * connected rather than refused: every screen and prompt already knows how
+   * to say nothing about one, and a 403 would put an error on a dashboard
+   * about a thing they cannot change.
    */
   const membership = await membershipFor(email);
   if (!allowsArea(membership?.role, membership?.permissions, "calendar")) {
@@ -54,15 +51,10 @@ export async function GET(request: Request) {
   const result = await upcoming(email, days);
 
   /*
-   * Recorded because this is exactly the failure nobody sees.
-   *
-   * Google refused every read for days with a 403, the calendar card hid
-   * itself, the heads said they had no access, and nothing anywhere counted
-   * it. A calendar that has stopped working is invisible until somebody thinks
-   * to complain, which is the definition of a thing worth measuring.
-   *
-   * Only when there is something to say. A person who has never connected one
-   * is not a failure and should not appear as a call at all.
+   * Recorded because a calendar that has stopped working is invisible: the
+   * card hides itself, the heads say they have no access, and nothing counts
+   * it. Only when there is something to say, since a person who never
+   * connected one is not a failure.
    */
   if (result.problem !== "not-connected") {
     if (membership) {

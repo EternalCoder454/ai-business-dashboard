@@ -50,17 +50,13 @@ export async function membershipFor(email: string): Promise<Membership | null> {
   if (!databaseEnabled || !db) return null;
   try {
     /*
-     * The one they are currently in, out of however many they belong to.
+     * The one they are currently in, out of however many they belong to. The
+     * choice lives on their account row and is joined here rather than read
+     * separately, since this runs on nearly every request.
      *
-     * A person can be in more than one business now, so "their workspace" is a
-     * choice rather than a fact. The choice lives on their account row, and is
-     * joined here rather than read separately because this runs on nearly every
-     * request and a second round trip for one nullable column is not worth it.
-     *
-     * Ordered so the chosen one wins if it is still a membership they have, and
-     * their oldest one wins if it is not. That second case is the one that
-     * matters: somebody removed from the business they were last in should land
-     * somewhere they still belong rather than nowhere at all.
+     * Ordered so the chosen one wins while it is still a membership they have
+     * and their oldest wins when it is not, so somebody removed from the
+     * business they were last in lands somewhere they still belong.
      */
     const [row] = await db
       .select({

@@ -320,12 +320,10 @@ export function StoreProvider({
    */
   const [noWorkspace, setNoWorkspace] = useState(false);
   /*
-   * The same fact, in a ref.
-   *
-   * The retry loop is a closure that captured its variables when it started,
-   * so it cannot see a state update made by the attempt it is inside. The ref
-   * is what lets it stop as soon as the server says there is no business,
-   * rather than trying twice more for something that cannot change.
+   * The same fact, in a ref. The retry loop captured its variables when it
+   * started, so it cannot see a state update from the attempt it is inside,
+   * and this is what lets it stop rather than retry something that cannot
+   * change.
    */
   const noWorkspaceRef = useRef(false);
   // Bumped by `retryLoad` to send the effect round again.
@@ -449,14 +447,9 @@ export function StoreProvider({
       const response = await fetch("/api/workspace");
 
       /*
-       * Being in no workspace is not a failure to retry.
-       *
-       * Somebody signs in with an address nobody has added to a business. The
-       * server refuses, correctly, and before this the client treated that
-       * exactly like a dropped connection: three retries, then "could not load
-       * your workspace, try again". Trying again was never going to work, and
-       * the one thing they needed to be told, that they have to be invited,
-       * was the one thing it did not say.
+       * Being in no workspace is not a failure to retry. Somebody signed in
+       * with an address nobody has invited needs telling that, not three
+       * attempts and a connection error.
        */
       if (response.status === 403) {
         const said = (await response.json().catch(() => null)) as
@@ -481,15 +474,11 @@ export function StoreProvider({
       // on a second device never lands on an empty org chart.
       if (snapshot.departments.length === 0) {
         /*
-         * Everything except who the business is.
-         *
-         * The settings row already exists by this point, written when the
-         * workspace was created, and it carries the name the operator typed.
-         * Seeding used to send the whole of DEFAULT_SETTINGS, so the first
-         * person to open a new workspace overwrote that with "Your Company" and
-         * "HQ", and because a settings write also renames the workspace row,
-         * the operator's list changed too. Defaults are for the fields nobody
-         * has chosen yet; a name somebody chose is not one of them.
+         * Everything except who the business is. The settings row already
+         * carries the name the operator typed, and a settings write renames
+         * the workspace row to match, so seeding the whole of DEFAULT_SETTINGS
+         * would rename the business to "Your Company" the first time anybody
+         * opened it. Defaults are for fields nobody has chosen yet.
          */
         const {
           id: _id,
@@ -539,14 +528,11 @@ export function StoreProvider({
         }
 
         /*
-         * The house writing rules, when the workspace is still on a version we
-         * shipped.
-         *
-         * They live in a column rather than in the prompt builder, so improving
-         * them reached new businesses and nobody else, and every existing
-         * workspace kept whatever it was created with for good. A copy somebody
-         * has edited is theirs and is never touched; an empty one means the
-         * rules were never written rather than that anybody chose to have none.
+         * The house writing rules, upgraded only while the workspace is still
+         * on a version we shipped. They live in a column rather than in the
+         * prompt builder, so without this an improvement reaches new businesses
+         * and nobody else. A copy somebody has edited is theirs; an empty one
+         * means they were never written rather than deliberately cleared.
          */
         if (writingRulesReplaceable(snapshot.settings.writingRules, WRITING_RULES)) {
           ops.push({
@@ -839,11 +825,8 @@ export function StoreProvider({
         conversationList.filter((c) => c.departmentId === departmentId),
 
       /* ---------------------------------------------------------------- *
-       * Writes
-       *
-       * Each one builds the finished row, then hands it to whichever storage
-       * is in use. Hosted mode needs the whole row rather than a patch, since
-       * the server upserts.
+       * Writes. Each builds the finished row and hands it to whichever storage
+       * is in use; hosted mode needs the whole row, since the server upserts.
        * ---------------------------------------------------------------- */
 
       updateSettings: async (patch) => {

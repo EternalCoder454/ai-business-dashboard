@@ -175,16 +175,13 @@ export async function POST(request: Request) {
 
     if (action === "permissions") {
       /*
-       * What this colleague may open, set by whoever runs the business.
-       *
        * Read through the parser rather than stored as sent, so a hand written
        * body cannot put a shape in the column that every reader then has to
-       * defend against. An empty result is written as null, which is the one
-       * value meaning no restrictions.
+       * defend against. An empty result is written as null, the one value
+       * meaning no restrictions.
        *
-       * Not applied to an administrator. They can lift any of it in a click,
-       * so a restriction on them is not a rule, only a way to lock the last
-       * person out of the screen that sets them.
+       * Never applied to an administrator: they can lift any of it in a click,
+       * so it would only lock the last one out of the screen that sets it.
        */
       if (existing.role === "admin") {
         return Response.json(
