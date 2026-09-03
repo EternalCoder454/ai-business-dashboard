@@ -4,6 +4,7 @@ import { nextCookies } from "better-auth/next-js";
 import { headers } from "next/headers";
 import { db } from "@/db/client";
 import * as t from "@/db/schema";
+import { siteUrl } from "@/lib/site";
 
 /**
  * Signing in.
@@ -67,21 +68,6 @@ export const OPERATOR_EMAILS = parseEmailList(process.env.OPERATOR_EMAILS);
 export const authEnabled = Boolean(
   process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET && process.env.AUTH_SECRET,
 );
-
-/**
- * Where the app is, which better-auth needs in order to build a redirect.
- *
- * Vercel sets VERCEL_URL per deployment without a scheme. NEXT_PUBLIC_SITE_URL
- * is what the rest of this app already uses for absolute links, so it wins:
- * a preview build should not send somebody to production to sign in.
- */
-function baseUrl(): string | undefined {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
-  if (explicit) return explicit;
-  const vercel = process.env.VERCEL_URL?.trim();
-  return vercel ? `https://${vercel}` : undefined;
-}
-
 
 /** What the door can say. Undefined means it opened. */
 export type Admission = { error: string; errorDescription?: string } | undefined;
@@ -190,7 +176,17 @@ const instance =
   authEnabled && db
     ? betterAuth({
         secret: process.env.AUTH_SECRET,
-        baseURL: baseUrl(),
+        /*
+         * The app's own origin, from the one helper that already works it out.
+         *
+         * I wrote a second copy of this before noticing: it read VERCEL_URL,
+         * which is the per deployment hostname, so every preview would have
+         * built a redirect URI that is not registered with Google and sign in
+         * would have failed there while looking fine in production. siteUrl
+         * reads VERCEL_PROJECT_PRODUCTION_URL, which is the stable one, and is
+         * what every other absolute link in this app is built from.
+         */
+        baseURL: siteUrl(),
         /*
          * The origin the request actually arrived on.
          *
