@@ -138,7 +138,10 @@ const bytes = (n: number) =>
 export default function AdminPage() {
   const { isOperator, storage, accountEmail } = useStore();
 
-  const [tab, setTab] = useState<Tab>("businesses");
+  // The first tab, which is also the one that says whether anything needs
+  // doing. It opened on a list of businesses even after that list stopped
+  // being the first thing in the row.
+  const [tab, setTab] = useState<Tab>("overview");
   const [people, setPeople] = useState<Person[] | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [access, setAccess] = useState<{ allowed: string[]; admins: string[] }>();

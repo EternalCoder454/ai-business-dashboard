@@ -58,12 +58,12 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
   return (
     <div className="measure flex flex-col gap-5">
       <section>
-        <h2 className="md-label-sm mb-2 text-on-variant/70">Waiting on you</h2>
+        <h2 className="md-label-sm mb-2 text-on-variant/70">Alerts</h2>
         {clear ? (
           <Card>
             <p className="md-body text-on-variant">
-              Nothing is waiting. No open reports, no unread feedback, the nightly
-              pass has run, and every business has been used this month.
+              No open reports, no unread feedback, and every business has been
+              used this month. The nightly pass has run.
             </p>
           </Card>
         ) : (
@@ -84,7 +84,7 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
               <Alert
                 tone="warn"
                 title={`${waiting.feedback} piece${waiting.feedback === 1 ? "" : "s"} of feedback`}
-                body="Written to you by somebody using the panel."
+                body="Submitted from inside the panel."
               />
             ) : null}
 
@@ -104,7 +104,7 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
               <Alert
                 tone="warn"
                 title={`${quiet} of ${businesses.total} businesses have gone quiet`}
-                body="Nothing said in a month, which is what leaving looks like from here."
+                body="No activity in the last 30 days."
               />
             ) : null}
           </div>
@@ -112,7 +112,7 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
       </section>
 
       <section>
-        <h2 className="md-label-sm mb-2 text-on-variant/70">The last day</h2>
+        <h2 className="md-label-sm mb-2 text-on-variant/70">Last 24 hours</h2>
         <div className="grid grid-cols-2 gap-3 medium:grid-cols-4">
           <Stat label="Calls" value={compact(health.calls)} />
           <Stat
@@ -128,7 +128,7 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
       </section>
 
       <section>
-        <h2 className="md-label-sm mb-2 text-on-variant/70">Who is here</h2>
+        <h2 className="md-label-sm mb-2 text-on-variant/70">Accounts</h2>
         <div className="grid grid-cols-2 gap-3 medium:grid-cols-4">
           <Stat label="Businesses" value={String(businesses.total)} />
           <Stat
@@ -150,7 +150,7 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
       </section>
 
       <section>
-        <h2 className="md-label-sm mb-2 text-on-variant/70">Everything, since the start</h2>
+        <h2 className="md-label-sm mb-2 text-on-variant/70">Totals</h2>
         <div className="grid grid-cols-2 gap-3 medium:grid-cols-4">
           <Stat
             label="Conversations"

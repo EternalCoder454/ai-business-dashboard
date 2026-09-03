@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
@@ -57,18 +57,66 @@ async function reader(): Promise<
   return { ok: false, status: 404, error: "Not found." };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const who = await reader();
   if (!who.ok) return Response.json({ error: who.error }, { status: who.status });
 
+  /*
+   * One transcript, on request.
+   *
+   * Keyed by the business as well as the id where the caller is an
+   * administrator, so an id from another business matches nothing rather than
+   * matching and being refused.
+   */
+  const wanted = new URL(request.url).searchParams.get("transcript")?.trim();
+  if (wanted) {
+    const [row] = await requireDb()
+      .select({ transcript: t.reports.transcript })
+      .from(t.reports)
+      .where(
+        who.workspaceId
+          ? and(eq(t.reports.id, wanted), eq(t.reports.workspaceId, who.workspaceId))
+          : eq(t.reports.id, wanted),
+      )
+      .limit(1);
+    return Response.json({ transcript: row?.transcript ?? "" });
+  }
+
+  return listing(who);
+}
+
+async function listing(who: { email: string; workspaceId: string | null }) {
   try {
     const mine = who.workspaceId;
     const [rows, [cursor]] = await Promise.all([
       // tenancy-audit: fenced to one business for an administrator, and
       // deliberately across all of them for an operator, which `reader` above
       // is the gate on.
+      /*
+       * Every column except the transcript.
+       *
+       * A transcript is up to four thousand characters and there can be two
+       * hundred rows, so the list was carrying the better part of a megabyte of
+       * other people's conversations to render a page that shows none of it:
+       * it sits behind a disclosure nobody opens on most rows. Whether there is
+       * one comes back as a flag, and the text itself is fetched when somebody
+       * actually asks to read it.
+       */
       requireDb()
-        .select()
+        .select({
+          id: t.reports.id,
+          workspaceName: t.reports.workspaceName,
+          source: t.reports.source,
+          sourceId: t.reports.sourceId,
+          authorEmail: t.reports.authorEmail,
+          category: t.reports.category,
+          severity: t.reports.severity,
+          reason: t.reports.reason,
+          quote: t.reports.quote,
+          status: t.reports.status,
+          createdAt: t.reports.createdAt,
+          hasTranscript: sql<boolean>`length(${t.reports.transcript}) > 0`,
+        })
         .from(t.reports)
         .where(mine ? eq(t.reports.workspaceId, mine) : undefined)
         .orderBy(desc(t.reports.createdAt))
@@ -94,7 +142,7 @@ export async function GET() {
         severity: row.severity,
         reason: row.reason,
         quote: row.quote,
-        transcript: row.transcript,
+        hasTranscript: row.hasTranscript,
         status: row.status,
         createdAt: row.createdAt.getTime(),
       })),

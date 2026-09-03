@@ -88,7 +88,7 @@ export function Setup() {
         href: "/library",
       },
       {
-        title: "Tasks, and briefings on a rhythm",
+        title: "Tasks and briefings",
         body: "What is outstanding, and the decisions the heads reason from. Set a question to repeat and the answer is waiting under Briefings rather than something you remember to ask for.",
         href: "/tasks",
       },
@@ -103,7 +103,7 @@ export function Setup() {
         href: "/wiki",
       },
       {
-        title: "Your key, and everything else",
+        title: "Settings",
         body: "The panel runs on your own API key, so the conversations and the bill stay yours. Settings also holds the heads themselves, the theme, and the house writing rules.",
         href: "/settings",
         adminOnly: true,

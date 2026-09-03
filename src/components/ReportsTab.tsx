@@ -14,7 +14,7 @@ interface ReportRow {
   severity: "low" | "medium" | "high";
   reason: string;
   quote: string;
-  transcript: string;
+  hasTranscript: boolean;
   status: string;
   createdAt: number;
 }
@@ -70,6 +70,29 @@ export function ReportsTab() {
   const [notice, setNotice] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
+
+  /*
+   * Fetched when somebody opens one, not shipped with the list.
+   *
+   * A transcript is up to four thousand characters and the list can hold two
+   * hundred rows, so sending them all to render a page that shows none of them
+   * was most of the payload for none of the value.
+   */
+  const [transcripts, setTranscripts] = useState<Record<string, string>>({});
+
+  const loadTranscript = useCallback(
+    async (id: string) => {
+      if (transcripts[id] !== undefined) return;
+      try {
+        const response = await fetch(`/api/reports?transcript=${encodeURIComponent(id)}`);
+        const body = (await response.json()) as { transcript?: string };
+        setTranscripts((current) => ({ ...current, [id]: body.transcript ?? "" }));
+      } catch {
+        setTranscripts((current) => ({ ...current, [id]: "Could not load it." }));
+      }
+    },
+    [transcripts],
+  );
 
   /*
    * Whether this is the operator looking across businesses or an administrator
@@ -145,7 +168,30 @@ export function ReportsTab() {
   };
 
   if (error && rows === null) return <p className="md-label text-error">{error}</p>;
-  if (rows === null) return null;
+
+  /*
+   * Something on screen while it loads.
+   *
+   * This rendered nothing at all until the fetch came back, which is why this
+   * tab felt slower than the others: they draw from data the page already
+   * fetched on mount, and this one waits for its own round trip with a blank
+   * panel where the answer goes.
+   */
+  if (rows === null) {
+    return (
+      <ul className="flex flex-col gap-3" aria-hidden>
+        {[0, 1, 2].map((n) => (
+          <li key={n}>
+            <Card className="border-l-4 border-l-outline-variant">
+              <div className="h-4 w-40 animate-pulse rounded bg-high" />
+              <div className="mt-3 h-3 w-full animate-pulse rounded bg-high" />
+              <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-high" />
+            </Card>
+          </li>
+        ))}
+      </ul>
+    );
+  }
 
   const open = rows.filter((row) => row.status === "new");
   const visible = showClosed ? rows : open;
@@ -256,10 +302,15 @@ export function ReportsTab() {
                   * that reading somebody's messages should be a thing you
                   * chose to do.
                   */}
-                {row.transcript ? (
-                  <details className="mt-2 group">
+                {row.hasTranscript ? (
+                  <details
+                    className="mt-2"
+                    onToggle={(event) => {
+                      if (event.currentTarget.open) void loadTranscript(row.id);
+                    }}
+                  >
                     <summary className="md-label-sm inline-flex items-center gap-1 text-primary">
-                      What was said around it
+                      Surrounding messages
                     </summary>
                     <pre
                       className={cx(
@@ -267,7 +318,7 @@ export function ReportsTab() {
                         "whitespace-pre-wrap [overflow-wrap:anywhere] text-on-variant",
                       )}
                     >
-                      {row.transcript}
+                      {transcripts[row.id] ?? "Loading…"}
                     </pre>
                   </details>
                 ) : null}

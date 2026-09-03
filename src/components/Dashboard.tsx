@@ -76,12 +76,41 @@ export function Dashboard() {
     [memory],
   );
 
-  const openTasks = tasks.filter((task) => task.status !== "done");
   // Read once when the page mounts rather than on every render, which is not a
   // pure thing to do and makes the render output depend on the clock. A tab
   // left open past midnight shows yesterday's reckoning until it is reloaded,
   // which is the right trade for a dashboard.
   const [now] = useState(() => Date.now());
+
+  const openTasks = tasks.filter((task) => task.status !== "done");
+
+  /*
+   * Open tasks split by when they are due.
+   *
+   * "Five tasks open" is a fact you can do nothing with. Two of them being
+   * overdue is a thing you do something about today, and the two numbers were
+   * the same grey line of eleven pixel text at the bottom of a row.
+   *
+   * Rolling windows rather than calendar weeks. On a Friday, "due this week"
+   * meaning the next twenty four hours is technically right and useless.
+   *
+   * No date is its own column rather than being folded into later. A task
+   * nobody put a date on is the one that quietly never gets done, and hiding it
+   * in a bucket called later is how it stays that way.
+   */
+  const due = useMemo(() => {
+    const day = 86_400_000;
+    const midnight = new Date(now).setHours(0, 0, 0, 0);
+    const counts = { overdue: 0, week: 0, next: 0, later: 0, undated: 0 };
+    for (const task of openTasks) {
+      if (task.dueAt === undefined) counts.undated += 1;
+      else if (task.dueAt < midnight) counts.overdue += 1;
+      else if (task.dueAt < midnight + 7 * day) counts.week += 1;
+      else if (task.dueAt < midnight + 14 * day) counts.next += 1;
+      else counts.later += 1;
+    }
+    return counts;
+  }, [openTasks, now]);
 
   const activeProjects = projects.filter((p) => p.status === "active").length;
   const threads = conversations.filter((c) => c.messageCount > 0).length;
@@ -121,22 +150,38 @@ export function Dashboard() {
         )}
       </section>
 
-      {/* One line of counts, then the panels. The heads used to sit here as a
-          grid of cards, which was the sidebar again in a second typeface. */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <span className="md-label-sm text-on-variant/75">
-          {threads} thread{threads === 1 ? "" : "s"}
-        </span>
-        <span className="md-label-sm text-on-variant/75">
-          {openTasks.length} task{openTasks.length === 1 ? "" : "s"} open
-        </span>
-        <span className="md-label-sm text-on-variant/75">
-          {activeProjects} active project{activeProjects === 1 ? "" : "s"}
-        </span>
-        <span className="md-label-sm text-on-variant/75">
-          {deliverables.length} saved
-        </span>
-      </div>
+      {/* What is owed, and when. The heads used to sit here as a grid of cards,
+          which was the sidebar again in a second typeface. */}
+      <section>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="md-label-sm text-on-variant">Tasks</h2>
+          <Link href="/tasks" className="md-label-sm text-primary">
+            View all tasks
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-3 medium:grid-cols-4">
+          <Count label="Overdue" value={due.overdue} tone={due.overdue > 0 ? "bad" : undefined} />
+          <Count label="Due this week" value={due.week} />
+          <Count label="Due next week" value={due.next} />
+          <Count
+            label="No date"
+            value={due.undated}
+            hint={due.later > 0 ? `${due.later} further out` : undefined}
+          />
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="md-label-sm text-on-variant/75">
+            {threads} thread{threads === 1 ? "" : "s"}
+          </span>
+          <span className="md-label-sm text-on-variant/75">
+            {activeProjects} active project{activeProjects === 1 ? "" : "s"}
+          </span>
+          <span className="md-label-sm text-on-variant/75">
+            {deliverables.length} saved
+          </span>
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-3">
         {/* First, and only when there is one. "What should I focus on" is
@@ -231,6 +276,34 @@ export function Dashboard() {
           }))}
         />
       </div>
+    </div>
+  );
+}
+
+/** One number, big enough to read from the doorway. */
+function Count({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: string;
+  value: number;
+  hint?: string;
+  tone?: "bad";
+}) {
+  return (
+    <div className="rounded-2xl bg-container p-4 shadow-e1">
+      <p className="md-label-sm truncate text-on-variant">{label}</p>
+      <p
+        className={cx(
+          "mt-1 text-2xl font-medium leading-tight tabular-nums",
+          tone === "bad" && "text-error",
+        )}
+      >
+        {value}
+      </p>
+      {hint ? <p className="md-label-sm mt-1 text-on-variant/75">{hint}</p> : null}
     </div>
   );
 }
