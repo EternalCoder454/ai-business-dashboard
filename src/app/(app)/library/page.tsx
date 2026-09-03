@@ -38,6 +38,7 @@ import { AttachmentError, attachmentSrc } from "@/lib/images";
 import { departmentHrefById, formatRelativeTime } from "@/lib/routes";
 import { COMPANY_ID } from "@/lib/seed";
 import { useStore } from "@/lib/store";
+import { report } from "@/lib/telemetryClient";
 import type { AttachmentKind, Department, LibraryFile } from "@/lib/types";
 
 const KIND_LABEL: Record<AttachmentKind, string> = {
@@ -90,6 +91,23 @@ export default function LibraryPage() {
       } catch (error) {
         failure =
           error instanceof AttachmentError ? error.message : `${file.name} could not be read.`;
+        /*
+         * Recorded, because this was invisible.
+         *
+         * The catch here is why: a failed upload never reaches the window, so
+         * the browser error handler never sees it, and it never reaches the
+         * server, so nothing there sees it either. Somebody could fail to add a
+         * file every day for a month and the only trace would be their memory
+         * of it. The type is included because that is almost always the answer.
+         */
+        report({
+          operation: "client.write",
+          ok: false,
+          errorKind: error instanceof AttachmentError ? "Rejected" : "Unreadable",
+          errorNote: `library upload, ${file.type || "unknown type"}, ${file.size} bytes: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        });
       }
     }
 

@@ -1013,6 +1013,17 @@ export async function applyMutations(
               mediaType: row.mediaType,
               name: row.name,
               data: row.data,
+              /*
+               * Where the bytes went, which this forgot to write.
+               *
+               * The client uploads to the blob store and clears `data`, so
+               * leaving this out wrote a row with the bytes in neither place:
+               * the file appeared in the Library, opened as nothing, and the
+               * upload it came from sat in the store with nothing pointing at
+               * it. The chat path was given this and the Library path was not,
+               * which is what two nearly identical writes get you.
+               */
+              blobUrl: row.blobUrl ?? "",
               textContent: row.text ?? null,
               width: row.width,
               height: row.height,
