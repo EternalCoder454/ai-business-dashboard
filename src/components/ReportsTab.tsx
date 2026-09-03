@@ -19,7 +19,33 @@ interface ReportRow {
   createdAt: number;
 }
 
+/**
+ * What a card looks like at a glance.
+ *
+ * A queue where every row looks the same is a queue read top to bottom, and the
+ * one that needs somebody today is as likely to be at the bottom as the top. A
+ * stripe down the edge rather than a whole tinted card: eight red panels in a
+ * row is just a red screen, and the point is that the red one stands out from
+ * the ones around it.
+ *
+ * Low is deliberately plain. Somebody being short with a colleague is worth
+ * recording and is not worth a colour that makes a person's stomach drop.
+ */
+const SEVERITY: Record<string, { edge: string; label: string; chip: "error" | "primary" }> = {
+  high: { edge: "border-l-4 border-l-error", label: "text-error", chip: "error" },
+  medium: { edge: "border-l-4 border-l-warning", label: "text-warning", chip: "primary" },
+  low: { edge: "border-l-4 border-l-outline-variant", label: "text-on-variant", chip: "primary" },
+};
+
+const SEVERITY_LABEL: Record<string, string> = {
+  high: "Needs attention",
+  medium: "Worth a look",
+  low: "Noted",
+};
+
 const CATEGORY_LABEL: Record<string, string> = {
+  disrespect: "Disrespect",
+  toxicity: "Toxicity",
   harassment: "Harassment",
   "sexual-harassment": "Sexual harassment",
   threat: "Threat",
@@ -175,12 +201,26 @@ export function ReportsTab() {
         <ul className="flex flex-col gap-3">
           {visible.map((row) => (
             <li key={row.id}>
-              <Card className={cx(row.status !== "new" && "opacity-60")}>
+              <Card
+                className={cx(
+                  (SEVERITY[row.severity] ?? SEVERITY.low).edge,
+                  // A handled row keeps its stripe so the queue still reads at a
+                  // glance, and loses everything else.
+                  row.status !== "new" && "opacity-60",
+                )}
+              >
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <Chip tone={row.severity === "high" ? "error" : "primary"}>
+                  <Chip tone={(SEVERITY[row.severity] ?? SEVERITY.low).chip}>
                     {CATEGORY_LABEL[row.category] ?? row.category}
                   </Chip>
-                  <span className="md-label-sm text-on-variant/75">{row.severity}</span>
+                  <span
+                    className={cx(
+                      "md-label-sm",
+                      (SEVERITY[row.severity] ?? SEVERITY.low).label,
+                    )}
+                  >
+                    {SEVERITY_LABEL[row.severity] ?? row.severity}
+                  </span>
                   {/* Only where there is more than one business to tell
                       apart. On an administrator's own screen every row is the
                       same name, which is a column of their own company name

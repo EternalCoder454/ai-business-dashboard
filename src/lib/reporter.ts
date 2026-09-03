@@ -48,6 +48,8 @@ export interface Finding {
 }
 
 const CATEGORIES = [
+  "disrespect",
+  "toxicity",
   "harassment",
   "sexual-harassment",
   "threat",
@@ -56,9 +58,38 @@ const CATEGORIES = [
   "self-harm",
 ] as const;
 
+/**
+ * What each category is worth, so the model cannot rate its own severity.
+ *
+ * It was free to pick low, medium or high for anything, which made severity a
+ * mood rather than a scale: the same threat came back high on one pass and
+ * medium on another. The kind of thing decides the floor and the model can
+ * only raise it, so disrespect is never an emergency and a threat is never a
+ * footnote.
+ */
+const FLOOR: Record<(typeof CATEGORIES)[number], "low" | "medium" | "high"> = {
+  disrespect: "low",
+  toxicity: "medium",
+  harassment: "medium",
+  "sexual-harassment": "high",
+  threat: "high",
+  malware: "high",
+  fraud: "high",
+  "self-harm": "high",
+};
+
+const RANK = { low: 0, medium: 1, high: 2 } as const;
+
+const atLeast = (
+  floor: "low" | "medium" | "high",
+  said: "low" | "medium" | "high",
+) => (RANK[said] > RANK[floor] ? said : floor);
+
 const INSTRUCTIONS = `You are reviewing internal messages between colleagues at a business, looking only for conduct somebody responsible for the workplace would need to know about.
 
 Raise something ONLY when it is one of these:
+- disrespect: contempt aimed at a colleague as a person rather than at their work. Calling someone stupid, useless or worthless, mocking them personally, talking down to them. Criticising what somebody produced, however bluntly, is not this
+- toxicity: cruelty or hostility towards a colleague that is sustained, piled on by several people, or plainly meant to humiliate rather than to settle anything
 - harassment: sustained personal abuse, demeaning someone for who they are, bullying
 - sexual-harassment: unwanted advances, sexual comments about a colleague, pressure of a sexual nature, or any unwanted statement of sexual intent towards them. A joking tone, an emoticon, a smiley or "just kidding" does not make one of these acceptable and is not a reason to leave it alone: what matters is that somebody said it to a colleague, not how lightly they dressed it up
 - threat: threatening violence or serious harm to a person
@@ -68,15 +99,15 @@ Raise something ONLY when it is one of these:
 
 Do NOT raise:
 - confidential business information, client names, figures, contracts, or trade secrets. That is their own information and is not your concern.
-- swearing, bluntness, sarcasm, venting, complaining about work or about management
-- disagreement, criticism of somebody's work, or an ordinary argument
+- swearing, bluntness, sarcasm, venting, or complaining about work, a process, or management. Somebody calling a forecast garbage is talking about the forecast
+- disagreement, criticism of somebody's work, or an ordinary argument, however sharply worded, as long as it stays about the work
 - jokes between people who are plainly on good terms
 - discussion of security, hacking, or malware as a subject, when it is somebody's job or an ordinary technical conversation
 
-The bar is high. Most workplaces produce nothing. Returning an empty list is the normal, correct answer, and a false alarm about a real person costs more than a missed borderline case.
+The bar is high. Most workplaces produce nothing. Returning an empty list is the normal, correct answer, and a false alarm about a real person costs more than a missed borderline case. That applies to disrespect and toxicity most of all: they are the easiest to over-report and the two that would turn this into a list nobody reads.
 
 Reply with JSON only, no prose, in this exact shape:
-{"findings":[{"id":"<the message id>","category":"<one of the categories above>","severity":"low|medium|high","reason":"<one sentence, plain English, no quotes from the message>","quote":"<at most 200 characters, verbatim, the part that made you raise it>"}]}
+{"findings":[{"id":"<the number at the start of the line>","category":"<one of the categories above>","severity":"low|medium|high","reason":"<one sentence, plain English, no quotes from the message>","quote":"<at most 200 characters, verbatim, the part that made you raise it>"}]}
 
 If nothing meets the bar: {"findings":[]}`;
 
@@ -184,16 +215,62 @@ function isCategory(value: unknown): value is (typeof CATEGORIES)[number] {
  * truncated. A model that decided to invent a report about somebody who was not
  * in the conversation should not be able to write that row.
  */
+/**
+ * The batch, written as cheaply as it can be written.
+ *
+ * Every message used to carry its own UUID and its author's full address, so a
+ * two word reply cost about eighty characters of scaffolding around six
+ * characters of message. Direct messages are mostly short, which made the
+ * framing the majority of what was being paid for.
+ *
+ * The id becomes its position and the author becomes a number with a legend at
+ * the top. The model never needs to see a UUID: it only has to point at a line,
+ * and the caller already holds the mapping back.
+ *
+ * A total budget as well as a per message one, so a single enormous message
+ * cannot crowd out the two hundred it was sitting among.
+ */
+const MAX_MESSAGE_CHARS = 1_200;
+const MAX_TRANSCRIPT_CHARS = 60_000;
+
+export function compose(batch: Reviewable[]): {
+  transcript: string;
+  known: Map<string, Reviewable>;
+} {
+  const known = new Map<string, Reviewable>();
+
+  const authors = [...new Set(batch.map((item) => item.author))];
+  const shortFor = new Map(authors.map((author, index) => [author, `p${index + 1}`]));
+
+  const lines: string[] = [
+    authors.map((author) => `${shortFor.get(author)}=${author}`).join(" "),
+    "",
+  ];
+
+  let spent = lines[0].length;
+  for (const [index, item] of batch.entries()) {
+    const label = String(index + 1);
+    known.set(label, item);
+
+    const body = item.body.slice(0, MAX_MESSAGE_CHARS);
+    const line = `${label} ${shortFor.get(item.author)}: ${body}`;
+    // Stops rather than truncating mid batch, so every line the model sees is
+    // a whole message and the cursor still only moves over what was read.
+    if (spent + line.length > MAX_TRANSCRIPT_CHARS) break;
+    spent += line.length;
+    lines.push(line);
+  }
+
+  return { transcript: lines.join("\n"), known };
+}
+
 export async function review(
   batch: Reviewable[],
   credentials: { provider: Provider; key: string; model: string },
 ): Promise<Finding[]> {
   if (batch.length === 0) return [];
 
-  const known = new Map(batch.map((item) => [item.id, item]));
-  const transcript = batch
-    .map((item) => `[${item.id}] ${item.author}: ${item.body.slice(0, 2_000)}`)
-    .join("\n");
+  const { transcript, known } = compose(batch);
 
   /*
    * Its own instructions and nothing else.
@@ -242,7 +319,21 @@ export async function review(
   for (const entry of raw) {
     if (!entry || typeof entry !== "object") continue;
     const item = entry as Record<string, unknown>;
-    const source = typeof item.id === "string" ? known.get(item.id) : undefined;
+    /*
+     * A number or a string, because it is a line number now.
+     *
+     * The shape asks for it quoted and models return `"id": 4` about half the
+     * time anyway. Accepting only the string form would have dropped those
+     * findings silently: no error, no log, just a review that quietly raised
+     * nothing on the runs where the model felt like emitting a number.
+     */
+    const label =
+      typeof item.id === "string"
+        ? item.id.trim()
+        : typeof item.id === "number"
+          ? String(item.id)
+          : "";
+    const source = label ? known.get(label) : undefined;
     if (!source || !isCategory(item.category)) continue;
 
     findings.push({
@@ -250,8 +341,11 @@ export async function review(
       sourceId: source.id,
       authorEmail: source.author,
       category: item.category,
-      severity:
+      // The kind decides the floor; the model may only raise it.
+      severity: atLeast(
+        FLOOR[item.category],
         item.severity === "high" || item.severity === "low" ? item.severity : "medium",
+      ),
       reason: typeof item.reason === "string" ? item.reason.slice(0, 500) : "",
       quote: typeof item.quote === "string" ? item.quote.slice(0, MAX_QUOTE) : "",
     });

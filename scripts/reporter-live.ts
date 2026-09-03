@@ -49,6 +49,18 @@ const CASES: [string, string, string, boolean][] = [
     true,
   ],
   [
+    "bad-disrespect",
+    "lead@example.com",
+    "You are genuinely the stupidest person I have ever had to work with. How do you even manage to dress yourself in the morning.",
+    true,
+  ],
+  [
+    "bad-toxic",
+    "pile@example.com",
+    "Everyone in this channel already agrees you are dead weight. Third time this week. Do us all a favour and stop talking in standup, nobody wants to hear it.",
+    true,
+  ],
+  [
     "ok-security-work",
     "sec@example.com",
     "Ran the pen test on our own staging box as agreed. Found an SQL injection on the login form and a weak session cookie. Writing it up for the team so we can patch both this week.",
