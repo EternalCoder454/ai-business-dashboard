@@ -60,7 +60,27 @@ interface Thread {
   messages: Message[];
 }
 
-type Tab = "businesses" | "clients" | "reports" | "feedback" | "overview" | "health" | "access";
+/*
+ * The order they appear in, and the only list of them.
+ *
+ * These used to be a union and a separate array literal cast to it, and the
+ * cast is the problem: a subset of a union is a valid array of that union, so
+ * adding a tab to the type and forgetting the array compiled clean and drew
+ * no chip. The panel rendered perfectly and nothing could ever select it.
+ * Deriving the union from the row means a tab that exists is a tab you can
+ * reach.
+ */
+const TABS = [
+  "businesses",
+  "clients",
+  "reports",
+  "feedback",
+  "overview",
+  "health",
+  "access",
+] as const;
+
+type Tab = (typeof TABS)[number];
 
 const TAB_LABEL: Record<Tab, string> = {
   businesses: "Businesses",
@@ -165,7 +185,7 @@ export default function AdminPage() {
       />
 
       <div className="flex flex-none items-center gap-2 border-b border-outline-variant page-x py-3">
-        {(["businesses", "clients", "reports", "feedback", "overview", "access"] as Tab[]).map((key) => (
+        {TABS.map((key) => (
           <Chip
             key={key}
             selected={tab === key}
