@@ -831,6 +831,20 @@ export const telemetry = pgTable(
     calls: integer("calls").notNull().default(0),
     errors: integer("errors").notNull().default(0),
     /**
+     * Turned away on purpose: a rate limit, a body too large, a permission.
+     * Counted apart from errors because nothing is broken when one happens and
+     * mixing them makes both numbers useless. A handful is the system working;
+     * a lot of them is a limit set wrong or somebody stuck in a loop.
+     */
+    refused: integer("refused").notNull().default(0),
+    /**
+     * Calls that were the first this instance served. The statement cache lives
+     * on the socket, so a cold instance pays a describe per query before
+     * anything is fast, and this is how to tell a slow deployment from a
+     * deployment that is simply idle between visits.
+     */
+    cold: integer("cold").notNull().default(0),
+    /**
      * Summed, not averaged. An average cannot be merged across instances
      * without knowing how many each one saw; a sum and a count can.
      */

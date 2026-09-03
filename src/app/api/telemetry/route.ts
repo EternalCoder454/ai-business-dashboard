@@ -5,7 +5,7 @@ import * as t from "@/db/schema";
 import { membershipFor } from "@/db/tenancy";
 import { isOperator } from "@/lib/admin";
 import { readJsonWithin, withinRate } from "@/lib/guard";
-import { HOUR_MS, record } from "@/lib/telemetry";
+import { DEPLOYMENT, HOUR_MS, record } from "@/lib/telemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     workspaceId: mine.workspaceId,
     source: "browser",
     ms: typeof ms === "number" && Number.isFinite(ms) ? Math.min(ms, 600_000) : 0,
-    ok: ok !== false,
+    outcome: ok === false ? "error" : "ok",
     errorKind: typeof errorKind === "string" ? errorKind : undefined,
     // Scrubbed and truncated in record(). Nothing here is trusted.
     errorNote: typeof errorNote === "string" ? errorNote : undefined,
@@ -121,9 +121,14 @@ export async function GET(request: Request) {
           source: t.telemetry.source,
           calls: sql<number>`sum(${t.telemetry.calls})::int`,
           errors: sql<number>`sum(${t.telemetry.errors})::int`,
+          refused: sql<number>`sum(${t.telemetry.refused})::int`,
+          cold: sql<number>`sum(${t.telemetry.cold})::int`,
           totalMs: sql<number>`sum(${t.telemetry.totalMs})::bigint`,
           maxMs: sql<number>`max(${t.telemetry.maxMs})::int`,
           slow: sql<number>`sum(${t.telemetry.slow})::int`,
+          // The newest hour this operation was seen in. What makes a missing
+          // nightly tick visible: the row is old rather than absent.
+          lastBucket: sql<number>`max(${t.telemetry.bucket})::bigint`,
           lastErrorKind: sql<string | null>`(array_agg(${t.telemetry.lastErrorKind} ORDER BY ${t.telemetry.lastErrorAt} DESC NULLS LAST))[1]`,
           lastErrorNote: sql<string | null>`(array_agg(${t.telemetry.lastErrorNote} ORDER BY ${t.telemetry.lastErrorAt} DESC NULLS LAST))[1]`,
           lastErrorAt: sql<number | null>`max(${t.telemetry.lastErrorAt})::bigint`,
@@ -143,6 +148,7 @@ export async function GET(request: Request) {
           bucket: t.telemetry.bucket,
           calls: sql<number>`sum(${t.telemetry.calls})::int`,
           errors: sql<number>`sum(${t.telemetry.errors})::int`,
+          refused: sql<number>`sum(${t.telemetry.refused})::int`,
           totalMs: sql<number>`sum(${t.telemetry.totalMs})::bigint`,
           slow: sql<number>`sum(${t.telemetry.slow})::int`,
         })
@@ -162,16 +168,23 @@ export async function GET(request: Request) {
         ...row,
         calls: Number(row.calls),
         errors: Number(row.errors),
+        refused: Number(row.refused),
+        cold: Number(row.cold),
         totalMs: Number(row.totalMs),
         maxMs: Number(row.maxMs),
         slow: Number(row.slow),
+        lastBucket: Number(row.lastBucket),
         lastErrorAt: row.lastErrorAt == null ? null : Number(row.lastErrorAt),
-        workspaceName: nameOf.get(row.workspaceId) ?? "Deleted business",
+        workspaceName:
+          row.workspaceId === DEPLOYMENT
+            ? "Scheduled work"
+            : (nameOf.get(row.workspaceId) ?? "Deleted business"),
       })),
       byHour: byHour.map((row) => ({
         bucket: Number(row.bucket),
         calls: Number(row.calls),
         errors: Number(row.errors),
+        refused: Number(row.refused),
         totalMs: Number(row.totalMs),
         slow: Number(row.slow),
       })),

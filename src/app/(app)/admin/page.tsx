@@ -5,6 +5,7 @@ import { BusinessesTab, type WorkspaceRow } from "@/components/BusinessesTab";
 import { FeedbackTab } from "@/components/FeedbackTab";
 import { ReportsTab } from "@/components/ReportsTab";
 import { TelemetryTab } from "@/components/TelemetryTab";
+import { UsageTab } from "@/components/UsageTab";
 import { useCallback, useEffect, useState } from "react";
 import {
   Button,
@@ -77,6 +78,7 @@ const TABS = [
   "feedback",
   "overview",
   "health",
+  "usage",
   "access",
 ] as const;
 
@@ -89,6 +91,7 @@ const TAB_LABEL: Record<Tab, string> = {
   reports: "Reports",
   feedback: "Feedback",
   health: "Health",
+  usage: "Usage",
   access: "Access",
 };
 
@@ -214,6 +217,8 @@ export default function AdminPage() {
         {tab === "reports" ? <ReportsTab /> : null}
 
         {tab === "health" ? <TelemetryTab /> : null}
+
+        {tab === "usage" ? <UsageTab /> : null}
 
         {tab === "feedback" ? <FeedbackTab /> : null}
 

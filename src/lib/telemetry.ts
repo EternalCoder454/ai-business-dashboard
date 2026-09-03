@@ -34,11 +34,33 @@ export const RETENTION_DAYS = 14;
 
 export const HOUR_MS = 3_600_000;
 
+/**
+ * Work that belongs to the deployment rather than to any one business: the
+ * nightly tick, the conduct review, anything on a timer.
+ *
+ * A reserved id rather than a nullable column, so every row still has a
+ * workspace and nothing in the query layer has to grow a special case. It
+ * cannot collide with a real workspace: ids are generated and none of them
+ * start with a tilde.
+ */
+export const DEPLOYMENT = "~deployment";
+
+/**
+ * Three outcomes, not two.
+ *
+ * A refusal is the system working. A rate limit, a body over the size cap, a
+ * permission check saying no: none of those mean anything is broken, and
+ * counting them as errors makes the error rate meaningless and hides the
+ * failures worth looking at. Counted separately, a few refusals are healthy and
+ * a lot of them are a limit set wrong or somebody stuck in a loop.
+ */
+export type Outcome = "ok" | "error" | "refused";
+
 export interface Recording {
   operation: string;
   workspaceId: string;
   ms: number;
-  ok: boolean;
+  outcome: Outcome;
   source?: "server" | "browser";
   errorKind?: string;
   errorNote?: string;
@@ -51,6 +73,8 @@ interface Bucket {
   bucket: number;
   calls: number;
   errors: number;
+  refused: number;
+  cold: number;
   totalMs: number;
   maxMs: number;
   slow: number;
@@ -68,6 +92,15 @@ interface Bucket {
 const pending = new Map<string, Bucket>();
 let oldestAt = 0;
 let flushing: Promise<void> | null = null;
+
+/**
+ * Whether this instance has served anything yet.
+ *
+ * Module scope is per instance, so the first call to reach this module is by
+ * definition the first that instance handled. Whichever operation it was is the
+ * one that paid for the cold start, which is the interesting attribution.
+ */
+let warm = false;
 
 const bucketFor = (at: number) => Math.floor(at / HOUR_MS) * HOUR_MS;
 
@@ -121,6 +154,8 @@ export function record(entry: Recording): void {
       bucket,
       calls: 0,
       errors: 0,
+      refused: 0,
+      cold: 0,
       totalMs: 0,
       maxMs: 0,
       slow: 0,
@@ -130,7 +165,13 @@ export function record(entry: Recording): void {
     current.totalMs += ms;
     if (ms > current.maxMs) current.maxMs = ms;
     if (ms >= SLOW_MS) current.slow += 1;
-    if (!entry.ok) {
+    if (!warm) {
+      warm = true;
+      current.cold += 1;
+    }
+    if (entry.outcome === "refused") {
+      current.refused += 1;
+    } else if (entry.outcome === "error") {
       current.errors += 1;
       current.lastErrorKind = (entry.errorKind ?? "Error").slice(0, 40);
       current.lastErrorNote = entry.errorNote ? scrub(entry.errorNote) : "";
@@ -179,6 +220,8 @@ export async function flush(): Promise<void> {
             bucket: row.bucket,
             calls: row.calls,
             errors: row.errors,
+            refused: row.refused,
+            cold: row.cold,
             totalMs: row.totalMs,
             maxMs: row.maxMs,
             slow: row.slow,
@@ -193,6 +236,8 @@ export async function flush(): Promise<void> {
           set: {
             calls: sql`${t.telemetry.calls} + excluded.calls`,
             errors: sql`${t.telemetry.errors} + excluded.errors`,
+            refused: sql`${t.telemetry.refused} + excluded.refused`,
+            cold: sql`${t.telemetry.cold} + excluded.cold`,
             totalMs: sql`${t.telemetry.totalMs} + excluded.total_ms`,
             maxMs: sql`greatest(${t.telemetry.maxMs}, excluded.max_ms)`,
             slow: sql`${t.telemetry.slow} + excluded.slow`,
@@ -230,19 +275,25 @@ export async function track<T>(
   const started = Date.now();
   try {
     const result = await run();
-    record({ operation, workspaceId, ms: Date.now() - started, ok: true });
+    record({ operation, workspaceId, ms: Date.now() - started, outcome: "ok" });
     return result;
   } catch (error) {
     record({
       operation,
       workspaceId,
       ms: Date.now() - started,
-      ok: false,
+      outcome: "error",
       errorKind: kindOf(error),
       errorNote: error instanceof Error ? error.message : String(error),
     });
     throw error;
   }
+}
+
+/** One turned away by a guard: a rate limit, a size cap, a permission. */
+export function refused(operation: string, workspaceId: string | undefined, why: string): void {
+  if (!workspaceId) return;
+  record({ operation, workspaceId, ms: 0, outcome: "refused", errorKind: why });
 }
 
 /** Drops buckets past the retention window. Called from the cron. */

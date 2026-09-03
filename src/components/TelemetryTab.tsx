@@ -11,9 +11,12 @@ interface Row {
   source: string;
   calls: number;
   errors: number;
+  refused: number;
+  cold: number;
   totalMs: number;
   maxMs: number;
   slow: number;
+  lastBucket: number;
   lastErrorKind: string | null;
   lastErrorNote: string | null;
   lastErrorAt: number | null;
@@ -23,6 +26,7 @@ interface Hour {
   bucket: number;
   calls: number;
   errors: number;
+  refused: number;
   totalMs: number;
   slow: number;
 }
@@ -73,11 +77,13 @@ export function TelemetryTab() {
   }, [load, hours]);
 
   const totals = useMemo(() => {
-    const seed = { calls: 0, errors: 0, totalMs: 0, slow: 0 };
+    const seed = { calls: 0, errors: 0, refused: 0, cold: 0, totalMs: 0, slow: 0 };
     return (rows ?? []).reduce(
       (sum, row) => ({
         calls: sum.calls + row.calls,
         errors: sum.errors + row.errors,
+        refused: sum.refused + row.refused,
+        cold: sum.cold + row.cold,
         totalMs: sum.totalMs + row.totalMs,
         slow: sum.slow + row.slow,
       }),
@@ -113,6 +119,21 @@ export function TelemetryTab() {
   }, [rows]);
 
   const peak = Math.max(1, ...byHour.map((h) => h.calls));
+
+  /*
+   * The nightly work, called out on its own.
+   *
+   * Everything else here is read by looking at a number that is there. This one
+   * is read by noticing a number that is not: a tick that never ran leaves no
+   * row, and a table of rows cannot show you an absence. So it gets its own
+   * line that says when it last happened and goes red when that was too long
+   * ago, which is the only shape in which "it stopped running" is visible.
+   */
+  const tick = (rows ?? []).find((row) => row.operation === "cron.tick");
+  // The cron is daily. A bucket is an hour wide, so anything past about a day
+  // and a bit means a night was missed rather than a clock being off.
+  const OVERDUE_MS = 26 * 60 * 60 * 1000;
+  const tickLate = !tick || Date.now() - tick.lastBucket > OVERDUE_MS;
 
   if (error) {
     return <p className="md-body text-error">{error}</p>;
@@ -160,6 +181,36 @@ export function TelemetryTab() {
         />
       </div>
 
+      <div className="grid grid-cols-2 gap-3 medium:grid-cols-4">
+        {/* Refused is not an error. A few is the limits working. */}
+        <Figure label="Refused" value={compact(totals.refused)} />
+        <Figure label="Cold starts" value={compact(totals.cold)} />
+        <Figure label="Over 1s" value={compact(totals.slow)} />
+        <Figure
+          label="Slowest"
+          value={ms(Math.max(0, ...(rows ?? []).map((r) => r.maxMs)))}
+        />
+      </div>
+
+      <Card>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h3 className="md-title">Scheduled work</h3>
+          <span className={cx("md-label", tickLate ? "text-error" : "text-on-variant")}>
+            {tick
+              ? `Last ran ${formatRelativeTime(tick.lastBucket)}`
+              : `Has not run in the last ${hours >= 48 ? `${Math.round(hours / 24)} days` : `${hours} hours`}`}
+          </span>
+        </div>
+        {tick ? (
+          <p className="md-label-sm mt-1 text-on-variant/75">
+            {compact(tick.calls)} tick{tick.calls === 1 ? "" : "s"}
+            {tick.errors > 0 ? `, ${compact(tick.errors)} failed` : ""}
+            {" · "}
+            {ms(tick.calls > 0 ? tick.totalMs / tick.calls : 0)} each
+          </p>
+        ) : null}
+      </Card>
+
       {byHour.length > 1 ? (
         <Card>
           <h3 className="md-title mb-3">By hour</h3>
@@ -203,6 +254,7 @@ export function TelemetryTab() {
                   <Th>Operation</Th>
                   <Th align="right">Calls</Th>
                   <Th align="right">Errors</Th>
+                  <Th align="right">Refused</Th>
                   <Th align="right">Average</Th>
                   <Th align="right">Slowest</Th>
                   <Th align="right">Over 1s</Th>
@@ -233,6 +285,7 @@ export function TelemetryTab() {
                     <Td align="right" tone={row.errors > 0 ? "bad" : undefined}>
                       {row.errors > 0 ? compact(row.errors) : "0"}
                     </Td>
+                    <Td align="right">{row.refused > 0 ? compact(row.refused) : "0"}</Td>
                     <Td align="right">{row.calls > 0 ? ms(row.totalMs / row.calls) : "0ms"}</Td>
                     <Td align="right" tone={row.maxMs >= 3_000 ? "bad" : undefined}>
                       {ms(row.maxMs)}

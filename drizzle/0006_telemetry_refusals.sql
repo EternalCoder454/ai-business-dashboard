@@ -1,0 +1,2 @@
+ALTER TABLE "telemetry" ADD COLUMN IF NOT EXISTS "refused" integer DEFAULT 0 NOT NULL;
+ALTER TABLE "telemetry" ADD COLUMN IF NOT EXISTS "cold" integer DEFAULT 0 NOT NULL;

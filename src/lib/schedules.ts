@@ -4,6 +4,7 @@ import { databaseEnabled, db, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { workspaceKey } from "@/db/keys";
 import { loadWorkspace } from "@/db/repo";
+import { kindOf, record } from "./telemetry";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { providerOf, providerInfo, type Provider } from "@/lib/providers";
 import { upcoming } from "@/lib/google";
@@ -171,6 +172,7 @@ export async function runSchedules(now = new Date()): Promise<ScheduleRun> {
     const already = perWorkspace.get(schedule.workspaceId) ?? 0;
     if (already >= MAX_PER_RUN) continue;
 
+    const startedAt = Date.now();
     try {
       const workspace = await loadWorkspace(schedule.workspaceId, schedule.createdBy);
       const department = workspace.departments.find((d) => d.id === schedule.departmentId);
@@ -216,6 +218,14 @@ export async function runSchedules(now = new Date()): Promise<ScheduleRun> {
       const reply = await ask(provider, model, apiKey, system, schedule.prompt);
       if (!reply) {
         failed.push(schedule.name);
+        record({
+          operation: "schedule.run",
+          workspaceId: schedule.workspaceId,
+          ms: Date.now() - startedAt,
+          outcome: "error",
+          errorKind: "NoReply",
+          errorNote: `${provider} returned nothing for a scheduled briefing`,
+        });
         continue;
       }
 
@@ -241,9 +251,23 @@ export async function runSchedules(now = new Date()): Promise<ScheduleRun> {
 
       perWorkspace.set(schedule.workspaceId, already + 1);
       ran += 1;
+      record({
+        operation: "schedule.run",
+        workspaceId: schedule.workspaceId,
+        ms: Date.now() - startedAt,
+        outcome: "ok",
+      });
     } catch (error) {
       console.error(`[schedules] ${schedule.id} failed`, error);
       failed.push(schedule.name);
+      record({
+        operation: "schedule.run",
+        workspaceId: schedule.workspaceId,
+        ms: Date.now() - startedAt,
+        outcome: "error",
+        errorKind: kindOf(error),
+        errorNote: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

@@ -28,11 +28,14 @@ function check(label: string, condition: boolean, detail = "") {
 /** The same statement db/telemetry.ts sends, against the temporary table. */
 const UPSERT = `
   insert into t_check (id, workspace_id, operation, source, bucket, calls, errors,
-                       total_ms, max_ms, slow, last_error_kind, last_error_note, last_error_at)
-  values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+                       refused, cold, total_ms, max_ms, slow,
+                       last_error_kind, last_error_note, last_error_at)
+  values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
   on conflict (id) do update set
     calls = t_check.calls + excluded.calls,
     errors = t_check.errors + excluded.errors,
+    refused = t_check.refused + excluded.refused,
+    cold = t_check.cold + excluded.cold,
     total_ms = t_check.total_ms + excluded.total_ms,
     max_ms = greatest(t_check.max_ms, excluded.max_ms),
     slow = t_check.slow + excluded.slow,
@@ -57,6 +60,7 @@ async function main() {
       id text primary key, workspace_id text not null, operation text not null,
       source text not null default 'server', bucket bigint not null,
       calls integer not null default 0, errors integer not null default 0,
+      refused integer not null default 0, cold integer not null default 0,
       total_ms bigint not null default 0, max_ms integer not null default 0,
       slow integer not null default 0, last_error_kind text,
       last_error_note text not null default '', last_error_at bigint
@@ -65,20 +69,25 @@ async function main() {
 
   const ID = "ws:workspace.load:server:100";
   const row = (
-    calls: number, errors: number, totalMs: number, maxMs: number, slow: number,
+    calls: number, errors: number, refused: number, cold: number,
+    totalMs: number, maxMs: number, slow: number,
     kind: string | null, note: string, at: number | null,
-  ) => [ID, "ws", "workspace.load", "server", 100, calls, errors, totalMs, maxMs, slow, kind, note, at];
+  ) => [ID, "ws", "workspace.load", "server", 100, calls, errors, refused, cold,
+        totalMs, maxMs, slow, kind, note, at];
 
-  // Instance A: 10 clean calls, slowest 120ms.
-  await sql.unsafe(UPSERT, row(10, 0, 900, 120, 0, null, "", null));
-  // Instance B, same hour: 5 calls, one of them a failure, slowest 2200ms.
-  await sql.unsafe(UPSERT, row(5, 1, 3400, 2200, 1, "ECONNRESET", "connection lost", 1_700));
+  // Instance A: 10 clean calls, one of which was its first, slowest 120ms.
+  await sql.unsafe(UPSERT, row(10, 0, 0, 1, 900, 120, 0, null, "", null));
+  // Instance B, same hour: 5 calls, one failure, two turned away, slowest 2200ms.
+  await sql.unsafe(UPSERT, row(5, 1, 2, 1, 3400, 2200, 1, "ECONNRESET", "connection lost", 1_700));
 
   const [merged] = await sql.unsafe(`select * from t_check where id = $1`, [ID]);
 
   check("one row, not two", Number((await sql.unsafe(`select count(*)::int n from t_check`))[0].n) === 1);
   check("calls add up", Number(merged.calls) === 15, `got ${merged.calls}, wanted 15`);
   check("errors add up", Number(merged.errors) === 1, `got ${merged.errors}`);
+  check("refusals add up", Number(merged.refused) === 2, `got ${merged.refused}`);
+  // Two instances each served their first request in the same hour, so two.
+  check("cold starts add up", Number(merged.cold) === 2, `got ${merged.cold}`);
   check("time adds up", Number(merged.total_ms) === 4300, `got ${merged.total_ms}`);
   check("slowest is the larger, not the later", Number(merged.max_ms) === 2200, `got ${merged.max_ms}`);
   check("slow count adds up", Number(merged.slow) === 1, `got ${merged.slow}`);
@@ -87,10 +96,11 @@ async function main() {
 
   // Instance A again, still clean. The clean flush must not erase the failure
   // that another instance recorded, and must not lower the slowest.
-  await sql.unsafe(UPSERT, row(7, 0, 500, 90, 0, null, "", null));
+  await sql.unsafe(UPSERT, row(7, 0, 0, 0, 500, 90, 0, null, "", null));
   const [after] = await sql.unsafe(`select * from t_check where id = $1`, [ID]);
 
   check("a later clean flush still adds", Number(after.calls) === 22, `got ${after.calls}`);
+  check("it does not lose the refusals", Number(after.refused) === 2, `got ${after.refused}`);
   check("it does not erase the error kind", after.last_error_kind === "ECONNRESET");
   check("it does not erase the note", after.last_error_note === "connection lost");
   check("it does not lower the slowest", Number(after.max_ms) === 2200, `got ${after.max_ms}`);
@@ -98,7 +108,8 @@ async function main() {
 
   // A different hour is a different row, which is what keeps this bounded.
   await sql.unsafe(UPSERT, [
-    "ws:workspace.load:server:200", "ws", "workspace.load", "server", 200, 1, 0, 10, 10, 0, null, "", null,
+    "ws:workspace.load:server:200", "ws", "workspace.load", "server", 200,
+    1, 0, 0, 0, 10, 10, 0, null, "", null,
   ]);
   const [{ n }] = await sql.unsafe(`select count(*)::int n from t_check`);
   check("a new hour is a new row", Number(n) === 2, `got ${n}`);

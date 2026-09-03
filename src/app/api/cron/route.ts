@@ -3,7 +3,7 @@ import { auth, authEnabled } from "@/auth";
 import { isOperator } from "@/lib/admin";
 import { reporterEnabled, runReview } from "@/lib/reporter";
 import { runSchedules } from "@/lib/schedules";
-import { flush, prune } from "@/lib/telemetry";
+import { DEPLOYMENT, flush, kindOf, prune, record } from "@/lib/telemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,15 +63,40 @@ export async function GET(request: Request) {
   // they open the panel; the review is ours and can have whatever is left.
   const schedules = await runSchedules().catch((error) => {
     console.error("[cron] schedules failed", error);
+    record({
+      operation: "cron.schedules",
+      workspaceId: DEPLOYMENT,
+      ms: Date.now() - started,
+      outcome: "error",
+      errorKind: kindOf(error),
+      errorNote: error instanceof Error ? error.message : String(error),
+    });
     return null;
   });
 
+  const reviewStarted = Date.now();
   const review = reporterEnabled()
     ? await runReview().catch((error) => {
         console.error("[cron] review failed", error);
+        record({
+          operation: "cron.review",
+          workspaceId: DEPLOYMENT,
+          ms: Date.now() - reviewStarted,
+          outcome: "error",
+          errorKind: kindOf(error),
+          errorNote: error instanceof Error ? error.message : String(error),
+        });
         return null;
       })
     : null;
+  if (review) {
+    record({
+      operation: "cron.review",
+      workspaceId: DEPLOYMENT,
+      ms: Date.now() - reviewStarted,
+      outcome: "ok",
+    });
+  }
 
   // Telemetry keeps itself in bounds here rather than in a job of its own.
   // Buckets past the retention window go, and whatever this instance has
@@ -83,6 +108,23 @@ export async function GET(request: Request) {
   await flush();
 
   const ms = Date.now() - started;
+
+  /*
+   * One row for the tick itself, which is the point of the whole thing.
+   *
+   * The nightly work used to leave a console line and nothing else, so "did
+   * last night run" had no answer short of trawling the platform's logs.
+   * What makes this worth recording is not the row that appears but the one
+   * that does not: an hour with no cron.tick is a tick that never happened,
+   * and until now that looked exactly like a quiet night.
+   */
+  record({
+    operation: "cron.tick",
+    workspaceId: DEPLOYMENT,
+    ms,
+    outcome: schedules ? "ok" : "error",
+    errorKind: schedules ? undefined : "SchedulesFailed",
+  });
   // Logged as well as returned, because the usual reader is a scheduler that
   // throws the body away. The log is where somebody looks to find out whether
   // this has been running at all.

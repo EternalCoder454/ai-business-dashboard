@@ -7,7 +7,7 @@ import { MAX_WRITE_BYTES, WRITABLE_TABLES } from "@/lib/workspace";
 import { membershipFor, provisionFor } from "@/db/tenancy";
 import { OPERATOR_EMAILS } from "@/auth";
 import { readJsonWithin } from "@/lib/guard";
-import { track } from "@/lib/telemetry";
+import { refused, track } from "@/lib/telemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -100,6 +100,9 @@ export async function POST(request: Request) {
 
   const parsed = await readJsonWithin<{ ops?: MutationOp[] }>(request, MAX_WRITE_BYTES);
   if (!parsed.ok) {
+    // Usually an upload over the size cap, which the person experiences as a
+    // save that did not happen. Worth a count.
+    refused("workspace.save", owner.workspaceId, "BodyRejected");
     return Response.json({ error: parsed.error }, { status: parsed.status });
   }
 
@@ -109,6 +112,7 @@ export async function POST(request: Request) {
   // Each op becomes its own branch of a single transaction, so an unbounded
   // array is an unbounded transaction. The upload path sends fewer than ten.
   if (ops.length > 200) {
+    refused("workspace.save", owner.workspaceId, "TooManyOps");
     return Response.json({ error: "Too many operations in one request." }, { status: 400 });
   }
 
@@ -123,6 +127,7 @@ export async function POST(request: Request) {
    * permission.
    */
   if (owner.role !== "admin" && ops.some((op) => op.table === "wikiPages")) {
+    refused("workspace.save", owner.workspaceId, "NotAnAdministrator");
     return Response.json(
       { error: "Only an administrator of this workspace can edit the wiki." },
       { status: 403 },

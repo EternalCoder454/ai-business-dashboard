@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
 import { readJsonWithin, requireSession, withinRate } from "@/lib/guard";
-import { kindOf, record } from "@/lib/telemetry";
+import { kindOf, record, refused } from "@/lib/telemetry";
 import { workspaceKey } from "@/db/keys";
 import { membershipFor } from "@/db/tenancy";
 import { DEFAULT_PROVIDER, providerInfo, providerOf, type Provider } from "@/lib/providers";
@@ -120,6 +120,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (!withinRate(`chat:${session.email ?? "local"}`, RATE_LIMIT, RATE_WINDOW_MS)) {
+    // Counted against chat.stream rather than as an operation of its own, so a
+    // refusal sits beside the calls it belongs to instead of adding a row.
+    // Worth the lookup: being turned away here is the most visible refusal in
+    // the product, and it happens on a request that was about to be refused
+    // anyway.
+    refused("chat.stream", await workspaceOf(session.email ?? undefined), "RateLimited");
     return Response.json(
       { error: "Too many requests in a row. Wait a moment and try again." },
       { status: 429 },
@@ -509,7 +515,7 @@ export async function POST(request: NextRequest) {
             operation: "chat.stream",
             workspaceId: tenantId ?? "",
             ms: Date.now() - startedAt,
-            ok: !failure,
+            outcome: failure ? "error" : "ok",
             errorKind: failure ? kindOf(failure) : undefined,
             errorNote:
               failure instanceof Error ? failure.message : failure ? String(failure) : undefined,
