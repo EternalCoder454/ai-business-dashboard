@@ -56,7 +56,8 @@
     "test:db": "npm run rate-test && npm run tenancy-test && npm run messages-test && npm run keys-test && npm run admin-test && npm run api-test",
     "changelog": "tsx scripts/changelog.ts",
     "links-test": "tsx scripts/links-test.ts",
-    "conduct-test": "tsx scripts/conduct-test.ts"
+    "conduct-test": "tsx scripts/conduct-test.ts",
+    "isolation-check": "tsx --env-file=.env.local scripts/isolation-check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

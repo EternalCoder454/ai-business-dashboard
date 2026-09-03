@@ -362,6 +362,15 @@ export const profiles = pgTable("profiles", {
  */
 export const settings = pgTable("settings", {
   workspaceId: text("workspace_id").primaryKey(),
+  /**
+   * What happens to a link in a message: `open` leaves them alone, `allowlist`
+   * keeps only the hosts in link_allowlist.
+   *
+   * Open by default, and deliberately not in the client's writable settings
+   * list: it is an administrator's control, written only by the reports route,
+   * the same way the three keys below are written only by the keys route.
+   */
+  linkPolicy: text("link_policy").notNull().default("open"),
   anthropicKey: text("anthropic_key").notNull().default(""),
   openaiKey: text("openai_key").notNull().default(""),
   googleKey: text("google_key").notNull().default(""),

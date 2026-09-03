@@ -5,3 +5,5 @@ CREATE TABLE IF NOT EXISTS "link_allowlist" (
   "created_at" timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT "link_allowlist_pkey" PRIMARY KEY ("workspace_id", "domain")
 );
+
+ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "link_policy" text NOT NULL DEFAULT 'open';

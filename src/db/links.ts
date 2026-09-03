@@ -37,19 +37,65 @@ export async function allowedLinks(workspaceId: string): Promise<AllowedLink[]> 
   }));
 }
 
+/** Off, or keeping only the hosts on the list. */
+export type LinkPolicy = "open" | "allowlist";
+
+export interface LinkFilter {
+  policy: LinkPolicy;
+  domains: string[];
+}
+
 /**
- * Just the domains, for the check on the send path.
+ * What to do about links in this business's messages.
  *
- * Separate from `allowedLinks` because that one runs on a screen somebody
- * opened and this one runs on every message anybody sends.
+ * Open unless somebody turned it on, because a filter nobody asked for that
+ * quietly edits what colleagues send each other is not a safety feature, it is
+ * a support ticket. A business switches it on when it wants it.
+ *
+ * Every failure here answers `open`. This runs on the send path, and a filter
+ * that cannot read its own settings must not be able to stop people talking to
+ * each other: the version of this that threw took every message in the product
+ * down with it, including "Hey", because the table had not been created yet.
  */
-export async function allowedDomains(workspaceId: string): Promise<string[]> {
-  if (!databaseEnabled || !db) return [];
-  const rows = await db
-    .select({ domain: t.linkAllowlist.domain })
-    .from(t.linkAllowlist)
-    .where(eq(t.linkAllowlist.workspaceId, workspaceId));
-  return rows.map((row) => row.domain);
+export async function linkFilterFor(workspaceId: string): Promise<LinkFilter> {
+  const off: LinkFilter = { policy: "open", domains: [] };
+  if (!databaseEnabled || !db) return off;
+
+  try {
+    const [row] = await db
+      .select({ policy: t.settings.linkPolicy })
+      .from(t.settings)
+      .where(eq(t.settings.workspaceId, workspaceId))
+      .limit(1);
+
+    if (row?.policy !== "allowlist") return off;
+
+    const rows = await db
+      .select({ domain: t.linkAllowlist.domain })
+      .from(t.linkAllowlist)
+      .where(eq(t.linkAllowlist.workspaceId, workspaceId));
+
+    return { policy: "allowlist", domains: rows.map((entry) => entry.domain) };
+  } catch (error) {
+    console.error("[links] could not read the filter, leaving links alone", error);
+    return off;
+  }
+}
+
+/** Reads the policy on its own, for the screen that sets it. */
+export async function linkPolicyFor(workspaceId: string): Promise<LinkPolicy> {
+  return (await linkFilterFor(workspaceId)).policy;
+}
+
+/** Switches the filter on or off for one business. */
+export async function setLinkPolicy(
+  workspaceId: string,
+  policy: LinkPolicy,
+): Promise<void> {
+  await requireDb()
+    .update(t.settings)
+    .set({ linkPolicy: policy })
+    .where(eq(t.settings.workspaceId, workspaceId));
 }
 
 /**

@@ -100,6 +100,7 @@ export function ReportsTab({
 
   /** The link hosts this business allows. Empty on the operator's own screen. */
   const [links, setLinks] = useState<AllowedLink[]>([]);
+  const [linkPolicy, setLinkPolicy] = useState<"open" | "allowlist">("open");
   const [domain, setDomain] = useState("");
 
   const loadTranscript = useCallback(
@@ -133,6 +134,7 @@ export function ReportsTab({
       const body = await response.json();
       setRows(body.reports ?? []);
       setLinks(body.links ?? []);
+      setLinkPolicy(body.linkPolicy === "allowlist" ? "allowlist" : "open");
       setEnabled(Boolean(body.enabled));
       setLastRunAt(body.lastRunAt ?? null);
     } catch {
@@ -190,6 +192,7 @@ export function ReportsTab({
 
     const body = (await response?.json().catch(() => null)) as {
       links?: AllowedLink[];
+      linkPolicy?: string;
       error?: string;
     } | null;
 
@@ -198,7 +201,32 @@ export function ReportsTab({
       return;
     }
     setLinks(body?.links ?? []);
+    if (body?.linkPolicy) {
+      setLinkPolicy(body.linkPolicy === "allowlist" ? "allowlist" : "open");
+    }
     setDomain("");
+  };
+
+  const choosePolicy = async (policy: "open" | "allowlist") => {
+    setError(null);
+    const response = await fetch("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "link-policy", policy, scope }),
+    }).catch(() => null);
+
+    const body = (await response?.json().catch(() => null)) as {
+      links?: AllowedLink[];
+      linkPolicy?: string;
+      error?: string;
+    } | null;
+
+    if (!response?.ok) {
+      setError(body?.error ?? "Could not change that.");
+      return;
+    }
+    setLinkPolicy(body?.linkPolicy === "allowlist" ? "allowlist" : "open");
+    setLinks(body?.links ?? []);
   };
 
   const run = async () => {
@@ -305,53 +333,69 @@ export function ReportsTab({
           <div className="flex flex-wrap items-start gap-3">
             <LinkIcon className="mt-0.5 h-5 w-5 flex-none text-on-variant" />
             <div className="min-w-0 flex-1">
-              <p className="md-title">Allowed links</p>
-              <p className="md-body mt-1 text-on-variant">
-                A link in a message is removed unless its address is here. An
-                address covers its own subdomains.
-              </p>
+              <p className="md-title">Links in messages</p>
 
-              <form
-                className="mt-3 flex flex-wrap items-center gap-2"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  if (domain.trim()) void changeLink("allow-link", domain);
-                }}
-              >
-                <TextInput
-                  value={domain}
-                  onChange={(event) => setDomain(event.target.value)}
-                  placeholder="example.com"
-                  aria-label="Address to allow"
-                  className="w-full medium:w-64"
-                />
-                <Button type="submit" size="sm" disabled={!domain.trim()}>
-                  Allow
-                </Button>
-              </form>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Chip
+                  selected={linkPolicy === "open"}
+                  onClick={() => void choosePolicy("open")}
+                >
+                  Allow all links
+                </Chip>
+                <Chip
+                  selected={linkPolicy === "allowlist"}
+                  onClick={() => void choosePolicy("allowlist")}
+                >
+                  Only these addresses
+                </Chip>
+              </div>
 
-              {links.length > 0 ? (
-                <ul className="mt-3 flex flex-wrap gap-2">
-                  {links.map((entry) => (
-                    <li key={entry.domain}>
-                      <span className="inline-flex items-center gap-1 rounded-lg border border-outline-variant px-2.5 py-1">
-                        <span className="md-label">{entry.domain}</span>
-                        <button
-                          onClick={() => void changeLink("disallow-link", entry.domain)}
-                          aria-label={`Stop allowing ${entry.domain}`}
-                          className="md-state grid h-5 w-5 place-items-center rounded-full text-on-variant"
-                        >
-                          <CloseIcon className="h-3 w-3" />
-                        </button>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="md-label-sm mt-3 text-on-variant/75">
-                  Nothing allowed yet, so every link is removed.
-                </p>
-              )}
+              {/* The list is only worth showing once it decides anything. */}
+              {linkPolicy === "allowlist" ? (
+                <>
+                  <form
+                    className="mt-4 flex flex-wrap items-center gap-2"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      if (domain.trim()) void changeLink("allow-link", domain);
+                    }}
+                  >
+                    <TextInput
+                      value={domain}
+                      onChange={(event) => setDomain(event.target.value)}
+                      placeholder="example.com"
+                      aria-label="Address to allow"
+                      className="w-full medium:w-64"
+                    />
+                    <Button type="submit" size="sm" disabled={!domain.trim()}>
+                      Allow
+                    </Button>
+                  </form>
+
+                  {links.length > 0 ? (
+                    <ul className="mt-3 flex flex-wrap gap-2">
+                      {links.map((entry) => (
+                        <li key={entry.domain}>
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-outline-variant px-2.5 py-1">
+                            <span className="md-label">{entry.domain}</span>
+                            <button
+                              onClick={() => void changeLink("disallow-link", entry.domain)}
+                              aria-label={`Stop allowing ${entry.domain}`}
+                              className="md-state grid h-5 w-5 place-items-center rounded-full text-on-variant"
+                            >
+                              <CloseIcon className="h-3 w-3" />
+                            </button>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="md-label-sm mt-3 text-error">
+                      Nothing allowed yet, so every link is being removed.
+                    </p>
+                  )}
+                </>
+              ) : null}
             </div>
           </div>
         </Card>

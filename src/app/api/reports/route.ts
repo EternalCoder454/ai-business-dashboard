@@ -1,5 +1,5 @@
 import { reportsBody } from "@/lib/schemas";
-import { allowLink, allowedLinks, disallowLink } from "@/db/links";
+import { allowLink, allowedLinks, disallowLink, linkPolicyFor, setLinkPolicy } from "@/db/links";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
@@ -149,6 +149,7 @@ async function listing(who: { email: string; workspaceId: string | null }) {
       // Only on a business's own panel: the list belongs to one workspace, and
       // the operator's view spans every one of them.
       links: mine ? await allowedLinks(mine) : [],
+      linkPolicy: mine ? await linkPolicyFor(mine) : "open",
       reports: rows.map((row) => ({
         id: row.id,
         workspaceName: row.workspaceName,
@@ -231,6 +232,22 @@ export async function POST(request: Request) {
      * operator screen reads across every business and has none, which is why
      * the Allowed links section only appears on a business's own panel.
      */
+    if (parsed.body.action === "link-policy") {
+      if (!who.workspaceId) {
+        return Response.json(
+          { error: "Open this from a business's own panel." },
+          { status: 400 },
+        );
+      }
+      const policy = parsed.body.policy === "allowlist" ? "allowlist" : "open";
+      await setLinkPolicy(who.workspaceId, policy);
+      return Response.json({
+        ok: true,
+        linkPolicy: policy,
+        links: await allowedLinks(who.workspaceId),
+      });
+    }
+
     if (parsed.body.action === "allow-link" || parsed.body.action === "disallow-link") {
       if (!who.workspaceId) {
         return Response.json(

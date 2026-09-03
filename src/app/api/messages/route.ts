@@ -17,8 +17,8 @@ import { withinRate } from "@/lib/rateLimit";
 import { track } from "@/lib/telemetry";
 import { membershipFor, type Membership } from "@/db/tenancy";
 import { allowsArea } from "@/lib/permissions";
-import { allowedDomains, recordStrippedLinks } from "@/db/links";
-import { REMOVED, scrubLinks } from "@/lib/links";
+import { linkFilterFor, recordStrippedLinks } from "@/db/links";
+import { scrubLinks } from "@/lib/links";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -206,29 +206,21 @@ export async function POST(request: Request) {
     }
 
     /*
-     * Links the business has not agreed to are taken out before the message is
-     * stored, so the recipient never sees one and nothing can bring it back.
+     * The link filter, which is off unless this business turned it on.
      *
      * Before the write rather than after, because a link that exists for a
      * second still exists: the recipient could be polling, and a message is
      * pushed to their screen the moment it lands.
+     *
+     * Nothing in here may refuse a message. It is a filter on links, not a
+     * gate on talking, so the worst it does is send the message with fewer
+     * links in it than it arrived with.
      */
-    const allowed = await allowedDomains(mine.workspaceId);
-    const scrubbed = scrubLinks(text, allowed);
-
-    /*
-     * A message that was nothing but a bad link has nothing left to send.
-     * Refusing is better than delivering an empty bubble, and it tells the
-     * sender what happened while they still have what they wrote.
-     */
-    if (!scrubbed.text.replace(REMOVED, "").trim()) {
-      return Response.json(
-        {
-          error: `That link is not on the allowed list for this business: ${scrubbed.removed.join(", ")}`,
-        },
-        { status: 422 },
-      );
-    }
+    const filter = await linkFilterFor(mine.workspaceId);
+    const scrubbed =
+      filter.policy === "allowlist"
+        ? scrubLinks(text, filter.domains)
+        : { text, removed: [] as string[] };
 
     const id = randomUUID();
     const message = await sendMessage(

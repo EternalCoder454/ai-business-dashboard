@@ -56,12 +56,21 @@ export const feedbackPatchBody = z.object({
 export const feedbackDeleteBody = z.object({ id });
 
 export const reportsBody = z.object({
-  action: z.enum(["run", "status", "delete", "allow-link", "disallow-link"]),
+  action: z.enum([
+    "run",
+    "status",
+    "delete",
+    "allow-link",
+    "disallow-link",
+    "link-policy",
+  ]),
   id: id.optional(),
   status: z.enum(["new", "reviewed", "dismissed"]).optional(),
   scope: z.enum(["deployment", "workspace"]).optional(),
   /** A domain, or a whole URL somebody pasted. Normalised before it is stored. */
   domain: z.string().trim().max(300).optional(),
+  /** Off, or keeping only what is on the list. */
+  policy: z.enum(["open", "allowlist"]).optional(),
 });
 
 export const messagesBody = z.object({
