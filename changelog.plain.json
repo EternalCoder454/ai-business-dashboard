@@ -7,6 +7,11 @@
     "is how internal work stays out of a customer's changelog.",
     "With ANTHROPIC_API_KEY set, `npm run changelog` drafts missing ones for review."
   ],
+  "e9e94d0": {
+    "kind": "new",
+    "title": "Addons",
+    "detail": "Ask the Head of Engineering for an automation and it will build one. For example, posting to Slack whenever a task is marked done, or filing a note every morning.\n\nAn addon is saved switched off. Under Integrations an administrator sees exactly what it will do and every outside service it could send to, and approves it by name before anything runs. Pause or delete it at any time, and every run is listed so you can see what happened.\n\nAn addon can send but never read anything back, and it is never given a key, a file, or anyone's messages."
+  },
   "af3c5d2": {
     "kind": "better",
     "title": "Your logo in the browser tab",

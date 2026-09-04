@@ -25,6 +25,35 @@ export interface ChangelogEntry {
 /** Newest first, which is the order both views show them in. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "id": "e9e94d0",
+    "date": "2026-09-03",
+    "title": "Let the Engineering head build an addon, and make approving it the gate",
+    "detail": "An administrator can now ask the Head of Engineering for an automation and get one. It is saved switched off, and an approval screen shows what it will do and every host it could send to before anything runs.\n\nThe tool is administrator only, and that is enforced twice for different reasons. toolsFor hides it from a member so the model does not offer something they cannot use and end the conversation in a refusal. The route checks the membership itself, because hiding a tool decides what a department is told, not what anybody may do, and a crafted request never reads the first check.\n\nApproval grants hosts by name, and the names are written down at the moment of approval rather than derived from the recipe later. An addon whose recipe changed afterwards shows as waiting for approval and does not run, so an edit cannot inherit a decision made about a different recipe. Host matching is exact: hooks.slack.com does not approve a.hooks.slack.com, and never hooks.slack.com.attacker.example, which is what a suffix match would have done.\n\nA stored recipe is re-validated every time it is read. A row is an input, not a promise, and one that no longer validates is dropped rather than repaired, so a tampered addon stops instead of running a version nobody agreed to.\n\nTriggers fire from the panel's own writes as well as the API, since most tasks are finished by ticking them off rather than through /api/v1. Completion is a transition rather than a state, so saving an already-done task does not re-fire it. Events are gathered inside the transaction and run after it commits, following the blob pattern already there, because a five second webhook must not hold a transaction open. The effects write underneath applyMutations rather than through it, so an addon that files a task cannot trigger itself: the loop cannot form rather than being caught once it starts.\n\nThe tenancy audit caught two real gaps while this was being written, and one of them mattered: a deleted business left its addons behind, and the nightly tick would have gone on sending to an outside service for a company that no longer existed.\n\nAlso adds a shipped Engineering skill on writing one, which tells the head to say it is switched off, to ask for a real webhook address rather than inventing a plausible one, and that there is nowhere in an addon that can hold a secret.\n\nNeeds drizzle/0014_addons.sql applied before this deploys.",
+    "plain": {
+      "kind": "new",
+      "title": "Addons",
+      "detail": "Ask the Head of Engineering for an automation and it will build one. For example, posting to Slack whenever a task is marked done, or filing a note every morning.\n\nAn addon is saved switched off. Under Integrations an administrator sees exactly what it will do and every outside service it could send to, and approves it by name before anything runs. Pause or delete it at any time, and every run is listed so you can see what happened.\n\nAn addon can send but never read anything back, and it is never given a key, a file, or anyone's messages."
+    }
+  },
+  {
+    "id": "52018a1",
+    "date": "2026-09-03",
+    "title": "Call the product by its name",
+    "detail": "The panel described itself as an \"internal operations workspace\" in its metadata, its manifest and its link card, which was accurate when it was one company's own tool and has not been since it started holding many businesses. It now says what it is: AI department heads for a small business.\n\nAn unbranded deployment also called itself \"Your Company\", which is the placeholder a new workspace starts at. Those are two different things in two different places: a customer's workspace should open on a placeholder they replace, and the deployment's own icon and link card should say Eterneon Panel. Only the second one changed.\n\nThe package is eterneon-panel rather than ceo-hq. The docs headings name the product rather than the company that makes it.\n\nMeasured the link card rather than assuming the longer line fits: at 34px in the widest of the fallback faces it is 626px against 1008px available, and the name at 76px is 524px.\n\nLeft alone: the \"eterneon\" stamp inside an export file, which is a format identifier nothing reads and renaming would only risk older exports, and one exported design asset that records the name at the time it was written."
+  },
+  {
+    "id": "b9a73c8",
+    "date": "2026-09-03",
+    "title": "Give addons a language that cannot express anything bad",
+    "detail": "The Engineering head is going to build addons on request, which means a model writes something that then runs on our server against a customer's business. The safety of that rests entirely on what an addon is allowed to be, so that is what this commit decides, before anything can run one.\n\nAn addon is a recipe, not a program. A trigger, some conditions, and up to five steps chosen from three verbs we wrote. There is no expression to evaluate, no loop, no variable, and no eval, new Function or template engine anywhere in the system. A recipe never becomes code at any point, so there is nothing to escape from. The cost is that an addon can only do what we have implemented, which is the trade being made on purpose.\n\nA template can only name a field the trigger actually offers, checked against a list per trigger. Nothing on those lists is a credential, a file, or another person's message, so an approved addon cannot be talked into posting a key to its own host. Lookup is on a null-prototype copy, so {{constructor}} and {{__proto__}} find nothing.\n\nOutbound is the real surface, and it is treated as request forgery by default, because that is what it is. Https only, port 443, no sign-in in the URL, and a hostname the DNS could answer for. Every address the name resolves to must be public, not just the first, and the socket is then pinned to an address we checked, which is what closes the rebinding window that checking alone leaves open. Redirects are never followed. The response is read to a cap and discarded except for its status, so an addon can send but never fetch, and cannot be turned into a way to pull an internal page out through a task title.\n\nAn http_post supplies field names and values, never JSON. We render the values and serialise the object ourselves, so a value full of quotes and braces is escaped like any other string and cannot add a field or change the shape of what is sent.\n\naddons-test is mostly refusals: eleven recipe shapes a model might produce, prototype reaching, twenty four private addresses including the cloud metadata endpoint in both its IPv4 and IPv6-mapped spellings, and that a thrown step does not leak its message into a log an owner reads.\n\nNot wired to anything yet. Storage, the tool the Engineering head calls, and the approval screen come next; this is the part that had to be right first."
+  },
+  {
+    "id": "0a7b970",
+    "date": "2026-09-03",
+    "title": "Write up the tab icon for the Simple changelog",
+    "detail": "Its own commit rather than part of the change it describes: entries are keyed by commit, and amending one to add its own entry gives it a new hash that the entry no longer matches."
+  },
+  {
     "id": "af3c5d2",
     "date": "2026-09-03",
     "title": "Put the workspace's own logo in the browser tab",
@@ -1624,4 +1653,4 @@ export const CHANGELOG: ChangelogEntry[] = [
 ];
 
 /** What the newest entry is, for deciding whether somebody has seen it. */
-export const LATEST = "af3c5d2";
+export const LATEST = "e9e94d0";
