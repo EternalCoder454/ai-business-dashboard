@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { AnimatePresence, useReducedMotion, m } from "motion/react";
 import {
   forwardRef,
   useEffect,
+  useState,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type MouseEvent,
@@ -339,6 +341,8 @@ export function Dialog({
   footer?: ReactNode;
   width?: string;
 }) {
+  const reduced = useReducedMotion();
+
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -348,27 +352,75 @@ export function Dialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
+  /*
+   * Which shape this is, so the two get the motion they should.
+   *
+   * A sheet rises from the edge it is attached to; a dialog grows in place.
+   * Animating both the same way makes one of them wrong, and on a phone it is
+   * the noticeable one.
+   */
+  const [sheet, setSheet] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 599px)");
+    const sync = () => setSheet(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+
+  /*
+   * Motion rather than CSS here for one reason: an element being removed from
+   * the tree cannot be animated by CSS, because it is already gone. Every
+   * dialog in the panel used to vanish on the frame it closed while its scrim
+   * faded, which reads as a glitch rather than as speed. AnimatePresence holds
+   * it in the tree long enough to leave properly.
+   *
+   * Durations and easings are the same MD3 tokens the stylesheet uses, so this
+   * matches everything animated in CSS rather than introducing a second feel.
+   * Leaving is quicker than arriving and uses the accelerate curve: a thing on
+   * its way out should not keep anybody waiting.
+   */
+  const enter = { duration: 0.3, ease: [0.05, 0.7, 0.1, 1] as const };
+  const leave = { duration: 0.15, ease: [0.3, 0, 0.8, 0.15] as const };
+
+  const hidden = reduced
+    ? { opacity: 0 }
+    : sheet
+      ? { opacity: 0, y: 24 }
+      : { opacity: 0, scale: 0.96 };
+  const shown = reduced ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 };
 
   return (
+    <AnimatePresence>
+      {open ? (
     <div className="fixed inset-0 z-50 flex items-end justify-center medium:items-center medium:p-4">
-      <div
+      <m.div
         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={leave}
       />
       {/* A sheet on compact, rising from the edge the thumb is already near.
           A centred dialog from medium up, where there is room for one. */}
-      <div
+      <m.div
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        // animate-sheet is gone: Motion owns this element's entrance now, and
+        // running both would compound into a double slide.
         className={cx(
-          "animate-sheet safe-bottom relative flex w-full flex-col overflow-hidden",
+          "safe-bottom relative flex w-full flex-col overflow-hidden",
           "max-h-[92dvh] rounded-t-3xl bg-high shadow-e3",
           "medium:max-h-[86vh] medium:rounded-3xl",
           width,
         )}
+        initial={hidden}
+        animate={shown}
+        exit={hidden}
+        transition={enter}
       >
         <div className="flex justify-center pt-2 medium:hidden">
           <span className="sheet-handle" aria-hidden />
@@ -389,8 +441,10 @@ export function Dialog({
             {footer}
           </div>
         ) : null}
-      </div>
+      </m.div>
     </div>
+      ) : null}
+    </AnimatePresence>
   );
 }
 

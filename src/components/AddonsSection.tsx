@@ -1,8 +1,12 @@
 "use client";
 
+import { AnimatePresence, m } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { Button, Card, Chip, Dialog, EmptyState, PuzzleIcon, TrashIcon } from "@/components/ui";
-import { TRIGGER_LABEL, describeStep, type Recipe, type TriggerName } from "@/lib/addons/recipe";
+// From describe rather than recipe: recipe.ts imports zod, and a value taken
+// from it would ship the validator to the browser. The types are erased.
+import { TRIGGER_LABEL, describeStep } from "@/lib/addons/describe";
+import type { Recipe, TriggerName } from "@/lib/addons/recipe";
 import { formatRelativeTime } from "@/lib/routes";
 
 /** Matches what /api/workspace/addons returns, which is db/addons' Addon. */
@@ -111,10 +115,25 @@ export function AddonsSection({ admin }: { admin: boolean }) {
         />
       ) : (
         <ul className="flex flex-col gap-3">
+          {/*
+           * Motion here for the leave, not the arrival. Deleting an addon used
+           * to make the rows below it jump up on the same frame the card
+           * disappeared, which reads as a mis-click rather than as a deletion.
+           * CSS cannot animate this because the element is already out of the
+           * tree by the time a class could apply.
+           */}
+          <AnimatePresence initial={false}>
           {addons.map((addon) => {
             const failing = addon.failures > 0 && addon.runs > 0;
             return (
-              <li key={addon.id}>
+              <m.li
+                key={addon.id}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, height: 0, marginBottom: -12 }}
+                transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+                style={{ overflow: "hidden" }}
+              >
                 <Card>
                   <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
                     <div className="min-w-0 flex-1">
@@ -189,9 +208,10 @@ export function AddonsSection({ admin }: { admin: boolean }) {
 
                   <RunLog runs={runs.filter((run) => run.addonId === addon.id)} />
                 </Card>
-              </li>
+              </m.li>
             );
           })}
+          </AnimatePresence>
         </ul>
       )}
 

@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { LazyMotion } from "motion/react";
 import { usePathname } from "next/navigation";
+import { motionFeatures } from "@/lib/motionFeatures";
 import { useSyncExternalStore } from "react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { CommandPalette, SearchIcon } from "./CommandPalette";
@@ -148,6 +150,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (pathname === "/signin") return <>{children}</>;
 
   return (
+    /*
+     * The animation features every `m` element in the panel draws on.
+     *
+     * Passed as a function, so the features are a chunk fetched after hydration
+     * rather than 143KB added to the first load of every route. See
+     * lib/motionFeatures for what that measured before and after.
+     *
+     * `strict` makes a `motion` element used by mistake throw rather than
+     * quietly pulling the full bundle back in synchronously, which is the
+     * failure that would undo the saving without anybody noticing.
+     */
+    <LazyMotion features={motionFeatures} strict>
     <div
       className={cx(
         "app-viewport flex w-full overflow-hidden bg-surface",
@@ -207,6 +221,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       />
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
+    </LazyMotion>
   );
 }
 

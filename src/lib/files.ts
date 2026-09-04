@@ -1,4 +1,3 @@
-import JSZip from "jszip";
 import { MAX_UPLOAD_BYTES } from "./workspace";
 import { AttachmentError, fileToAttachment } from "./images";
 import { COMPANY_ID } from "./seed";
@@ -51,6 +50,15 @@ async function toBase64(file: Blob): Promise<string> {
  * from w:p and w:tr so a table does not collapse into one run-on line.
  */
 export async function extractDocxText(file: Blob): Promise<string> {
+  /*
+   * Loaded here rather than imported at the top of the file.
+   *
+   * JSZip is around half a megabyte, this is the only thing that uses it, and
+   * the only way to reach it is to upload a Word file. A static import put it
+   * in a chunk that twenty two routes loaded, so every conversation, task board
+   * and settings page paid for a parser almost nobody triggers.
+   */
+  const { default: JSZip } = await import("jszip");
   const zip = await JSZip.loadAsync(file);
   const entry = zip.file("word/document.xml");
   if (!entry) {

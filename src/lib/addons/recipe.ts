@@ -18,6 +18,14 @@
  * compromised one, and the failure happens before anything is stored.
  */
 import { z } from "zod";
+import { TRIGGER_LABEL, describeStep, hostOf } from "./describe";
+
+/*
+ * Re-exported so a server-side caller has one place to import from, while a
+ * client component can reach describe.ts directly and leave zod behind. See the
+ * note at the top of that file before moving anything back.
+ */
+export { TRIGGER_LABEL, describeStep, hostOf };
 
 /** How much of anything an addon may carry, so a recipe cannot be a payload. */
 export const LIMITS = {
@@ -46,13 +54,6 @@ export const TRIGGERS = [
   "schedule.daily",
 ] as const;
 export type TriggerName = (typeof TRIGGERS)[number];
-
-/** Said in the owner's words, for the approval screen and the addon list. */
-export const TRIGGER_LABEL: Record<TriggerName, string> = {
-  "task.created": "A task is added",
-  "task.completed": "A task is marked done",
-  "schedule.daily": "Once a day",
-};
 
 /* -------------------------------------------------------------------------
  * The context an addon can read
@@ -137,18 +138,6 @@ const stepSchema = z.discriminatedUnion("action", [
 export type Step = z.infer<typeof stepSchema>;
 export type Condition = z.infer<typeof conditionSchema>;
 
-/** Said in the owner's words. Used on the approval screen. */
-export function describeStep(step: Step): string {
-  switch (step.action) {
-    case "create_task":
-      return `Add a task: ${step.title}`;
-    case "save_note":
-      return `Save a note: ${step.title}`;
-    case "http_post":
-      return `Send a message to ${hostOf(step.url) ?? "an outside service"}`;
-  }
-}
-
 /* -------------------------------------------------------------------------
  * The recipe
  * ---------------------------------------------------------------------- */
@@ -162,15 +151,6 @@ export const recipeSchema = z
   .strict();
 
 export type Recipe = z.infer<typeof recipeSchema>;
-
-/** The host of a URL, lowercased, or null if it will not parse. */
-export function hostOf(url: string): string | null {
-  try {
-    return new URL(url).hostname.toLowerCase();
-  } catch {
-    return null;
-  }
-}
 
 export interface Rejected {
   ok: false;
