@@ -95,6 +95,13 @@ export async function sendInvite(input: {
   workspaceName: string;
   invitedBy: string;
   companyName?: string;
+  /**
+   * Which business, so the message can carry its logo.
+   *
+   * Optional: without it the invitation falls back to the business's initials,
+   * which is what every invitation looked like before and is still correct.
+   */
+  workspaceId?: string;
 }): Promise<string | null> {
   // A business name reaches the subject line, and a subject line with a
   // newline in it is how header injection starts. Resend takes JSON rather
@@ -112,12 +119,24 @@ export async function sendInvite(input: {
     }
   }
 
+  /*
+   * An absolute URL, because a mail client has no page to resolve a relative
+   * one against. Left empty when the deployment does not know its own address,
+   * which falls back to the letters rather than sending a broken image.
+   */
+  const site = siteUrl();
+  const markUrl =
+    input.workspaceId && site
+      ? `${site.replace(/\/$/, "")}/mark/${encodeURIComponent(input.workspaceId)}`
+      : "";
+
   const view: InviteView = {
     workspace,
     invitedBy: oneLine(input.invitedBy) || "Somebody",
     panel: panel || "the panel",
-    url: siteUrl(),
+    url: site,
     to: oneLine(input.to),
+    markUrl,
   };
 
   return send({

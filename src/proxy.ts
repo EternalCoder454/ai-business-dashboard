@@ -43,7 +43,7 @@ export const config = {
      * generated assets, which have to load before anyone is signed in.
      */
     /*
-     * Four exclusions, each because the caller cannot follow a redirect to a
+     * Five exclusions, each because the caller cannot follow a redirect to a
      * sign-in page and each gated more strictly by the route itself:
      *
      * - api/workspace/status: answering "you are not signed in" is its job.
@@ -53,7 +53,11 @@ export const config = {
      *   a 307 silently and would have reported the nightly pass as succeeding
      *   for as long as anybody believed it. Both check their own bearer token
      *   in constant time.
+     * - mark: one business's logo, fetched by a mail client reading an
+     *   invitation. There is no session to redirect and nothing behind it but
+     *   a company's own badge; an id matching nothing returns the same generic
+     *   mark as one that does, so it cannot be asked whether a business exists.
      */
-    "/((?!api/auth|api/v1|api/cron|api/reports/run|api/workspace/status|signin|_next/static|_next/image|icon|apple-icon|manifest.webmanifest|opengraph-image|twitter-image|robots.txt|favicon.ico).*)",
+    "/((?!api/auth|api/v1|api/cron|api/reports/run|api/workspace/status|mark/|signin|_next/static|_next/image|icon|apple-icon|manifest.webmanifest|opengraph-image|twitter-image|robots.txt|favicon.ico).*)",
   ],
 };

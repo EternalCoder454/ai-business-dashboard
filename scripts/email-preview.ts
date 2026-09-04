@@ -17,6 +17,22 @@ const view: InviteView = {
   to: "james@skorheim.com",
 };
 
+/*
+ * Both badges, because they are the two things that can arrive.
+ *
+ * A business that has set a logo in Appearance gets it; one that has not gets
+ * its letters. The logo version is the one worth looking at, since it is the
+ * only part of the message that depends on a remote image loading.
+ */
 writeFileSync("invite-preview.html", inviteHtml(view), "utf8");
+writeFileSync(
+  "invite-preview-logo.html",
+  inviteHtml({
+    ...view,
+    workspace: "Northbound Analytics",
+    markUrl: process.env.MARK_URL || "http://localhost:3000/mark/ws_mtmap5031w0o9a",
+  }),
+  "utf8",
+);
 console.log(inviteText(view));
 console.log("\n---\nwrote invite-preview.html");

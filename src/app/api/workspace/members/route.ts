@@ -156,6 +156,7 @@ export async function POST(request: Request) {
           : await sendInvite({
               to: email,
               workspaceName: workspace?.name ?? "your workspace",
+              workspaceId: admin.workspaceId,
               invitedBy: admin.email,
             });
 

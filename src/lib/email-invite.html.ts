@@ -46,6 +46,14 @@ export interface InviteView {
   url: string;
   /** The address this was sent to, which is also the credential. */
   to: string;
+  /**
+   * An https URL serving this business's logo, or empty for the letters.
+   *
+   * A URL rather than the stored value, because the logo is kept as a data URL
+   * and mail clients strip those out of an img tag. /mark/[workspaceId] re-serves
+   * it as a real PNG that a client will fetch like any other remote image.
+   */
+  markUrl?: string;
 }
 
 const INK = "#1c1f22";
@@ -62,8 +70,30 @@ export function inviteHtml(view: InviteView): string {
   const to = escapeHtml(view.to);
   const mark = escapeHtml(initials(view.workspace));
 
+
   const font =
     "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+
+  /*
+   * The logo when the business has set one, and its letters otherwise.
+   *
+   * Both are the same 44px rounded square, so the header does not move when a
+   * business adds a logo. The image keeps the brand colour behind it: a logo
+   * with transparency would otherwise sit on white in a light client and
+   * disappear in a dark one, and a mail client that blocks remote images shows
+   * the alt text on the coloured tile rather than an empty gap.
+   */
+  const markUrl = view.markUrl ? escapeHtml(view.markUrl) : "";
+  const badge = markUrl
+    ? `<td width="44" height="44" align="center" valign="middle" bgcolor="#ffffff"
+           style="border-radius:12px;border:1px solid ${LINE};${font};font-size:15px;font-weight:700;color:${MUTED};letter-spacing:0.5px">
+        <img src="${markUrl}" width="44" height="44" alt="${mark}"
+             style="display:block;width:44px;height:44px;border:0;border-radius:11px" />
+      </td>`
+    : `<td width="44" height="44" align="center" valign="middle" bgcolor="${BRAND}"
+           style="border-radius:12px;${font};font-size:15px;font-weight:700;color:#ffffff;letter-spacing:0.5px">
+        ${mark}
+      </td>`;
 
   const button = url
     ? `
@@ -122,10 +152,7 @@ export function inviteHtml(view: InviteView): string {
             <td style="padding:36px 36px 0">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td width="44" height="44" align="center" valign="middle" bgcolor="${BRAND}"
-                      style="border-radius:12px;${font};font-size:15px;font-weight:700;color:#ffffff;letter-spacing:0.5px">
-                    ${mark}
-                  </td>
+                  ${badge}
                   <td style="padding-left:12px;${font};font-size:14px;font-weight:600;color:${MUTED}">
                     ${panel}
                   </td>

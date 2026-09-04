@@ -208,6 +208,7 @@ export async function POST(request: Request) {
         emailError = await sendInvite({
           to: email,
           workspaceName: name,
+          workspaceId,
           invitedBy: admin.email,
         });
       }
@@ -307,6 +308,7 @@ export async function POST(request: Request) {
           : await sendInvite({
               to: email,
               workspaceName: named?.name ?? "your workspace",
+              workspaceId,
               invitedBy: admin.email,
             });
 
