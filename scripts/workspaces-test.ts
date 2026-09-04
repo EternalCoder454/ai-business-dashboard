@@ -13,6 +13,13 @@
  *
  * Run with: npm run workspaces-test
  */
+// This file imports nothing, which would otherwise make it a global script
+// rather than a module: TypeScript puts the top level of a non-module file in
+// the global scope, so `failures` and `check` collide with any other script
+// that does the same. That is a build failure in a test file, which is a
+// tedious way to break a deploy.
+export {};
+
 
 interface Row {
   workspaceId: string;
