@@ -1,4 +1,4 @@
-# Eterneon for developers
+# Eterneon Panel for developers
 
 Everything needed to build against the panel, run one, or work on it.
 

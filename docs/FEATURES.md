@@ -1,4 +1,4 @@
-# Eterneon
+# Eterneon Panel
 
 **A leadership team for a business that does not have one yet.**
 

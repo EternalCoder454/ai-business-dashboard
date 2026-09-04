@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
   metadataBase: new URL(siteUrl()),
   title: name,
-  description: "Internal operations workspace.",
+  description: "AI department heads for a small business.",
   applicationName: name,
   // Internal tool. It should never appear in a search index.
   robots: { index: false, follow: false },
@@ -42,13 +42,13 @@ export async function generateMetadata(): Promise<Metadata> {
     type: "website",
     siteName: name,
     title: name,
-    description: "Internal operations workspace. Sign in required.",
+    description: "AI department heads for a small business. Sign in required.",
     url: siteUrl(),
   },
   twitter: {
     card: "summary_large_image",
     title: name,
-    description: "Internal operations workspace. Sign in required.",
+    description: "AI department heads for a small business. Sign in required.",
   },
   };
 }

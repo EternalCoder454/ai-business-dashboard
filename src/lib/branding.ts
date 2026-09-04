@@ -12,10 +12,17 @@ export interface Branding {
   logo: string | null;
 }
 
-/** What a fresh deployment shows, before anyone has edited Settings. */
+/**
+ * What a deployment shows before anybody has branded it.
+ *
+ * The product's own name rather than a placeholder, because this is what the
+ * link card and the icon fall back to, and those are the deployment's rather
+ * than any one business's. A new workspace still starts at "Your Company",
+ * which is a different thing in a different place.
+ */
 export const FALLBACK_BRANDING: Branding = {
-  name: "Your Company",
-  mark: "HQ",
+  name: "Eterneon Panel",
+  mark: "EP",
   logo: null,
 };
 

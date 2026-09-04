@@ -11,7 +11,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   return {
     name,
     short_name: name,
-    description: "Internal operations workspace.",
+    description: "AI department heads for a small business.",
     start_url: "/",
     scope: "/",
     display: "standalone",

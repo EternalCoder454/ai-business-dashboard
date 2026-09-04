@@ -3,7 +3,7 @@ import { loadBranding } from "@/lib/branding";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "Internal operations workspace";
+export const alt = "AI department heads for a small business";
 
 /**
  * Read at request time rather than baked at build time, since the branding it
@@ -79,7 +79,7 @@ export default async function OpenGraphImage() {
         </div>
 
         <div style={{ display: "flex", fontSize: 34, color: "#c0c5c9", marginTop: 16 }}>
-          Internal operations workspace
+          AI department heads for a small business
         </div>
 
         <div style={{ display: "flex", fontSize: 26, color: "#89929a", marginTop: 44 }}>

@@ -1,4 +1,4 @@
-# Eterneon
+# Eterneon Panel
 
 An AI panel a business runs itself on. One lead sits at the top; each department underneath
 is its own workspace with its own prompt, its own skills, and its own conversation history,
