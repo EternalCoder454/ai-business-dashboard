@@ -42,15 +42,45 @@ export function ProviderKey({ provider }: { provider: ProviderInfo }) {
   const canEdit = !hosted || workspaceRole === "admin";
   const [error, setError] = useState<string | null>(null);
 
-  const [draft, setDraft] = useState(stored);
+  /*
+   * Empty on a hosted workspace, always.
+   *
+   * The field there is for a key being added, not a copy of one that exists:
+   * the workspace's key is written by its own route and never read back, so
+   * there is nothing to prefill it with. What it used to prefill was this
+   * browser's own credential, which on a hosted deployment is not even the key
+   * that pays. Opening "Add key" and finding a masked value already in the box
+   * reads as the stored key being shown, which is the one thing this screen
+   * promises does not happen.
+   *
+   * A local checkout is the other case. There the browser credential is the
+   * key, so showing it is the point.
+   */
+  const [draft, setDraft] = useState(hosted ? "" : stored);
   const [touched, setTouched] = useState(false);
   const [visible, setVisible] = useState(false);
   const [open, setOpen] = useState(false);
 
   // Adopt the stored value until the field is edited, so a late load fills in.
   useEffect(() => {
-    if (!touched) setDraft(stored);
-  }, [stored, touched]);
+    if (!touched && !hosted) setDraft(stored);
+  }, [stored, touched, hosted]);
+
+  /**
+   * Closes the panel and forgets whatever was in it.
+   *
+   * Somebody who pasted a key, thought better of it and closed the box should
+   * not find it waiting when they open it again. Done here rather than in an
+   * effect watching `open`, because state set from an effect costs a second
+   * render of the whole screen on every toggle and the compiler objects to it.
+   */
+  const close = () => {
+    setOpen(false);
+    setDraft(hosted ? "" : stored);
+    setTouched(false);
+    setVisible(false);
+    setError(null);
+  };
 
   const configured = onServer || (hosted ? ours.set : Boolean(stored.trim()));
 
@@ -70,7 +100,11 @@ export function ProviderKey({ provider }: { provider: ProviderInfo }) {
         <span className="md-label flex-1">{provider.label}</span>
         <Chip tone={configured ? "success" : "neutral"}>{where}</Chip>
         {onServer || !canEdit ? null : (
-          <Button size="sm" variant="text" onClick={() => setOpen((value) => !value)}>
+          <Button
+            size="sm"
+            variant="text"
+            onClick={() => (open ? close() : setOpen(true))}
+          >
             {open ? "Close" : configured ? "Change" : "Add key"}
           </Button>
         )}
@@ -116,12 +150,10 @@ export function ProviderKey({ provider }: { provider: ProviderInfo }) {
                     setError(failed);
                     return;
                   }
-                  setDraft("");
                 } else {
                   await updateSettings({ [settingKey]: draft.trim() });
                 }
-                setTouched(false);
-                setOpen(false);
+                close();
               }}
             >
               Save
