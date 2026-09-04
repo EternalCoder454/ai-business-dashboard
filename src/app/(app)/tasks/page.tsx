@@ -84,6 +84,13 @@ export default function TasksPage() {
   const [filter, setFilter] = useState<string>("all");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
+  /*
+   * The task being removed, held whole rather than by id.
+   *
+   * The dialog names it, and reading it back out of the list would leave the
+   * title blank for the length of the closing animation once the row is gone.
+   */
+  const [removing, setRemoving] = useState<Task | null>(null);
   // Taken once on mount. Reading the clock during render makes the output
   // depend on when React happened to run, which is not a pure render.
   const [now] = useState(() => Date.now());
@@ -307,8 +314,8 @@ export default function TasksPage() {
                                 ) : null}
                               </button>
                               <button
-                                onClick={() => void deleteTask(task.id)}
-                                aria-label="Delete this task"
+                                onClick={() => setRemoving(task)}
+                                aria-label={`Delete the task ${task.title}`}
                                 className="md-state md-target grid h-7 w-7 flex-none place-items-center rounded-full text-on-variant/70"
                               >
                                 <TrashIcon className="h-3.5 w-3.5" />
@@ -434,6 +441,39 @@ export default function TasksPage() {
             </div>
           </div>
         ) : null}
+      </Dialog>
+
+      {/*
+        Deleting a task used to happen on the first click, with no undo. Every
+        other delete in the panel asks first, and a task is the one people click
+        past fastest, on the smallest control in the row.
+      */}
+      <Dialog
+        open={Boolean(removing)}
+        title="Delete this task?"
+        onClose={() => setRemoving(null)}
+        width="max-w-md"
+        footer={
+          <>
+            <Button variant="text" onClick={() => setRemoving(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                const task = removing;
+                setRemoving(null);
+                if (task) await deleteTask(task.id);
+              }}
+            >
+              Delete task
+            </Button>
+          </>
+        }
+      >
+        <p className="md-body text-on-variant">
+          <strong>{removing?.title}</strong> is removed for everybody, and this cannot be
+          undone.
+        </p>
       </Dialog>
     </div>
   );
