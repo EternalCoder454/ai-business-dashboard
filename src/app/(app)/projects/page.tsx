@@ -3,7 +3,7 @@
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { PROJECT_DEFAULT_ICON, ProjectMeter } from "@/components/ProjectBits";
 import { PROJECT_STATUS_LABEL, ProjectDialog } from "@/components/ProjectDialog";
 import {
@@ -18,6 +18,24 @@ import { formatRelativeTime } from "@/lib/routes";
 import { projectAccent } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import type { ProjectStatus } from "@/lib/types";
+
+import { stagger } from "@/lib/motion";
+
+/**
+ * Staggers a list in, once, when it first appears.
+ *
+ * A ref callback rather than an effect so it runs the moment the element
+ * exists, and guarded per element so re-rendering the list while somebody is
+ * reading it does not replay the entrance.
+ */
+function useStaggeredList() {
+  const seen = useRef(new WeakSet<Element>());
+  return useCallback((element: HTMLUListElement | null) => {
+    if (!element || seen.current.has(element)) return;
+    seen.current.add(element);
+    stagger(element);
+  }, []);
+}
 
 const FILTERS: { key: ProjectStatus | "all"; label: string }[] = [
   { key: "all", label: "All" },
@@ -35,6 +53,7 @@ interface Tally {
 }
 
 export default function ProjectsPage() {
+  const staggered = useStaggeredList();
   const { ready, projects, conversations, deliverables, files, allDepartments } = useStore();
   const [filter, setFilter] = useState<ProjectStatus | "all">("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -142,7 +161,7 @@ export default function ProjectsPage() {
               }
             />
           ) : (
-            <ul className="stagger flex flex-col gap-3">
+            <ul ref={staggered} className="flex flex-col gap-3">
               {visible.map((project) => {
                 const accent = projectAccent(project.accent);
                 const tally = tallies.get(project.id);

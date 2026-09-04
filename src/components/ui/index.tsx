@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { AnimatePresence, useReducedMotion, m } from "motion/react";
+import { DURATION, EASE, play, usePresence } from "@/lib/motion";
 import {
   forwardRef,
   useEffect,
+  useRef,
   useState,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
@@ -36,8 +37,8 @@ const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
 };
 
 const BUTTON_SIZES: Record<ButtonSize, string> = {
-  sm: "h-8 px-3 text-[0.8125rem]",
-  md: "h-10 px-5 text-[0.875rem]",
+  sm: "md-button-sm h-8 px-3 text-[0.8125rem]",
+  md: "md-button-md h-10 px-5 text-[0.875rem]",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -162,6 +163,9 @@ export function Chip({
 
   const base = cx(
     "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 md-label",
+    // Only when it does something. A chip used as a label is not a target and
+    // giving it 44px of height would just make a row of labels tall.
+    onClick && "md-chip-tap",
     wrap ? "text-left" : "whitespace-nowrap",
     selected
       ? "border-transparent bg-secondary-container text-on-secondary-container"
@@ -341,7 +345,8 @@ export function Dialog({
   footer?: ReactNode;
   width?: string;
 }) {
-  const reduced = useReducedMotion();
+  const panel = useRef<HTMLDivElement | null>(null);
+  const scrim = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -353,7 +358,7 @@ export function Dialog({
   }, [open, onClose]);
 
   /*
-   * Which shape this is, so the two get the motion they should.
+   * Which shape this is, so each gets the movement it should have.
    *
    * A sheet rises from the edge it is attached to; a dialog grows in place.
    * Animating both the same way makes one of them wrong, and on a phone it is
@@ -369,58 +374,65 @@ export function Dialog({
   }, []);
 
   /*
-   * Motion rather than CSS here for one reason: an element being removed from
-   * the tree cannot be animated by CSS, because it is already gone. Every
-   * dialog in the panel used to vanish on the frame it closed while its scrim
-   * faded, which reads as a glitch rather than as speed. AnimatePresence holds
-   * it in the tree long enough to leave properly.
+   * Kept in the tree until it has finished leaving.
    *
-   * Durations and easings are the same MD3 tokens the stylesheet uses, so this
-   * matches everything animated in CSS rather than introducing a second feel.
-   * Leaving is quicker than arriving and uses the accelerate curve: a thing on
-   * its way out should not keep anybody waiting.
+   * The reason this is not CSS: the component used to return null the moment
+   * it closed, so there was no element left for a class to animate and every
+   * dialog in the panel disappeared on one frame while its scrim faded.
+   *
+   * Leaving is quicker than arriving and uses the accelerate curve, which is
+   * the Material rule and also just true: nothing on its way out should keep
+   * anybody waiting.
    */
-  const enter = { duration: 0.3, ease: [0.05, 0.7, 0.1, 1] as const };
-  const leave = { duration: 0.15, ease: [0.3, 0, 0.8, 0.15] as const };
+  const render = usePresence(open, (phase) => {
+    const entering = phase === "enter";
+    const hidden = sheet ? "translateY(24px)" : "scale(0.96)";
 
-  const hidden = reduced
-    ? { opacity: 0 }
-    : sheet
-      ? { opacity: 0, y: 24 }
-      : { opacity: 0, scale: 0.96 };
-  const shown = reduced ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 };
+    const panelMotion = play(
+      panel.current,
+      entering
+        ? { opacity: [0, 1], transform: [hidden, "none"] }
+        : { opacity: [1, 0], transform: ["none", hidden] },
+      {
+        duration: entering ? DURATION.medium : DURATION.short,
+        ease: entering ? EASE.decelerate : EASE.accelerate,
+      },
+    );
+
+    void play(
+      scrim.current,
+      entering ? { opacity: [0, 1] } : { opacity: [1, 0] },
+      { duration: entering ? DURATION.medium : DURATION.short, ease: EASE.standard },
+    );
+
+    // The panel decides when it is gone: the scrim is behind it and finishing
+    // first would leave the dialog floating over the page with nothing under it.
+    return panelMotion;
+  });
+
+  if (!render) return null;
 
   return (
-    <AnimatePresence>
-      {open ? (
     <div className="fixed inset-0 z-50 flex items-end justify-center medium:items-center medium:p-4">
-      <m.div
+      <div
+        ref={scrim}
         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={leave}
       />
       {/* A sheet on compact, rising from the edge the thumb is already near.
           A centred dialog from medium up, where there is room for one. */}
-      <m.div
+      <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        // animate-sheet is gone: Motion owns this element's entrance now, and
-        // running both would compound into a double slide.
         className={cx(
           "safe-bottom relative flex w-full flex-col overflow-hidden",
           "max-h-[92dvh] rounded-t-3xl bg-high shadow-e3",
           "medium:max-h-[86vh] medium:rounded-3xl",
           width,
         )}
-        initial={hidden}
-        animate={shown}
-        exit={hidden}
-        transition={enter}
       >
         <div className="flex justify-center pt-2 medium:hidden">
           <span className="sheet-handle" aria-hidden />
@@ -441,10 +453,8 @@ export function Dialog({
             {footer}
           </div>
         ) : null}
-      </m.div>
+      </div>
     </div>
-      ) : null}
-    </AnimatePresence>
   );
 }
 

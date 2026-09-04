@@ -38,6 +38,7 @@ import type {
   WireContent,
 } from "@/lib/types";
 import { streamChat } from "@/lib/chatClient";
+import { useEnter } from "@/lib/motion";
 import {
   BookmarkIcon,
   Button,
@@ -1195,6 +1196,7 @@ function Welcome({
   ready: boolean;
   onPick: (prompt: string) => void;
 }) {
+  const entered = useEnter();
   const who = personaName || department;
   const starters = [
     `What should ${department} be focused on this month?`,
@@ -1203,7 +1205,7 @@ function Welcome({
   ];
 
   return (
-    <div className="animate-rise rounded-3xl border border-outline-variant bg-container/60 px-7 py-9 text-center">
+    <div ref={entered} className="rounded-3xl border border-outline-variant bg-container/60 px-7 py-9 text-center">
       <div className="mb-3 flex justify-center">
         <DepartmentAvatar
           department={{ name: department, personaName, avatarUrl }}
@@ -1239,12 +1241,13 @@ function MessageBubble({
   onRecordDecision: () => void;
   onDecideTool: (callId: string, approve: boolean) => Promise<void>;
 }) {
+  const entered = useEnter();
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
 
   if (message.role === "user") {
     return (
-      <div className="animate-rise flex flex-col items-end">
+      <div ref={entered} className="flex flex-col items-end">
         {/* Only on a shared thread, where "who said this" is a real question. */}
         {message.authorEmail ? (
           <span className="md-label-sm mb-1 mr-1 text-on-variant/75">
@@ -1300,7 +1303,7 @@ function MessageBubble({
   }
 
   return (
-    <div className="animate-rise group flex flex-col gap-2">
+    <div ref={entered} className="group flex flex-col gap-2">
       {message.thinking ? <ThinkingBlock text={message.thinking} /> : null}
       <div
         className={cx(
@@ -1375,8 +1378,9 @@ function IconAction({
 }
 
 function StreamingBubble({ text, thinking }: { text: string; thinking: string }) {
+  const entered = useEnter();
   return (
-    <div className="animate-rise flex flex-col gap-2">
+    <div ref={entered} className="flex flex-col gap-2">
       {thinking && !text ? <ThinkingBlock text={thinking} defaultOpen /> : null}
       {thinking && text ? <ThinkingBlock text={thinking} /> : null}
       <div className="rounded-3xl rounded-bl-lg bg-container px-5 py-4 shadow-e1">

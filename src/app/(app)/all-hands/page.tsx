@@ -28,6 +28,7 @@ import { formatRelativeTime } from "@/lib/routes";
 import { departmentAccent } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import type { AllHandsResponse, AllHandsRun, Department } from "@/lib/types";
+import { useEnter } from "@/lib/motion";
 
 /**
  * Height at which a head's answer collapses behind a "Show more".
@@ -625,8 +626,9 @@ function Opening({
   departments: Department[];
   ceoName: string | undefined;
 }) {
+  const entered = useEnter();
   return (
-    <div className="animate-rise rounded-3xl border border-outline-variant bg-container/60 px-7 py-9 text-center">
+    <div ref={entered} className="rounded-3xl border border-outline-variant bg-container/60 px-7 py-9 text-center">
       <div className="mb-4 flex flex-wrap justify-center gap-1.5">
         {departments.map((department) => (
           <DepartmentAvatar
@@ -653,6 +655,7 @@ function HeadMessage({
   department: Department | undefined;
   onSave: () => Promise<void>;
 }) {
+  const entered = useEnter();
   const [expanded, setExpanded] = useState(false);
   const [overflowing, setOverflowing] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -669,7 +672,7 @@ function HeadMessage({
   const accent = departmentAccent(response.departmentId);
 
   return (
-    <div id={`msg-${response.departmentId}`} className="animate-rise group flex gap-3">
+    <div id={`msg-${response.departmentId}`} ref={entered} className="group flex gap-3">
       {department ? (
         <DepartmentAvatar
           department={department}
@@ -803,8 +806,9 @@ function SynthesisMessage({
   text: string;
   error?: boolean;
 }) {
+  const entered = useEnter();
   return (
-    <div className="animate-rise flex gap-3">
+    <div ref={entered} className="flex gap-3">
       {ceo ? (
         <DepartmentAvatar department={ceo} size={36} className="mt-1 shadow-e2" />
       ) : (

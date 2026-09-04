@@ -27,6 +27,7 @@ import {
   cx,
 } from "./ui";
 
+import { useEnter } from "@/lib/motion";
 /**
  * One search box over everything: heads, conversations, individual messages,
  * skills, deliverables, All Hands threads, and the pages themselves.
@@ -36,6 +37,7 @@ import {
  * away from what you were doing to go and look for it.
  */
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const entered = useEnter();
   const router = useRouter();
   const { departments, conversations, skills, deliverables, projects, allHandsRuns } =
     useStore();
@@ -117,7 +119,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         role="dialog"
         aria-modal="true"
         aria-label="Search"
-        className="animate-rise relative flex max-h-[80dvh] w-full max-w-[40rem] flex-col overflow-hidden rounded-3xl bg-high shadow-e3"
+        ref={entered}
+        className="relative flex max-h-[80dvh] w-full max-w-[40rem] flex-col overflow-hidden rounded-3xl bg-high shadow-e3"
       >
         <div className="flex flex-none items-center gap-2 border-b border-outline-variant px-4">
           <SearchIcon className="h-5 w-5 flex-none text-on-variant" />

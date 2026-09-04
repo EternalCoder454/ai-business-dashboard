@@ -231,7 +231,7 @@ export default function TasksPage() {
                         openNew(status);
                       }}
                       aria-label={`Add a task to ${COLUMN_LABEL[status]}`}
-                      className="md-state grid h-7 w-7 place-items-center rounded-full text-on-variant"
+                      className="md-state md-target grid h-7 w-7 place-items-center rounded-full text-on-variant"
                     >
                       <PlusIcon className="h-3.5 w-3.5" />
                     </button>
@@ -269,16 +269,24 @@ export default function TasksPage() {
                                 aria-label={
                                   task.status === "done" ? "Reopen this task" : "Mark this done"
                                 }
-                                className={cx(
-                                  "mt-0.5 grid h-4 w-4 flex-none place-items-center rounded border transition-colors",
-                                  task.status === "done"
-                                    ? "border-primary bg-primary text-on-primary"
-                                    : "border-outline",
-                                )}
+                                // The box stays 16px; the button around it is a
+                                // real target on a touch screen. The border and
+                                // fill moved inward so growing the target does
+                                // not grow the tick.
+                                className="md-target -m-2 grid flex-none place-items-center p-2"
                               >
-                                {task.status === "done" ? (
-                                  <CheckIcon className="h-3 w-3" />
-                                ) : null}
+                                <span
+                                  className={cx(
+                                    "grid h-4 w-4 place-items-center rounded border transition-colors",
+                                    task.status === "done"
+                                      ? "border-primary bg-primary text-on-primary"
+                                      : "border-outline",
+                                  )}
+                                >
+                                  {task.status === "done" ? (
+                                    <CheckIcon className="h-3 w-3" />
+                                  ) : null}
+                                </span>
                               </button>
                               <button
                                 onClick={() => openExisting(task)}
@@ -301,7 +309,7 @@ export default function TasksPage() {
                               <button
                                 onClick={() => void deleteTask(task.id)}
                                 aria-label="Delete this task"
-                                className="md-state grid h-7 w-7 flex-none place-items-center rounded-full text-on-variant/70"
+                                className="md-state md-target grid h-7 w-7 flex-none place-items-center rounded-full text-on-variant/70"
                               >
                                 <TrashIcon className="h-3.5 w-3.5" />
                               </button>

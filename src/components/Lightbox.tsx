@@ -54,7 +54,6 @@ export function Lightbox({
       className={cx(
         "fixed inset-0 z-[60] bg-black/85 backdrop-blur-sm",
         actualSize ? "overflow-auto" : "grid place-items-center overflow-hidden",
-        "animate-fade",
       )}
     >
       <button

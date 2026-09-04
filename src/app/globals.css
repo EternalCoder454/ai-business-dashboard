@@ -300,7 +300,11 @@
   letter-spacing: 0.02em;
 }
 .md-label-sm {
-  font-size: 0.6875rem;
+  /* 12px rather than 11. Material's own label-small is 11sp, but it is used
+     here for navigation captions and metadata, and 11px is below what most
+     accessibility guidance treats as comfortable on a phone. The extra pixel
+     costs nothing in layout and is the difference between squinting and not. */
+  font-size: 0.75rem;
   line-height: 1rem;
   font-weight: 500;
   letter-spacing: 0.04em;
@@ -365,6 +369,32 @@
 .md-target {
   min-width: 44px;
   min-height: 44px;
+}
+
+/*
+ * Buttons on a touch screen.
+ *
+ * A button is drawn at 32 or 40px, which is right with a mouse and too small
+ * with a thumb: Material asks for 48dp of target, and the usual trick of
+ * growing the hit area with a pseudo element does not work here because
+ * .md-state clips its own overflow for the ripple. So the control itself grows,
+ * and only where the pointer is coarse, which leaves every measured desktop
+ * layout exactly as it was.
+ */
+@media (pointer: coarse) {
+  .md-button-sm {
+    min-height: 44px;
+  }
+
+  .md-button-md {
+    min-height: 48px;
+  }
+
+  /* A filter chip is a control, and a row of them is the most tapped thing on
+     the task board. Only the ones that do something: see the Chip component. */
+  .md-chip-tap {
+    min-height: 44px;
+  }
 }
 
 /*
@@ -604,27 +634,8 @@
   padding-right: calc(var(--safe-pad-x) + env(safe-area-inset-right, 0px));
 }
 
-/* A bottom sheet is the mobile form of a dialog: it comes up from the edge the
-   thumb is already near, rather than landing in the middle of the screen. */
-@keyframes sheet-up {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: none;
-  }
-}
-
-.animate-sheet {
-  animation: sheet-up var(--md-motion-medium2) var(--md-motion-emph-decel) both;
-}
-
-@media (min-width: 600px) {
-  .animate-sheet {
-    animation: rise-in var(--md-motion-medium2) var(--md-motion-emph-decel) both;
-  }
-}
-
+/* The handle on a bottom sheet. The sheet itself is animated in lib/motion,
+   which is also where the rule about it rising from the thumb's edge lives. */
 .sheet-handle {
   width: 32px;
   height: 4px;
@@ -686,50 +697,12 @@
 
 /*
  * Motion
+ *
+ * What is left here is what Motion would gain nothing from: a ripple that has
+ * to start on the same frame as the press, and two continuous loops. Entrances,
+ * exits and staggering all moved to lib/motion, because an element leaving the
+ * tree cannot be animated by a stylesheet.
  */
-
-@keyframes rise-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes slide-in {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: none;
-  }
-}
-
-.animate-slide-in {
-  animation: slide-in var(--md-motion-medium2) var(--md-motion-emph-decel) both;
-}
-
-.animate-rise {
-  animation: rise-in var(--md-motion-medium2) var(--md-motion-emph-decel) both;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* For anything that covers the screen, where sliding a full-bleed backdrop
-   around draws more attention to the animation than to what it revealed. */
-.animate-fade {
-  animation: fade-in var(--md-motion-short3) var(--md-motion-standard) both;
-}
 
 @keyframes typing-bounce {
   0%,
@@ -755,19 +728,6 @@
 /* Children settle in one after another. Capped at the tenth so a long list
    does not spend two seconds arriving, and the delay is dropped entirely
    under prefers-reduced-motion by the rule at the end of this file. */
-.stagger > * {
-  animation: rise-in var(--md-motion-medium2) var(--md-motion-emph-decel) both;
-}
-.stagger > *:nth-child(1) { animation-delay: 0ms; }
-.stagger > *:nth-child(2) { animation-delay: 30ms; }
-.stagger > *:nth-child(3) { animation-delay: 60ms; }
-.stagger > *:nth-child(4) { animation-delay: 90ms; }
-.stagger > *:nth-child(5) { animation-delay: 120ms; }
-.stagger > *:nth-child(6) { animation-delay: 150ms; }
-.stagger > *:nth-child(7) { animation-delay: 180ms; }
-.stagger > *:nth-child(8) { animation-delay: 210ms; }
-.stagger > *:nth-child(n + 9) { animation-delay: 240ms; }
-
 /* Anything tappable gives way slightly under a finger. Pointer devices get
    the state layer instead, which already covers hover and focus. */
 .md-press {

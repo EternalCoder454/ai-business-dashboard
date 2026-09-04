@@ -4,7 +4,7 @@ import { auth, authEnabled, OPERATOR_EMAILS } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { grantAccess, revokeAccess } from "@/db/access";
-import { countAdmins, listMembers, membershipFor } from "@/db/tenancy";
+import { countAdmins, listMembers, membershipFor, membershipIn } from "@/db/tenancy";
 import { readJson } from "@/lib/guard";
 import { withinRate } from "@/lib/rateLimit";
 import { sendInvite } from "@/lib/email";
@@ -80,11 +80,15 @@ const ADDRESS = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /**
  * Invite somebody, change what they can do, or take their access away.
  *
- * Three guards that are all the same guard from different sides: the workspace
- * is never taken from the request, an address already in another business is
- * refused rather than moved, and the last administrator cannot be demoted or
- * removed. Without the last one a business can lock itself out of its own
+ * Two guards that are the same guard from different sides: the workspace is
+ * never taken from the request, and the last administrator cannot be demoted or
+ * removed. Without the second one a business can lock itself out of its own
  * settings and has to come to the operator to get back in.
+ *
+ * Everything here asks about this business only. A person may belong to several
+ * and the panel has a switcher for exactly that, so their standing elsewhere is
+ * none of this administrator's business and must not change what they can do
+ * here.
  */
 export async function POST(request: Request) {
   const admin = await requireAdmin();
@@ -109,20 +113,27 @@ export async function POST(request: Request) {
     Response.json({ ok: true, members: await listMembers(admin.workspaceId), ...extra });
 
   try {
-    const existing = await membershipFor(email);
+    /*
+     * Their standing in this business, not wherever they happen to be signed
+     * in. Using the active one made every action below fail for anybody whose
+     * other business was the one they were currently looking at, and it made an
+     * invitation depend on a fact about a company this administrator cannot see.
+     */
+    const existing = await membershipIn(email, admin.workspaceId);
 
     if (action === "invite") {
-      if (existing && existing.workspaceId !== admin.workspaceId) {
-        return Response.json(
-          {
-            error:
-              "That email already belongs to another business on this panel. " +
-              "They have to leave it before they can join yours.",
-          },
-          { status: 409 },
-        );
-      }
-
+      /*
+       * Somebody already in another business is invited normally.
+       *
+       * They gain a membership here and keep the one they had; the access table
+       * is keyed on address and workspace together for this reason, and the
+       * switcher in the account menu is how they move between them. An
+       * accountant with four clients, or somebody who owns one company and
+       * works at another, is the ordinary case rather than the strange one.
+       *
+       * Nothing crosses over. Every row in the panel is scoped to a workspace,
+       * so belonging to two is two separate sets of data that never meet.
+       */
       await grantAccess({
         email,
         workspaceId: admin.workspaceId,
@@ -152,8 +163,9 @@ export async function POST(request: Request) {
     }
 
     // Everything below changes somebody who is already here, so they have to
-    // actually be here, and in this business rather than any other.
-    if (!existing || existing.workspaceId !== admin.workspaceId) {
+    // actually be here. `existing` is this business's row, so somebody who
+    // belongs to another as well is administered here normally.
+    if (!existing) {
       return Response.json({ error: "Nobody here has that email." }, { status: 404 });
     }
 

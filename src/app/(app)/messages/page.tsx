@@ -1,7 +1,7 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Button,
   ChevronIcon,
@@ -28,6 +28,24 @@ import {
   type PresenceStatus,
 } from "@/lib/types";
 
+import { stagger } from "@/lib/motion";
+
+/**
+ * Staggers a list in, once, when it first appears.
+ *
+ * A ref callback rather than an effect so it runs the moment the element
+ * exists, and guarded per element so re-rendering the list while somebody is
+ * reading it does not replay the entrance.
+ */
+function useStaggeredList() {
+  const seen = useRef(new WeakSet<Element>());
+  return useCallback((element: HTMLUListElement | null) => {
+    if (!element || seen.current.has(element)) return;
+    seen.current.add(element);
+    stagger(element);
+  }, []);
+}
+
 /**
  * Presence borrows the department dot rather than inventing a second set of
  * colours for the same idea. Do-not-disturb reads as busy, which is what it is.
@@ -45,6 +63,7 @@ const DOT: Record<PresenceStatus, "online" | "busy" | "offline"> = {
  * list and a readable conversation side by side.
  */
 export default function MessagesPage() {
+  const staggered = useStaggeredList();
   const { ready, enabled, self, threads, people, refresh, clearUnreadFor } = useMessages();
   const [open, setOpen] = useState<string>();
 
@@ -134,7 +153,7 @@ export default function MessagesPage() {
               />
             </div>
           ) : (
-            <ul className="stagger p-2">
+            <ul ref={staggered} className="p-2">
               {rows.map((row) => (
                 <li key={row.email}>
                   <button

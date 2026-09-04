@@ -85,6 +85,50 @@ export async function membershipFor(email: string): Promise<Membership | null> {
 }
 
 /** Every business one address can open, oldest first. */
+/**
+ * One person's standing in one business, ignoring any other they belong to.
+ *
+ * `membershipFor` answers "which business is this person in right now", which
+ * is the right question for a request and the wrong one for administering a
+ * team. An accountant with four clients has four memberships, and their admin
+ * asking about them should not get an answer that depends on which business
+ * that person happens to be looking at.
+ *
+ * Getting this wrong is invisible until somebody has a second business: every
+ * check passes for as long as everybody has exactly one.
+ */
+export async function membershipIn(
+  email: string,
+  workspaceId: string,
+): Promise<Membership | null> {
+  if (!databaseEnabled || !db) return null;
+  try {
+    const [row] = await db
+      .select({
+        workspaceId: t.access.workspaceId,
+        role: t.access.role,
+        permissions: t.access.permissions,
+      })
+      .from(t.access)
+      .where(
+        and(
+          eq(t.access.email, clean(email)),
+          eq(t.access.workspaceId, workspaceId),
+          isNull(t.access.revokedAt),
+        ),
+      )
+      .limit(1);
+    if (!row) return null;
+    return {
+      workspaceId: row.workspaceId,
+      role: row.role === "admin" ? "admin" : "member",
+      permissions: parsePermissions(row.permissions),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function membershipsFor(
   email: string,
 ): Promise<{ workspaceId: string; name: string; role: "member" | "admin" }[]> {
@@ -227,25 +271,14 @@ export async function createWorkspace(input: {
   const id = newWorkspaceId();
 
   /*
-   * One address belongs to one workspace: `email` is the primary key of the
-   * access table. Caught here so the operator is told which business already
-   * has them, rather than the insert failing on a constraint and the screen
-   * saying only that something went wrong.
+   * Somebody who already runs a business here can be given another.
+   *
+   * This used to refuse, because the access table was keyed on the address
+   * alone and a second row would have overwritten the first. It is keyed on the
+   * address and the workspace together now, so a person holds one row per
+   * business and moves between them with the switcher. Somebody who owns four
+   * companies is a customer, not a mistake.
    */
-  if (input.firstMember) {
-    const existing = await membershipFor(input.firstMember);
-    if (existing) {
-      const [named] = await database
-        .select({ name: t.workspaces.name })
-        .from(t.workspaces)
-        .where(eq(t.workspaces.id, existing.workspaceId))
-        .limit(1);
-      throw new Error(
-        `${clean(input.firstMember)} is already in ${named?.name ?? "another business"}. ` +
-          "Remove them from it first, or use a different address.",
-      );
-    }
-  }
 
   await database.transaction(async (tx) => {
     await tx.insert(t.workspaces).values({

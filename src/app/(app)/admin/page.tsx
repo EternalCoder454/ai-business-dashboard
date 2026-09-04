@@ -8,7 +8,7 @@ import { ReportsTab } from "@/components/ReportsTab";
 import { OperatorOverview } from "@/components/OperatorOverview";
 import { TelemetryTab } from "@/components/TelemetryTab";
 import { UsageTab } from "@/components/UsageTab";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode, useRef } from "react";
 import {
   Button,
   BuildingIcon,
@@ -38,6 +38,24 @@ import type {
   AdminPerson,
   AdminUsage,
 } from "@/db/admin";
+
+import { stagger } from "@/lib/motion";
+
+/**
+ * Staggers a list in, once, when it first appears.
+ *
+ * A ref callback rather than an effect so it runs the moment the element
+ * exists, and guarded per element so re-rendering the list while somebody is
+ * reading it does not replay the entrance.
+ */
+function useStaggeredList() {
+  const seen = useRef(new WeakSet<Element>());
+  return useCallback((element: HTMLUListElement | null) => {
+    if (!element || seen.current.has(element)) return;
+    seen.current.add(element);
+    stagger(element);
+  }, []);
+}
 
 /*
  * The server's own shapes, imported rather than restated, so drift is a
@@ -355,6 +373,7 @@ function PeopleTable({
   accountEmail?: string;
   onOpen: (person: Person) => void;
 }) {
+  const staggered = useStaggeredList();
   if (people === null) return null;
   if (people.length === 0) {
     return (
@@ -367,7 +386,7 @@ function PeopleTable({
   }
 
   return (
-    <ul className="measure stagger flex flex-col gap-2">
+    <ul ref={staggered} className="measure flex flex-col gap-2">
       {people.map((row) => (
         <li key={row.workspaceId}>
           <button

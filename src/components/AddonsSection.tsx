@@ -1,7 +1,7 @@
 "use client";
 
-import { AnimatePresence, m } from "motion/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { DURATION, EASE, play, useEnter } from "@/lib/motion";
 import { Button, Card, Chip, Dialog, EmptyState, PuzzleIcon, TrashIcon } from "@/components/ui";
 // From describe rather than recipe: recipe.ts imports zod, and a value taken
 // from it would ship the validator to the browser. The types are erased.
@@ -71,6 +71,28 @@ export function AddonsSection({ admin }: { admin: boolean }) {
     if (admin) void load();
   }, [admin, load]);
 
+  const enter = useEnter();
+  const list = useRef<HTMLUListElement | null>(null);
+
+  /**
+   * Plays the card out before the list without it arrives.
+   *
+   * Deleting used to make every row below jump up on the same frame the card
+   * disappeared, which reads as a mis-click rather than as a deletion. The row
+   * is still in the tree here, so there is something to animate; by the time
+   * the state updates it has already gone.
+   */
+  const leave = async (id: string) => {
+    const row = list.current?.querySelector<HTMLElement>(`[data-addon="${id}"]`);
+    if (!row) return;
+    row.style.overflow = "hidden";
+    await play(
+      row,
+      { opacity: [1, 0], transform: ["none", "translateX(-8px)"] },
+      { duration: DURATION.short, ease: EASE.accelerate },
+    );
+  };
+
   const act = async (body: Record<string, unknown>) => {
     setBusy(true);
     setError(null);
@@ -114,26 +136,11 @@ export function AddonsSection({ admin }: { admin: boolean }) {
           description="Ask the Head of Engineering to build one."
         />
       ) : (
-        <ul className="flex flex-col gap-3">
-          {/*
-           * Motion here for the leave, not the arrival. Deleting an addon used
-           * to make the rows below it jump up on the same frame the card
-           * disappeared, which reads as a mis-click rather than as a deletion.
-           * CSS cannot animate this because the element is already out of the
-           * tree by the time a class could apply.
-           */}
-          <AnimatePresence initial={false}>
+        <ul ref={list} className="flex flex-col gap-3">
           {addons.map((addon) => {
             const failing = addon.failures > 0 && addon.runs > 0;
             return (
-              <m.li
-                key={addon.id}
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, height: 0, marginBottom: -12 }}
-                transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
-                style={{ overflow: "hidden" }}
-              >
+              <li key={addon.id} ref={enter} data-addon={addon.id}>
                 <Card>
                   <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
                     <div className="min-w-0 flex-1">
@@ -208,10 +215,9 @@ export function AddonsSection({ admin }: { admin: boolean }) {
 
                   <RunLog runs={runs.filter((run) => run.addonId === addon.id)} />
                 </Card>
-              </m.li>
+              </li>
             );
           })}
-          </AnimatePresence>
         </ul>
       )}
 
@@ -310,8 +316,9 @@ export function AddonsSection({ admin }: { admin: boolean }) {
               disabled={busy}
               onClick={async () => {
                 if (!removing) return;
-                const done = await act({ action: "delete", id: removing.id });
-                if (done) setRemoving(null);
+                setRemoving(null);
+                await leave(removing.id);
+                await act({ action: "delete", id: removing.id });
               }}
             >
               Delete

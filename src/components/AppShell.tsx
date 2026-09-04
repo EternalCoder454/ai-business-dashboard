@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { LazyMotion } from "motion/react";
+import { DURATION, EASE, play, usePresence } from "@/lib/motion";
 import { usePathname } from "next/navigation";
-import { motionFeatures } from "@/lib/motionFeatures";
 import { useSyncExternalStore } from "react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { CommandPalette, SearchIcon } from "./CommandPalette";
@@ -150,18 +149,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (pathname === "/signin") return <>{children}</>;
 
   return (
-    /*
-     * The animation features every `m` element in the panel draws on.
-     *
-     * Passed as a function, so the features are a chunk fetched after hydration
-     * rather than 143KB added to the first load of every route. See
-     * lib/motionFeatures for what that measured before and after.
-     *
-     * `strict` makes a `motion` element used by mistake throw rather than
-     * quietly pulling the full bundle back in synchronously, which is the
-     * failure that would undo the saving without anybody noticing.
-     */
-    <LazyMotion features={motionFeatures} strict>
     <div
       className={cx(
         "app-viewport flex w-full overflow-hidden bg-surface",
@@ -221,7 +208,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       />
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
-    </LazyMotion>
   );
 }
 
@@ -639,16 +625,48 @@ function ModalDrawer({
   onClose: () => void;
   onOpenSearch: () => void;
 }) {
-  if (!open) return null;
+  const panel = useRef<HTMLDivElement | null>(null);
+  const scrim = useRef<HTMLDivElement | null>(null);
+
+  /*
+   * Slides rather than disappearing.
+   *
+   * The drawer is the most used control on a phone, and it used to be removed
+   * from the tree the moment it closed, so it went in smoothly and out on a
+   * single frame. Moving off the edge it belongs to is what makes it read as
+   * one panel rather than as two states.
+   */
+  const render = usePresence(open, (phase) => {
+    const entering = phase === "enter";
+    const away = "translateX(-100%)";
+
+    const panelMotion = play(
+      panel.current,
+      entering ? { transform: [away, "none"] } : { transform: ["none", away] },
+      {
+        duration: entering ? DURATION.medium : DURATION.short,
+        ease: entering ? EASE.decelerate : EASE.accelerate,
+      },
+    );
+    void play(
+      scrim.current,
+      entering ? { opacity: [0, 1] } : { opacity: [1, 0] },
+      { duration: entering ? DURATION.medium : DURATION.short, ease: EASE.standard },
+    );
+    return panelMotion;
+  });
+
+  if (!render) return null;
 
   return (
     <div className="fixed inset-0 z-50 large:hidden">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
+      <div ref={scrim} className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Navigation"
-        className="animate-slide-in safe-top safe-bottom absolute inset-y-0 left-0 flex w-[18.75rem] max-w-[85vw] flex-col bg-low shadow-e3"
+        ref={panel}
+        className="safe-top safe-bottom absolute inset-y-0 left-0 flex w-[18.75rem] max-w-[85vw] flex-col bg-low shadow-e3"
       >
         <div className="flex justify-end px-2 pt-2">
           <button
