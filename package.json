@@ -52,13 +52,14 @@
     "permissions-test": "tsx scripts/permissions-test.ts",
     "rate-test": "tsx --env-file=.env.local scripts/rate-test.ts",
     "schema-test": "tsx scripts/schema-test.ts",
-    "test": "npm run guard-test && npm run conduct-test && npm run links-test && npm run schema-test && npm run auth-test && npm run permissions-test && npm run tenancy-audit && npm run skills-test && npm run memory-test && npm run contrast-test && npm run providers-test && npm run tools-test && npm run export-test && npm run schedules-test && npm run google-test && npm run haskey-test && npm run reach-test && npm run route-test && npm run delivery-test && npm run telemetry-test && npm run calendar-test && npm run reporter-test && npm run blob-test && npm run workspaces-test && npm run title-test",
+    "test": "npm run guard-test && npm run account-test && npm run conduct-test && npm run links-test && npm run schema-test && npm run auth-test && npm run permissions-test && npm run tenancy-audit && npm run skills-test && npm run memory-test && npm run contrast-test && npm run providers-test && npm run tools-test && npm run export-test && npm run schedules-test && npm run google-test && npm run haskey-test && npm run reach-test && npm run route-test && npm run delivery-test && npm run telemetry-test && npm run calendar-test && npm run reporter-test && npm run blob-test && npm run workspaces-test && npm run title-test",
     "test:db": "npm run isolation-check && npm run links-live && npm run rate-test && npm run tenancy-test && npm run messages-test && npm run keys-test && npm run admin-test && npm run api-test",
     "changelog": "tsx scripts/changelog.ts",
     "links-test": "tsx scripts/links-test.ts",
     "conduct-test": "tsx scripts/conduct-test.ts",
     "isolation-check": "tsx --env-file=.env.local scripts/isolation-check.ts",
-    "links-live": "tsx --env-file=.env.local scripts/links-live.ts"
+    "links-live": "tsx --env-file=.env.local scripts/links-live.ts",
+    "account-test": "tsx scripts/account-test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",

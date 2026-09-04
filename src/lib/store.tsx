@@ -642,15 +642,23 @@ export function StoreProvider({
   }, [remote?.settings, credentials, credentialsReady, initialBranding]);
 
   /**
-   * Google supplies the name, avatar, and address on every sign in, so those
-   * always win. Everything the person set themselves survives underneath.
+   * Google fills in what the person has not set for themselves.
+   *
+   * The address is the exception and always comes from Google, because it is
+   * the identity rather than a preference: the access row, every message and
+   * every permission is keyed on it.
+   *
+   * Name and picture work the other way round. Whatever they chose wins, and
+   * Google is only the fallback. The picture used to be the wrong way round,
+   * which meant uploading one saved it correctly and then showed the Google
+   * one anyway, so the feature looked broken while working perfectly.
    */
   const account: UserAccount = useMemo(() => {
     const stored = remote?.account ?? DEFAULT_ACCOUNT;
     return {
       ...stored,
       email: googleIdentity?.email ?? stored.email,
-      avatarUrl: googleIdentity?.image ?? stored.avatarUrl,
+      avatarUrl: stored.avatarUrl || googleIdentity?.image,
       displayName: stored.displayName || googleIdentity?.givenName || "",
     };
   }, [remote?.account, googleIdentity]);
@@ -863,8 +871,13 @@ export function StoreProvider({
         await push({ table: "profile", action: "upsert", row: next });
       },
 
+      /*
+       * The patch, not the merged row, because applyOp and the server upsert
+       * both merge by key. Clearing a field therefore has to send an empty
+       * string rather than undefined: JSON.stringify drops an undefined value
+       * entirely, so the server would receive an empty row and write nothing.
+       */
       updateAccount: async (patch) => {
-        const next = { ...account, ...patch, updatedAt: Date.now() };
         await push({ table: "account", action: "upsert", row: patch });
       },
 

@@ -141,9 +141,12 @@ export default function AccountPage() {
                 <Button
                   size="sm"
                   variant="text"
-                  onClick={() => void updateAccount({ avatarUrl: undefined })}
+                  // Empty rather than undefined: JSON.stringify drops an
+                  // undefined value, so the server would be sent an empty row
+                  // and the picture would come back on the next load.
+                  onClick={() => void updateAccount({ avatarUrl: "" })}
                 >
-                  Remove
+                  Reset
                 </Button>
               ) : null}
               <input
