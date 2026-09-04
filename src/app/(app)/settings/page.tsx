@@ -216,7 +216,10 @@ export default function SettingsPage() {
                   <Button
                     size="sm"
                     variant="text"
-                    onClick={() => void updateSettings({ companyLogoUrl: undefined })}
+                    // null, not undefined: JSON.stringify drops an undefined value, so
+                    // the server never sees the key. It clears on null, which
+                    // the write path allows for this field alone.
+                    onClick={() => void updateSettings({ companyLogoUrl: null })}
                   >
                     Remove
                   </Button>

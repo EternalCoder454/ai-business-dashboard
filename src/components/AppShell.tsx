@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { CommandPalette, SearchIcon } from "./CommandPalette";
 import { useMessages } from "@/lib/messages";
 import { reportLoad, watchForErrors } from "@/lib/telemetryClient";
+import { WorkspaceFavicon } from "./WorkspaceFavicon";
 import { useStore } from "@/lib/store";
 import { useKeyboardInset } from "@/lib/viewport";
 import { PRIMARY_LINKS, Sidebar, SidebarContent, isActive } from "./Sidebar";
@@ -169,6 +170,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         onExpand={() => setNavCollapsed(false)}
       />
 
+      <WorkspaceFavicon />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {isConversation ? null : (
           <TopAppBar title={title} />

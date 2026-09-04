@@ -1,3 +1,4 @@
+import { writableSettings } from "@/lib/settingsWrite";
 import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
@@ -1085,43 +1086,9 @@ export async function applyMutations(
         }
 
         case "settings": {
-          /*
-           * An allow list, applied only to the keys actually present. Both
-           * halves matter: spreading the row lets it choose its own
-           * workspaceId and write into another company's settings, and writing
-           * every column makes a partial save like `{ theme }` also write a
-           * defaulted companyName, which renames the business.
-           *
-           * The three model keys are refused here; /api/workspace/keys is the
-           * only writer.
-           */
-          const WRITABLE = [
-            "model",
-            "effort",
-            "theme",
-            "companyName",
-            "companySubtitle",
-            "writingRules",
-            "roomBrevity",
-            "companyMark",
-            "companyLogoUrl",
-            "sidebarSide",
-            "searchShortcut",
-            "wikiTitle",
-            "wikiSubtitle",
-          ] as const;
-
-          const sent: Record<string, unknown> = {};
-          for (const field of WRITABLE) {
-            const value = (op.row as Record<string, unknown>)[field];
-            if (value === undefined) continue;
-            // companyLogoUrl is the one that can be cleared, so null passes.
-            if (value === null) {
-              if (field === "companyLogoUrl") sent[field] = null;
-              continue;
-            }
-            if (typeof value === "string") sent[field] = value;
-          }
+          // The allow list and the clearing rule are in lib/settingsWrite, so
+          // they can be tested without a database.
+          const sent = writableSettings(op.row as Record<string, unknown>);
 
           const values = { workspaceId, ...sent, updatedAt: now };
 

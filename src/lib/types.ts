@@ -435,8 +435,14 @@ export interface Settings {
   roomBrevity: RoomBrevity;
   /** Up to two letters shown on the mark when there is no logo. */
   companyMark: string;
-  /** A data URL, which replaces the letters when set. */
-  companyLogoUrl?: string;
+  /**
+   * A data URL, which replaces the letters when set.
+   *
+   * Null rather than only undefined, because the column is nullable and null is
+   * how it is cleared: an undefined value is dropped by JSON.stringify, so a
+   * removal sent that way never reaches the server at all.
+   */
+  companyLogoUrl?: string | null;
   /** Which edge the navigation sits on. */
   sidebarSide: SidebarSide;
   /** The single key that opens search. "none" turns the bare key off. */
