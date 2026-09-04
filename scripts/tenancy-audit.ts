@@ -290,6 +290,38 @@ function main() {
     (table) => !KEPT.has(table) && !deleteBody.includes(`t.${table})`),
   );
 
+  /*
+   * And that nothing else deletes a business its own way.
+   *
+   * This audit read one function, so a second delete path with its own list of
+   * tables was invisible to it. There was one: deleteWorkspace named sixteen
+   * tables and never gained addons, api keys, schedules or the rest, so
+   * deleting a business left them behind, and the addons stayed live for the
+   * nightly tick to run. It delegates now, and this keeps it that way.
+   */
+  const otherDeleters: string[] = [];
+  for (const file of ["src/db/tenancy.ts", "src/db/repo.ts", "src/db/access.ts"]) {
+    const source = readFileSync(file, "utf8");
+    const DELETER = new RegExp(
+      "export async function (\\w*[Dd]elete\\w*)\\(([\\s\\S]{0,2400}?)\\n\\}",
+      "g",
+    );
+    for (const match of source.matchAll(DELETER)) {
+      const [, name, body] = match;
+      const tables = new Set([...body.matchAll(/delete\(t\.(\w+)\)/g)].map((m) => m[1]));
+      // A handful is a targeted delete; a long list is a second copy of this one.
+      if (tables.size >= 5 && !body.includes("deleteEverythingFor")) {
+        otherDeleters.push(`${file} ${name}() deletes ${tables.size} tables on its own`);
+      }
+    }
+  }
+  if (otherDeleters.length === 0) {
+    console.log("  ok   only one function decides what a business is made of");
+  } else {
+    for (const line of otherDeleters) console.log(`  FAIL ${line}`);
+    failures += otherDeleters.length;
+  }
+
   if (missing.length === 0) {
     console.log(`  ok   all ${scopedInSchema.size - KEPT.size} of them`);
   } else {

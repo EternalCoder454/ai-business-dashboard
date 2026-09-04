@@ -302,6 +302,11 @@ export default function ManagePage() {
                           size="sm"
                           variant="text"
                           disabled={busy}
+                          // Named, because a list of people gives every row a
+                          // button reading "Remove" and a screen reader then
+                          // announces the same thing for each of them with no
+                          // way to tell whose access is about to go.
+                          aria-label={`Remove ${member.email}`}
                           onClick={() => setRemoving(member)}
                         >
                           <TrashIcon className="h-4 w-4" />

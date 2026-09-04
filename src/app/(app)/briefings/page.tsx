@@ -244,6 +244,7 @@ export default function BriefingsPage() {
                             size="sm"
                             variant="text"
                             disabled={busy}
+                            aria-label={`Delete the ${schedule.name} schedule`}
                             onClick={() => void post({ action: "delete", id: schedule.id })}
                           >
                             <TrashIcon className="h-4 w-4" />

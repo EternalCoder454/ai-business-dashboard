@@ -63,6 +63,7 @@
     "branding-test": "tsx scripts/branding-test.ts",
     "addons-test": "tsx scripts/addons-test.ts",
     "switch-test": "tsx --env-file=.env.local scripts/switch-test.ts",
+    "feature-test": "tsx --env-file=.env.local scripts/feature-test.ts",
     "send-test-invite": "tsx --env-file=.env.local scripts/send-test-invite.ts",
     "scripts-check": "tsx scripts/scripts-are-modules.ts"
   },

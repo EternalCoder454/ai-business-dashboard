@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { databaseEnabled, db, requireDb } from "./client";
 import * as t from "./schema";
+import { deleteEverythingFor } from "./admin";
 import { parsePermissions, type Permissions } from "@/lib/permissions";
 
 export interface Membership {
@@ -318,27 +319,30 @@ export async function createWorkspace(input: {
  * workspace that no longer exists, which reads as being locked out rather than
  * as having been removed.
  */
+/**
+ * Removes a business and everything belonging to it.
+ *
+ * Delegates the contents to `deleteEverythingFor` rather than listing the
+ * tables again. There used to be two lists here, and they disagreed: this one
+ * named sixteen tables and never gained addons, api keys, schedules, briefings,
+ * reports, telemetry or the link allow list, so deleting a business left all of
+ * those behind. The addons were the visible half of it, because they stay live
+ * and the nightly tick picks them up, so a deleted company went on sending to
+ * an outside service. Found by counting rows before and after a test run.
+ *
+ * One list, in one place, checked by `npm run tenancy-audit`.
+ */
 export async function deleteWorkspace(workspaceId: string): Promise<void> {
   const database = requireDb();
+
+  // Everything scoped to the business, including its blobs.
+  await deleteEverythingFor(workspaceId);
+
+  // Then the two rows that say it exists at all. Access last but one, so a
+  // failure part way through leaves people able to reach a business that is
+  // still there rather than locked out of one that is.
   await database.transaction(async (tx) => {
-    await Promise.all([
-      tx.delete(t.messages).where(eq(t.messages.workspaceId, workspaceId)),
-      tx.delete(t.conversations).where(eq(t.conversations.workspaceId, workspaceId)),
-      tx.delete(t.departments).where(eq(t.departments.workspaceId, workspaceId)),
-      tx.delete(t.skills).where(eq(t.skills.workspaceId, workspaceId)),
-      tx.delete(t.deliverables).where(eq(t.deliverables.workspaceId, workspaceId)),
-      tx.delete(t.files).where(eq(t.files.workspaceId, workspaceId)),
-      tx.delete(t.memory).where(eq(t.memory.workspaceId, workspaceId)),
-      tx.delete(t.tasks).where(eq(t.tasks.workspaceId, workspaceId)),
-      tx.delete(t.wikiPages).where(eq(t.wikiPages.workspaceId, workspaceId)),
-      tx.delete(t.allHandsRounds).where(eq(t.allHandsRounds.workspaceId, workspaceId)),
-      tx.delete(t.allHandsRuns).where(eq(t.allHandsRuns.workspaceId, workspaceId)),
-      tx.delete(t.projects).where(eq(t.projects.workspaceId, workspaceId)),
-      tx.delete(t.directMessages).where(eq(t.directMessages.workspaceId, workspaceId)),
-      tx.delete(t.profiles).where(eq(t.profiles.workspaceId, workspaceId)),
-      tx.delete(t.settings).where(eq(t.settings.workspaceId, workspaceId)),
-      tx.delete(t.access).where(eq(t.access.workspaceId, workspaceId)),
-    ]);
+    await tx.delete(t.access).where(eq(t.access.workspaceId, workspaceId));
     await tx.delete(t.workspaces).where(eq(t.workspaces.id, workspaceId));
   });
 }
