@@ -7,6 +7,11 @@
     "is how internal work stays out of a customer's changelog.",
     "With ANTHROPIC_API_KEY set, `npm run changelog` drafts missing ones for review."
   ],
+  "af3c5d2": {
+    "kind": "better",
+    "title": "Your logo in the browser tab",
+    "detail": "The browser tab now shows your company logo from Settings, so a tab belonging to your business is recognisable at a glance and two businesses open at once are told apart.\n\nWithout a logo the tab shows your company letters on your company colour, matching the mark in the corner of the panel.\n\nRemoving a logo also works properly now. It used to reappear the next time the panel loaded."
+  },
   "1a23338": {
     "kind": "new",
     "title": "Changelog",
