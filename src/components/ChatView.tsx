@@ -217,6 +217,10 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   } = useStore();
   const store = useStore();
 
+  // Decides which tools the department is told about. The server decides what
+  // it may actually do, so this is presentation rather than a permission.
+  const admin = store.workspaceRole === "admin";
+
   const department = getDepartment(departmentId);
   const liveStatus = useDepartmentStatus(
     hasKeyFor(getDepartment(departmentId)?.model || settings.model, {
@@ -470,7 +474,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           account,
           memory,
           tasks,
-          toolsFor(departmentId),
+          toolsFor(departmentId, { admin }),
           calendar,
           calendarStatus,
         ),
@@ -484,7 +488,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         provider: providerOf(department.model || settings.model),
         effort: settings.effort,
         // Only this department's, so nothing can act outside its own area.
-        tools: toolsFor(departmentId).map((tool) => ({
+        tools: toolsFor(departmentId, { admin }).map((tool) => ({
           name: tool.name,
           description: tool.description,
           schema: tool.schema,
@@ -586,6 +590,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     profile,
     skillsFor,
     account,
+    admin,
   ]);
 
   /**

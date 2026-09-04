@@ -1,4 +1,5 @@
 import { writableSettings } from "@/lib/settingsWrite";
+import { fireTaskEvents, type TaskEvent } from "@/lib/addons/runner";
 import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
@@ -529,6 +530,14 @@ export async function applyMutations(
    */
   const orphaned: string[] = [];
 
+  /*
+   * Gathered inside the transaction and acted on after it commits, for the same
+   * reason as the blobs above and one more: an addon may spend five seconds on
+   * an outbound call, and holding a database transaction open for that would
+   * make a webhook somebody else runs into a lock on this workspace's writes.
+   */
+  const taskEvents: TaskEvent[] = [];
+
   await db.transaction(async (tx) => {
     for (const op of ops) {
       switch (op.table) {
@@ -899,7 +908,53 @@ export async function applyMutations(
             }
             break;
           }
+          /*
+           * What these rows looked like before, so a change can be told from a
+           * creation. Read once for the whole batch rather than per row: this
+           * runs on every task write in the product, and a query per task would
+           * make dragging a card across the board cost a query per card.
+           */
+          const before = new Map<string, string>();
+          if (op.rows.length) {
+            const existing = await tx
+              .select({ id: t.tasks.id, status: t.tasks.status })
+              .from(t.tasks)
+              .where(
+                and(
+                  eq(t.tasks.workspaceId, workspaceId),
+                  inArray(
+                    t.tasks.id,
+                    op.rows.map((row) => row.id),
+                  ),
+                ),
+              );
+            for (const row of existing) before.set(row.id, row.status);
+          }
+
           for (const row of op.rows) {
+            const previous = before.get(row.id);
+
+            // Created, or completed. Completion is a transition rather than a
+            // state, so saving an already-done task again does not fire it and
+            // an addon cannot be made to repeat by touching the row.
+            if (previous === undefined) {
+              taskEvents.push({
+                workspaceId,
+                trigger: "task.created",
+                title: row.title,
+                status: row.status,
+                departmentId: row.departmentId,
+              });
+            } else if (previous !== "done" && row.status === "done") {
+              taskEvents.push({
+                workspaceId,
+                trigger: "task.completed",
+                title: row.title,
+                status: row.status,
+                departmentId: row.departmentId,
+              });
+            }
+
             const values = {
               id: row.id,
               workspaceId,
@@ -1127,6 +1182,10 @@ export async function applyMutations(
 
   // After the rows, and never in a way that can fail the write.
   await forgetBlobs(orphaned);
+
+  // After the commit, so an addon only ever sees a task that is really saved,
+  // and never blocks the save itself. fireTaskEvents does not throw.
+  await fireTaskEvents(taskEvents);
 }
 
 /** True when the account has never been written to, so it needs seeding or an import. */

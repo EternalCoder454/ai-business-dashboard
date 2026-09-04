@@ -3,6 +3,7 @@ import { auth, authEnabled } from "@/auth";
 import { isOperator } from "@/lib/admin";
 import { reporterEnabled, runReview } from "@/lib/reporter";
 import { runSchedules } from "@/lib/schedules";
+import { runDailyAddons } from "@/lib/addons/runner";
 import { DEPLOYMENT, flush, kindOf, prune, record } from "@/lib/telemetry";
 import { rateLimitPrune } from "@/lib/rateLimit";
 
@@ -75,6 +76,22 @@ export async function GET(request: Request) {
     return null;
   });
 
+  // Addons next, before the review, because a customer's automation running on
+  // time matters more than our own nightly pass over messages.
+  const addonsStarted = Date.now();
+  const addons = await runDailyAddons().catch((error) => {
+    console.error("[cron] addons failed", error);
+    record({
+      operation: "cron.addons",
+      workspaceId: DEPLOYMENT,
+      ms: Date.now() - addonsStarted,
+      outcome: "error",
+      errorKind: kindOf(error),
+      errorNote: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  });
+
   const reviewStarted = Date.now();
   const review = reporterEnabled()
     ? await runReview().catch((error) => {
@@ -137,5 +154,5 @@ export async function GET(request: Request) {
       `${pruned} telemetry rows and ${rateRows} rate limit rows dropped, ${ms}ms`,
   );
 
-  return Response.json({ ok: true, schedules, review, pruned, rateRows, ms });
+  return Response.json({ ok: true, schedules, addons, review, pruned, rateRows, ms });
 }

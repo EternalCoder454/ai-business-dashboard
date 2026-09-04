@@ -559,6 +559,12 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
     // The link hosts it had agreed to, which mean nothing without it.
     await tx.delete(t.linkAllowlist).where(eq(t.linkAllowlist.workspaceId, owner));
 
+    // Its addons, and what they did. More urgent than most rows here: a live
+    // addon left behind is picked up by the nightly tick and goes on sending to
+    // an outside service on behalf of a business that no longer exists.
+    await tx.delete(t.addonRuns).where(eq(t.addonRuns.workspaceId, owner));
+    await tx.delete(t.addons).where(eq(t.addons.workspaceId, owner));
+
     // How it behaved. Counts and timings rather than anything anybody wrote,
     // but they are still this business's rows and a deleted business should
     // not go on appearing in the health screen.

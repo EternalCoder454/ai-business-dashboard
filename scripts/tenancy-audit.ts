@@ -42,6 +42,8 @@ const SCOPED = [
   "reports",
   "telemetry",
   "linkAllowlist",
+  "addons",
+  "addonRuns",
 ];
 
 /**

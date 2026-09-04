@@ -15,6 +15,7 @@ import { isPublicAddress } from "../src/lib/addons/outbound";
 import { matches, runRecipe, type Effects } from "../src/lib/addons/run";
 import {
   LIMITS,
+  READABLE,
   checkOutboundUrl,
   namesIn,
   readRecipe,
@@ -254,6 +255,60 @@ void (async () => {
     !JSON.stringify(threw).includes("Websites"),
     JSON.stringify(threw.steps),
   );
+
+  console.log("");
+  console.log("approval is the only thing that grants a destination");
+  {
+    /*
+     * The rule the whole design rests on: an addon may send only where an
+     * administrator wrote down, and the recipe does not get a vote. This is the
+     * same comparison db/addons makes when it decides whether an addon may run,
+     * checked here because it is the one that must never loosen.
+     */
+    const approved = ["hooks.slack.com"];
+    const outside = (hosts: string[]) => hosts.some((host) => !approved.includes(host));
+
+    check("exactly what was approved runs", !outside(["hooks.slack.com"]));
+    check("a host the recipe added does not", outside(["hooks.slack.com", "evil.example"]));
+    check("a subdomain of an approved host does not", outside(["a.hooks.slack.com"]));
+    // The one that catches a naive endsWith: this host is not Slack at all.
+    check("a host merely ending in the approved name does not", outside(["hooks.slack.com.evil.example"]));
+    check("a lookalike does not", outside(["hooks-slack.com"]));
+    check("an addon approved for nothing cannot send anywhere", ["x.example"].some((h) => !([] as string[]).includes(h)));
+  }
+
+  console.log("");
+  console.log("an addon cannot be handed a value nobody listed");
+  {
+    /*
+     * The runner builds the context, so this is really a test that two lists
+     * agree: what fireTaskEvents supplies, and what READABLE says a template
+     * may name. A field in one and not the other is either a value that
+     * silently renders empty, or one readable without ever being declared.
+     */
+    const supplied = ["task.title", "task.status", "task.department", "company.name", "today"];
+    const declared = READABLE["task.completed"];
+
+    const undeclared = supplied.filter((name) => !declared.includes(name));
+    check("the runner supplies nothing undeclared", undeclared.length === 0, undeclared.join());
+
+    const unsupplied = declared.filter((name) => !supplied.includes(name));
+    check("and everything declared is supplied", unsupplied.length === 0, unsupplied.join());
+
+    const daily = ["company.name", "today", "tasks.open_count", "tasks.done_today_count"];
+    const dailyDeclared = READABLE["schedule.daily"];
+    check(
+      "the daily tick agrees too",
+      daily.every((n) => dailyDeclared.includes(n)) && dailyDeclared.every((n) => daily.includes(n)),
+      dailyDeclared.join(),
+    );
+
+    // Nothing on any list is a credential. Written as a test so that adding one
+    // is a deliberate act rather than a line in a diff nobody reads twice.
+    const smells = /key|token|secret|password|credential|email/i;
+    const risky = Object.values(READABLE).flat().filter((name) => smells.test(name));
+    check("no readable field looks like a credential", risky.length === 0, risky.join());
+  }
 
   console.log(failures === 0 ? "\nall checks passed" : `\n${failures} failed`);
   process.exit(failures === 0 ? 0 : 1);

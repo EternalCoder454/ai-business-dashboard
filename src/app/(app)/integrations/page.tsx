@@ -15,6 +15,7 @@ import {
   TrashIcon,
   cx,
 } from "@/components/ui";
+import { AddonsSection } from "@/components/AddonsSection";
 import { useStore } from "@/lib/store";
 import { formatRelativeTime } from "@/lib/routes";
 
@@ -127,20 +128,7 @@ export default function IntegrationsPage() {
       <div className="measure flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-6">
         {error ? <p className="md-label text-error">{error}</p> : null}
 
-        <Card>
-          <div className="flex items-start gap-3">
-            <PuzzleIcon className="mt-0.5 h-5 w-5 flex-none text-on-variant" />
-            <div className="min-w-0">
-              <p className="md-title">Addons are being built</p>
-              <p className="md-body mt-1 text-on-variant">
-                An addon is one job the panel can do outside itself: posting a video,
-                filing an invoice, updating a listing. They are not here yet. What is
-                here is the API they will all run on, so anything you write today keeps
-                working when the catalogue arrives.
-              </p>
-            </div>
-          </div>
-        </Card>
+        <AddonsSection admin={admin} />
 
         <section className="flex flex-col gap-3">
           <div>

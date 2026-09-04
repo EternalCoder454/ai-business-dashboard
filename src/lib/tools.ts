@@ -37,6 +37,16 @@ export interface ToolDefinition {
    * before they run, so this decides whether a card appears or not.
    */
   writes: boolean;
+  /**
+   * Offered only to an administrator.
+   *
+   * Hiding a tool is not a permission check: this decides what a department is
+   * told it can do, and the server decides what it may actually do. Both are
+   * needed. Without this the model offers something a member cannot use and the
+   * conversation ends in a refusal; without the server check, hiding it would
+   * be the only thing stopping a crafted request.
+   */
+  adminOnly?: boolean;
   /** Shown on the confirmation card, in the person's words rather than JSON. */
   summarise: (input: Record<string, unknown>) => string;
 }
@@ -133,6 +143,87 @@ export const BUILT_IN_TOOLS: ToolDefinition[] = [
     writes: true,
     summarise: (input) => `Create project “${input.name}”`,
   },
+  {
+    /*
+     * The one tool that produces something which later runs on its own.
+     *
+     * Everything else here writes a row a person can read. This writes a recipe
+     * the panel will carry out unattended, which is why it is the only tool
+     * that is administrator only, why what it makes is never live when it is
+     * made, and why the schema below is narrow: the model is choosing from a
+     * fixed vocabulary, not writing a program.
+     *
+     * @see lib/addons/recipe for what each field may contain.
+     */
+    name: "create_addon",
+    description:
+      "Build an addon: something the panel does by itself when a trigger happens, such as posting to a webhook when a task is completed. " +
+      "Use when the user asks for an automation or an integration with an outside service. " +
+      "It is saved switched off and an administrator has to approve it, so say that. " +
+      "You may only use the triggers, fields and actions listed in the schema: anything else will be refused. " +
+      "A template like {{task.title}} may only name a field the chosen trigger offers.",
+    departments: ["engineering"],
+    adminOnly: true,
+    schema: {
+      type: "object",
+      properties: {
+        name: str("A short name for it, such as “Post to Slack when a task is done”."),
+        description: str("One line on what it does, for the person approving it."),
+        trigger: {
+          type: "string",
+          enum: ["task.created", "task.completed", "schedule.daily"],
+          description: "What makes it run.",
+        },
+        conditions: {
+          type: "array",
+          description:
+            "Optional. All must hold for it to run. Only fields the trigger offers: " +
+            "task.title, task.status, task.department, company.name, today for a task trigger; " +
+            "company.name, today, tasks.open_count, tasks.done_today_count for schedule.daily.",
+          items: {
+            type: "object",
+            properties: {
+              field: str("The field to test."),
+              op: {
+                type: "string",
+                enum: ["is", "is not", "contains", "does not contain"],
+              },
+              value: str("What to compare it against."),
+            },
+            required: ["field", "op", "value"],
+          },
+        },
+        steps: {
+          type: "array",
+          description: "What it does, in order. At most five.",
+          items: {
+            type: "object",
+            properties: {
+              action: {
+                type: "string",
+                enum: ["create_task", "save_note", "http_post"],
+              },
+              title: str("For create_task and save_note. May contain {{field}} templates."),
+              status: { type: "string", enum: ["todo", "doing", "done"] },
+              body: str("For save_note. May contain {{field}} templates."),
+              url: str("For http_post. A full https address. Never a template."),
+              fields: {
+                type: "object",
+                description:
+                  "For http_post. Names to values, each of which may contain templates. " +
+                  "Do not write JSON: give the fields and they are serialised for you. " +
+                  "A Slack webhook wants a single field called text.",
+              },
+            },
+            required: ["action"],
+          },
+        },
+      },
+      required: ["name", "trigger", "steps"],
+    },
+    writes: true,
+    summarise: (input) => `Build the addon “${input.name}”, switched off until approved`,
+  },
 ];
 
 /**
@@ -156,11 +247,21 @@ export function allTools(): ToolDefinition[] {
   return [...BUILT_IN_TOOLS, ...registered];
 }
 
-/** The tools one department may call. */
-export function toolsFor(departmentId: string): ToolDefinition[] {
-  return allTools().filter(
-    (tool) => !tool.departments?.length || tool.departments.includes(departmentId),
-  );
+/**
+ * The tools one department may call.
+ *
+ * `admin` decides whether the administrator-only ones are offered. It defaults
+ * to false so a caller that has not thought about it offers fewer tools rather
+ * than more.
+ */
+export function toolsFor(
+  departmentId: string,
+  options: { admin?: boolean } = {},
+): ToolDefinition[] {
+  return allTools().filter((tool) => {
+    if (tool.adminOnly && !options.admin) return false;
+    return !tool.departments?.length || tool.departments.includes(departmentId);
+  });
 }
 
 export function findTool(name: string): ToolDefinition | undefined {

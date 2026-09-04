@@ -81,6 +81,57 @@ export async function runTool(
       return `Created “${project.name}”.`;
     }
 
+    case "create_addon": {
+      /*
+       * The only tool that goes to the server rather than to the store.
+       *
+       * Addons live in Postgres and nowhere else: an addon runs unattended, and
+       * a browser that is closed cannot run anything, so there is no IndexedDB
+       * version of this to keep in step. The route also re-checks that whoever
+       * is asking is an administrator, which is the check that counts.
+       */
+      const response = await fetch("/api/workspace/addons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          name: text("name"),
+          description: text("description"),
+          recipe: {
+            trigger: input.trigger,
+            conditions: input.conditions ?? [],
+            steps: input.steps ?? [],
+          },
+        }),
+      });
+
+      const result = (await response.json().catch(() => null)) as {
+        error?: string;
+        problems?: string[];
+        addon?: { name: string };
+      } | null;
+
+      if (!response.ok) {
+        /*
+         * Thrown rather than returned, so the model sees it as a failed call
+         * and can correct the recipe. The problems name the field that was
+         * wrong, which is the difference between a second attempt that works
+         * and one that guesses.
+         */
+        throw new Error(
+          result?.problems?.length
+            ? `That addon was refused: ${result.problems.join(" ")}`
+            : (result?.error ?? "That addon could not be saved."),
+        );
+      }
+
+      return (
+        `Built “${result?.addon?.name ?? text("name")}”. It is switched off until an ` +
+        `administrator approves it under Integrations, where they can see what it does ` +
+        `and anywhere it would send to.`
+      );
+    }
+
     default:
       // A registered tool with no branch here is a mistake worth surfacing
       // rather than silently doing nothing and reporting success.

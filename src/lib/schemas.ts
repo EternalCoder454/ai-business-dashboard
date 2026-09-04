@@ -141,3 +141,20 @@ export const operatorBody = z.object({
   name: shortText.optional(),
   invite: z.boolean().optional(),
 });
+
+/**
+ * What the addons screen can ask for.
+ *
+ * `recipe` is deliberately unknown here. It is checked by `readRecipe`, which
+ * owns that shape and reports each problem in words the model can act on, and
+ * describing it twice would mean two definitions of what an addon may say
+ * drifting apart. This schema's job is only to keep the envelope small and the
+ * action known.
+ */
+export const addonsBody = z.object({
+  action: z.enum(["create", "approve", "pause", "resume", "delete"]),
+  id: id.optional(),
+  name: shortText.optional(),
+  description: shortText.optional(),
+  recipe: z.unknown().optional(),
+});

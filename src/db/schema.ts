@@ -1087,3 +1087,73 @@ export const linkAllowlist = pgTable(
   },
   (table) => [primaryKey({ columns: [table.workspaceId, table.domain] })],
 );
+
+/**
+ * An addon: a recipe the panel runs on this business's behalf.
+ *
+ * The recipe is stored as JSON, but it is only ever read back through
+ * `readRecipe`, which validates it again. That matters because a row is not a
+ * trusted input: anybody who could write to this table could otherwise change
+ * what an approved addon does without going near the approval screen.
+ *
+ * `hosts` is the administrator's decision, kept beside the recipe rather than
+ * derived from it at run time. Deriving it would mean an edited recipe silently
+ * approves its own new destinations, which is the one thing approval is for.
+ */
+export const addons = pgTable(
+  "addons",
+  {
+    id: text("id").notNull(),
+    workspaceId: workspace(),
+    /** What it is called, in the owner's words. */
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    /** The recipe. Validated on the way in and again on the way out. */
+    recipe: jsonb("recipe").notNull(),
+    /** Copied out of the recipe so the runner can find its addons by trigger. */
+    trigger: text("trigger").notNull(),
+    /** Space separated hostnames an administrator approved. Never derived. */
+    hosts: text("hosts").notNull().default(""),
+    /** pending, live, or paused. Only live ever runs. */
+    state: text("state").notNull().default("pending"),
+    createdBy: text("created_by").notNull().default(""),
+    /** Who approved it, so an addon that surprises somebody has a name on it. */
+    approvedBy: text("approved_by"),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    runs: integer("runs").notNull().default(0),
+    failures: integer("failures").notNull().default(0),
+    createdAt: created(),
+    updatedAt: updated(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("addons_trigger_idx").on(table.workspaceId, table.state, table.trigger),
+  ],
+);
+
+/**
+ * What an addon did, each time it ran.
+ *
+ * Kept because an addon acts without anybody watching, and the only way that is
+ * acceptable is if what it did is afterwards visible. A blocked outbound call
+ * is a line here rather than a silent no-op, so somebody looking at a webhook
+ * that never arrives can see it was us who stopped it and why.
+ */
+export const addonRuns = pgTable(
+  "addon_runs",
+  {
+    id: text("id").notNull(),
+    workspaceId: workspace(),
+    addonId: text("addon_id").notNull(),
+    ok: boolean("ok").notNull().default(false),
+    /** False when the conditions did not match, which is not a failure. */
+    ran: boolean("ran").notNull().default(false),
+    steps: jsonb("steps").notNull().default([]),
+    createdAt: created(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("addon_runs_recent_idx").on(table.workspaceId, table.addonId, table.createdAt),
+  ],
+);

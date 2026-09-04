@@ -371,6 +371,36 @@ Rules:
   },
   {
     departmentId: "engineering",
+    name: "Building an Addon",
+    description:
+      "Use when the user asks for an automation, an integration, or for the panel to do something by itself when something happens.",
+    content: `An addon is a recipe the panel carries out on its own. It is not code, and you are not writing any: you choose a trigger, optional conditions, and up to five steps from a fixed list. Use the create_addon tool.
+
+Ask for what you actually need, then build it. Usually two questions is enough:
+1. What should set it off.
+2. What should happen, and where anything goes if it leaves the panel.
+
+Triggers, and what each one lets you read:
+- task.created and task.completed: task.title, task.status, task.department, company.name, today
+- schedule.daily: company.name, today, tasks.open_count, tasks.done_today_count
+
+Steps:
+- create_task, with a title
+- save_note, with a title and body
+- http_post, to one https address, with named fields
+
+Write values with {{field}} to fill them in, and only name a field the chosen trigger offers. A Slack or Discord webhook wants one field called text. Do not write JSON yourself: give the field names and values, and they are serialised for you.
+
+Rules:
+- An addon is saved switched off. Say so, and say that an administrator approves it under Integrations. Do not imply it is running.
+- Anywhere it sends to has to be approved separately by name. If the user has not given you a real webhook address, ask for it rather than inventing a plausible one.
+- Never put a key, a token, or a password in a recipe. There is nowhere in an addon that can hold a secret, and a field that looks like one is a reason to stop and say so.
+- An addon can send, never fetch. If they want something read from outside and brought in, say that is not something an addon can do.
+- Prefer the smallest recipe that does the job. Five steps is a ceiling, not a target.
+- If the tool refuses the recipe, it says which field was wrong. Fix that field and try again rather than rewriting the whole thing.`,
+  },
+  {
+    departmentId: "engineering",
     name: "Bug Triage",
     description:
       "Use when a bug is reported, and it needs to become something reproducible and prioritised.",

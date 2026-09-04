@@ -58,6 +58,7 @@ export const SHIPPED_SKILL_BODIES = new Set([
   "nk6nvf",
   "ou1a86",
   "pi48w9",
+  "rfe9kf",
   "u7uqj5",
   "vi7mm1",
   "wnle6q",
