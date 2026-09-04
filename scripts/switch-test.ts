@@ -99,6 +99,32 @@ async function main() {
     check("Beta carries none of Alpha's", !loadedBeta.includes("ALPHA ONLY") && !loadedBeta.includes("ALPHA SECRET"));
     check("neither carries the other's workspace id", !loadedAlpha.includes(beta) && !loadedBeta.includes(alpha));
 
+    console.log("");
+    console.log("re-inviting somebody does not change what they are");
+    {
+      /*
+       * The form sends member unless somebody picks otherwise, and grantAccess
+       * writes the role on conflict, so this used to take an administrator down
+       * to a member for the crime of being sent another invitation. The invite
+       * path never had the last administrator guard the role path has, so a
+       * business could demote its only administrator this way.
+       */
+      const before = await membershipIn(PERSON, alpha);
+      check("they start as an administrator", before?.role === "admin", before?.role);
+
+      // What the route does now: keep whatever they already are.
+      const keep = await membershipIn(PERSON, alpha);
+      await grantAccess({
+        email: PERSON,
+        workspaceId: alpha,
+        role: keep ? keep.role : "member",
+        invitedBy: "test",
+      });
+
+      const after = await membershipIn(PERSON, alpha);
+      check("and they still are after a second invitation", after?.role === "admin", after?.role);
+    }
+
     console.log("\nleaving one leaves the other alone");
     await database
       .delete(t.access)

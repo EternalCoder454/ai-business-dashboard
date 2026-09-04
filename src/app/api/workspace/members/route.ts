@@ -134,10 +134,21 @@ export async function POST(request: Request) {
        * Nothing crosses over. Every row in the panel is scoped to a workspace,
        * so belonging to two is two separate sets of data that never meet.
        */
+      /*
+       * Re-inviting somebody already here does not change what they are.
+       *
+       * grantAccess writes the role on conflict, and the form sends member
+       * unless somebody picks otherwise, so inviting an existing administrator
+       * again silently demoted them. Nothing warned, because the invite path
+       * never had the guard the role path has, and a business could take its
+       * own last administrator down to a member by re-sending an invitation.
+       *
+       * Changing what a colleague is has its own action, which does check.
+       */
       await grantAccess({
         email,
         workspaceId: admin.workspaceId,
-        role,
+        role: existing ? existing.role : role,
         note: parsed.body.note,
         invitedBy: admin.email,
       });
