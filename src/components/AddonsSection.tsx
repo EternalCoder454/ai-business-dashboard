@@ -125,7 +125,12 @@ export function AddonsSection({ admin }: { admin: boolean }) {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="md-title-lg">Addons</h2>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h2 className="md-title-lg">Built for you</h2>
+        {/* Says where these came from, next to the Native ones above, which
+            came from us and are maintained by us. Different promises. */}
+        <Chip>Custom</Chip>
+      </div>
 
       {error ? <p className="md-label text-error">{error}</p> : null}
 

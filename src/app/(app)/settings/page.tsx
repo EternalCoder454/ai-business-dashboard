@@ -2,7 +2,6 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { ProviderKey } from "@/components/ProviderKey";
-import { GoogleCalendarCard } from "@/components/GoogleCalendarCard";
 import { MODELS, PROVIDERS, modelsFor } from "@/lib/providers";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { CompanyMark } from "@/components/CompanyMark";
@@ -424,8 +423,6 @@ export default function SettingsPage() {
               className="font-mono text-[0.8125rem]"
             />
           </Card>
-
-          <GoogleCalendarCard />
 
           <Card>
             <h2 className="md-title-lg mb-1">Data</h2>

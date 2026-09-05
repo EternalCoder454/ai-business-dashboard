@@ -16,6 +16,7 @@ import {
   cx,
 } from "@/components/ui";
 import { AddonsSection } from "@/components/AddonsSection";
+import { NativeAddons } from "@/components/NativeAddons";
 import { useStore } from "@/lib/store";
 import { formatRelativeTime } from "@/lib/routes";
 
@@ -127,6 +128,8 @@ export default function IntegrationsPage() {
 
       <div className="measure flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-6">
         {error ? <p className="md-label text-error">{error}</p> : null}
+
+        <NativeAddons />
 
         <AddonsSection admin={admin} />
 
