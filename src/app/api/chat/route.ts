@@ -294,13 +294,30 @@ export async function POST(request: NextRequest) {
        * cached prefix rather than in front of it. A department's tool list is
        * as stable as its prompt, so this costs nothing after the first message.
        */
-      ...(body.tools?.length
+      ...(body.tools?.length || body.webSearch === "native"
         ? {
-            tools: body.tools.map((tool) => ({
-              name: tool.name,
-              description: tool.description,
-              input_schema: tool.schema,
-            })),
+            tools: [
+              ...(body.tools ?? []).map((tool) => ({
+                name: tool.name,
+                description: tool.description,
+                input_schema: tool.schema,
+              })),
+              /*
+               * Anthropic's own search, run by Anthropic rather than by us.
+               *
+               * A server tool: it is named in the request and executed upstream,
+               * so there is no route to write, no key to hold and nothing for
+               * the person to approve mid answer. It bills on the key the
+               * business already has, which is the whole reason this is the
+               * default rather than Perplexity.
+               *
+               * Capped per answer. Without a ceiling a head that cannot find
+               * something will keep looking, and the bill is per search.
+               */
+              ...(body.webSearch === "native"
+                ? [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }]
+                : []),
+            ],
           }
         : {}),
       /*
@@ -401,6 +418,29 @@ export async function POST(request: NextRequest) {
          * workspace, and a write has to be approved by the person reading
          * before it happens.
          */
+        /*
+         * Where a searched answer came from.
+         *
+         * Anthropic returns the results it used as their own blocks, separately
+         * from the prose. Forwarded as one event rather than woven into the
+         * text, so the reply stays readable and the citations can be rendered
+         * as links rather than as a wall of URLs mid sentence.
+         */
+        const sources: { title: string; url: string }[] = [];
+        for (const block of final.content as unknown as Record<string, unknown>[]) {
+          if (block.type !== "web_search_tool_result") continue;
+          const results = (block.content ?? []) as { title?: string; url?: string }[];
+          for (const found of results) {
+            if (found.url && !sources.some((s) => s.url === found.url)) {
+              sources.push({ title: found.title || found.url, url: found.url });
+            }
+          }
+        }
+        if (sources.length) {
+          wroteContent = true;
+          controller.enqueue(frame({ type: "sources", sources: sources.slice(0, 8) }));
+        }
+
         for (const block of final.content) {
           if (block.type !== "tool_use") continue;
           wroteContent = true;

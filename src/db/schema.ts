@@ -376,6 +376,15 @@ export const settings = pgTable("settings", {
   googleKey: text("google_key").notNull().default(""),
   deepseekKey: text("deepseek_key").notNull().default(""),
   /**
+   * Whether the heads may look things up, and with what.
+   *
+   * "off", "native" or "perplexity". Off by default because a search costs
+   * money on the customer's own key and nothing should start spending it
+   * without somebody saying so. Native uses whatever the head's own provider
+   * offers, which needs no second key.
+   */
+  webSearch: text("web_search").notNull().default("off"),
+  /**
    * Perplexity, which is not a provider a department can run on.
    *
    * It answers a search rather than a conversation and has no tool calling, so

@@ -475,6 +475,8 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Filled by onSources below, once the answer is finished.
+    let sources: { title: string; url: string }[] = [];
     const result = await streamChat(
       {
         ...splitPrompt(
@@ -505,6 +507,8 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           description: tool.description,
           schema: tool.schema,
         })),
+        // Off unless the business turned it on, and the mode it chose.
+        webSearch: settings.webSearch ?? "off",
       },
       settings.apiKey,
       settings.workspaceId,
@@ -513,14 +517,31 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         onThinking: (_delta, full) =>
           setStream((current) => ({ ...current, thinking: full })),
         onUsage: setLastUsage,
+        onSources: (found) => {
+          sources = found;
+        },
       },
       controller.signal,
       { openai: settings.openaiKey, google: settings.googleKey },
     );
 
-    const collectedText = result.text;
     const collectedThinking = result.thinking;
     const failure = result.error ?? "";
+
+    /*
+     * Written into the reply rather than kept beside it.
+     *
+     * A cited answer is worth nothing if the citations are lost the moment the
+     * conversation is reloaded, and the messages table has no column for them.
+     * As markdown they are saved with the answer, render as links through the
+     * same component as everything else, and export with the rest of the work.
+     */
+    const collectedText =
+      sources.length && result.text
+        ? result.text +
+          "\n\n**Sources**\n\n" +
+          sources.map((source) => `- [${source.title}](${source.url})`).join("\n")
+        : result.text;
 
     const assistantMessage: Message = {
       id: newId("msg"),

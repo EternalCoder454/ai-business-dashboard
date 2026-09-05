@@ -27,6 +27,7 @@ export const WRITABLE_SETTINGS = [
   "writingRules",
   "roomBrevity",
   "companyMark",
+  "webSearch",
   "companyLogoUrl",
   "sidebarSide",
   "searchShortcut",

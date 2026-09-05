@@ -10,6 +10,8 @@ export interface StreamHandlers {
   onText?: (delta: string, full: string) => void;
   onThinking?: (delta: string, full: string) => void;
   onUsage?: (usage: TokenUsage) => void;
+  /** Where a searched answer came from, once the reply is finished. */
+  onSources?: (sources: { title: string; url: string }[]) => void;
 }
 
 export interface StreamResult {
@@ -98,6 +100,8 @@ export async function streamChat(
         } else if (event.type === "thinking") {
           thinking += event.text;
           handlers.onThinking?.(event.text, thinking);
+        } else if (event.type === "sources") {
+          handlers.onSources?.(event.sources);
         } else if (event.type === "usage") {
           usage = event.usage;
           handlers.onUsage?.(event.usage);

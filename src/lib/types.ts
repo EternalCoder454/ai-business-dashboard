@@ -436,6 +436,13 @@ export interface Settings {
   /** Up to two letters shown on the mark when there is no logo. */
   companyMark: string;
   /**
+   * Whether the heads may look things up, and with what.
+   *
+   * Off by default: a search spends the business's own money, and a feature
+   * that starts doing that on its own is not one anybody asked for.
+   */
+  webSearch?: WebSearchMode;
+  /**
    * A data URL, which replaces the letters when set.
    *
    * Null rather than only undefined, because the column is nullable and null is
@@ -490,6 +497,17 @@ export interface AllHandsRun {
 }
 
 /** Wire format for POST /api/chat. */
+/**
+ * Where a head looks something up.
+ *
+ * Native means the head's own provider does it: Anthropic, OpenAI and Gemini
+ * all search now, billed on the key the business already has. Perplexity is a
+ * second key for people who want one search behaving the same way whichever
+ * model a head runs on, which matters once heads are spread across providers
+ * that do not all have search of their own.
+ */
+export type WebSearchMode = "off" | "native" | "perplexity";
+
 export interface ChatRequestBody {
   /**
    * The part of the prompt that does not change between messages.
@@ -504,6 +522,8 @@ export interface ChatRequestBody {
    * whole prefix. Optional: a caller that omits it behaves as before.
    */
   systemVolatile?: string;
+  /** Whether this request may look things up, and with what. */
+  webSearch?: WebSearchMode;
   /**
    * Which service answers. Omitted by anything written before providers were
    * a choice, and the server then reads it off the model id, so an old client
@@ -543,6 +563,8 @@ export type ChatStreamEvent =
   | { type: "tool"; call: ProposedToolCall }
   | { type: "text"; text: string }
   | { type: "usage"; usage: TokenUsage }
+  /** Where a searched answer came from, so a reply can cite rather than assert. */
+  | { type: "sources"; sources: { title: string; url: string }[] }
   | { type: "error"; message: string }
   | { type: "done" };
 

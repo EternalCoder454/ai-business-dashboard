@@ -305,6 +305,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
         writingRules: t.settings.writingRules,
         roomBrevity: t.settings.roomBrevity,
         companyMark: t.settings.companyMark,
+        webSearch: t.settings.webSearch,
         companyLogoUrl: t.settings.companyLogoUrl,
         sidebarSide: t.settings.sidebarSide,
         searchShortcut: t.settings.searchShortcut,
@@ -498,6 +499,12 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       writingRules: settingsRow[0]?.writingRules ?? "",
       roomBrevity: (settingsRow[0]?.roomBrevity ?? "tight") as Settings["roomBrevity"],
       companyMark: settingsRow[0]?.companyMark ?? "HQ",
+      // Anything that is not one of the three modes reads as off, so a value
+      // written by hand cannot turn spending on.
+      webSearch:
+        settingsRow[0]?.webSearch === "native" || settingsRow[0]?.webSearch === "perplexity"
+          ? settingsRow[0].webSearch
+          : "off",
       companyLogoUrl: settingsRow[0]?.companyLogoUrl ?? undefined,
       sidebarSide: (settingsRow[0]?.sidebarSide ?? "left") as Settings["sidebarSide"],
       searchShortcut: (settingsRow[0]?.searchShortcut ?? "slash") as Settings["searchShortcut"],

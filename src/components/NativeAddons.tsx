@@ -2,6 +2,7 @@
 
 import { Chip } from "@/components/ui";
 import { GoogleCalendarCard } from "@/components/GoogleCalendarCard";
+import { WebSearchCard } from "@/components/WebSearchCard";
 
 /**
  * The addons that came with the panel.
@@ -32,6 +33,9 @@ export function NativeAddons() {
       </div>
 
       <ul className="flex flex-col gap-3">
+        <li>
+          <WebSearchCard />
+        </li>
         <li>
           {/*
             Moved here from Settings. It was filed under Appearance and model

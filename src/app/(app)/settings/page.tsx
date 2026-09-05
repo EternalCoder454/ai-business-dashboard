@@ -321,7 +321,7 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <Card className="expanded:col-span-2">
+          <Card>
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
                 <h2 className="md-title-lg">Departments</h2>
@@ -396,7 +396,7 @@ export default function SettingsPage() {
             </ul>
           </Card>
 
-          <Card className="expanded:col-span-2">
+          <Card>
             <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
               <h2 className="md-title-lg">House writing rules</h2>
               <Button
