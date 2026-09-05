@@ -1,9 +1,11 @@
+import { buildLibraryBlock } from "./library";
 import { buildMemoryBlock } from "./memory";
 import { COMPANY_ID, SHARED_OPERATING_RULES, WRITING_RULES } from "./seed";
 import { buildSkillsBlock } from "./skills";
 import type {
   CompanyProfile,
   Department,
+  LibraryFile,
   MemoryEntry,
   Skill,
   Task,
@@ -318,6 +320,12 @@ export function buildSystemPrompt(
   tools: { name: string }[] = [],
   calendar: PromptCalendarEvent[] = [],
   calendarStatus: CalendarStatus = "not-connected",
+  /*
+   * Last, because every existing caller passes positionally and none of them
+   * should have to change to keep working. A caller that has no files, such as
+   * a test measuring the tasks block, gets the same prompt it got before.
+   */
+  files: LibraryFile[] = [],
 ): { stable: string; volatile: string } {
   const context = buildCompanyContext(profile, companyName);
 
@@ -350,6 +358,15 @@ export function buildSystemPrompt(
     department.systemPrompt.trim(),
     buildSkillsBlock(skills),
     context,
+    /*
+     * Stable, and that is the whole reason this is a catalogue rather than the
+     * documents themselves. It changes only when somebody uploads or removes
+     * one, so it is written into the cache once and read back at a tenth of the
+     * price on every message after. Putting contents here instead would rewrite
+     * the entire cached prefix every time the Library changed, and send a
+     * scanned return on every message that had nothing to do with it.
+     */
+    buildLibraryBlock(files, department.id),
     account ? buildUserContext(account, companyName) : "",
     buildToolsBlock(tools),
     SHARED_OPERATING_RULES,

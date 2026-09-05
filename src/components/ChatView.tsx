@@ -23,6 +23,7 @@ import { providerOf } from "@/lib/providers";
 import { runTool } from "@/lib/runTool";
 import { findTool, toolsFor } from "@/lib/tools";
 import { COMPANY_ID } from "@/lib/seed";
+import { libraryFor } from "@/lib/library";
 import { buildSystemPrompt, deriveConversationTitle, hasProfileContent } from "@/lib/prompts";
 import { conversationHref, departmentHrefById } from "@/lib/routes";
 import { STATUS_MEANING, setDepartmentActivity, useDepartmentStatus } from "@/lib/presence";
@@ -488,9 +489,14 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           account,
           memory,
           tasks,
-          toolsFor(departmentId, { admin, webSearch: settings.webSearch }),
+          toolsFor(departmentId, {
+            admin,
+            webSearch: settings.webSearch,
+            documents: libraryFor(files, departmentId).length,
+          }),
           calendar,
           calendarStatus,
+          files,
         ),
         messages: await Promise.all(
           history.map(async (m) => ({ role: m.role, content: await toWire(m) })),

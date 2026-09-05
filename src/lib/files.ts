@@ -190,15 +190,10 @@ export const FILE_ICON: Record<AttachmentKind, string> = {
 };
 
 /**
- * The files one department may attach: its own, plus everything shared with
- * the whole company. Untagged files stay out, since a file nobody has scoped
- * has not been offered to anyone yet.
+ * The files one department may attach.
+ *
+ * Re-exported from library.ts, which owns the rule now that a head reads
+ * documents by it as well. Kept exported from here so the screens that already
+ * import it do not all have to move.
  */
-export function filesForDepartment(
-  files: LibraryFile[],
-  departmentId: string,
-): LibraryFile[] {
-  return files.filter(
-    (file) => file.departmentId === departmentId || file.departmentId === COMPANY_ID,
-  );
-}
+export { filesForDepartment } from "./library";

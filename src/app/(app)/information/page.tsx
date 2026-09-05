@@ -10,6 +10,7 @@ import {
   cx,
 } from "@/components/ui";
 import { estimateAttachmentTokens, formatBytes } from "@/lib/files";
+import { buildLibraryBlock } from "@/lib/library";
 import { buildCompanyContext, hasProfileContent } from "@/lib/prompts";
 import { COMPANY_ID, SHARED_OPERATING_RULES } from "@/lib/seed";
 import { buildSkillsBlock } from "@/lib/skills";
@@ -72,12 +73,15 @@ export default function InformationPage() {
         { label: "Department prompt", tokens: tok(department.systemPrompt) },
         { label: "Skills", tokens: tok(buildSkillsBlock(mine)) },
         { label: "Company Profile", tokens: tok(context) },
+        // The catalogue, not the documents. Worth its own line because it is
+        // the one segment that grows as the business uses the panel.
+        { label: "Library", tokens: tok(buildLibraryBlock(files, department.id)) },
         { label: "House and writing rules", tokens: tok(SHARED_OPERATING_RULES + settings.writingRules) },
       ];
       const total = segments.reduce((sum, s) => sum + s.tokens, 0);
       return { department, segments, total, skillCount: mine.length };
     });
-  }, [allDepartments, skillsFor, profile, settings, ]);
+  }, [allDepartments, skillsFor, profile, settings, files]);
 
   const storage = [
     { label: "Departments", value: allDepartments.length },

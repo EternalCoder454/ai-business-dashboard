@@ -75,11 +75,27 @@ console.log("the registry is well formed");
     "anything that changes the workspace is confirmed first",
     BUILT_IN_TOOLS.filter((t) => t.writes).every((t) => t.writes),
   );
+  /*
+   * Named one at a time, on purpose. Running without a confirmation card is the
+   * exception, so adding a tool to this list should be a thing somebody did
+   * deliberately rather than something a new tool inherits by leaving `writes`
+   * unset. The reason each one is here is written down next to it.
+   */
+  const MAY_RUN_UNCONFIRMED: Record<string, string> = {
+    // Looks something up mid answer. Stopping to approve a lookup would make it
+    // useless, and it changes nothing in the workspace.
+    web_search: "reads the web, changes nothing",
+    // Reads a document this business owns and already showed this head the
+    // title of. Nothing leaves the panel and nothing is written.
+    read_document: "reads the Library, changes nothing",
+  };
+
   const readOnly = BUILT_IN_TOOLS.filter((t) => !t.writes);
+  const unexpected = readOnly.filter((t) => !(t.name in MAY_RUN_UNCONFIRMED));
   check(
-    "and a tool that runs unconfirmed only reads",
-    readOnly.every((t) => t.name === "web_search"),
-    readOnly.map((t) => t.name).join(" ") || "none",
+    "and a tool that runs unconfirmed is one somebody decided on",
+    unexpected.length === 0,
+    unexpected.map((t) => t.name).join(" ") || "none",
   );
 }
 

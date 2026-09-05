@@ -213,6 +213,8 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
           account,
           memory,
           tasks,
+          // No files, for the same reason as schedules: an all hands round runs
+          // no tools, so a head given the catalogue could not act on it.
         ),
         messages: buildHeadHistory(priorRounds, department.id, question, budget),
         model: department.model || settings.model,

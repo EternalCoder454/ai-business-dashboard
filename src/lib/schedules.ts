@@ -210,6 +210,11 @@ export async function runSchedules(now = new Date()): Promise<ScheduleRun> {
         workspace.tasks,
         [],
         events,
+        "not-connected",
+        // Deliberately no files. The catalogue tells a head it can call
+        // read_document, and ask() runs no tools, so a scheduled briefing would
+        // announce that it was going to consult a document and then be unable
+        // to. Giving schedules the Library means giving them a tool loop first.
       );
 
       const reply = await ask(provider, model, apiKey, system, schedule.prompt);

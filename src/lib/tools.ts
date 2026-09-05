@@ -55,6 +55,14 @@ export interface ToolDefinition {
    * rather than as a setting being off.
    */
   searchOnly?: boolean;
+  /**
+   * Offered only when this head can see at least one readable document.
+   *
+   * Same reasoning as searchOnly, and not a permission either. What a head may
+   * read is decided by libraryFor at the point of the read, not by whether the
+   * tool was offered.
+   */
+  libraryOnly?: boolean;
   /** Shown on the confirmation card, in the person's words rather than JSON. */
   summarise: (input: Record<string, unknown>) => string;
 }
@@ -269,6 +277,32 @@ export const BUILT_IN_TOOLS: ToolDefinition[] = [
     searchOnly: true,
     summarise: (input) => `Look up “${input.query}”`,
   },
+  {
+    /*
+     * Offered only when the head can actually see a document, so a business
+     * with an empty Library never has a head announcing it will go and read
+     * something and then finding nothing.
+     */
+    name: "read_document",
+    description:
+      "Read one of this business's own documents from the Library. " +
+      "Use it whenever the answer depends on what this business actually agreed, charges, " +
+      "or recorded, rather than on how such things usually work. The titles you can read are " +
+      "listed under THE LIBRARY. Give the title exactly as it appears there.",
+    schema: {
+      type: "object",
+      properties: {
+        title: str("The document's title, exactly as it appears in THE LIBRARY."),
+      },
+      required: ["title"],
+    },
+    // A read of something the business already owns and already showed this
+    // head the title of. Nothing leaves the panel and nothing is written, so
+    // stopping to approve it would only interrupt the answer.
+    writes: false,
+    libraryOnly: true,
+    summarise: (input) => `Read “${input.title}”`,
+  },
 ];
 
 /**
@@ -301,11 +335,14 @@ export function allTools(): ToolDefinition[] {
  */
 export function toolsFor(
   departmentId: string,
-  options: { admin?: boolean; webSearch?: string } = {},
+  options: { admin?: boolean; webSearch?: string; documents?: number } = {},
 ): ToolDefinition[] {
   return allTools().filter((tool) => {
     if (tool.adminOnly && !options.admin) return false;
     if (tool.searchOnly && options.webSearch !== "perplexity") return false;
+    // Offered only when there is something to read. A head told it can read
+    // documents, in a business with none, will offer to go and read one.
+    if (tool.libraryOnly && !options.documents) return false;
     return !tool.departments?.length || tool.departments.includes(departmentId);
   });
 }

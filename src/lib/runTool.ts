@@ -1,5 +1,6 @@
 "use client";
 
+import { excerptOf, findDocument, libraryFor } from "./library";
 import { findTool, parseDay, resolveScope } from "./tools";
 import type { StoreValue } from "./store";
 import type { ProposedToolCall } from "./types";
@@ -130,6 +131,38 @@ export async function runTool(
         `administrator approves it under Integrations, where they can see what it does ` +
         `and anywhere it would send to.`
       );
+    }
+
+    case "read_document": {
+      /*
+       * Straight from the store, because the documents are already there: the
+       * workspace snapshot carries each file's extracted text, so a read costs
+       * nothing and reaches nothing outside the panel.
+       *
+       * findDocument applies the same scoping the catalogue did. A head cannot
+       * read a document belonging to another department, or a private one, by
+       * naming it: being told a title is what makes it readable, and it was
+       * never told these.
+       */
+      const wanted = text("title");
+      const found = findDocument(store.files, departmentId, wanted);
+
+      if (!found) {
+        const available = libraryFor(store.files, departmentId)
+          .slice(0, 20)
+          .map((file) => file.name);
+        // Thrown so the model treats it as a failed call and picks a real
+        // title, rather than reading an apology as the document's contents.
+        throw new Error(
+          available.length
+            ? `No document called "${wanted}". Available: ${available.join(", ")}.`
+            : `There are no documents you can read.`,
+        );
+      }
+
+      return `${found.name}
+
+${excerptOf(found)}`;
     }
 
     case "web_search": {
