@@ -143,6 +143,7 @@ export function Chip({
   className,
   title,
   wrap = false,
+  ariaLabel,
 }: {
   children: ReactNode;
   tone?: "neutral" | "primary" | "success" | "warning" | "error";
@@ -152,6 +153,13 @@ export function Chip({
   title?: string;
   /** Lets the label run onto a second line instead of overflowing. */
   wrap?: boolean;
+  /**
+   * What a screen reader announces, when the visible text is not enough.
+   *
+   * A row of chips reading "On" tells somebody looking at it which row they
+   * are on. Read aloud, thirty of them in a column are identical.
+   */
+  ariaLabel?: string;
 }) {
   const tones: Record<string, string> = {
     neutral: "text-on-variant",
@@ -185,6 +193,7 @@ export function Chip({
     <button
       type="button"
       title={title}
+      aria-label={ariaLabel}
       onClick={(event) => {
         createRipple(event);
         onClick();

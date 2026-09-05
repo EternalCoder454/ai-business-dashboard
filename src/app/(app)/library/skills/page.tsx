@@ -276,25 +276,33 @@ function SkillsView() {
                         </div>
 
                         <div className="flex flex-none flex-wrap items-center gap-1">
+                          {/*
+                            Every control here names its skill. A page of thirty
+                            two skills otherwise gives a screen reader thirty two
+                            buttons called "Delete", read one after another with
+                            nothing to tell them apart. The visible text stays
+                            short; only the announced name grows.
+                          */}
                           <Chip
                             selected={skill.enabled}
+                            ariaLabel={`${skill.enabled ? "Switch off" : "Switch on"} ${skill.name}`}
                             onClick={() =>
                               void updateSkill(skill.id, { enabled: !skill.enabled })
                             }
                           >
                             {skill.enabled ? "On" : "Off"}
                           </Chip>
-                          <IconAction label="Download .md" onClick={() => download(skill)}>
+                          <IconAction label={`Download ${skill.name} as markdown`} onClick={() => download(skill)}>
                             <DownloadIcon className="h-4 w-4" />
                           </IconAction>
                           <IconAction
-                            label="Edit"
+                            label={`Edit ${skill.name}`}
                             onClick={() => setDraft({ ...skill, departmentId: skill.departmentId })}
                           >
                             <EditIcon className="h-4 w-4" />
                           </IconAction>
                           <IconAction
-                            label="Delete"
+                            label={`Delete ${skill.name}`}
                             onClick={() => void deleteSkill(skill.id)}
                           >
                             <TrashIcon className="h-4 w-4" />

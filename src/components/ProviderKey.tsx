@@ -103,6 +103,9 @@ export function ProviderKey({ provider }: { provider: ProviderInfo }) {
           <Button
             size="sm"
             variant="text"
+            // The provider is in the row but not in the button, so a list of
+            // four reads as "Add key" four times over.
+            aria-label={`${open ? "Close" : configured ? "Change" : "Add"} the ${provider.label} key`}
             onClick={() => (open ? close() : setOpen(true))}
           >
             {open ? "Close" : configured ? "Change" : "Add key"}

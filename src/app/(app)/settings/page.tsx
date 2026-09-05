@@ -418,6 +418,10 @@ export default function SettingsPage() {
             </p>
             <TextArea
               rows={16}
+              // Named, because it is the one field on this screen with no label
+              // beside it: the heading above is a section, not a label, and a
+              // screen reader lands on sixteen rows of blank edit box.
+              aria-label="House writing rules"
               value={writingRules.value}
               onChange={(event) => writingRules.onChange(event.target.value)}
               className="font-mono text-[0.8125rem]"

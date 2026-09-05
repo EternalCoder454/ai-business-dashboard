@@ -60,11 +60,18 @@ export function ConversationList({
           <DepartmentAvatar department={department} size={40} />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="md-title truncate">
+          {/*
+            A heading rather than a paragraph that looks like one. This is the
+            ordinary way into a department, and it was the only screen in the
+            panel with no heading at all: somebody navigating by headings landed
+            here and found nothing to move between. The class is unchanged, so
+            it looks exactly as it did.
+          */}
+          <h1 className="md-title truncate">
             {department.personaName
               ? `${department.personaName}, ${department.roleTitle}`
               : department.name}
-          </p>
+          </h1>
           <p className="md-label-sm truncate text-on-variant/75">
             {conversations.length} conversation{conversations.length === 1 ? "" : "s"}
           </p>

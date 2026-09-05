@@ -173,6 +173,11 @@ export default function MessagesPage() {
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
                         <span
+                          // Somebody with no display name shows as their
+                          // address, and an address is exactly long enough to
+                          // be cut off in this column with no way to read the
+                          // rest of it.
+                          title={row.person?.displayName ? undefined : row.email}
                           className={cx(
                             "md-body truncate",
                             row.unread > 0 &&
