@@ -80,7 +80,17 @@ export const messagesBody = z.object({
 });
 
 export const keysBody = z.object({
-  provider: z.enum(["anthropic", "openai", "google"]),
+  /*
+   * Any short name, checked against the real list by the route.
+   *
+   * This was an enum of three, written when there were three, and it silently
+   * outlived them: adding DeepSeek and Perplexity left both unable to save a
+   * key at all, refused here before the route that knows about them ever ran.
+   * The error even named the three it still believed in. The list of
+   * credentials lives in db/keys, which is server side, so this checks the
+   * shape and the route checks the value.
+   */
+  provider: z.string().min(1).max(32),
   // Empty clears the key, which is how a business removes one.
   key: z.string().max(500),
 });
@@ -157,4 +167,9 @@ export const addonsBody = z.object({
   name: shortText.optional(),
   description: shortText.optional(),
   recipe: z.unknown().optional(),
+});
+
+/** One web search, asked for by a head mid answer. */
+export const searchBody = z.object({
+  query: z.string().min(1).max(400),
 });

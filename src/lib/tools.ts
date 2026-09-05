@@ -47,6 +47,14 @@ export interface ToolDefinition {
    * be the only thing stopping a crafted request.
    */
   adminOnly?: boolean;
+  /**
+   * Offered only when the business has turned on Perplexity search.
+   *
+   * Not a permission. A head offered a tool the workspace cannot run would
+   * propose a lookup that fails, which reads as the product being broken
+   * rather than as a setting being off.
+   */
+  searchOnly?: boolean;
   /** Shown on the confirmation card, in the person's words rather than JSON. */
   summarise: (input: Record<string, unknown>) => string;
 }
@@ -224,6 +232,35 @@ export const BUILT_IN_TOOLS: ToolDefinition[] = [
     writes: true,
     summarise: (input) => `Build the addon “${input.name}”, switched off until approved`,
   },
+  {
+    /*
+     * Offered only when the business has chosen Perplexity.
+     *
+     * Native search is not here because it is not a tool the model asks us to
+     * run: the provider does it upstream and hands back the result inside its
+     * own answer. This one is a real round trip through our server, because the
+     * key lives there and Perplexity has no tool calling of its own.
+     */
+    name: "web_search",
+    description:
+      "Look something up on the web and get an answer with sources. " +
+      "Use when the answer depends on something current: a price, a rule, a competitor, " +
+      "anything that changed after you were trained. Do not use it for what you already know. " +
+      "One search per question, and say what you searched for.",
+    schema: {
+      type: "object",
+      properties: {
+        query: str("What to look up, as you would type it into a search box."),
+      },
+      required: ["query"],
+    },
+    // Reads rather than writes, so it runs without a confirmation card. It
+    // spends a little money, which the business turned on deliberately, and
+    // stopping mid answer to approve a lookup would make it useless.
+    writes: false,
+    searchOnly: true,
+    summarise: (input) => `Look up “${input.query}”`,
+  },
 ];
 
 /**
@@ -256,10 +293,11 @@ export function allTools(): ToolDefinition[] {
  */
 export function toolsFor(
   departmentId: string,
-  options: { admin?: boolean } = {},
+  options: { admin?: boolean; webSearch?: string } = {},
 ): ToolDefinition[] {
   return allTools().filter((tool) => {
     if (tool.adminOnly && !options.admin) return false;
+    if (tool.searchOnly && options.webSearch !== "perplexity") return false;
     return !tool.departments?.length || tool.departments.includes(departmentId);
   });
 }

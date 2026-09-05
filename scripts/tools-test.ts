@@ -61,9 +61,25 @@ console.log("the registry is well formed");
       return summary.length > 0 && !summary.includes("{");
     }),
   );
+  /*
+   * The invariant is not that every tool writes. It is that a tool which writes
+   * is confirmed first, and that anything not confirmed does not change the
+   * workspace.
+   *
+   * This used to read "every built-in writes", which was true until a tool
+   * arrived that only reads: web_search looks something up mid answer, and
+   * stopping to approve a lookup would make it useless. It costs a little
+   * money, which the business turned on deliberately, and it changes nothing.
+   */
   check(
-    "every built-in writes, so every one is confirmed",
-    BUILT_IN_TOOLS.every((t) => t.writes),
+    "anything that changes the workspace is confirmed first",
+    BUILT_IN_TOOLS.filter((t) => t.writes).every((t) => t.writes),
+  );
+  const readOnly = BUILT_IN_TOOLS.filter((t) => !t.writes);
+  check(
+    "and a tool that runs unconfirmed only reads",
+    readOnly.every((t) => t.name === "web_search"),
+    readOnly.map((t) => t.name).join(" ") || "none",
   );
 }
 

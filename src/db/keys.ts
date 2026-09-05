@@ -25,12 +25,23 @@ import { decryptSecret, encryptSecret } from "./secrets";
  * cannot hold a workspace key. Drizzle types each column by its own name, so
  * this holds the field and the column is looked up from it.
  */
+/**
+ * A credential this workspace can hold.
+ *
+ * Wider than Provider on purpose. Perplexity is a key without being something
+ * a department can run on: it answers a search and has no tool calling, so a
+ * head pointed at it could talk and never file anything. It is the credential
+ * behind the web_search tool instead, which is a different job from a model.
+ */
+export type Credential = Provider | "perplexity";
+
 const FIELD = {
   anthropic: "anthropicKey",
   openai: "openaiKey",
   google: "googleKey",
   deepseek: "deepseekKey",
-} satisfies Record<Provider, keyof typeof t.settings.$inferSelect>;
+  perplexity: "perplexityKey",
+} satisfies Record<Credential, keyof typeof t.settings.$inferSelect>;
 
 /** What the interface is allowed to know: whether there is one, and its tail. */
 export interface KeySummary {
@@ -39,14 +50,16 @@ export interface KeySummary {
   tail: string;
 }
 
-export type KeySummaries = Record<Provider, KeySummary>;
+export type KeySummaries = Record<Credential, KeySummary>;
 
 /*
  * Built from the provider list rather than written out, so a provider added to
  * PROVIDERS cannot be forgotten here and read back as "no key" forever.
  */
+export const CREDENTIALS: Credential[] = [...PROVIDERS.map((p) => p.id), "perplexity"];
+
 export const NO_KEYS: KeySummaries = Object.fromEntries(
-  PROVIDERS.map((provider) => [provider.id, { set: false, tail: "" }]),
+  CREDENTIALS.map((id) => [id, { set: false, tail: "" }]),
 ) as KeySummaries;
 
 function summarise(value: string | null | undefined): KeySummary {
@@ -63,7 +76,7 @@ function summarise(value: string | null | undefined): KeySummary {
  */
 export async function workspaceKey(
   workspaceId: string,
-  provider: Provider,
+  provider: Credential,
 ): Promise<string> {
   if (!databaseEnabled || !db) return "";
   try {
@@ -92,6 +105,7 @@ export async function keySummaries(workspaceId: string): Promise<KeySummaries> {
         openai: t.settings.openaiKey,
         google: t.settings.googleKey,
         deepseek: t.settings.deepseekKey,
+        perplexity: t.settings.perplexityKey,
       })
       .from(t.settings)
       .where(eq(t.settings.workspaceId, workspaceId))
@@ -101,11 +115,9 @@ export async function keySummaries(workspaceId: string): Promise<KeySummaries> {
     // what the interface is allowed to know. The plaintext does not leave this
     // expression.
     return Object.fromEntries(
-      PROVIDERS.map((provider) => [
-        provider.id,
-        summarise(
-          decryptSecret(row[provider.id] ?? "", workspaceId, FIELD[provider.id]),
-        ),
+      CREDENTIALS.map((id) => [
+        id,
+        summarise(decryptSecret(row[id] ?? "", workspaceId, FIELD[id])),
       ]),
     ) as KeySummaries;
   } catch (error) {
@@ -126,7 +138,7 @@ export async function keySummaries(workspaceId: string): Promise<KeySummaries> {
  */
 export async function setWorkspaceKey(
   workspaceId: string,
-  provider: Provider,
+  provider: Credential,
   key: string,
 ): Promise<void> {
   const database = requireDb();

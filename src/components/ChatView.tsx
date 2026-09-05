@@ -488,7 +488,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           account,
           memory,
           tasks,
-          toolsFor(departmentId, { admin }),
+          toolsFor(departmentId, { admin, webSearch: settings.webSearch }),
           calendar,
           calendarStatus,
         ),
@@ -502,7 +502,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         provider: providerOf(department.model || settings.model),
         effort: settings.effort,
         // Only this department's, so nothing can act outside its own area.
-        tools: toolsFor(departmentId, { admin }).map((tool) => ({
+        tools: toolsFor(departmentId, { admin, webSearch: settings.webSearch }).map((tool) => ({
           name: tool.name,
           description: tool.description,
           schema: tool.schema,

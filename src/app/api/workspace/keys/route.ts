@@ -5,6 +5,7 @@ import { keySummaries, setWorkspaceKey } from "@/db/keys";
 import { membershipFor } from "@/db/tenancy";
 import { readJson } from "@/lib/guard";
 import { PROVIDERS, type Provider } from "@/lib/providers";
+import type { Credential } from "@/db/keys";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,8 +48,20 @@ async function requireAdminOfWorkspace(): Promise<
   return { ok: true, workspaceId: membership.workspaceId };
 }
 
-function isProvider(value: unknown): value is Provider {
-  return PROVIDERS.some((provider) => provider.id === value);
+/**
+ * What a credential is called, and what a key for it looks like.
+ *
+ * Perplexity sits alongside the model providers rather than among them: it is
+ * a key the workspace holds, but not something a department can run on, so it
+ * has no entry in PROVIDERS and no model in the dropdown.
+ */
+const PREFIX: Record<Credential, string> = {
+  ...(Object.fromEntries(PROVIDERS.map((p) => [p.id, p.keyPrefix])) as Record<Provider, string>),
+  perplexity: "pplx-",
+};
+
+function isCredential(value: unknown): value is Credential {
+  return typeof value === "string" && value in PREFIX;
 }
 
 export async function POST(request: Request) {
@@ -63,12 +76,12 @@ export async function POST(request: Request) {
   }
 
   const { provider } = parsed.body;
-  if (!isProvider(provider)) {
+  if (!isCredential(provider)) {
     return Response.json({ error: "Unknown provider." }, { status: 400 });
   }
 
   const key = parsed.body.key?.trim() ?? "";
-  const expected = PROVIDERS.find((entry) => entry.id === provider)!.keyPrefix;
+  const expected = PREFIX[provider];
   // A pasted address bar or a truncated copy fails here rather than on the
   // first message, which is where it would otherwise show up as "no reply".
   if (key && expected && !key.startsWith(expected)) {

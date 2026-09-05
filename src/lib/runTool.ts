@@ -132,6 +132,37 @@ export async function runTool(
       );
     }
 
+    case "web_search": {
+      /*
+       * Straight to the server, because the Perplexity key lives there and is
+       * never sent to a browser. The answer comes back with its sources so the
+       * head can cite rather than assert.
+       */
+      const response = await fetch("/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: text("query") }),
+      });
+
+      const found = (await response.json().catch(() => null)) as {
+        answer?: string;
+        sources?: { title: string; url: string }[];
+        error?: string;
+      } | null;
+
+      if (!response.ok) {
+        // Thrown so the model sees a failed call and can answer without it,
+        // rather than quietly treating an error string as a search result.
+        throw new Error(found?.error ?? "That search could not be run.");
+      }
+
+      const sources = (found?.sources ?? [])
+        .map((source) => `- [${source.title}](${source.url})`)
+        .join("\n");
+
+      return sources ? `${found?.answer ?? ""}\n\nSources:\n${sources}` : (found?.answer ?? "");
+    }
+
     default:
       // A registered tool with no branch here is a mistake worth surfacing
       // rather than silently doing nothing and reporting success.

@@ -85,7 +85,17 @@ refuses("a scope nobody defined", reportsBody, { action: "run", scope: "everythi
 console.log("\nkeys");
 accepts("setting one", keysBody, { provider: "anthropic", key: "sk-test" });
 accepts("clearing one", keysBody, { provider: "openai", key: "" });
-refuses("a provider we do not have", keysBody, { provider: "cohere", key: "x" });
+/*
+ * A name we do not have is refused by the route rather than by the schema.
+ *
+ * It used to be an enum of three here, which quietly stopped DeepSeek and
+ * Perplexity from saving a key at all once they existed. The list of
+ * credentials lives server side, so this checks the shape and the route checks
+ * the value: credentials-test covers that every real one is accepted, and
+ * api/workspace/keys answers "Unknown provider." for anything else.
+ */
+refuses("a provider that is not a string", keysBody, { provider: 7, key: "x" });
+refuses("an empty provider", keysBody, { provider: "", key: "x" });
 refuses("a key longer than any key", keysBody, { provider: "anthropic", key: "x".repeat(501) });
 
 console.log("\nschedules");

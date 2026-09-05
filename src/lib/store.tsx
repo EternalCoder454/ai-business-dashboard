@@ -70,6 +70,7 @@ import type {
 } from "./types";
 
 import { PROVIDERS, type Provider } from "./providers";
+import type { Credential } from "@/db/keys";
 export interface StoreValue {
   ready: boolean;
   /** The workspace could not be read, after three tries. */
@@ -104,7 +105,7 @@ export interface StoreValue {
    * Whether the business holds a key for each provider, and its last four
    * characters. Never the key itself: nothing returns that to a browser.
    */
-  workspaceKeys: Record<Provider, { set: boolean; tail: string }>;
+  workspaceKeys: Record<Credential, { set: boolean; tail: string }>;
   /** Admin of this workspace, which is what lets someone change its keys. */
   workspaceRole: "member" | "admin" | null;
   /**
@@ -125,7 +126,7 @@ export interface StoreValue {
   workspacePeople: number;
   /** Sets or clears the business's key. Administrators only, enforced server side. */
   setWorkspaceKey: (
-    provider: Provider,
+    provider: Credential,
     key: string,
   ) => Promise<string | null>;
   /** Whether this account may review other people's conversations. */
@@ -296,13 +297,17 @@ export function StoreProvider({
   // than written out, so a new provider starts as "no key" honestly instead of
   // being absent and read as undefined.
   const [workspaceKeys, setWorkspaceKeys] = useState<
-    Record<Provider, { set: boolean; tail: string }>
+    Record<Credential, { set: boolean; tail: string }>
   >(
     () =>
-      Object.fromEntries(PROVIDERS.map((p) => [p.id, { set: false, tail: "" }])) as Record<
-        Provider,
-        { set: boolean; tail: string }
-      >,
+      // Every provider, plus the credentials that are not providers. Derived
+      // rather than written out, so a new one starts as "no key" honestly.
+      Object.fromEntries(
+        [...PROVIDERS.map((p) => p.id), "perplexity"].map((id) => [
+          id,
+          { set: false, tail: "" },
+        ]),
+      ) as Record<Credential, { set: boolean; tail: string }>,
   );
   const [workspaceRole, setWorkspaceRole] = useState<"member" | "admin" | null>(null);
   const [permissions, setPermissions] = useState<Permissions | null>(null);
