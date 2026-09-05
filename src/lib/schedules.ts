@@ -5,7 +5,7 @@ import * as t from "@/db/schema";
 import { workspaceKey } from "@/db/keys";
 import { loadWorkspace } from "@/db/repo";
 import { kindOf, record } from "./telemetry";
-import { buildSystemPrompt } from "@/lib/prompts";
+import { systemPromptText } from "@/lib/prompts";
 import { providerOf, providerInfo, type Provider } from "@/lib/providers";
 import { upcoming } from "@/lib/google";
 
@@ -199,7 +199,7 @@ export async function runSchedules(now = new Date()): Promise<ScheduleRun> {
        */
       const { events } = await upcoming(schedule.createdBy, 7);
 
-      const system = buildSystemPrompt(
+      const system = systemPromptText(
         department,
         workspace.profile,
         workspace.settings.companyName,

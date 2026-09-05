@@ -69,6 +69,7 @@ import type {
   UserAccount,
 } from "./types";
 
+import { PROVIDERS, type Provider } from "./providers";
 export interface StoreValue {
   ready: boolean;
   /** The workspace could not be read, after three tries. */
@@ -98,12 +99,12 @@ export interface StoreValue {
    */
   serverKey: boolean;
   /** One flag per provider, for the API card in Settings. */
-  serverKeys: { anthropic: boolean; openai: boolean; google: boolean };
+  serverKeys: Record<Provider, boolean>;
   /**
    * Whether the business holds a key for each provider, and its last four
    * characters. Never the key itself: nothing returns that to a browser.
    */
-  workspaceKeys: Record<"anthropic" | "openai" | "google", { set: boolean; tail: string }>;
+  workspaceKeys: Record<Provider, { set: boolean; tail: string }>;
   /** Admin of this workspace, which is what lets someone change its keys. */
   workspaceRole: "member" | "admin" | null;
   /**
@@ -124,7 +125,7 @@ export interface StoreValue {
   workspacePeople: number;
   /** Sets or clears the business's key. Administrators only, enforced server side. */
   setWorkspaceKey: (
-    provider: "anthropic" | "openai" | "google",
+    provider: Provider,
     key: string,
   ) => Promise<string | null>;
   /** Whether this account may review other people's conversations. */
@@ -291,19 +292,26 @@ export function StoreProvider({
   // Whether the server has its own Anthropic key, so Settings can stop asking
   // for one that would be ignored anyway.
   const [serverKey, setServerKey] = useState(false);
-  const [workspaceKeys, setWorkspaceKeys] = useState({
-    anthropic: { set: false, tail: "" },
-    openai: { set: false, tail: "" },
-    google: { set: false, tail: "" },
-  });
+  // Same reason as serverKeys below: derived from the provider list rather
+  // than written out, so a new provider starts as "no key" honestly instead of
+  // being absent and read as undefined.
+  const [workspaceKeys, setWorkspaceKeys] = useState<
+    Record<Provider, { set: boolean; tail: string }>
+  >(
+    () =>
+      Object.fromEntries(PROVIDERS.map((p) => [p.id, { set: false, tail: "" }])) as Record<
+        Provider,
+        { set: boolean; tail: string }
+      >,
+  );
   const [workspaceRole, setWorkspaceRole] = useState<"member" | "admin" | null>(null);
   const [permissions, setPermissions] = useState<Permissions | null>(null);
   const [workspacePeople, setWorkspacePeople] = useState(1);
-  const [serverKeys, setServerKeys] = useState({
-    anthropic: false,
-    openai: false,
-    google: false,
-  });
+  // Built from the provider list, so adding one cannot leave it out of the
+  // starting state and read as "the deployment has no key for that".
+  const [serverKeys, setServerKeys] = useState<Record<Provider, boolean>>(() =>
+    Object.fromEntries(PROVIDERS.map((p) => [p.id, false])) as Record<Provider, boolean>,
+  );
   /**
    * The workspace could not be read, after retrying.
    *

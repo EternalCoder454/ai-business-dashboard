@@ -24,8 +24,8 @@ function check(label: string, condition: boolean, detail = "") {
 }
 
 const NONE: KeySources = {
-  serverKeys: { anthropic: false, openai: false, google: false },
-  workspaceKeys: { anthropic: { set: false }, openai: { set: false }, google: { set: false } },
+  serverKeys: { anthropic: false, openai: false, google: false, deepseek: false },
+  workspaceKeys: { anthropic: { set: false }, openai: { set: false }, google: { set: false }, deepseek: { set: false } },
 };
 
 const with_ = (patch: Partial<KeySources>): KeySources => ({ ...NONE, ...patch });
@@ -37,14 +37,14 @@ console.log("the three places a key can be");
 check("nowhere at all", !hasKeyFor(ANTHROPIC, NONE));
 check(
   "the deployment has one",
-  hasKeyFor(ANTHROPIC, with_({ serverKeys: { anthropic: true, openai: false, google: false } })),
+  hasKeyFor(ANTHROPIC, with_({ serverKeys: { anthropic: true, openai: false, google: false, deepseek: false } })),
 );
 check(
   "the business has one",
   hasKeyFor(
     ANTHROPIC,
     with_({
-      workspaceKeys: { anthropic: { set: true }, openai: { set: false }, google: { set: false } },
+      workspaceKeys: { anthropic: { set: true }, openai: { set: false }, google: { set: false }, deepseek: { set: false } },
     }),
   ),
   "the case that was missing",
@@ -54,7 +54,7 @@ check("this browser has one", hasKeyFor(ANTHROPIC, with_({ browserKey: "sk-ant-x
 console.log("\nthe invited colleague");
 // An administrator set the business key. The colleague has typed nothing.
 const invited = with_({
-  workspaceKeys: { anthropic: { set: true }, openai: { set: false }, google: { set: false } },
+  workspaceKeys: { anthropic: { set: true }, openai: { set: false }, google: { set: false }, deepseek: { set: false } },
 });
 check("sees that a key exists", hasKeyFor(ANTHROPIC, invited));
 
@@ -71,7 +71,7 @@ check(
 
 console.log("\nby provider, not in general");
 const anthropicOnly = with_({
-  workspaceKeys: { anthropic: { set: true }, openai: { set: false }, google: { set: false } },
+  workspaceKeys: { anthropic: { set: true }, openai: { set: false }, google: { set: false }, deepseek: { set: false } },
 });
 check("a head on Anthropic can reply", hasKeyFor(ANTHROPIC, anthropicOnly));
 check("a head pointed at Gemini cannot", !hasKeyFor(GOOGLE, anthropicOnly));

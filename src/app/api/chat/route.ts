@@ -6,7 +6,7 @@ import { kindOf, record, refused } from "@/lib/telemetry";
 import { workspaceKey } from "@/db/keys";
 import { membershipFor } from "@/db/tenancy";
 import { DEFAULT_PROVIDER, providerInfo, providerOf, type Provider } from "@/lib/providers";
-import { droppedAttachments, streamGemini, streamOpenAi } from "@/lib/serverProviders";
+import { droppedAttachments, streamDeepSeek, streamGemini, streamOpenAi } from "@/lib/serverProviders";
 import type { ChatRequestBody, ChatStreamEvent, WireContent } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -303,6 +303,13 @@ export async function POST(request: NextRequest) {
             })),
           }
         : {}),
+      /*
+       * Two blocks, with the breakpoint between them.
+       *
+       * Everything stable is cached for an hour. What changes when somebody
+       * files a task goes after it, uncached, so a change there costs its own
+       * few hundred tokens instead of rewriting the whole prefix.
+       */
       system: cached
         ? [
             {
@@ -310,8 +317,11 @@ export async function POST(request: NextRequest) {
               text: body.system,
               cache_control: { type: "ephemeral", ttl: "1h" },
             },
+            ...(body.systemVolatile?.trim()
+              ? [{ type: "text", text: body.systemVolatile }]
+              : []),
           ]
-        : body.system,
+        : [body.system, body.systemVolatile].filter(Boolean).join("\n\n"),
       messages: apiMessages,
       ...(MODERN_MODELS.has(model)
         ? {
@@ -608,6 +618,7 @@ function streamThroughAdapter({
         };
 
         if (provider === "openai") await streamOpenAi(args);
+        else if (provider === "deepseek") await streamDeepSeek(args);
         else await streamGemini(args);
 
         if (!clientGone) controller.enqueue(frame({ type: "done" }));

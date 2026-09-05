@@ -8,7 +8,7 @@
  *   npm run memory-test
  */
 import { buildMemoryBlock, figureSeries, memoryFor } from "../src/lib/memory";
-import { buildSystemPrompt, buildTasksBlock } from "../src/lib/prompts";
+import { systemPromptText, buildTasksBlock } from "../src/lib/prompts";
 import { COMPANY_ID, seedDepartments } from "../src/lib/seed";
 import { applyOp, emptyWorkspace } from "../src/lib/workspace";
 import type { CompanyProfile, MemoryEntry, Task, UserAccount } from "../src/lib/types";
@@ -141,8 +141,8 @@ console.log("\nit reaches the system prompt, late enough to protect the cache");
   const finance = seedDepartments().find((d) => d.id === "finance")!;
   const entries = [entry({ kind: "figure", label: "Wishlists", value: "1,240" })];
 
-  const without = buildSystemPrompt(finance, profile, "Eterneon", [], "rules", undefined, []);
-  const withMemory = buildSystemPrompt(finance, profile, "Eterneon", [], "rules", undefined, entries);
+  const without = systemPromptText(finance, profile, "Eterneon", [], "rules", undefined, []);
+  const withMemory = systemPromptText(finance, profile, "Eterneon", [], "rules", undefined, entries);
 
   check("the block is present", withMemory.includes("1,240"));
   check("and absent when there is nothing", !without.includes("WHAT THIS STUDIO HAS DECIDED"));
@@ -239,7 +239,7 @@ console.log("\nopen work reaches the prompt, finished work does not");
   );
 
   const finance = seedDepartments().find((d) => d.id === "finance")!;
-  const withTasks = buildSystemPrompt(
+  const withTasks = systemPromptText(
     finance,
     EMPTY_PROFILE,
     "Eterneon",
@@ -256,7 +256,7 @@ console.log("\nopen work reaches the prompt, finished work does not");
   );
 
   // Adding a task must not re-bill everything above it in the cached prefix.
-  const without = buildSystemPrompt(
+  const without = systemPromptText(
     finance,
     EMPTY_PROFILE,
     "Eterneon",

@@ -61,6 +61,17 @@ import {
 import { Markdown } from "./Markdown";
 import { createRipple } from "./ui/ripple";
 
+
+/**
+ * The prompt as the chat route wants it: the stable half under `system`,
+ * the part that changes under `systemVolatile`, so the cache breakpoint
+ * lands between them.
+ */
+function splitPrompt(...args: Parameters<typeof buildSystemPrompt>) {
+  const { stable, volatile } = buildSystemPrompt(...args);
+  return { system: stable, systemVolatile: volatile };
+}
+
 interface StreamState {
   text: string;
   thinking: string;
@@ -466,7 +477,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
 
     const result = await streamChat(
       {
-        system: buildSystemPrompt(
+        ...splitPrompt(
           department,
           profile,
           settings.companyName,

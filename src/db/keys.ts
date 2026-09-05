@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { databaseEnabled, db, requireDb } from "./client";
 import * as t from "./schema";
-import type { Provider } from "@/lib/providers";
+import { PROVIDERS, type Provider } from "@/lib/providers";
 import { decryptSecret, encryptSecret } from "./secrets";
 
 /**
@@ -29,6 +29,7 @@ const FIELD = {
   anthropic: "anthropicKey",
   openai: "openaiKey",
   google: "googleKey",
+  deepseek: "deepseekKey",
 } satisfies Record<Provider, keyof typeof t.settings.$inferSelect>;
 
 /** What the interface is allowed to know: whether there is one, and its tail. */
@@ -40,11 +41,13 @@ export interface KeySummary {
 
 export type KeySummaries = Record<Provider, KeySummary>;
 
-export const NO_KEYS: KeySummaries = {
-  anthropic: { set: false, tail: "" },
-  openai: { set: false, tail: "" },
-  google: { set: false, tail: "" },
-};
+/*
+ * Built from the provider list rather than written out, so a provider added to
+ * PROVIDERS cannot be forgotten here and read back as "no key" forever.
+ */
+export const NO_KEYS: KeySummaries = Object.fromEntries(
+  PROVIDERS.map((provider) => [provider.id, { set: false, tail: "" }]),
+) as KeySummaries;
 
 function summarise(value: string | null | undefined): KeySummary {
   const key = value?.trim() ?? "";
@@ -88,6 +91,7 @@ export async function keySummaries(workspaceId: string): Promise<KeySummaries> {
         anthropic: t.settings.anthropicKey,
         openai: t.settings.openaiKey,
         google: t.settings.googleKey,
+        deepseek: t.settings.deepseekKey,
       })
       .from(t.settings)
       .where(eq(t.settings.workspaceId, workspaceId))
@@ -96,11 +100,14 @@ export async function keySummaries(workspaceId: string): Promise<KeySummaries> {
     // Decrypted only to count the last four characters, which is the whole of
     // what the interface is allowed to know. The plaintext does not leave this
     // expression.
-    return {
-      anthropic: summarise(decryptSecret(row.anthropic, workspaceId, FIELD.anthropic)),
-      openai: summarise(decryptSecret(row.openai, workspaceId, FIELD.openai)),
-      google: summarise(decryptSecret(row.google, workspaceId, FIELD.google)),
-    };
+    return Object.fromEntries(
+      PROVIDERS.map((provider) => [
+        provider.id,
+        summarise(
+          decryptSecret(row[provider.id] ?? "", workspaceId, FIELD[provider.id]),
+        ),
+      ]),
+    ) as KeySummaries;
   } catch (error) {
     console.error("[keys] could not read the key summary", error);
     return NO_KEYS;

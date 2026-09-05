@@ -318,36 +318,76 @@ export function buildSystemPrompt(
   tools: { name: string }[] = [],
   calendar: PromptCalendarEvent[] = [],
   calendarStatus: CalendarStatus = "not-connected",
-): string {
+): { stable: string; volatile: string } {
   const context = buildCompanyContext(profile, companyName);
 
   const identity = department.personaName
     ? `Your name is ${department.personaName}. You are the ${department.roleTitle} at ${companyName}.`
     : "";
 
-  // Order is deliberate and matters for prompt caching: everything here is
-  // stable for a department, so the whole block sits inside the cached prefix.
-  // Writing rules go last so they win any conflict with the sections above.
-  const sections = [
+  /*
+   * Two parts, and the split is the whole point.
+   *
+   * `stable` is everything that does not change between one message and the
+   * next: who this head is, what it knows, the company, the rules. It is sent
+   * as its own block with the cache breakpoint on it, so it is written once and
+   * read by every message after.
+   *
+   * `volatile` is the record, the board and the week, which change whenever
+   * anybody files anything. It goes after the breakpoint, so adding a task
+   * costs a few hundred tokens instead of rewriting the whole prefix.
+   *
+   * This used to be one string with one breakpoint at the end of all of it. The
+   * ordering was written so that a change to the tasks would leave everything
+   * above it cached, which is how prefix caching works, but with the only
+   * breakpoint after the last section there was no prefix left to keep: every
+   * task added rewrote the lot. It cost nothing while boards were empty, and it
+   * would have cost every customer who filled one.
+   */
+  const stable = [
     identity,
     department.persona?.trim(),
     department.systemPrompt.trim(),
     buildSkillsBlock(skills),
     context,
     account ? buildUserContext(account, companyName) : "",
-    // Late on purpose. The prompt is one cached prefix, so a change here
-    // leaves everything above it cached, and the record is what changes most.
-    buildMemoryBlock(memory, department.id),
-    buildTasksBlock(tasks, department.id),
-    // After the record and the board, because it changes every day and would
-    // otherwise push everything below it out of the cached prefix daily.
-    buildCalendarBlock(calendar, calendarStatus),
     buildToolsBlock(tools),
     SHARED_OPERATING_RULES,
-    writingRules.trim(),
-  ].filter(Boolean);
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
-  return sections.join("\n\n");
+  const volatile = [
+    buildMemoryBlock(memory, department.id),
+    buildTasksBlock(tasks, department.id),
+    buildCalendarBlock(calendar, calendarStatus),
+    /*
+     * Genuinely last, after the record and the board, because the point of them
+     * is to win any conflict with everything above.
+     *
+     * That puts them past the cache breakpoint, so they are sent fresh on every
+     * message rather than cached. They are a few hundred tokens and the rule
+     * they encode is worth more than the saving, which is the right way round:
+     * caching should bend to the prompt, not the prompt to the caching.
+     */
+    writingRules.trim(),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  return { stable, volatile };
+}
+
+/**
+ * The whole prompt as one string.
+ *
+ * For the places that only read or measure it, such as the context screen.
+ * Nothing that sends a request should use this: it throws away the split that
+ * keeps the cache warm.
+ */
+export function systemPromptText(...args: Parameters<typeof buildSystemPrompt>): string {
+  const { stable, volatile } = buildSystemPrompt(...args);
+  return [stable, volatile].filter(Boolean).join("\n\n");
 }
 
 /**

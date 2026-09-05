@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { BASE_URL, type Provider } from "./providers";
 import OpenAI from "openai";
 import { geminiThinkingBudget } from "./providers";
 import type { ChatStreamEvent, Effort, Role, WireContent } from "./types";
@@ -136,6 +137,140 @@ export async function streamOpenAi(args: StreamArgs): Promise<void> {
 }
 
 /**
+ * DeepSeek, through the chat completions format.
+ *
+ * Not the same code as OpenAI with a different address, which is what "OpenAI
+ * compatible" usually leads people to try. The OpenAI path above uses the
+ * Responses API, which is OpenAI's own: DeepSeek implements the older chat
+ * completions shape, so the request, the streamed events and the tool call
+ * format are all different enough to need their own pass.
+ *
+ * Reasoning arrives as `reasoning_content` on the delta rather than as its own
+ * event type, and only from the reasoner model. Tool call arguments arrive as
+ * a string spread across many deltas and are assembled before being parsed,
+ * because a fragment of JSON is not JSON.
+ */
+export async function streamDeepSeek(args: StreamArgs): Promise<void> {
+  const client = new OpenAI({
+    apiKey: args.apiKey,
+    baseURL: BASE_URL.deepseek,
+    maxRetries: 2,
+  });
+  const controller = new AbortController();
+  args.onOpen({ abort: () => controller.abort() });
+
+  /*
+   * Text only. DeepSeek does not take images on this endpoint, and the chat
+   * route has already told the person their attachment is being left behind,
+   * so silently dropping the block here is the second half of that rather than
+   * a surprise.
+   */
+  const messages = args.messages.map((message) => ({
+    role: message.role,
+    content:
+      typeof message.content === "string"
+        ? message.content
+        : message.content
+            .filter((block) => block.type === "text")
+            .map((block) => (block as { text: string }).text)
+            .join("\n\n"),
+  }));
+
+  const stream = await client.chat.completions.create(
+    {
+      model: args.model,
+      max_tokens: args.maxTokens,
+      stream: true,
+      stream_options: { include_usage: true },
+      messages: [
+        ...(args.system ? [{ role: "system" as const, content: args.system }] : []),
+        ...messages,
+      ] as never,
+      ...(args.tools?.length
+        ? {
+            tools: args.tools.map((tool) => ({
+              type: "function" as const,
+              function: {
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.schema as Record<string, unknown>,
+              },
+            })),
+          }
+        : {}),
+    },
+    { signal: controller.signal },
+  );
+
+  // Assembled across deltas, keyed by the index the stream gives each call.
+  const building = new Map<number, { id: string; name: string; args: string }>();
+
+  for await (const chunk of stream) {
+    if (args.stopped()) break;
+
+    const choice = chunk.choices?.[0];
+    const delta = choice?.delta as
+      | { content?: string | null; reasoning_content?: string | null; tool_calls?: unknown[] }
+      | undefined;
+
+    if (delta?.reasoning_content) {
+      args.emit({ type: "thinking", text: delta.reasoning_content });
+    }
+    if (delta?.content) {
+      args.emit({ type: "text", text: delta.content });
+    }
+
+    for (const raw of delta?.tool_calls ?? []) {
+      const call = raw as {
+        index?: number;
+        id?: string;
+        function?: { name?: string; arguments?: string };
+      };
+      const index = call.index ?? 0;
+      const held = building.get(index) ?? { id: "", name: "", args: "" };
+      if (call.id) held.id = call.id;
+      if (call.function?.name) held.name = call.function.name;
+      if (call.function?.arguments) held.args += call.function.arguments;
+      building.set(index, held);
+    }
+
+    // Emitted when the model says it has finished asking, so the arguments are
+    // whole. A call assembled from half its deltas is a call to nothing.
+    if (choice?.finish_reason === "tool_calls") {
+      for (const held of building.values()) {
+        let input: Record<string, unknown> = {};
+        try {
+          input = JSON.parse(held.args || "{}") as Record<string, unknown>;
+        } catch {
+          input = {};
+        }
+        args.emit({
+          type: "tool",
+          call: { id: held.id || held.name, name: held.name, input },
+        });
+      }
+      building.clear();
+    }
+
+    if (chunk.usage) {
+      args.emit({
+        type: "usage",
+        usage: {
+          input: chunk.usage.prompt_tokens ?? 0,
+          output: chunk.usage.completion_tokens ?? 0,
+          // DeepSeek reports its own cache hits, which is why they are read
+          // rather than reported as zero: a long company profile is mostly
+          // cache after the first message and the cost should say so.
+          cacheRead:
+            (chunk.usage as { prompt_cache_hit_tokens?: number }).prompt_cache_hit_tokens ?? 0,
+          cacheWrite: 0,
+        },
+      });
+    }
+  }
+}
+
+/**
  * Google Gemini.
  *
  * The system prompt is a separate field rather than a first turn, and thinking
@@ -233,13 +368,17 @@ export async function streamGemini(args: StreamArgs): Promise<void> {
 /** Anything the caller could not send, so the answer is not silently short. */
 export function droppedAttachments(
   messages: { content: string | WireContent[] }[],
-  provider: "openai" | "google",
+  provider: Provider,
 ): string | null {
   const kinds = new Set<string>();
   for (const message of messages) {
     if (typeof message.content === "string") continue;
     for (const block of message.content) {
       if (provider === "openai" && block.type === "document") kinds.add("PDFs");
+      // DeepSeek takes neither on this endpoint, so both are named rather than
+      // letting somebody wonder why the reply ignored the screenshot.
+      if (provider === "deepseek" && block.type === "document") kinds.add("PDFs");
+      if (provider === "deepseek" && block.type === "image") kinds.add("images");
     }
   }
   if (!kinds.size) return null;

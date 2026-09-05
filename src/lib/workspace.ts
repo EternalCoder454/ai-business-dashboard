@@ -15,6 +15,7 @@ import type {
   UserAccount,
 } from "./types";
 
+import type { Provider } from "./providers";
 /** Settings as they are stored per account. The API key is server side only. */
 /**
  * Settings as they are stored per account.
@@ -297,13 +298,13 @@ export interface WorkspaceStatus {
    */
   serverKey?: boolean;
   /** One flag per provider, so Settings can say which are ready to use. */
-  serverKeys?: { anthropic: boolean; openai: boolean; google: boolean };
+  serverKeys?: Record<Provider, boolean>;
   /**
    * The business's own keys: whether each is set, and its last four characters.
    * Deliberately never the key. It goes from the settings table to the model
    * and is not returned to a browser, not even to the admin who set it.
    */
-  workspaceKeys?: Record<"anthropic" | "openai" | "google", { set: boolean; tail: string }>;
+  workspaceKeys?: Record<Provider, { set: boolean; tail: string }>;
   /** Admin of this workspace, as opposed to of the deployment. */
   workspaceRole?: "member" | "admin" | null;
   /** What this person may open in it. Absent or null means everything. */

@@ -5,6 +5,7 @@ import { isOperator, isOwnerEmail } from "@/lib/admin";
 import { NO_KEYS, keySummaries } from "@/db/keys";
 import { countMembers, membershipFor } from "@/db/tenancy";
 
+import { PROVIDERS, type Provider } from "@/lib/providers";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -26,11 +27,15 @@ export const dynamic = "force-dynamic";
 const serverKeyConfigured = () => Boolean(process.env.ANTHROPIC_API_KEY?.trim());
 
 /** Which providers the deployment holds a key for, so Settings can say so. */
-const serverKeys = () => ({
-  anthropic: Boolean(process.env.ANTHROPIC_API_KEY?.trim()),
-  openai: Boolean(process.env.OPENAI_API_KEY?.trim()),
-  google: Boolean(process.env.GEMINI_API_KEY?.trim()),
-});
+const serverKeys = () =>
+  Object.fromEntries(
+    // Each provider already records the variable it reads, so this cannot
+    // drift from the list the rest of the panel uses.
+    PROVIDERS.map((provider) => [
+      provider.id,
+      Boolean(process.env[provider.envVar]?.trim()),
+    ]),
+  ) as Record<Provider, boolean>;
 
 export async function GET() {
   // Auth alone decides whether someone is signed in. The database decides

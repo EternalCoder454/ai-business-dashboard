@@ -491,7 +491,19 @@ export interface AllHandsRun {
 
 /** Wire format for POST /api/chat. */
 export interface ChatRequestBody {
+  /**
+   * The part of the prompt that does not change between messages.
+   *
+   * Sent on its own because the cache breakpoint goes at the end of it, so it
+   * is written once and read by every message after.
+   */
   system: string;
+  /**
+   * The record, the board and the week, which change whenever anybody files
+   * anything. Sent after the breakpoint so changing a task does not rewrite the
+   * whole prefix. Optional: a caller that omits it behaves as before.
+   */
+  systemVolatile?: string;
   /**
    * Which service answers. Omitted by anything written before providers were
    * a choice, and the server then reads it off the model id, so an old client

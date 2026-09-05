@@ -374,6 +374,16 @@ export const settings = pgTable("settings", {
   anthropicKey: text("anthropic_key").notNull().default(""),
   openaiKey: text("openai_key").notNull().default(""),
   googleKey: text("google_key").notNull().default(""),
+  deepseekKey: text("deepseek_key").notNull().default(""),
+  /**
+   * Perplexity, which is not a provider a department can run on.
+   *
+   * It answers a search rather than a conversation and has no tool calling, so
+   * a head running on it could talk and never file anything. It sits here as
+   * the credential behind the web_search tool instead, which any head can call
+   * whatever model it is on.
+   */
+  perplexityKey: text("perplexity_key").notNull().default(""),
   model: text("model").notNull().default("claude-sonnet-5"),
   effort: text("effort").notNull().default("medium"),
   theme: text("theme").notNull().default("dark"),

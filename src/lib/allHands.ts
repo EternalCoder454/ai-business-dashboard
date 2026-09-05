@@ -20,6 +20,17 @@ import type {
   UserAccount,
 } from "./types";
 
+
+/**
+ * The prompt as the chat route wants it: the stable half under `system`,
+ * the part that changes under `systemVolatile`, so the cache breakpoint
+ * lands between them.
+ */
+function splitPrompt(...args: Parameters<typeof buildSystemPrompt>) {
+  const { stable, volatile } = buildSystemPrompt(...args);
+  return { system: stable, systemVolatile: volatile };
+}
+
 /**
  * How many heads answer at once. Eight simultaneous streams is enough to trip a
  * rate limit on a small account, and the wall clock difference against four is
@@ -193,7 +204,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
   await mapWithConcurrency(departments, CONCURRENCY, async (department, index) => {
     const result = await streamChat(
       {
-        system: buildSystemPrompt(
+        ...splitPrompt(
           department,
           profile,
           settings.companyName,
@@ -258,7 +269,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
       {
         // The department answers go in the user turn, not the system prompt, so
         // the CEO's cached system prefix survives every round.
-        system: buildSystemPrompt(
+        ...splitPrompt(
           ceo,
           profile,
           settings.companyName,

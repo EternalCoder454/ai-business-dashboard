@@ -7,7 +7,7 @@ import type { Effort } from "./types";
  * this has no provider recorded anywhere, and everything below treats a
  * missing value as Anthropic, so nothing has to be migrated or re-saved.
  */
-export type Provider = "anthropic" | "openai" | "google";
+export type Provider = "anthropic" | "openai" | "google" | "deepseek";
 
 export const DEFAULT_PROVIDER: Provider = "anthropic";
 
@@ -48,7 +48,30 @@ export const PROVIDERS: ProviderInfo[] = [
     header: "x-google-key",
     consoleUrl: "https://aistudio.google.com/apikey",
   },
+  {
+    id: "deepseek",
+    label: "DeepSeek",
+    envVar: "DEEPSEEK_API_KEY",
+    // Same shape as OpenAI's, so the prefix cannot tell a wrong key apart. The
+    // error when one is refused says which provider refused it instead.
+    keyPrefix: "sk-",
+    header: "x-deepseek-key",
+    consoleUrl: "https://platform.deepseek.com/api_keys",
+  },
 ];
+
+/**
+ * Where a provider's API lives, when it is not the SDK's own default.
+ *
+ * DeepSeek speaks OpenAI's chat completions format, so it is reached with the
+ * OpenAI client pointed somewhere else. Worth knowing that this is not the same
+ * as being a drop-in for everything OpenAI does here: the OpenAI path uses the
+ * Responses API, which is OpenAI's own, so DeepSeek needs the older chat
+ * completions call rather than a different base URL on the same code.
+ */
+export const BASE_URL: Partial<Record<Provider, string>> = {
+  deepseek: "https://api.deepseek.com",
+};
 
 export function providerInfo(id: Provider | undefined): ProviderInfo {
   return PROVIDERS.find((p) => p.id === (id ?? DEFAULT_PROVIDER)) ?? PROVIDERS[0];
@@ -103,6 +126,18 @@ export const MODELS: ModelOption[] = [
     label: "Gemini 2.5 Flash",
     hint: "fast and cheap",
     provider: "google",
+  },
+  {
+    id: "deepseek-chat",
+    label: "DeepSeek Chat",
+    hint: "cheap, good at volume",
+    provider: "deepseek",
+  },
+  {
+    id: "deepseek-reasoner",
+    label: "DeepSeek Reasoner",
+    hint: "thinks first, still cheap",
+    provider: "deepseek",
   },
 ];
 

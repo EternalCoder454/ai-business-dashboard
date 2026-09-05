@@ -58,7 +58,13 @@ console.log("nothing that existed before changed");
 
 console.log("\nevery provider is wired up");
 {
-  check("three providers", PROVIDERS.length === 3, String(PROVIDERS.length));
+  /*
+   * Counted rather than named, so adding one is a deliberate line here. The
+   * point of the check is that every provider in the list is wired all the way
+   * through, which the loop below does; this only stops one appearing by
+   * accident.
+   */
+  check("four providers", PROVIDERS.length === 4, String(PROVIDERS.length));
   for (const provider of PROVIDERS) {
     const models = modelsFor(provider.id);
     check(`${provider.label} has models`, models.length > 0, String(models.length));

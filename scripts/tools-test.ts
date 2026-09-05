@@ -8,7 +8,7 @@
  *
  *   npm run tools-test
  */
-import { buildSystemPrompt, buildToolsBlock } from "../src/lib/prompts";
+import { systemPromptText, buildToolsBlock } from "../src/lib/prompts";
 import { CEO_ID, COMPANY_ID, seedDepartments } from "../src/lib/seed";
 import {
   BUILT_IN_TOOLS,
@@ -189,10 +189,10 @@ console.log("\nthe prompt says what can be done");
   check("it says not to call one instead of answering", block.includes("instead of answering"));
 
   const ops = seedDepartments().find((d) => d.id === "operations")!;
-  const withTools = buildSystemPrompt(
+  const withTools = systemPromptText(
     ops, EMPTY_PROFILE, "Eterneon", [], "house rules", undefined, [], [], toolsFor("operations"),
   );
-  const without = buildSystemPrompt(
+  const without = systemPromptText(
     ops, EMPTY_PROFILE, "Eterneon", [], "house rules", undefined, [], [], [],
   );
   check("it reaches the system prompt", withTools.includes("WHAT YOU CAN DO"));
