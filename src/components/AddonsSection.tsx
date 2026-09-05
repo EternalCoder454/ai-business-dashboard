@@ -300,8 +300,9 @@ export function AddonsSection({ admin }: { admin: boolean }) {
             </div>
 
             <p className="md-body-sm text-on-variant">
-              An addon can send but never read anything back, and it is never told a
-              key, a file, or anyone&rsquo;s messages. Pause or delete it at any time.
+              An addon reads nothing back except a web search, it can only reach the
+              addresses listed above, and it is never told a key, a file, or
+              anyone&rsquo;s messages. Pause or delete it at any time.
             </p>
           </div>
         ) : null}
@@ -349,10 +350,18 @@ function StateChip({ addon }: { addon: AddonRow }) {
   return <Chip selected>Running</Chip>;
 }
 
-/** Every host the stored recipe would reach, read from the steps themselves. */
+/**
+ * Every host the stored recipe would reach, read from the steps themselves.
+ *
+ * A search counts. It does not go through the approved host list, because the
+ * business already chose Perplexity and supplied the key, but the question is
+ * still leaving the panel and the person approving this is entitled to see
+ * that on the same line as everything else that leaves.
+ */
 function hostsOf(recipe: Recipe): string[] {
   const hosts = new Set<string>();
   for (const step of recipe.steps) {
+    if (step.action === "search_web") hosts.add("api.perplexity.ai");
     if (step.action === "http_post") {
       try {
         hosts.add(new URL(step.url).hostname.toLowerCase());

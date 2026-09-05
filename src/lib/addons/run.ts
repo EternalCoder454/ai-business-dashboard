@@ -41,6 +41,11 @@ export interface RunResult {
 export interface Effects {
   createTask(input: { title: string; status: "todo" | "doing" | "done" }): Promise<void>;
   saveNote(input: { title: string; body: string }): Promise<void>;
+  /**
+   * Looks something up. Never throws, and never says why in a way that leaks:
+   * `text` is the answer when ok, and a sentence for the run log when not.
+   */
+  search(query: string): Promise<{ ok: boolean; text: string }>;
 }
 
 export interface RunInput {
@@ -135,6 +140,27 @@ async function runStep(
           return { did, ok: false, detail: "Nothing to save: the note came out empty." };
         }
         await effects.saveNote({ title: cap(title || "Note"), body: cap(body) });
+        return { did, ok: true };
+      }
+
+      case "search_web": {
+        const query = render(step.query, context).trim();
+        if (!query) {
+          return { did, ok: false, detail: "Nothing to look up: the question came out empty." };
+        }
+
+        const found = await effects.search(query);
+        // A search that could not run is a failed step rather than a note
+        // saying it failed, so the run log carries it and the board does not.
+        if (!found.ok) return { did, ok: false, detail: found.text };
+
+        const title = render(step.title, context).trim();
+        await effects.saveNote({
+          title: cap(title || query),
+          // Its own limit, not cap(): this text came from a search rather than
+          // from the addon, so the thing being bounded is note size.
+          body: found.text.slice(0, LIMITS.found),
+        });
         return { did, ok: true };
       }
 

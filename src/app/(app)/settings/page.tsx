@@ -321,7 +321,7 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <Card>
+          <Card className="expanded:self-stretch">
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
                 <h2 className="md-title-lg">Departments</h2>
@@ -396,7 +396,7 @@ export default function SettingsPage() {
             </ul>
           </Card>
 
-          <Card>
+          <Card className="expanded:flex expanded:flex-col expanded:self-stretch">
             <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
               <h2 className="md-title-lg">House writing rules</h2>
               <Button
@@ -424,7 +424,11 @@ export default function SettingsPage() {
               aria-label="House writing rules"
               value={writingRules.value}
               onChange={(event) => writingRules.onChange(event.target.value)}
-              className="font-mono text-[0.8125rem]"
+              // Fills whatever height the departments card next to it sets, with
+              // a floor so it never collapses when there are only a few heads.
+              // rows still governs the single column layout, where nothing is
+              // beside it to match.
+              className="font-mono text-[0.8125rem] expanded:min-h-[21rem] expanded:flex-1"
             />
           </Card>
 

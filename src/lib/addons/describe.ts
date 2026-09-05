@@ -43,6 +43,11 @@ export function describeStep(step: Step): string {
       return `Add a task: ${step.title}`;
     case "save_note":
       return `Save a note: ${step.title}`;
+    case "search_web":
+      // Says "search the web" rather than naming Perplexity, because the
+      // sentence has to make sense to an owner, and says it sends the question
+      // out because that is the part worth knowing before approving it.
+      return `Search the web for "${step.query}" and save what it finds`;
     case "http_post":
       return `Send a message to ${hostOf(step.url) ?? "an outside service"}`;
   }

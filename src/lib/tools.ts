@@ -209,11 +209,19 @@ export const BUILT_IN_TOOLS: ToolDefinition[] = [
             properties: {
               action: {
                 type: "string",
-                enum: ["create_task", "save_note", "http_post"],
+                enum: ["create_task", "save_note", "search_web", "http_post"],
               },
-              title: str("For create_task and save_note. May contain {{field}} templates."),
+              title: str(
+                "For create_task, save_note and search_web. May contain {{field}} templates. " +
+                  "On search_web it titles the note the answer is saved to.",
+              ),
               status: { type: "string", enum: ["todo", "doing", "done"] },
               body: str("For save_note. May contain {{field}} templates."),
+              query: str(
+                "For search_web. The question to look up, which may contain {{field}} " +
+                  "templates. Whatever this renders to is sent to the search provider, so " +
+                  "keep it to what the question needs. One search per addon.",
+              ),
               url: str("For http_post. A full https address. Never a template."),
               fields: {
                 type: "object",

@@ -3,9 +3,12 @@ import { and, count, eq, gte } from "drizzle-orm";
 import { databaseEnabled, db, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { liveAddonsFor, recordRun } from "@/db/addons";
+import { workspaceKey } from "@/db/keys";
 import { COMPANY_ID } from "@/lib/seed";
+import { withinRate } from "@/lib/rateLimit";
+import { searchTheWeb, withSources } from "@/lib/websearch";
 import { runRecipe, type Effects } from "./run";
-import type { TriggerName } from "./recipe";
+import { LIMITS, type TriggerName } from "./recipe";
 
 /**
  * Setting addons off, and giving them somewhere to write.
@@ -62,7 +65,67 @@ function effectsFor(workspaceId: string): Effects {
         departmentId: ADDON_DEPARTMENT,
       });
     },
+
+    /*
+     * The one step that spends money on its own, with nobody watching.
+     *
+     * Three refusals before anything is charged, in this order: the business
+     * has to have turned search on, there has to be a key, and the business
+     * has to be under its ceiling for the day. The order matters only in that
+     * the cheapest question is asked first.
+     *
+     * Perplexity rather than the head's own provider is not a preference. See
+     * the note in lib/websearch.ts: native search is a server tool inside a
+     * model request, and an addon has no model request to put it in.
+     */
+    search: async (query) => {
+      const mode = await searchMode(workspaceId);
+      if (mode !== "perplexity") {
+        return {
+          ok: false,
+          text:
+            mode === "native"
+              ? "An addon cannot use native search, which only works while a head is answering. " +
+                "Switch web search to Perplexity under Integrations."
+              : "This business has not turned on web search.",
+        };
+      }
+
+      const key = await workspaceKey(workspaceId, "perplexity");
+      if (!key) return { ok: false, text: "No Perplexity key is set." };
+
+      /*
+       * Per business per day, across every addon it has. The per recipe cap
+       * bounds one run; this bounds the number of runs, which is the part
+       * nobody controls: an addon on task.created searches once per task, and
+       * a busy Monday is not a decision anybody made about their bill.
+       */
+      if (!(await withinRate(`addon-search:${workspaceId}`, LIMITS.searchesPerDay, 86_400_000))) {
+        return {
+          ok: false,
+          text: `This business has used its ${LIMITS.searchesPerDay} addon searches for today.`,
+        };
+      }
+
+      const found = await searchTheWeb(query, key);
+      if (!found.ok) return { ok: false, text: found.error };
+      return { ok: true, text: withSources(found.answer, found.sources) };
+    },
   };
+}
+
+/** Whether this business searches, and how. Off when it has never said. */
+async function searchMode(workspaceId: string): Promise<string> {
+  if (!databaseEnabled || !db) return "off";
+  try {
+    const [row] = await db
+      .select({ mode: t.settings.webSearch })
+      .from(t.settings)
+      .where(eq(t.settings.workspaceId, workspaceId));
+    return row?.mode ?? "off";
+  } catch {
+    return "off";
+  }
 }
 
 /**

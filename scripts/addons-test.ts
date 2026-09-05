@@ -17,6 +17,7 @@ import {
   LIMITS,
   READABLE,
   checkOutboundUrl,
+  describeStep,
   namesIn,
   readRecipe,
   render,
@@ -188,9 +189,11 @@ console.log("\nconditions decide whether it runs at all");
 console.log("\nrunning one");
 void (async () => {
   const made: string[] = [];
+  const asked: string[] = [];
   const effects: Effects = {
     createTask: async ({ title }) => { made.push(title); },
     saveNote: async ({ title }) => { made.push(title); },
+    search: async (query) => { asked.push(query); return { ok: true, text: "what it found" }; },
   };
 
   const recipe = (readRecipe({
@@ -242,6 +245,7 @@ void (async () => {
   const failing: Effects = {
     createTask: async () => { throw new Error("D:\\Websites\\AI Panel secret path"); },
     saveNote: async () => {},
+    search: async () => ({ ok: true, text: "" }),
   };
   const threw = await runRecipe({
     recipe,
@@ -255,6 +259,89 @@ void (async () => {
     !JSON.stringify(threw).includes("Websites"),
     JSON.stringify(threw.steps),
   );
+
+  console.log("");
+  console.log("searching costs money, so it is bounded on both sides");
+  {
+    const one = readRecipe({
+      trigger: "schedule.daily",
+      steps: [{ action: "search_web", query: "news about {{company.name}}", title: "Daily brief" }],
+    });
+    check("one search is allowed", one.ok, one.ok ? "" : one.problems.join());
+
+    const two = readRecipe({
+      trigger: "schedule.daily",
+      steps: [
+        { action: "search_web", query: "a", title: "one" },
+        { action: "search_web", query: "b", title: "two" },
+      ],
+    });
+    check("two searches in one recipe are refused", !two.ok);
+
+    /*
+     * The query is rendered, so it is a place a template can hide in. If it
+     * were left out of valuesOf an addon could name a field the trigger does
+     * not carry, which is the exact hole the whitelist exists to close.
+     */
+    const reaching = readRecipe({
+      trigger: "schedule.daily",
+      steps: [{ action: "search_web", query: "{{task.title}}", title: "x" }],
+    });
+    check("a search cannot ask for a field the trigger has no idea about", !reaching.ok);
+
+    // Whatever goes out has to be visible to whoever approves it, in the words
+    // that will actually be sent rather than a summary of them.
+    const said = describeStep({ action: "search_web", query: "price of tea", title: "Tea" });
+    check("the approval screen shows the question", said.includes("price of tea"), said);
+    check("and says it searches the web", said.toLowerCase().includes("search the web"), said);
+
+    const searching = (readRecipe({
+      trigger: "schedule.daily",
+      steps: [{ action: "search_web", query: "how is {{company.name}} doing", title: "Brief" }],
+    }) as { ok: true; recipe: Recipe }).recipe;
+
+    asked.length = 0;
+    made.length = 0;
+    const ran = await runRecipe({
+      recipe: searching,
+      context: { "company.name": "Acme" },
+      approvedHosts: [],
+      effects,
+    });
+    check("it searches with the filled template", asked.join() === "how is Acme doing", asked.join());
+    check("and files what it found", ran.ok && made.join() === "Brief", made.join());
+
+    // A query that rendered to nothing must not be charged for. The refusal has
+    // to happen before the call, not after it comes back empty.
+    asked.length = 0;
+    const blank = (readRecipe({
+      trigger: "schedule.daily",
+      steps: [{ action: "search_web", query: "{{today}}", title: "x" }],
+    }) as { ok: true; recipe: Recipe }).recipe;
+    const nothing = await runRecipe({
+      recipe: blank, context: {}, approvedHosts: [], effects,
+    });
+    check("an empty question is not sent anywhere", asked.length === 0, asked.join());
+    check("and the step is recorded as failed", !nothing.ok);
+
+    // A search that could not run leaves a line in the log, not a note on the
+    // board saying the search failed.
+    made.length = 0;
+    const refused: Effects = {
+      ...effects,
+      search: async () => ({ ok: false, text: "No Perplexity key is set." }),
+    };
+    const failedSearch = await runRecipe({
+      recipe: searching,
+      context: { "company.name": "Acme" },
+      approvedHosts: [],
+      effects: refused,
+    });
+    check("a failed search saves nothing", made.length === 0, made.join());
+    check("and says why in the run log",
+      failedSearch.steps[0]?.detail === "No Perplexity key is set.",
+      JSON.stringify(failedSearch.steps));
+  }
 
   console.log("");
   console.log("approval is the only thing that grants a destination");

@@ -39,6 +39,21 @@ export const LIMITS = {
   /** Everything sent in one outbound call, after rendering. */
   body: 8_000,
   fields: 10,
+  /*
+   * Searches, which are the only step that costs money every time it runs.
+   * One per recipe, so an addon cannot spend its whole step budget looking
+   * things up, and a ceiling per business per day in runner.ts, because the
+   * per recipe cap says nothing about how often the recipe runs.
+   */
+  searches: 1,
+  searchesPerDay: 25,
+  /**
+   * A saved search result. Larger than `value` on purpose: that one bounds
+   * what an addon can write and send, and this bounds what we save from an
+   * answer that came from outside, where the risk is a long note rather than
+   * a payload.
+   */
+  found: 4_000,
 } as const;
 
 /* -------------------------------------------------------------------------
@@ -117,6 +132,26 @@ const stepSchema = z.discriminatedUnion("action", [
       action: z.literal("save_note"),
       title: templated(120),
       body: templated(LIMITS.value),
+    })
+    .strict(),
+  z
+    .object({
+      /*
+       * Looks something up and files what it finds, in one step.
+       *
+       * One step rather than two because the language has no variables: there
+       * is nowhere to put an answer between a search and a save, and adding
+       * somewhere would be adding the thing this language is built not to
+       * have. So the step does the whole job and the result goes to a note.
+       *
+       * Worth being clear about at approval time: the query is rendered from
+       * the trigger's fields, so an addon searching for "{{task.title}}" sends
+       * that title to Perplexity. That is an outbound flow like http_post is,
+       * and describeStep says so rather than leaving it to be discovered.
+       */
+      action: z.literal("search_web"),
+      query: templated(200),
+      title: templated(120),
     })
     .strict(),
   z
@@ -205,6 +240,7 @@ export function readRecipe(input: unknown): Accepted | Rejected {
 
   const hosts = new Set<string>();
   let bodyTotal = 0;
+  let searches = 0;
 
   for (const step of recipe.steps) {
     for (const value of valuesOf(step)) {
@@ -217,6 +253,8 @@ export function readRecipe(input: unknown): Accepted | Rejected {
         }
       }
     }
+
+    if (step.action === "search_web") searches += 1;
 
     if (step.action === "http_post") {
       if (Object.keys(step.fields).length > LIMITS.fields) {
@@ -233,6 +271,12 @@ export function readRecipe(input: unknown): Accepted | Rejected {
   }
   if (hosts.size > LIMITS.hosts) {
     problems.push(`An addon may reach at most ${LIMITS.hosts} outside services.`);
+  }
+  if (searches > LIMITS.searches) {
+    problems.push(
+      `An addon may search the web at most ${LIMITS.searches} time per run, ` +
+        `because each search is charged to the business.`,
+    );
   }
 
   if (problems.length) return { ok: false, problems };
@@ -300,6 +344,8 @@ function valuesOf(step: Step): string[] {
       return [step.title];
     case "save_note":
       return [step.title, step.body];
+    case "search_web":
+      return [step.query, step.title];
     case "http_post":
       // The URL is deliberately absent: it is not rendered, so a template
       // cannot move a request to a different host than the one approved.

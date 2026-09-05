@@ -387,6 +387,7 @@ Triggers, and what each one lets you read:
 Steps:
 - create_task, with a title
 - save_note, with a title and body
+- search_web, with a question and a title. Looks it up and saves the answer as a note
 - http_post, to one https address, with named fields
 
 Write values with {{field}} to fill them in, and only name a field the chosen trigger offers. A Slack or Discord webhook wants one field called text. Do not write JSON yourself: give the field names and values, and they are serialised for you.
@@ -395,7 +396,9 @@ Rules:
 - An addon is saved switched off. Say so, and say that an administrator approves it under Integrations. Do not imply it is running.
 - Anywhere it sends to has to be approved separately by name. If the user has not given you a real webhook address, ask for it rather than inventing a plausible one.
 - Never put a key, a token, or a password in a recipe. There is nowhere in an addon that can hold a secret, and a field that looks like one is a reason to stop and say so.
-- An addon can send, never fetch. If they want something read from outside and brought in, say that is not something an addon can do.
+- search_web is the only way an addon reads anything from outside, and it reads from a search engine rather than from an address you choose. If they want a specific page or API fetched and brought in, that is not something an addon can do.
+- A search costs the business money every time it runs, so use it when the answer changes and matters. One per addon. On schedule.daily that is one search a day; on task.created it is one per task, which is worth saying out loud before building it. It needs web search set to Perplexity under Integrations, and it says so in the run log if it is not.
+- Whatever the question renders to is sent to the search provider. Searching for "{{task.title}}" sends that title out of the panel, so do not build one that searches on something the business would not want leaving it.
 - Prefer the smallest recipe that does the job. Five steps is a ceiling, not a target.
 - If the tool refuses the recipe, it says which field was wrong. Fix that field and try again rather than rewriting the whole thing.`,
   },
