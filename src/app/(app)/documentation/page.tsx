@@ -1,0 +1,127 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
+import { Markdown } from "@/components/Markdown";
+import { Card, EmptyState, TextInput, cx } from "@/components/ui";
+import { createRipple } from "@/components/ui/ripple";
+import { DOCUMENTATION, searchDocs } from "@/lib/documentation";
+
+/**
+ * The manual for the panel.
+ *
+ * One long page with a contents rail rather than a page per topic, which is
+ * the opposite of the choice the Internal Wiki makes next door, for a reason.
+ * The wiki serves somebody checking one thing they already know exists. This
+ * serves somebody who does not yet know what exists, and a list of titles is
+ * no help to them: they have to be able to read it straight through the first
+ * time and jump to one heading forever after.
+ *
+ * The filter is the concession to the second case. It hides sections rather
+ * than scrolling to them, so a search for "key" leaves three short sections on
+ * screen instead of a highlighted word somewhere in a long document.
+ */
+export default function DocumentationPage() {
+  const [query, setQuery] = useState("");
+  const chapters = useMemo(() => searchDocs(query), [query]);
+
+  const sectionCount = chapters.reduce((n, chapter) => n + chapter.sections.length, 0);
+  const filtering = query.trim().length > 0;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <PageHeader
+        eyebrow="Reference"
+        title="Documentation"
+        actions={
+          <TextInput
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search"
+            aria-label="Search the documentation"
+            className="w-56"
+          />
+        }
+      />
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 medium:px-6 expanded:px-8">
+        <div className="measure-wide flex flex-col gap-6 expanded:flex-row expanded:items-start expanded:gap-10">
+          {/*
+            Sticky on a wide window, and simply the first thing on the page on a
+            narrow one. A contents list that scrolls away is no worse than no
+            contents list, but one pinned over a phone screen costs a third of
+            the reading area.
+          */}
+          <nav
+            aria-label="Contents"
+            className="flex-none expanded:sticky expanded:top-0 expanded:w-60"
+          >
+            <p className="md-label-sm mb-2 text-on-variant/75">Contents</p>
+            <ul className="flex flex-col gap-3">
+              {chapters.map((chapter) => (
+                <li key={chapter.id}>
+                  <p className="md-label mb-1">{chapter.title}</p>
+                  <ul className="flex flex-col">
+                    {chapter.sections.map((section) => (
+                      <li key={section.id}>
+                        <a
+                          href={`#${section.id}`}
+                          onClick={createRipple}
+                          className="md-state md-body block truncate rounded-lg px-2 py-1 text-on-variant"
+                        >
+                          {section.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <div className="min-w-0 flex-1">
+            {sectionCount === 0 ? (
+              <EmptyState
+                icon="📘"
+                title="Nothing matches that"
+                description="Try a shorter word, such as key, cost, file, or addon."
+              />
+            ) : (
+              <div className="flex flex-col gap-8">
+                {chapters.map((chapter) => (
+                  <section key={chapter.id} className="flex flex-col gap-4">
+                    <h2 className="md-label-sm text-primary">{chapter.title}</h2>
+
+                    {chapter.sections.map((section) => (
+                      <Card key={section.id}>
+                        {/*
+                          scroll-mt keeps a heading clear of the sticky header
+                          when it is jumped to, rather than landing underneath
+                          it, which reads as the link having done nothing.
+                        */}
+                        <h3
+                          id={section.id}
+                          className={cx("md-title-lg mb-3", "scroll-mt-6")}
+                        >
+                          {section.title}
+                        </h3>
+                        <Markdown>{section.body}</Markdown>
+                      </Card>
+                    ))}
+                  </section>
+                ))}
+              </div>
+            )}
+
+            {filtering && sectionCount > 0 ? (
+              <p className="md-label mt-6 text-on-variant/75">
+                {sectionCount} of {DOCUMENTATION.reduce((n, c) => n + c.sections.length, 0)}{" "}
+                sections
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

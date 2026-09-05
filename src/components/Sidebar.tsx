@@ -146,6 +146,15 @@ export const SETUP_LINKS: NavLink[] = [
     short: "Wiki",
     icon: <BookIcon className="h-5 w-5" />,
   },
+  {
+    // Kept here as well as in the profile menu, because this list is what the
+    // command palette searches. A page reachable only by a menu nobody opens
+    // is a page nobody finds.
+    href: "/documentation",
+    label: "Documentation",
+    short: "Docs",
+    icon: <DocIcon className="h-5 w-5" />,
+  },
 ];
 
 /** The five destinations that fit a navigation rail or a bottom bar. */

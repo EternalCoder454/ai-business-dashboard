@@ -7,6 +7,7 @@ import { FeedbackDialog } from "./FeedbackDialog";
 import {
   BookIcon,
   BuildingIcon,
+  DocIcon,
   GearIcon,
   PuzzleIcon,
   ShieldIcon,
@@ -38,6 +39,13 @@ const LINKS = [
   { href: "/settings", label: "Settings", icon: <GearIcon className="h-4 w-4" /> },
   { href: "/integrations", label: "Integrations", icon: <PuzzleIcon className="h-4 w-4" /> },
   { href: "/wiki", label: "Internal wiki", icon: <BookIcon className="h-4 w-4" /> },
+  /*
+   * Directly under the wiki, because both are reading and somebody looking for
+   * one will look where the other is. They are not the same thing: the wiki is
+   * what this business writes about itself, and this is the manual for the
+   * panel, the same for every customer and shipped with the code.
+   */
+  { href: "/documentation", label: "Documentation", icon: <DocIcon className="h-4 w-4" /> },
   { href: "/changelog", label: "Changelog", icon: <SparkIcon className="h-4 w-4" /> },
 ];
 
