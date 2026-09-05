@@ -7,6 +7,11 @@
     "is how internal work stays out of a customer's changelog.",
     "With ANTHROPIC_API_KEY set, `npm run changelog` drafts missing ones for review."
   ],
+  "ca21f16": {
+    "kind": "new",
+    "title": "Documentation",
+    "detail": "There is now a manual for the panel, under Internal wiki in the menu at the top right.\n\nNineteen sections covering everything: what the heads are and what each one is for, how to connect an AI provider and what it will cost you, the Library and who can see which document, tasks, briefings, meetings, addons, what leaves the panel and what never does, and what to check when something is not working.\n\nIf you are just starting, read the first three sections and stop. They are what the panel is, what to do in your first ten minutes, and how to connect a model. Nothing else matters until those are done.\n\nThere is a search box at the top. Type a word like key, cost or file and it leaves only the sections that mention it."
+  },
   "ab59049": {
     "kind": "new",
     "title": "Addons can look things up",

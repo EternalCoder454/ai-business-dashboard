@@ -25,6 +25,29 @@ export interface ChangelogEntry {
 /** Newest first, which is the order both views show them in. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    "id": "ca21f16",
+    "date": "2026-09-05",
+    "title": "Add Documentation, the manual for the panel itself",
+    "detail": "Nineteen sections across five chapters, under Internal wiki in the account menu. Written for somebody on their first day who has never used anything like this, with no assumed vocabulary: a person who has just paid for a business tool should not need to know what a token or a system prompt is to get value on the first afternoon.\n\nIt ships in the code rather than being seeded into each workspace as wiki pages, and that is the deliberate difference from the wiki above it. The wiki is what a business writes about itself, so it belongs to that business and lives in its rows. This is what the panel is, which is the same sentence for every customer and has to stay true as the product changes. Rows would mean one stale copy per business and nothing that updates them. It also costs no storage at all, against twenty eight wiki rows per four businesses today.\n\nOrdered by what a new owner actually needs. The first three sections are what the panel is, the first ten minutes, and connecting a model, in that order, because none of the rest matters until a key is in. Connecting a model is the longest section in the manual on purpose: it is the step where somebody has to leave the product, open an account with a company they may not have heard of, and paste a secret, and it is the likeliest place to give up. It says what it will cost, why the subscription does not include it, and that the key is encrypted and never shown again.\n\nOne long page with a contents rail rather than a page per topic, which is the opposite of the choice the wiki makes next door. The wiki serves somebody checking one thing they already know exists. This serves somebody who does not know what exists yet, and a list of titles is no help to them: they have to be able to read it straight through once and jump to one heading forever after. The search filter hides sections rather than scrolling to them, so looking for \"key\" leaves the relevant sections on screen instead of a highlighted word somewhere in a long document.\n\nThe Sidebar entry stays even though that list renders nothing, because it is what the command palette searches, and a page reachable only through a menu nobody opens is a page nobody finds.\n\nVerified running: nineteen sections, six tables each in their own scroller, the contents rail sticky beside the text at 1440 and stacked above it on a phone, anchors landing clear of the header, and the filter narrowing to ten sections for \"key\" and restoring to nineteen when cleared.",
+    "plain": {
+      "kind": "new",
+      "title": "Documentation",
+      "detail": "There is now a manual for the panel, under Internal wiki in the menu at the top right.\n\nNineteen sections covering everything: what the heads are and what each one is for, how to connect an AI provider and what it will cost you, the Library and who can see which document, tasks, briefings, meetings, addons, what leaves the panel and what never does, and what to check when something is not working.\n\nIf you are just starting, read the first three sections and stop. They are what the panel is, what to do in your first ten minutes, and how to connect a model. Nothing else matters until those are done.\n\nThere is a search box at the top. Type a word like key, cost or file and it leaves only the sections that mention it."
+    }
+  },
+  {
+    "id": "1dd1a9c",
+    "date": "2026-09-05",
+    "title": "Let a head read the business's own documents",
+    "detail": "The Library existed and no head could see it. The prompt carried persona, company profile, memory, tasks and calendar, and never the documents anybody had uploaded, so Finance answered from general knowledge while the real numbers sat one screen away. That is the difference between advice and advice about this business, which is the thing being paid for.\n\nThe fix is deliberately not putting documents in the prompt. One scanned return is more tokens than a whole conversation and it would be sent on every message whether or not it mattered. A head is given the catalogue instead, which is titles, lengths and notes, and reads a document only when it decides one is worth reading. The catalogue goes in the stable half of the prompt, above the cache breakpoint, because it changes only when somebody uploads or removes something: it is written once and read back at a tenth of the price after.\n\nThere is no opening excerpt in the catalogue, and that is the second version. The first showed the first twenty words of each document, which for a five word fee schedule is the entire document, sitting in the cached prefix of every message while the block above it promised it carried only titles. A block that misstates what it holds is worse than one that holds slightly less. The test that caught it is the one asserting contents never appear.\n\nScoping moved rather than being written again. filesForDepartment used to live in files.ts and answer one question, which files a person may attach; it now answers which documents a head may read as well, so it lives in library.ts and files.ts re-exports it. Two copies of that rule is two chances to widen one by accident. An absent departmentId still means private to whoever uploaded it and reaches no head at all, which is the only way to keep a document in the panel without handing it to a model.\n\nThe scoping applies at the read and not only at the listing. A head that guessed or was told a title it was never shown still cannot open it, which is covered by its own test rather than by a comment, and an ambiguous partial title returns nothing rather than the wrong contract cited confidently.\n\nSchedules and all hands deliberately get no catalogue. Neither runs a tool loop, so a head there would announce it was going to consult a document and then be unable to. Both call sites say so.\n\ntools-test asserted that the only tool running unconfirmed was web_search, by name. That is the shape of the bug that stopped DeepSeek and Perplexity keys from ever being saved, so it now carries a named list with the reason each entry is on it: adding to it stays deliberate, but the check states the property.\n\nVerified against the running panel rather than only in tests. A document uploaded and left private changed nobody's prompt. Scoped to Finance it moved Finance from 5,476 to 5,630 tokens and left the other seven heads untouched."
+  },
+  {
+    "id": "975cb13",
+    "date": "2026-09-05",
+    "title": "Write up the search step for the Simple changelog",
+    "detail": ""
+  },
+  {
     "id": "ab59049",
     "date": "2026-09-05",
     "title": "Let an addon look something up, and say so before it does",
@@ -1736,4 +1759,4 @@ export const CHANGELOG: ChangelogEntry[] = [
 ];
 
 /** What the newest entry is, for deciding whether somebody has seen it. */
-export const LATEST = "ab59049";
+export const LATEST = "ca21f16";
