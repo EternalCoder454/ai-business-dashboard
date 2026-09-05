@@ -7,6 +7,11 @@
     "is how internal work stays out of a customer's changelog.",
     "With ANTHROPIC_API_KEY set, `npm run changelog` drafts missing ones for review."
   ],
+  "ab59049": {
+    "kind": "new",
+    "title": "Addons can look things up",
+    "detail": "An addon can now search the web and save what it finds as a note. Ask the Head of Engineering for something like a short brief on your industry every morning, and it will build one.\n\nThis is the first thing an addon can read from outside, so the approval screen says so. A search shows Perplexity in the list of what the addon may send to, because your question does leave the panel. It still cannot fetch a page or an address of its own choosing, and it is still never given a key, a file, or anyone's messages.\n\nSearching costs money on your own key, so it is capped: one search per addon each time it runs, and twenty five a day across every addon your business has. Worth knowing before you build one that runs on every task rather than once a morning.\n\nIt needs web search set to Perplexity under Integrations. Native search only works while a head is answering you, so an addon running overnight cannot use it, and it says so in its run log rather than failing quietly."
+  },
   "e9e94d0": {
     "kind": "new",
     "title": "Addons",
