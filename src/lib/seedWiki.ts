@@ -52,7 +52,7 @@ Conversations are separate, so telling one department something does not tell th
 
 **Legal and Finance are not professionals.** Plain-English guidance to help you ask a real accountant or solicitor the right question. Not advice.
 
-**Nothing here is private.** All conversations and internal messaging are recorded and can be reviewed by an administrator.
+**Nothing here is private.** All conversations and internal messaging are recorded. An administrator can open any internal message thread and read it in full, under Management.
 
 **Read before you publish.** Nothing should go out under your name, or the company's, unread.`,
       },

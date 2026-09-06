@@ -15,10 +15,12 @@ import {
   Select,
   TextInput,
   TrashIcon,
+  MailIcon,
   UsersIcon,
   cx,
 } from "@/components/ui";
 import { ReportsTab } from "@/components/ReportsTab";
+import { MessageReview } from "@/components/MessageReview";
 import { useStore } from "@/lib/store";
 import { AREAS, unrestricted, type Area, type Permissions } from "@/lib/permissions";
 import { formatRelativeTime } from "@/lib/routes";
@@ -73,7 +75,7 @@ function presenceOf(member: Member): { label: string; tone: "on" | "busy" | "off
  */
 export default function ManagePage() {
   const { workspaceRole, statusReady, settings, allDepartments } = useStore();
-  const [tab, setTab] = useState<"people" | "reports">("people");
+  const [tab, setTab] = useState<"people" | "reports" | "messages">("people");
   /*
    * Which person the right hand pane is showing, by address rather than by
    * object, so a refresh that rebuilds the list does not drop the selection or
@@ -175,7 +177,9 @@ export default function ManagePage() {
     <>
       <PageHeader
         eyebrow={settings.companyName}
-        title={tab === "people" ? "Management" : "Reports"}
+        title={
+          tab === "people" ? "Management" : tab === "reports" ? "Reports" : "Messages"
+        }
         actions={
           tab === "people" ? (
             <Button onClick={() => setInviting(true)}>
@@ -195,7 +199,7 @@ export default function ManagePage() {
         * for everyone who is not an administrator and cannot open it anyway.
         */}
       <div className="flex flex-none items-center gap-2 border-b border-outline-variant px-4 py-3 sm:px-6">
-        {(["people", "reports"] as const).map((key) => (
+        {(["people", "reports", "messages"] as const).map((key) => (
           <Chip
             key={key}
             selected={tab === key}
@@ -204,16 +208,20 @@ export default function ManagePage() {
             <span className="flex items-center gap-1.5">
               {key === "people" ? (
                 <UsersIcon className="h-4 w-4" />
-              ) : (
+              ) : key === "reports" ? (
                 <PolicyIcon className="h-4 w-4" />
+              ) : (
+                <MailIcon className="h-4 w-4" />
               )}
-              {key === "people" ? "People" : "Reports"}
+              {key === "people" ? "People" : key === "reports" ? "Reports" : "Messages"}
             </span>
           </Chip>
         ))}
       </div>
 
-      {tab === "reports" ? (
+      {tab === "messages" ? (
+        <MessageReview />
+      ) : tab === "reports" ? (
         <div className="measure min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
           <ReportsTab scope="workspace" />
         </div>

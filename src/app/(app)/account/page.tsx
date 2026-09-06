@@ -323,9 +323,15 @@ export default function AccountPage() {
           {storage === "hosted" ? (
             <div className="rounded-2xl border border-error/40 bg-error-container/20 p-4">
               <h2 className="md-label-sm mb-2 text-error">Disclaimer</h2>
+              {/* Specific about who and where, now that both are true. It said
+                  only that things were recorded, which left the important part
+                  unsaid: an administrator can open any of it, by name, and read
+                  it in full. Somebody being told they have no privacy is owed
+                  the detail of who does not give it to them. */}
               <p className="md-body text-on-surface">
                 All conversations and internal messaging are recorded, for your safety
-                and the company&apos;s.
+                and the company&apos;s. An administrator of this business can read any
+                internal message thread in full, under Management.
               </p>
             </div>
           ) : null}

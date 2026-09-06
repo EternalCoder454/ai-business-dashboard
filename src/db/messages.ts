@@ -359,3 +359,114 @@ export async function deleteThreadsFor(emails: string[]): Promise<void> {
       ),
     );
 }
+
+/* -------------------------------------------------------------------------- *
+ * Review
+ *
+ * The Account page tells everybody that conversations and internal messaging
+ * are recorded and can be reviewed by an administrator. Until these existed
+ * that was only half true: the only way a message ever became readable was for
+ * the conduct reporter to flag it, which produced a quote and a transcript
+ * attached to a report. Everything nobody flagged was retained and unreadable,
+ * so the sentence promised something the product did not do.
+ *
+ * These two are the other half. They are deliberately not scoped to a self:
+ * that is the entire difference between reading your own inbox and reviewing
+ * the business's, and it is why the route above them checks for an
+ * administrator before it calls either.
+ * -------------------------------------------------------------------------- */
+
+export interface ThreadSummary {
+  threadKey: string;
+  /** Both addresses, sorted, since a thread has no owner from out here. */
+  participants: [string, string];
+  messages: number;
+  lastAt: number;
+  lastFrom: string;
+  preview: string;
+}
+
+/**
+ * Every thread in one business, newest first.
+ *
+ * One query rather than a list followed by a count each, for the reason
+ * listThreads was rewritten: the work is milliseconds and the round trip is
+ * eighty, so anything shaped as a loop over threads costs a second by the time
+ * a busy workspace has a dozen.
+ */
+export async function auditThreads(workspaceId: string): Promise<ThreadSummary[]> {
+  const db = requireDb();
+
+  const rows = await db.execute<{
+    thread_key: string;
+    from_email: string;
+    to_email: string;
+    body: string;
+    sent_at: string | number;
+    messages: number;
+  }>(sql`
+    WITH counted AS (
+      SELECT thread_key, count(*)::int AS n, max(sent_at) AS last_at
+      FROM direct_messages
+      WHERE workspace_id = ${workspaceId}
+      GROUP BY thread_key
+    )
+    SELECT DISTINCT ON (m.thread_key)
+      m.thread_key, m.from_email, m.to_email, m.body, m.sent_at,
+      counted.n AS messages
+    FROM direct_messages m
+    JOIN counted ON counted.thread_key = m.thread_key
+    WHERE m.workspace_id = ${workspaceId}
+    ORDER BY m.thread_key, m.sent_at DESC
+  `);
+
+  return rows
+    .map((row) => {
+      const pair = row.thread_key.split("|");
+      return {
+        threadKey: row.thread_key,
+        participants: [pair[0] ?? row.from_email, pair[1] ?? row.to_email] as [string, string],
+        messages: Number(row.messages),
+        lastAt: Number(row.sent_at),
+        lastFrom: row.from_email,
+        // Enough to recognise a thread, not enough to be the thread. Opening it
+        // is a separate request, which is also where the audit line would go.
+        preview: row.body.slice(0, 160),
+      };
+    })
+    .sort((a, b) => b.lastAt - a.lastAt);
+}
+
+/**
+ * One thread in full, by its key rather than by who is asking.
+ *
+ * The same 500 ceiling listThread uses, and for the same reason: a thread
+ * longer than that is not something anybody scrolls, and the limit keeps one
+ * query from returning a year of history.
+ */
+export async function auditThread(
+  workspaceId: string,
+  threadKey: string,
+): Promise<DirectMessage[]> {
+  const db = requireDb();
+  const rows = await db
+    .select()
+    .from(t.directMessages)
+    .where(
+      and(
+        eq(t.directMessages.workspaceId, workspaceId),
+        eq(t.directMessages.threadKey, threadKey),
+      ),
+    )
+    .orderBy(asc(t.directMessages.sentAt))
+    .limit(500);
+
+  return rows.map((row) => ({
+    id: row.id,
+    fromEmail: row.fromEmail,
+    toEmail: row.toEmail,
+    body: row.body,
+    sentAt: row.sentAt,
+    readAt: row.readAt ?? undefined,
+  }));
+}
