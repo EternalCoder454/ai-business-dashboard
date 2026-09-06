@@ -141,6 +141,22 @@ export async function listThreads(
   const db = requireDb();
   const me = normalise(self);
 
+  /*
+   * One round trip, not two.
+   *
+   * This was the latest message per thread, then a second query counting what
+   * was unread, and the second waited on the first. Measured against the
+   * production database, a trivial SELECT 1 costs 79ms and this query costs
+   * 83ms: the work is four milliseconds and the rest is the trip. Two of them
+   * in series is therefore about twice the price for no extra computation,
+   * which is why messages.overview averaged 526ms and went over a second on a
+   * third of its calls with twenty three rows in the table.
+   *
+   * Joined on thread_key rather than on the sender. The unread count belongs to
+   * the other person in the thread, and the latest message may be one I sent,
+   * so joining on from_email would attribute my own unread count to myself and
+   * report zero for everybody.
+   */
   const latest = await db.execute<{
     thread_key: string;
     from_email: string;
@@ -148,26 +164,31 @@ export async function listThreads(
     body: string;
     sent_at: string | number;
     read_at: string | number | null;
+    unread: number;
   }>(sql`
-    SELECT DISTINCT ON (thread_key) thread_key, from_email, to_email, body, sent_at, read_at
-    FROM direct_messages
-    WHERE workspace_id = ${workspaceId} AND (from_email = ${me} OR to_email = ${me})
-    ORDER BY thread_key, sent_at DESC
-  `);
-
-  const unread = await db
-    .select({ from: t.directMessages.fromEmail, count: sql<number>`count(*)::int` })
-    .from(t.directMessages)
-    .where(
-      and(
-        eq(t.directMessages.workspaceId, workspaceId),
-        eq(t.directMessages.toEmail, me),
-        isNull(t.directMessages.readAt),
-      ),
+    WITH newest AS (
+      SELECT DISTINCT ON (thread_key)
+        thread_key, from_email, to_email, body, sent_at, read_at
+      FROM direct_messages
+      WHERE workspace_id = ${workspaceId}
+        AND (from_email = ${me} OR to_email = ${me})
+      ORDER BY thread_key, sent_at DESC
+    ),
+    pending AS (
+      SELECT thread_key, count(*)::int AS n
+      FROM direct_messages
+      WHERE workspace_id = ${workspaceId}
+        AND to_email = ${me}
+        AND read_at IS NULL
+      GROUP BY thread_key
     )
-    .groupBy(t.directMessages.fromEmail);
-
-  const unreadBy = new Map(unread.map((row) => [row.from, Number(row.count)]));
+    SELECT
+      newest.thread_key, newest.from_email, newest.to_email,
+      newest.body, newest.sent_at, newest.read_at,
+      COALESCE(pending.n, 0)::int AS unread
+    FROM newest
+    LEFT JOIN pending ON pending.thread_key = newest.thread_key
+  `);
 
   return [...latest]
     .map((row) => {
@@ -180,7 +201,7 @@ export async function listThreads(
         // Only meaningful on a row I sent. Free: the query above already had to
         // pick this exact row out to get the preview text.
         lastSeen: row.read_at != null,
-        unread: unreadBy.get(other) ?? 0,
+        unread: Number(row.unread),
       };
     })
     .sort((a, b) => b.lastSentAt - a.lastSentAt);

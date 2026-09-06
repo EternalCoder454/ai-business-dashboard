@@ -30,13 +30,30 @@ const CACHE_MINIMUM: Record<string, number> = {
   "claude-haiku-4-5": 4096,
 };
 
+/*
+ * One per segment, from the department wheel rather than the semantic palette.
+ *
+ * Two things were wrong with the old list. It held six colours for seven
+ * segments, so the seventh wrapped and Identity and the writing rules were
+ * drawn in the same teal with no way to tell them apart. And two of the six
+ * were the wrong kind of token: secondary-container is a surface meant to sit
+ * behind text, which on a light card is #d7e7ea and effectively invisible, and
+ * outline is a hairline grey.
+ *
+ * The accent wheel is the palette built for exactly this. Its comment says
+ * lightness is tuned per hue per theme so each one clears 3:1 against both a
+ * near-black and a near-white card, which is the property a chart needs and a
+ * container token was never going to have. Seven hues, spread rather than
+ * adjacent, so neighbouring bands stay distinguishable.
+ */
 const SEGMENT_COLOURS = [
-  "var(--md-primary)",
-  "var(--md-success)",
-  "var(--md-warning)",
-  "var(--md-secondary-container)",
-  "var(--md-outline)",
-  "var(--md-error)",
+  "var(--md-accent-cyan)",
+  "var(--md-accent-lime)",
+  "var(--md-accent-amber)",
+  "var(--md-accent-violet)",
+  "var(--md-accent-slate)",
+  "var(--md-accent-rose)",
+  "var(--md-accent-orchid)",
 ];
 
 /**
