@@ -73,6 +73,30 @@ export default function SettingsPage() {
   const [draft, setDraft] = useState<DeptDraft | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Department | null>(null);
   const [dataNotice, setDataNotice] = useState<string | null>(null);
+  /*
+   * The writing rules are a document, not an answer.
+   *
+   * The field showed 453px of 3,212px, so you could read about a seventh of
+   * your own house style without dragging inside the box. Growing it to fit
+   * would be a card three screens tall next to a Departments card of 691px,
+   * which trades one bad layout for another, so it opens on request instead.
+   * Closed it keeps the height that matches Departments, which is what the row
+   * was arranged around.
+   */
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const rulesRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = rulesRef.current;
+    if (!el) return;
+    if (!rulesOpen) {
+      // Back to whatever the class says, rather than the height left behind.
+      el.style.height = "";
+      return;
+    }
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [rulesOpen, writingRules.value]);
   const avatarInput = useRef<HTMLInputElement | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const markInput = useRef<HTMLInputElement | null>(null);
@@ -399,14 +423,19 @@ export default function SettingsPage() {
           <Card className="expanded:flex expanded:flex-col expanded:self-stretch">
             <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
               <h2 className="md-title-lg">House writing rules</h2>
-              <Button
-                size="sm"
-                variant="outlined"
-                disabled={writingRules.value === WRITING_RULES}
-                onClick={() => writingRules.replace(WRITING_RULES)}
-              >
-                Restore defaults
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="text" onClick={() => setRulesOpen((was) => !was)}>
+                  {rulesOpen ? "Collapse" : "Expand"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outlined"
+                  disabled={writingRules.value === WRITING_RULES}
+                  onClick={() => writingRules.replace(WRITING_RULES)}
+                >
+                  Restore defaults
+                </Button>
+              </div>
             </div>
             <p className="md-body mb-4 text-on-variant">
               Injected last into every department prompt, so they beat any department
@@ -424,11 +453,17 @@ export default function SettingsPage() {
               aria-label="House writing rules"
               value={writingRules.value}
               onChange={(event) => writingRules.onChange(event.target.value)}
-              // Fills whatever height the departments card next to it sets, with
-              // a floor so it never collapses when there are only a few heads.
-              // rows still governs the single column layout, where nothing is
-              // beside it to match.
-              className="font-mono text-[0.8125rem] expanded:min-h-[21rem] expanded:flex-1"
+              // Closed, it fills whatever height the departments card beside it
+              // sets, with a floor so it never collapses when there are only a
+              // few heads. Open, it is the height of the document and the row
+              // stops matching, which is the point of asking for it.
+              className={cx(
+                "font-mono text-[0.8125rem]",
+                rulesOpen
+                  ? "h-auto min-h-[21rem] resize-none overflow-hidden"
+                  : "expanded:min-h-[21rem] expanded:flex-1",
+              )}
+              ref={rulesRef}
             />
           </Card>
 
