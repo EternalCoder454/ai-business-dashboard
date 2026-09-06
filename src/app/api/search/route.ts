@@ -7,7 +7,7 @@ import { membershipFor } from "@/db/tenancy";
 import { readJson } from "@/lib/guard";
 import { searchBody } from "@/lib/schemas";
 import { withinRate } from "@/lib/rateLimit";
-import { searchTheWeb } from "@/lib/websearch";
+import { searchRankedWeb } from "@/lib/websearch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,8 +74,18 @@ export async function POST(request: Request) {
   const parsed = await readJson(request, searchBody, 4_000);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
 
-  const found = await searchTheWeb(parsed.body.query, key);
+  /*
+   * Ranked results, not an answer.
+   *
+   * The only caller is a head part way through writing one, with its persona
+   * and the house writing rules already loaded. It used to receive Perplexity's
+   * finished prose and paste it in, which put a second model's voice inside a
+   * reply those rules exist to govern, and had the panel pay an agent to write
+   * something it then wrapped. Results are the raw material; the head does the
+   * writing, which is the job it was already doing.
+   */
+  const found = await searchRankedWeb(parsed.body.query, key);
   if (!found.ok) return Response.json({ error: found.error }, { status: 502 });
 
-  return Response.json({ answer: found.answer, sources: found.sources });
+  return Response.json({ results: found.results });
 }

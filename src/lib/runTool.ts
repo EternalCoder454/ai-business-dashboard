@@ -168,8 +168,13 @@ ${excerptOf(found)}`;
     case "web_search": {
       /*
        * Straight to the server, because the Perplexity key lives there and is
-       * never sent to a browser. The answer comes back with its sources so the
-       * head can cite rather than assert.
+       * never sent to a browser.
+       *
+       * Ranked results rather than a written answer. This used to come back as
+       * prose from a second model, which the head then pasted into a reply the
+       * house writing rules were meant to govern, so the voice in the middle of
+       * the answer was not the head's. Results are raw material, and writing
+       * them up is the thing the head is for.
        */
       const response = await fetch("/api/search", {
         method: "POST",
@@ -178,8 +183,7 @@ ${excerptOf(found)}`;
       });
 
       const found = (await response.json().catch(() => null)) as {
-        answer?: string;
-        sources?: { title: string; url: string }[];
+        results?: { title: string; url: string; snippet: string; date?: string }[];
         error?: string;
       } | null;
 
@@ -189,11 +193,22 @@ ${excerptOf(found)}`;
         throw new Error(found?.error ?? "That search could not be run.");
       }
 
-      const sources = (found?.sources ?? [])
-        .map((source) => `- [${source.title}](${source.url})`)
-        .join("\n");
+      const results = found?.results ?? [];
+      if (results.length === 0) throw new Error("That search found nothing.");
 
-      return sources ? `${found?.answer ?? ""}\n\nSources:\n${sources}` : (found?.answer ?? "");
+      /*
+       * Numbered, with the address on its own line under each one. The head is
+       * being asked to cite what it uses, and a link it has to reconstruct out
+       * of the middle of a sentence is a link it gets wrong.
+       */
+      return results
+        .map(
+          (result, index) =>
+            `${index + 1}. ${result.title}${result.date ? ` (${result.date})` : ""}
+${result.url}
+${result.snippet}`,
+        )
+        .join("\n\n");
     }
 
     default:

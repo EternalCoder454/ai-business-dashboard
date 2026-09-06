@@ -259,14 +259,19 @@ export const BUILT_IN_TOOLS: ToolDefinition[] = [
      */
     name: "web_search",
     description:
-      "Look something up on the web and get an answer with sources. " +
-      "Use when the answer depends on something current: a price, a rule, a competitor, " +
-      "anything that changed after you were trained. Do not use it for what you already know. " +
-      "One search per question, and say what you searched for.",
+      "Search the web. Returns ranked results, each with a title, an address and " +
+      "an extract, and no answer: reading them and writing the answer is your job. " +
+      "Use when what you need depends on something current: a price, a rule, a " +
+      "competitor, anything that changed after you were trained. Do not use it for " +
+      "what you already know. One search per question. Say what you searched for, " +
+      "cite the results you actually used, and say so when they disagree.",
     schema: {
       type: "object",
       properties: {
-        query: str("What to look up, as you would type it into a search box."),
+        query: str(
+          "What to look up. Specific beats broad: include the terms, the place and " +
+          "the time frame that matter, as you would type them into a search box.",
+        ),
       },
       required: ["query"],
     },
