@@ -23,6 +23,32 @@ export interface WorkspaceRow {
 const clean = (email: string) => email.trim().toLowerCase();
 
 /**
+ * Which of somebody's memberships counts as the one they are in.
+ *
+ * The chosen one wins while it is still a membership they have, and their
+ * oldest wins when it is not, so somebody removed from the business they were
+ * last in lands somewhere they still belong.
+ *
+ * Exported because two queries need it and only one of them had it. The
+ * branding on the server-rendered shell asked the same question without any
+ * ordering at all, so for anybody in more than one workspace Postgres returned
+ * whichever row came to hand: the HTML went out with another business's name on
+ * it and swapped to the right one when /api/workspace answered a moment later.
+ * Reproduced against production before this was written, where it reliably read
+ * the wrong one of two.
+ *
+ * It stays a spread of order clauses rather than becoming a shared query,
+ * because the callers select different columns and one of them is on the
+ * critical path of the HTML and joins settings in the same trip. What has to
+ * match is the ordering, so that is the part that is shared. Requires the
+ * accounts table to be joined, which is what holds the choice.
+ */
+export const ACTIVE_WORKSPACE_FIRST = [
+  desc(sql`${t.access.workspaceId} = ${t.accounts.activeWorkspaceId}`),
+  asc(t.access.createdAt),
+] as const;
+
+/**
  * Two letters for the badge in the corner, from the business's own name.
  *
  * Initials of the first two words, or the first two letters of a single one.
@@ -53,11 +79,8 @@ export async function membershipFor(email: string): Promise<Membership | null> {
     /*
      * The one they are currently in, out of however many they belong to. The
      * choice lives on their account row and is joined here rather than read
-     * separately, since this runs on nearly every request.
-     *
-     * Ordered so the chosen one wins while it is still a membership they have
-     * and their oldest wins when it is not, so somebody removed from the
-     * business they were last in lands somewhere they still belong.
+     * separately, since this runs on nearly every request. The ordering is
+     * ACTIVE_WORKSPACE_FIRST above.
      */
     const [row] = await db
       .select({
@@ -68,10 +91,7 @@ export async function membershipFor(email: string): Promise<Membership | null> {
       .from(t.access)
       .leftJoin(t.accounts, eq(t.accounts.userEmail, t.access.email))
       .where(and(eq(t.access.email, clean(email)), isNull(t.access.revokedAt)))
-      .orderBy(
-        desc(sql`${t.access.workspaceId} = ${t.accounts.activeWorkspaceId}`),
-        asc(t.access.createdAt),
-      )
+      .orderBy(...ACTIVE_WORKSPACE_FIRST)
       .limit(1);
     if (!row) return null;
     return {

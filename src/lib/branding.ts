@@ -2,7 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { OPERATOR_EMAILS } from "./admin";
-import { membershipFor } from "@/db/tenancy";
+import { ACTIVE_WORKSPACE_FIRST, membershipFor } from "@/db/tenancy";
 
 export interface Branding {
   name: string;
@@ -84,6 +84,13 @@ export async function loadBranding(): Promise<Branding> {
  *
  * Returns null rather than the fallback when there is nothing to say, so the
  * shell can render a placeholder instead of a name that is wrong.
+ *
+ * It has to pick the same membership membershipFor does, and for a while it did
+ * not pick at all: no ordering, LIMIT 1, so for anybody in more than one
+ * business Postgres returned whichever row came to hand. Checked against
+ * production while fixing it, this reliably chose the wrong one of two, which
+ * is why a reload showed another company's name and then corrected itself. It
+ * had traded a flash of "Your Company" for a flash of somebody else's.
  */
 export async function loadViewerBranding(): Promise<Branding | null> {
   if (!databaseEnabled) return null;
@@ -107,7 +114,12 @@ export async function loadViewerBranding(): Promise<Branding | null> {
       })
       .from(t.access)
       .innerJoin(t.settings, eq(t.settings.workspaceId, t.access.workspaceId))
+      // The account row only for its choice of workspace, which is what the
+      // ordering below reads. Left, so somebody who has never chosen still
+      // matches and falls through to their oldest membership.
+      .leftJoin(t.accounts, eq(t.accounts.userEmail, t.access.email))
       .where(and(eq(t.access.email, email), isNull(t.access.revokedAt)))
+      .orderBy(...ACTIVE_WORKSPACE_FIRST)
       .limit(1);
 
     if (!row?.name?.trim()) return null;

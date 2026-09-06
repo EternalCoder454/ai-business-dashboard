@@ -356,6 +356,8 @@ export function Dialog({
 }) {
   const panel = useRef<HTMLDivElement | null>(null);
   const scrim = useRef<HTMLDivElement | null>(null);
+  const lastOpen = useRef({ title, children, footer });
+  if (open) lastOpen.current = { title, children, footer };
 
   useEffect(() => {
     if (!open) return;
@@ -421,6 +423,28 @@ export function Dialog({
 
   if (!render) return null;
 
+  /*
+   * What it looked like when it was open, for as long as it takes to leave.
+   *
+   * Every dialog in the panel is fed by a piece of state that the close handler
+   * clears: setDraft(null), setEditing(null). The children are then written as
+   * `{draft ? <fields/> : null}` and the title as `draft?.id ? "Edit" : "New"`,
+   * so the moment somebody hits Cancel the body empties and the title falls
+   * back to its default. The dialog is deliberately still on screen at that
+   * point, because it is animating out, so what you actually see for a couple
+   * of hundred milliseconds is an empty box titled "New schedule" that nobody
+   * asked for. It was reported on Briefings and it was every dialog with a
+   * draft behind it, which is most of them.
+   *
+   * Fixed here rather than in the callers. The alternative is asking a dozen
+   * screens to keep their draft alive until an animation they know nothing
+   * about has finished, which is both fiddly and the wrong place for it: the
+   * component that chose to outlive its own open prop is the one that owes the
+   * frames. Held in a ref updated during render, which is the ordinary way to
+   * keep a previous value and is safe to run twice.
+   */
+  const shown = open ? { title, children, footer } : lastOpen.current;
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center medium:items-center medium:p-4">
       <div
@@ -435,7 +459,7 @@ export function Dialog({
         ref={panel}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label={shown.title}
         className={cx(
           "safe-bottom relative flex w-full flex-col overflow-hidden",
           "max-h-[92dvh] rounded-t-3xl bg-high shadow-e3",
@@ -447,7 +471,7 @@ export function Dialog({
           <span className="sheet-handle" aria-hidden />
         </div>
         <div className="flex items-center justify-between border-b border-outline-variant px-4 py-3 medium:px-6 medium:py-4">
-          <h2 className="md-title-lg">{title}</h2>
+          <h2 className="md-title-lg">{shown.title}</h2>
           <button
             onClick={onClose}
             aria-label="Close"
@@ -456,10 +480,12 @@ export function Dialog({
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 py-4 medium:px-6 medium:py-5">{children}</div>
-        {footer ? (
+        <div className="flex-1 overflow-y-auto px-4 py-4 medium:px-6 medium:py-5">
+          {shown.children}
+        </div>
+        {shown.footer ? (
           <div className="flex justify-end gap-2 border-t border-outline-variant px-4 py-3 medium:px-6 medium:py-4">
-            {footer}
+            {shown.footer}
           </div>
         ) : null}
       </div>
