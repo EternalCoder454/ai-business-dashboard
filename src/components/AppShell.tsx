@@ -10,8 +10,15 @@ import { useMessages } from "@/lib/messages";
 import { reportLoad, watchForErrors } from "@/lib/telemetryClient";
 import { WorkspaceFavicon } from "./WorkspaceFavicon";
 import { useStore } from "@/lib/store";
+import type { Department } from "@/lib/types";
 import { useKeyboardInset } from "@/lib/viewport";
-import { PRIMARY_LINKS, Sidebar, SidebarContent, isActive } from "./Sidebar";
+import {
+  PRIMARY_LINKS,
+  Sidebar,
+  SidebarContent,
+  WORKSPACE_LINKS,
+  isActive,
+} from "./Sidebar";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { departmentHrefById } from "@/lib/routes";
 import { CompanyMark } from "./CompanyMark";
@@ -298,6 +305,19 @@ function TopAppBar({ title }: { title: string }) {
  * It also stands in for the permanent drawer at large once that is collapsed,
  * so the two states of the sidebar are the drawer and this, rather than a
  * third narrow layout nobody maintains.
+ *
+ * Which is the reason it carries the heads and the reference pages as well as
+ * the work links. It held seven destinations, and the drawer it stands in for
+ * holds those plus every head, plus the library and the system page. So
+ * collapsing the sidebar did not narrow the navigation, it deleted most of it:
+ * the heads, which are what the panel is for, along with the only way to the
+ * library and the information page short of opening the drawer again.
+ *
+ * The heads are avatars with no caption under them. A rail item is normally an
+ * icon over a short label, and that is right for a destination whose name is a
+ * word; a person's name does not shorten to five characters, and now that every
+ * head is drawn in their own colour the disc is the label. The name is still
+ * there for a pointer and for a screen reader.
  */
 function NavigationRail({
   pathname,
@@ -312,15 +332,38 @@ function NavigationRail({
   collapsed: boolean;
   onExpand: () => void;
 }) {
-  const { canOpenPath } = useStore();
+  const { canOpenPath, canOpenHead, allDepartments } = useStore();
+
+  /*
+   * Everybody the drawer would list, in the drawer's order: the heads of the
+   * business first, then anyone's own. Filtered by what this person was given,
+   * because a face you cannot open is worse than no face.
+   */
+  const heads = allDepartments.filter((department) => canOpenHead(department.id));
+  const reference = WORKSPACE_LINKS.filter((link) => canOpenPath(link.href));
+  const activeDepartmentId = departmentIdOf(pathname);
+
   return (
     <nav
       className={cx(
         "safe-left hidden w-20 flex-none flex-col items-center gap-1",
-        // Scrolls, because a phone held sideways is 360px tall and the rail is
-        // taller than that: without this the last destinations are simply
-        // unreachable.
-        "border-r border-outline-variant bg-low py-3 medium:flex overflow-y-auto rail-scroll",
+        /*
+         * The faces give way first, and the rail itself only as a last resort.
+         *
+         * It used to scroll as one column, which was fine while it held seven
+         * destinations and stopped being fine when it held the heads too: eight
+         * discs pushed the library and the system page past the bottom of a
+         * 900px screen, and rail-scroll hides the scrollbar, so they were gone
+         * with nothing to say they were there.
+         *
+         * So the heads take whatever room is left over and scroll inside it,
+         * which on any ordinary window means nothing scrolls at all and every
+         * destination is on screen. The outer scroll stays as the floor: at 640
+         * pixels of height there is no arrangement of eighteen destinations
+         * that fits, and the honest answer there is that the rail scrolls
+         * rather than that something is silently missing from it.
+         */
+        "overflow-y-auto rail-scroll border-r border-outline-variant bg-low py-3 medium:flex",
         collapsed ? "large:flex" : "large:hidden",
       )}
     >
@@ -372,10 +415,94 @@ function NavigationRail({
         <SearchIcon className="h-5 w-5" />
       </button>
 
-      {PRIMARY_LINKS.filter((link) => canOpenPath(link.href)).map((link) => (
-        <RailItem key={link.href} link={link} active={isActive(pathname, link.href)} />
-      ))}
+      <div className="flex w-full flex-none flex-col items-center">
+        {PRIMARY_LINKS.filter((link) => canOpenPath(link.href)).map((link) => (
+          <RailItem key={link.href} link={link} active={isActive(pathname, link.href)} />
+        ))}
+      </div>
+
+      {heads.length > 0 ? (
+        <>
+          <RailRule />
+          {/*
+           * Two across rather than one down.
+           *
+           * A rail item is an icon over a caption and takes about 52px, which
+           * for nine heads is most of a screen. A disc needs neither the
+           * caption nor the width, so they pair up: nine heads become five rows
+           * instead of nine, and the rail goes from 1042px of content to about
+           * 820, which fits the window it is drawn in.
+           */}
+          {/* A floor of one row: flex-1 against a column that is already too
+              tall resolves to zero, and the faces vanished entirely rather
+              than scrolling. */}
+          <div className="rail-scroll min-h-9 flex-1 overflow-y-auto">
+            <div className="grid grid-cols-2 gap-0.5 px-1">
+              {heads.map((head) => (
+                <RailHead
+                  key={head.id}
+                  head={head}
+                  active={activeDepartmentId === head.id}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {reference.length > 0 ? (
+        <>
+          <RailRule />
+          <div className="flex w-full flex-none flex-col items-center">
+            {reference.map((link) => (
+              <RailItem key={link.href} link={link} active={isActive(pathname, link.href)} />
+            ))}
+          </div>
+        </>
+      ) : null}
     </nav>
+  );
+}
+
+/** A hairline between groups, inset so it does not touch the rail's edges. */
+function RailRule() {
+  return <span aria-hidden className="my-1.5 h-px w-8 flex-none bg-outline-variant" />;
+}
+
+/**
+ * A head in the rail: their disc, and nothing else.
+ *
+ * The presence dot is deliberately not here. The rail is 80px of a screen
+ * somebody is working in, and eight status dots down the side of it is a row of
+ * moving lights beside whatever they are reading. The list in the drawer, which
+ * is where you go to choose, keeps it.
+ */
+function RailHead({
+  head,
+  active,
+}: {
+  head: Department;
+  active: boolean;
+}) {
+  const who = head.personaName || head.name;
+  return (
+    <Link
+      href={departmentHrefById(head.id)}
+      onClick={createRipple}
+      title={who}
+      aria-label={who}
+      aria-current={active ? "page" : undefined}
+      className="flex flex-col items-center"
+    >
+      <span
+        className={cx(
+          "md-state grid h-9 w-9 place-items-center rounded-full transition-colors",
+          active ? "bg-secondary-container" : null,
+        )}
+      >
+        <DepartmentAvatar department={head} size={26} />
+      </span>
+    </Link>
   );
 }
 
@@ -405,7 +532,15 @@ function RailItem({
           <NavBadge count={unread} label={`${unread} unread messages`} />
         ) : null}
       </span>
-      <span className={cx("md-label-sm", active ? "text-on-surface" : "text-on-variant")}>
+      {/* rail-caption, so a short window can drop the words and keep the
+          destinations. See globals: the icons stay, and every icon here is one
+          the drawer uses beside the same label. */}
+      <span
+        className={cx(
+          "rail-caption md-label-sm",
+          active ? "text-on-surface" : "text-on-variant",
+        )}
+      >
         {link.short}
       </span>
     </Link>

@@ -701,6 +701,26 @@
   display: none;
 }
 
+/*
+ * The captions go before the destinations do.
+ *
+ * The rail carries eighteen things now: seven work destinations, the heads, and
+ * the two reference pages. On an ordinary window that fits with room to spare.
+ * On a short one something has to give, and a word under an icon is the part
+ * worth losing first: every icon here is the one the drawer draws beside the
+ * same label, the title attribute still names it, and the alternative is
+ * pushing the last destinations off the bottom of a rail whose scrollbar is
+ * deliberately invisible.
+ *
+ * 760px because that is where the full rail stops fitting: measured at 758px of
+ * content, and dropping seven captions takes about 126 off it.
+ */
+@media (max-height: 760px) {
+  .rail-caption {
+    display: none;
+  }
+}
+
 .filter-row > * {
   flex: none;
 }

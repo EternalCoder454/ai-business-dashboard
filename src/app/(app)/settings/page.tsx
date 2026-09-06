@@ -515,8 +515,12 @@ export default function SettingsPage() {
         {draft ? (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
+              {/* id when there is one, which is an edit; a head being created
+                  has none yet, and a colour picked for a draft would change the
+                  moment it was saved under a real id. */}
               <DepartmentAvatar
                 department={{
+                  id: draft.id,
                   name: draft.name ?? "",
                   personaName: draft.personaName ?? "",
                   avatarUrl: draft.avatarUrl,

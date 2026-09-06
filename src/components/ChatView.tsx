@@ -976,6 +976,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         <div className="mx-auto flex max-w-3xl flex-col gap-5">
           {messages.length === 0 && !isStreaming ? (
             <Welcome
+              id={department.id}
               department={department.name}
               personaName={department.personaName}
               roleTitle={department.roleTitle}
@@ -1371,6 +1372,7 @@ function Banner({
 }
 
 function Welcome({
+  id,
   department,
   personaName,
   roleTitle,
@@ -1378,6 +1380,8 @@ function Welcome({
   ready,
   onPick,
 }: {
+  /** The head's id, which is what gives the disc their colour. */
+  id: string;
   department: string;
   personaName: string;
   roleTitle: string;
@@ -1397,7 +1401,7 @@ function Welcome({
     <div ref={entered} className="rounded-3xl border border-outline-variant bg-container/60 px-7 py-9 text-center">
       <div className="mb-3 flex justify-center">
         <DepartmentAvatar
-          department={{ name: department, personaName, avatarUrl }}
+          department={{ id, name: department, personaName, avatarUrl }}
           size={56}
         />
       </div>
