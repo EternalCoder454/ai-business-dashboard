@@ -319,6 +319,17 @@
   line-height: 1.5rem;
   letter-spacing: 0.01em;
 }
+/* The small size without the label treatment.
+   The scale had no small body text, so secondary prose reached for md-label-sm
+   and came out uppercase: right for "3D AGO", wrong for a sentence somebody
+   typed, where the capitals throw away the word shapes that make prose quick to
+   read. Same size as md-label, ordinary weight, no transform. It is not a new
+   size on the scale, which is deliberate. */
+.md-body-sm {
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  letter-spacing: 0.01em;
+}
 .md-label {
   font-size: 0.8125rem;
   line-height: 1.125rem;
@@ -416,11 +427,6 @@
     min-height: 48px;
   }
 
-  /* A filter chip is a control, and a row of them is the most tapped thing on
-     the task board. Only the ones that do something: see the Chip component. */
-  .md-chip-tap {
-    min-height: 44px;
-  }
 }
 
 /*
@@ -466,6 +472,26 @@
      target, with nothing overlapping. */
   .md-chip {
     min-height: 40px;
+  }
+
+  /*
+   * A filter row on a phone does not wrap, so nothing is above it to run into.
+   *
+   * .filter-row only gains flex-wrap at 600px; below that it is one line that
+   * scrolls sideways. So the 40px above, which buys its target back from the
+   * 8px gap between wrapped rows, is buying it from a gap that is not there,
+   * and the row of heads on the task board, the most tapped control on the
+   * screen, came out at 40px against a 44px minimum.
+   *
+   * This has to sit after .md-chip rather than before it. Both are one class,
+   * so they carry the same specificity and the later rule is the one that
+   * wins: written above, it lost silently and every chip was 40 whether it did
+   * anything or not. Only the ones that do something: see the Chip component.
+   */
+  @media (max-width: 599px) {
+    .md-chip-tap {
+      min-height: 44px;
+    }
   }
 
   /* Any input under 16px makes iOS Safari zoom the whole page on focus, which

@@ -164,14 +164,27 @@ export default function TasksPage() {
       <PageHeader
         eyebrow="Work"
         title="Tasks"
+        /* Nothing rather than a space. The blank held the line so the header
+           did not change height when the counts arrived, which cost nothing
+           while the title was above it. With the title gone on a phone it was
+           the only thing in the header, so an empty band sat under the top bar
+           with a lone button in the corner. */
         description={
           ready && open > 0
             ? `${open} open${overdue ? `, ${overdue} overdue` : ""}`
-            : " "
+            : undefined
         }
         actions={
-          <Button icon={<PlusIcon className="h-4 w-4" />} onClick={() => openNew()}>
-            New task
+          /* A plus on a phone. The page is called Tasks and the button is the
+             only one on it, so the word was answering a question nobody could
+             have. Same shape as the one on Meetings. */
+          <Button
+            icon={<PlusIcon className="h-4 w-4" />}
+            aria-label="New task"
+            className="px-2 medium:px-3"
+            onClick={() => openNew()}
+          >
+            <span className="hidden medium:inline">New task</span>
           </Button>
         }
       />
@@ -308,7 +321,13 @@ export default function TasksPage() {
                                   {task.title}
                                 </span>
                                 {task.notes ? (
-                                  <span className="md-label-sm mt-1 block line-clamp-2 text-on-variant/75">
+                                  /* md-body-sm, not md-label-sm: the small
+                                     label class uppercases, which is right for
+                                     "3D AGO" and wrong for a sentence somebody
+                                     typed. Two lines of their own note came
+                                     back shouted, with the word shapes that
+                                     make prose quick to read flattened out. */
+                                  <span className="md-body-sm mt-1 block line-clamp-2 text-on-variant/75">
                                     {task.notes}
                                   </span>
                                 ) : null}

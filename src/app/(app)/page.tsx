@@ -24,30 +24,30 @@ export default function DashboardPage() {
         title={settings.companyName}
         actions={
           /*
-           * One row on a phone rather than two. Both labels plus both icons
-           * are wider than 375px, so on compact the pair splits the full width
-           * and the icons stand down: the words identify the button.
+           * Not on a phone.
            *
-           * They wrap onto separate lines rather than splitting evenly when the
-           * width will not take both. Half of a 320px phone is not enough for
-           * "New conversation", which used to break onto a second line inside
-           * the button while the shorter one beside it stayed on one, so the
-           * pair sat at different heights and read as a mistake. A minimum
-           * width and flex-wrap lets the row decide by what actually fits
-           * rather than by a breakpoint that has to guess.
+           * These are the third way to the same two places. The bottom bar has
+           * Heads, whose sheet opens a head, and Meetings, whose list has "New
+           * meeting" as its first row, so both are one tap away already. In
+           * return they were taking a fifth of an 812px screen above the fold,
+           * and the comment they replaced is a record of how much work it took
+           * to make them fit at all: an icon that hid itself, a minimum width,
+           * and flex-wrap, because half of a 320px phone will not hold "New
+           * conversation" and the pair sat at different heights when it broke.
+           * None of that is needed for a row that is simply not there.
            */
-          <div className="flex w-full flex-wrap gap-2 medium:w-auto medium:flex-nowrap">
+          <div className="hidden gap-2 medium:flex">
             <Button
               variant="outlined"
-              icon={<UsersIcon className="hidden h-4 w-4 medium:block" />}
-              className="min-w-[10rem] flex-1 whitespace-nowrap medium:min-w-0 medium:flex-none"
+              icon={<UsersIcon className="h-4 w-4" />}
+              className="whitespace-nowrap"
               onClick={() => router.push("/meetings")}
             >
               New meeting
             </Button>
             <Button
-              icon={<PlusIcon className="hidden h-4 w-4 medium:block" />}
-              className="min-w-[10rem] flex-1 whitespace-nowrap medium:min-w-0 medium:flex-none"
+              icon={<PlusIcon className="h-4 w-4" />}
+              className="whitespace-nowrap"
               onClick={async () => {
                 const conversation = await createConversation(CEO_ID);
                 router.push(conversationHref(CEO_ID, conversation.id));

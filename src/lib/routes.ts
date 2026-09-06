@@ -30,3 +30,40 @@ export function formatRelativeTime(timestamp: number): string {
     day: "numeric",
   });
 }
+
+/**
+ * What the top app bar calls each screen, and the one place that decides it.
+ *
+ * It lives here rather than in the shell because two things need to agree about
+ * it. The bar shows this string on a phone, and the page's own header shows a
+ * heading right underneath: where the two are the same word, the screen said
+ * "Tasks" and then said "Tasks", and the page header has to be able to tell.
+ */
+export const ROUTE_TITLES: [string, string][] = [
+  ["/orchestrator", "Chief of Staff"],
+  ["/meetings", "Meetings"],
+  ["/inbox", "Inbox"],
+  ["/wiki", "Internal Wiki"],
+  ["/documentation", "Documentation"],
+  ["/tasks", "Tasks"],
+  ["/projects", "Projects"],
+  ["/operator", "Operator"],
+  ["/library/skills", "Skills"],
+  ["/library/deliverables", "Deliverables"],
+  ["/library", "Library"],
+  ["/information", "Information"],
+  ["/profile", "Company Profile"],
+  ["/account", "Account"],
+  ["/settings", "Settings"],
+  ["/", "Dashboard"],
+];
+
+/** Whether a path is inside a destination. Exact for the root, prefix otherwise. */
+export function isRoute(pathname: string, href: string): boolean {
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+}
+
+/** The bar's title for a path, or undefined where the shell falls back. */
+export function routeTitle(pathname: string): string | undefined {
+  return ROUTE_TITLES.find(([href]) => isRoute(pathname, href))?.[1];
+}

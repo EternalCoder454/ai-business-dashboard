@@ -27,6 +27,7 @@ import {
   subscribeConversationOpen,
 } from "@/lib/chatRoute";
 import { BriefcaseIcon, ChevronIcon, CloseIcon, NavBadge, cx } from "./ui";
+import { ROUTE_TITLES } from "@/lib/routes";
 import { createRipple } from "./ui/ripple";
 
 /**
@@ -141,7 +142,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     ROUTE_TITLES.find(([href]) => isActive(pathname, href))?.[1] ??
     (head ? head.personaName || head.name : settings.companyName);
 
-  const edgeSwipe = useEdgeSwipe(() => setDrawerOpen(true));
+  const edgeSwipe = useEdgeSwipe(() => setDrawerOpen(true), navRight);
   useKeyboardInset();
 
 
@@ -199,6 +200,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <HeadsSheet open={headsOpen} onClose={() => setHeadsOpen(false)} />
 
       <ModalDrawer
+        fromRight={navRight}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onOpenSearch={() => {
@@ -211,45 +213,39 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
-const ROUTE_TITLES: [string, string][] = [
-  ["/orchestrator", "Chief of Staff"],
-  ["/meetings", "Meetings"],
-  ["/inbox", "Inbox"],
-  ["/wiki", "Internal Wiki"],
-  ["/documentation", "Documentation"],
-  ["/tasks", "Tasks"],
-  ["/projects", "Projects"],
-  ["/operator", "Operator"],
-  ["/library/skills", "Skills"],
-  ["/library/deliverables", "Deliverables"],
-  ["/library", "Library"],
-  ["/information", "Information"],
-  ["/profile", "Company Profile"],
-  ["/account", "Account"],
-  ["/settings", "Settings"],
-  ["/", "Dashboard"],
-];
 
 /**
- * Dragging in from the left edge opens the drawer, which is the gesture every
+ * Dragging in from the drawer's own edge opens it, which is the gesture every
  * mobile app trains people to expect. Only the first 24px of the screen starts
  * it, so it never fights a horizontal scroller further in.
+ *
+ * Which edge follows the sidebar setting. It used to be the left one whatever
+ * the setting said, which meant somebody who had moved the navigation to the
+ * right still had to reach across the screen to swipe it open, and had to swipe
+ * away from the panel to bring it in.
  */
-function useEdgeSwipe(onOpen: () => void) {
+function useEdgeSwipe(onOpen: () => void, fromRight: boolean) {
   const start = useRef<{ x: number; y: number } | null>(null);
   const fired = useRef(false);
 
-  const onTouchStart = useCallback((event: React.TouchEvent) => {
-    const touch = event.touches[0];
-    fired.current = false;
-    start.current = touch.clientX <= 24 ? { x: touch.clientX, y: touch.clientY } : null;
-  }, []);
+  const onTouchStart = useCallback(
+    (event: React.TouchEvent) => {
+      const touch = event.touches[0];
+      fired.current = false;
+      const atEdge = fromRight
+        ? touch.clientX >= window.innerWidth - 24
+        : touch.clientX <= 24;
+      start.current = atEdge ? { x: touch.clientX, y: touch.clientY } : null;
+    },
+    [fromRight],
+  );
 
   const onTouchMove = useCallback(
     (event: React.TouchEvent) => {
       if (!start.current || fired.current) return;
       const touch = event.touches[0];
-      const dx = touch.clientX - start.current.x;
+      // Inward, whichever edge that is: away from the right, toward the left.
+      const dx = (touch.clientX - start.current.x) * (fromRight ? -1 : 1);
       const dy = Math.abs(touch.clientY - start.current.y);
       // Horizontal intent only, so a diagonal scroll does not open it.
       if (dx > 56 && dy < 40) {
@@ -258,7 +254,7 @@ function useEdgeSwipe(onOpen: () => void) {
         onOpen();
       }
     },
-    [onOpen],
+    [onOpen, fromRight],
   );
 
   const onTouchEnd = useCallback(() => {
@@ -621,10 +617,22 @@ function ModalDrawer({
   open,
   onClose,
   onOpenSearch,
+  fromRight,
 }: {
   open: boolean;
   onClose: () => void;
   onOpenSearch: () => void;
+  /**
+   * Which edge it belongs to.
+   *
+   * Passed in rather than inherited. The shell reverses its row to move the
+   * sidebar and the rail, and that works for both because they are flex items
+   * in it; this one is fixed to the viewport, so a fixed element takes its
+   * position from the viewport and flex-row-reverse above it does nothing at
+   * all. The setting therefore moved the navigation on a desktop and left it on
+   * the left on the one device where which hand you hold it in matters.
+   */
+  fromRight: boolean;
 }) {
   const panel = useRef<HTMLDivElement | null>(null);
   const scrim = useRef<HTMLDivElement | null>(null);
@@ -639,7 +647,7 @@ function ModalDrawer({
    */
   const render = usePresence(open, (phase) => {
     const entering = phase === "enter";
-    const away = "translateX(-100%)";
+    const away = fromRight ? "translateX(100%)" : "translateX(-100%)";
 
     const panelMotion = play(
       panel.current,
@@ -667,9 +675,14 @@ function ModalDrawer({
         aria-modal="true"
         aria-label="Navigation"
         ref={panel}
-        className="safe-top safe-bottom absolute inset-y-0 left-0 flex w-[18.75rem] max-w-[85vw] flex-col bg-low shadow-e3"
+        className={cx(
+          "safe-top safe-bottom absolute inset-y-0 flex w-[18.75rem] max-w-[85vw] flex-col bg-low shadow-e3",
+          fromRight ? "right-0" : "left-0",
+        )}
       >
-        <div className="flex justify-end px-2 pt-2">
+        {/* The close button sits on the inner edge, which is the one a thumb
+            can reach without crossing the panel. */}
+        <div className={cx("flex px-2 pt-2", fromRight ? "justify-start" : "justify-end")}>
           <button
             onClick={onClose}
             aria-label="Close navigation drawer"

@@ -293,7 +293,11 @@ export default function CompanyProfilePage() {
           <div className="large:col-span-2">
             <button
               onClick={() => setShowPreview((value) => !value)}
-              className="md-state md-label flex items-center gap-2 rounded-xl px-3 py-2 text-on-variant"
+              /* md-button-sm rather than bare padding: py-2 around a 18px line
+                 is 34px, which is under the 44px a thumb needs, and this is a
+                 hand written button rather than one from the ui module so it
+                 was missing the rule that grows the others on a touch screen. */
+              className="md-state md-button-sm md-label flex items-center gap-2 rounded-xl px-3 py-2 text-on-variant"
             >
               <ChevronIcon
                 className={cx("h-4 w-4 transition-transform", showPreview && "rotate-90")}
