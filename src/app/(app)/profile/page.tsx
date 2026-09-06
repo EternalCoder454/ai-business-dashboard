@@ -143,10 +143,39 @@ function ProfileEntry({
      * every answer into more lines than the height set for the old width, and
      * the field silently goes back to scrolling. Caught by resizing from 1200
      * to 1920 and finding six of nine had started scrolling again.
+     *
+     * Width only, and that is the whole point rather than an optimisation.
+     * Observing the element and then setting its height inside the callback
+     * resizes the thing being observed, which fires the callback again: a
+     * genuine ResizeObserver loop, and the browser reported it as one from
+     * production within the hour. Height is what this changes and width is what
+     * it needs to react to, so comparing width breaks the cycle at the point
+     * where it would otherwise close.
      */
-    const observer = new ResizeObserver(fit);
+    let lastWidth = el.clientWidth;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      const width = el.clientWidth;
+      if (width === lastWidth) return;
+      lastWidth = width;
+      /*
+       * Deferred to the next frame rather than written here.
+       *
+       * Comparing the width alone was not enough. Setting a height inside the
+       * callback resizes the observed element during delivery, so the browser
+       * has to run another pass and reports "ResizeObserver loop completed with
+       * undelivered notifications" even when the second pass changes nothing.
+       * It was two of those per resize in a real browser. Writing on the next
+       * frame takes the mutation out of delivery entirely.
+       */
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    });
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [value]);
 
   return (
