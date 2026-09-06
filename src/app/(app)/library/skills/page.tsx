@@ -365,7 +365,9 @@ function SkillsView() {
                 setResetting(false);
                 setConfirmReset(false);
                 setNotice(
-                  `${restored} skills restored${removed ? `, ${removed} retired ones removed` : ""}.`,
+                  `${restored} shipped skills restored${
+                    removed ? `, ${removed} retired ones removed` : ""
+                  }. Your own skills were not touched.`,
                 );
               }}
             >
@@ -375,9 +377,9 @@ function SkillsView() {
         }
       >
         <p className="md-body text-on-variant">
-          Every skill the panel ships goes back to the version it ships with,
-          including any you have edited, disabled or deleted. Skills you wrote
-          yourself are not touched.
+          Skills you wrote yourself are left exactly as they are. Only the ones
+          the panel ships are affected: each goes back to the version it ships
+          with, including any you have edited, disabled or deleted.
         </p>
       </Dialog>
 

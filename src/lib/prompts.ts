@@ -92,6 +92,18 @@ export function buildUserContext(account: UserAccount, companyName: string): str
       `You are talking to ${name}${role ? `, the ${role} at ${companyName}` : ""}.`,
     );
     lines.push(`Address them as ${name} where it is natural. Never call them "the user".`);
+    /*
+     * Only when the two actually differ. Somebody whose full name is the name
+     * they go by does not need a rule telling the head to use it, and a line
+     * saying "in documents call them Zach rather than Zach" is a hundred tokens
+     * of confusion on every message.
+     */
+    const full = account.fullName.trim();
+    if (full && full !== name) {
+      lines.push(
+        `Their full name is ${full}. Use it on anything written for somebody else to read, such as a proposal, a quote, a contract or a signature; keep to ${name} when speaking to them.`,
+      );
+    }
   }
 
   if (account.pronouns.trim()) {

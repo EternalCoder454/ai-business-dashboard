@@ -211,6 +211,15 @@ export interface Skill {
 export interface UserAccount {
   /** What the heads call you. Defaults to the Google given name. */
   displayName: string;
+  /**
+   * The name that goes on anything written for somebody else to read.
+   *
+   * Separate from displayName because the two jobs are different: a head
+   * saying "Zach, here is the quote" is right, and a proposal signed "Zach" is
+   * not. Empty means there is no distinction to make and the display name does
+   * both, which is the case for most people.
+   */
+  fullName: string;
   /** Your role at the company, so a head knows who is asking. */
   roleTitle: string;
   /** Optional, and used verbatim so nobody has to guess from a name. */

@@ -52,6 +52,7 @@ export default function AccountPage() {
     const timer = window.setTimeout(async () => {
       await updateAccount({
         displayName: local.displayName,
+        fullName: local.fullName,
         roleTitle: local.roleTitle,
         pronouns: local.pronouns,
         timezone: local.timezone,
@@ -190,6 +191,14 @@ export default function AccountPage() {
                   value={local.displayName}
                   placeholder="The name you go by"
                   onChange={(event) => set({ displayName: event.target.value })}
+                />
+              </Field>
+
+              <Field label="Full name">
+                <TextInput
+                  value={local.fullName}
+                  placeholder="For documents and signatures"
+                  onChange={(event) => set({ fullName: event.target.value })}
                 />
               </Field>
 

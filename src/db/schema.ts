@@ -310,6 +310,7 @@ export const accounts = pgTable("accounts", {
    */
   activeWorkspaceId: text("active_workspace_id"),
   displayName: text("display_name").notNull().default(""),
+  fullName: text("full_name").notNull().default(""),
   roleTitle: text("role_title").notNull().default("Founder"),
   pronouns: text("pronouns").notNull().default(""),
   timezone: text("timezone").notNull().default(""),

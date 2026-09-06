@@ -465,6 +465,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
 
     account: {
       displayName: accountRow[0]?.displayName ?? "",
+      fullName: accountRow[0]?.fullName ?? "",
       roleTitle: accountRow[0]?.roleTitle ?? "Founder",
       pronouns: accountRow[0]?.pronouns ?? "",
       timezone: accountRow[0]?.timezone ?? "",

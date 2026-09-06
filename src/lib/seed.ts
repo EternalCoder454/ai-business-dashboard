@@ -309,6 +309,7 @@ export function seedDepartments(): Department[] {
 
 export const DEFAULT_ACCOUNT: UserAccount = {
   displayName: "",
+  fullName: "",
   roleTitle: "Founder",
   pronouns: "",
   timezone: "",
