@@ -266,6 +266,17 @@ export async function POST(request: NextRequest) {
                 },
               };
             }
+            if (block.type === "tool_use") {
+              return { type: "tool_use", id: block.id, name: block.name, input: block.input };
+            }
+            if (block.type === "tool_result") {
+              return {
+                type: "tool_result",
+                tool_use_id: block.toolUseId,
+                content: block.content,
+                ...(block.isError ? { is_error: true } : {}),
+              };
+            }
             return { type: "text", text: block.text };
           });
 

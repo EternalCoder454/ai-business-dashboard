@@ -35,6 +35,7 @@ import type {
   Attachment,
   Conversation,
   Message,
+  Role,
   TokenUsage,
   ToolCallRecord,
   WireContent,
@@ -79,6 +80,16 @@ interface StreamState {
   text: string;
   thinking: string;
 }
+
+/**
+ * How many times a head may read and think again inside one turn.
+ *
+ * Three is enough for search, read the document it named, answer. Anything
+ * that writes still waits on a card, so what is bounded here is reading, and
+ * the bound exists because a head that reads its way round in circles should
+ * stop with what it has rather than spend the afternoon.
+ */
+const MAX_TOOL_ROUNDS = 3;
 
 const EMPTY_STREAM: StreamState = { text: "", thinking: "" };
 
@@ -168,6 +179,50 @@ async function toWire(message: Message): Promise<string | WireContent[]> {
 
   if (message.content.trim()) blocks.push({ type: "text", text: message.content });
   return blocks;
+}
+
+/**
+ * One stored message as the one or two turns the API needs to see.
+ *
+ * A reply that called a tool is two turns on the wire, not one: the assistant
+ * turn carries the tool_use it asked for, and a user turn behind it carries the
+ * tool_result. Sending only the text was why a head that had just read three
+ * pricing pages went on to say it had no way to read a pricing page. It never
+ * saw what came back; the results went to the screen and stopped there.
+ *
+ * Only settled calls are sent. A pending one is a question still on the table,
+ * and a declined one has no result to report: the model is told nothing rather
+ * than told a lie, and asks again if it still needs the answer.
+ */
+async function toTurns(
+  message: Message,
+): Promise<{ role: Role; content: string | WireContent[] }[]> {
+  const settled = (message.toolCalls ?? []).filter(
+    (call) => call.state === "approved" || call.state === "failed",
+  );
+  if (settled.length === 0) {
+    return [{ role: message.role, content: await toWire(message) }];
+  }
+
+  const assistant: WireContent[] = [];
+  if (message.content.trim()) assistant.push({ type: "text", text: message.content });
+  for (const call of settled) {
+    assistant.push({ type: "tool_use", id: call.id, name: call.name, input: call.input });
+  }
+
+  return [
+    { role: "assistant", content: assistant },
+    {
+      // The API wants results from the user side, whoever actually ran them.
+      role: "user",
+      content: settled.map((call) => ({
+        type: "tool_result" as const,
+        toolUseId: call.id,
+        content: call.result ?? "It returned nothing.",
+        isError: call.state === "failed",
+      })),
+    },
+  ];
 }
 
 /**
@@ -327,6 +382,20 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const stickToBottom = useRef(true);
+  /*
+   * generate, so it can call itself after a read without naming itself in its
+   * own dependency list, which is not a thing a useCallback can do.
+   */
+  const again = useRef<
+    | ((
+        conversation: Conversation,
+        history: Message[],
+        firstExchange: boolean,
+        titleSource: string,
+        depth?: number,
+      ) => Promise<void>)
+    | null
+  >(null);
 
   // Reset transient state when the visible conversation changes.
   useEffect(() => {
@@ -450,6 +519,8 @@ export function ChatView({ departmentId }: { departmentId: string }) {
       history: Message[],
       firstExchange: boolean,
       titleSource: string,
+      /** How many rounds of reading have already happened this turn. */
+      depth = 0,
     ) => {
       if (!department) return;
       stickToBottom.current = true;
@@ -490,9 +561,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             calendarStatus,
             files,
           ),
-          messages: await Promise.all(
-            history.map(async (m) => ({ role: m.role, content: await toWire(m) })),
-          ),
+          messages: (await Promise.all(history.map(toTurns))).flat(),
           // A department pointed at its own model wins; otherwise the
           // workspace default, which is what every department has until one is
           // changed.
@@ -544,7 +613,16 @@ export function ChatView({ departmentId }: { departmentId: string }) {
       const assistantMessage: Message = {
         id: newId("msg"),
         role: "assistant",
-        content: collectedText || failure || "No response was returned.",
+        /*
+         * A turn that only asks for a tool has no text, and that is normal
+         * rather than a failure. It used to read "No response was returned."
+         * above the search it had just started, which is the panel calling its
+         * own working an error in front of the person waiting for it.
+         */
+        content:
+          collectedText ||
+          failure ||
+          (result.toolCalls.length ? "" : "No response was returned."),
         thinking: collectedThinking || undefined,
         timestamp: Date.now(),
         error: !collectedText && Boolean(failure),
@@ -552,9 +630,26 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         // spend can still be attributed to a person and a head months later.
         usage: result.usage,
         model: result.usage ? settings.model : undefined,
-        // Proposed, not run. Each one waits on the card in the transcript.
+        /*
+         * A tool that only reads runs; a tool that writes waits to be approved.
+         *
+         * Everything used to wait, which made the approval card the answer to a
+         * question nobody had asked. Looking something up is not a decision:
+         * being asked to approve a search stops the reply half way through to
+         * confirm that a head may read a web page, and the head then has to be
+         * told to carry on. The tools have said which they are since they were
+         * written, and `writes` was simply never read anywhere.
+         *
+         * A tool nobody has heard of is treated as writing, so a mistake here
+         * is an extra confirmation rather than an unapproved action.
+         */
         toolCalls: result.toolCalls.length
-          ? result.toolCalls.map((call) => ({ ...call, state: "pending" as const }))
+          ? result.toolCalls.map((call) => ({
+              ...call,
+              state: (findTool(call.name)?.writes === false ? "running" : "pending") as
+                | "running"
+                | "pending",
+            }))
           : undefined,
       };
 
@@ -568,6 +663,58 @@ export function ChatView({ departmentId }: { departmentId: string }) {
         ...history,
         { ...assistantMessage, content: finalContent },
       ]);
+
+      /*
+       * The reads, now that the turn is saved.
+       *
+       * After the write rather than before it, so a search that fails or a tab
+       * that closes mid lookup still leaves the reply in the transcript with
+       * the call recorded against it, rather than losing both.
+       */
+      const reads = (assistantMessage.toolCalls ?? []).filter(
+        (call) => call.state === "running",
+      );
+      if (reads.length) {
+        const settled = await Promise.all(
+          reads.map(async (call): Promise<ToolCallRecord> => {
+            try {
+              return { ...call, state: "approved", result: await runTool(call, departmentId, store) };
+            } catch (error) {
+              return {
+                ...call,
+                state: "failed",
+                result: error instanceof Error ? error.message : "It did not run.",
+              };
+            }
+          }),
+        );
+        const byId = new Map(settled.map((call) => [call.id, call]));
+        const withResults: Message = {
+          ...assistantMessage,
+          content: finalContent,
+          toolCalls: assistantMessage.toolCalls?.map((call) => byId.get(call.id) ?? call),
+        };
+        await setMessages(conversation.id, [...history, withResults]);
+
+        /*
+         * Then let it carry on, which is the point of having run them.
+         *
+         * A head that searches and stops has done half a job: the results were
+         * on the screen and the answer underneath them was still written from
+         * memory, because nothing had gone back. It took somebody typing
+         * "summarise what you just searched" to finish a turn the head had
+         * already started, which is not a thing anybody should have to do.
+         *
+         * Recursive rather than a loop, and bounded by depth rather than by
+         * trust. Anything that writes is still waiting on a card, so what can
+         * repeat here is reading, and a head that reads its way round in
+         * circles stops after three rounds with what it has.
+         */
+        if (depth < MAX_TOOL_ROUNDS) {
+          await again.current?.(conversation, [...history, withResults], false, titleSource, depth + 1);
+          return;
+        }
+      }
 
       abortRef.current = null;
       setIsStreaming(false);
@@ -625,6 +772,12 @@ export function ChatView({ departmentId }: { departmentId: string }) {
       admin,
     ],
   );
+
+  /*
+   * Wired after the fact, because generate reads it to continue after a tool
+   * call and a useCallback cannot list itself as its own dependency.
+   */
+  again.current = generate;
 
   const send = useCallback(async () => {
     const text = draft.trim();
@@ -1599,14 +1752,19 @@ function MessageBubble({
   return (
     <div ref={entered} className="group flex flex-col gap-2">
       {message.thinking ? <ThinkingBlock text={message.thinking} /> : null}
-      <div
-        className={cx(
-          "rounded-3xl rounded-bl-lg px-5 py-4 shadow-e1",
-          message.error ? "bg-error-container text-on-error-container" : "bg-container",
-        )}
-      >
-        <Markdown>{message.content}</Markdown>
-      </div>
+      {/* No bubble for a turn that only asked for a tool. An empty rounded box
+          above the search it started is the panel drawing a reply that does not
+          exist; the card underneath is the whole of what happened. */}
+      {message.content.trim() ? (
+        <div
+          className={cx(
+            "rounded-3xl rounded-bl-lg px-5 py-4 shadow-e1",
+            message.error ? "bg-error-container text-on-error-container" : "bg-container",
+          )}
+        >
+          <Markdown>{message.content}</Markdown>
+        </div>
+      ) : null}
 
       {message.toolCalls?.length ? (
         <ul className="mt-2 flex flex-col gap-2">
@@ -1728,6 +1886,50 @@ function ThinkingBlock({ text, defaultOpen = false }: { text: string; defaultOpe
  * proposing a task is a card to dismiss; the same model creating one silently
  * is a record in the workspace nobody asked for.
  */
+/**
+ * What a tool handed back, which is working out rather than an answer.
+ *
+ * md-body-sm and not md-label-sm. The small label class uppercases, which is
+ * right for "ACTION" and very wrong for four thousand characters of search
+ * results: the card came back shouting a wall of text with every word shape
+ * flattened. It was tolerable while web_search returned one short paragraph of
+ * prose and stopped being so the moment it started returning eight results.
+ *
+ * Collapsed, for the same reason. This is the head showing its work, and it
+ * sits above the answer somebody actually asked for. Two lines and a control
+ * keeps the reply on screen; the whole thing is one click away for anybody
+ * checking where a citation came from.
+ */
+function ToolResult({ text, failed }: { text: string; failed: boolean }) {
+  const [open, setOpen] = useState(false);
+  // About two lines. Long enough to recognise what came back, short enough that
+  // the answer underneath is still on the screen.
+  const long = text.length > 220;
+
+  return (
+    <div className="mt-1">
+      <p
+        className={cx(
+          "md-body-sm whitespace-pre-wrap [overflow-wrap:anywhere]",
+          failed ? "text-error" : "text-on-variant",
+          long && !open && "line-clamp-2",
+        )}
+      >
+        {text}
+      </p>
+      {long ? (
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="md-state md-label-sm mt-1 rounded-lg px-1.5 py-0.5 text-primary"
+        >
+          {open ? "Show less" : "Show more"}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function ToolCard({
   call,
   onDecide,
@@ -1739,7 +1941,10 @@ function ToolCard({
   const tool = findTool(call.name);
   const summary = tool ? tool.summarise(call.input) : call.name;
 
+  // Anything not waiting on a person. A read is already on its way, so it gets
+  // the finished layout rather than two buttons it will never use.
   const settled = call.state !== "pending";
+  const reading = call.state === "running";
 
   return (
     <div
@@ -1756,21 +1961,12 @@ function ToolCard({
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="md-label-sm text-on-variant">
-          {settled ? "Action" : "Proposed action"}
+          {reading ? "Looking" : settled ? "Action" : "Proposed action"}
         </span>
         <span className="md-body flex-1">{summary}</span>
       </div>
 
-      {call.result ? (
-        <p
-          className={cx(
-            "md-label-sm mt-1",
-            call.state === "failed" ? "text-error" : "text-on-variant",
-          )}
-        >
-          {call.result}
-        </p>
-      ) : null}
+      {call.result ? <ToolResult text={call.result} failed={call.state === "failed"} /> : null}
 
       {settled ? (
         <p className="md-label-sm mt-1 text-on-variant/75">

@@ -63,7 +63,18 @@ export interface LibraryFile extends Attachment {
 export type WireContent =
   | { type: "text"; text: string }
   | { type: "image"; mediaType: string; data: string }
-  | { type: "document"; mediaType: string; data: string; name: string };
+  | { type: "document"; mediaType: string; data: string; name: string }
+  /*
+   * The two halves of a tool call, going back the other way.
+   *
+   * Without these the loop is one directional: the model asks for a search, the
+   * panel runs it and shows somebody the results, and the model never learns
+   * what came back. Which is exactly how it behaved, and why a head that had
+   * just searched three pricing pages went on to say it had no way to check a
+   * pricing page.
+   */
+  | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
+  | { type: "tool_result"; toolUseId: string; content: string; isError?: boolean };
 
 export type DepartmentStatus = "online" | "busy" | "offline";
 
@@ -99,8 +110,15 @@ export interface ToolCallRecord {
   id: string;
   name: string;
   input: Record<string, unknown>;
-  /** Pending until someone decides, then whichever they chose. */
-  state: "pending" | "approved" | "declined" | "failed";
+  /**
+   * Where the call has got to.
+   *
+   * A tool that writes is "pending" until somebody decides, then whichever they
+   * chose. A tool that only reads is "running" from the moment it is proposed
+   * and settles on its own, because asking permission to read a web page stops
+   * the reply half way through for a question nobody had.
+   */
+  state: "pending" | "running" | "approved" | "declined" | "failed";
   /** What happened, once it has run. */
   result?: string;
 }
