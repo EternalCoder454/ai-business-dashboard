@@ -24,8 +24,8 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
       { src: "/icon", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
-      { name: "Chief of Staff", short_name: "Staff", url: "/ceo" },
-      { name: "Meetings", short_name: "Meetings", url: "/all-hands" },
+      { name: "Chief of Staff", short_name: "Staff", url: "/orchestrator" },
+      { name: "Meetings", short_name: "Meetings", url: "/meetings" },
       { name: "Tasks", short_name: "Tasks", url: "/tasks" },
       { name: "Deliverables", short_name: "Output", url: "/deliverables" },
     ],

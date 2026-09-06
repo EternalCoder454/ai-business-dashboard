@@ -41,7 +41,7 @@ export default function DashboardPage() {
               variant="outlined"
               icon={<UsersIcon className="hidden h-4 w-4 medium:block" />}
               className="min-w-[10rem] flex-1 whitespace-nowrap medium:min-w-0 medium:flex-none"
-              onClick={() => router.push("/all-hands")}
+              onClick={() => router.push("/meetings")}
             >
               New meeting
             </Button>

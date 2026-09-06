@@ -212,14 +212,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 const ROUTE_TITLES: [string, string][] = [
-  ["/ceo", "Chief of Staff"],
-  ["/all-hands", "Meetings"],
-  ["/messages", "Inbox"],
+  ["/orchestrator", "Chief of Staff"],
+  ["/meetings", "Meetings"],
+  ["/inbox", "Inbox"],
   ["/wiki", "Internal Wiki"],
   ["/documentation", "Documentation"],
   ["/tasks", "Tasks"],
   ["/projects", "Projects"],
-  ["/admin", "Operator"],
+  ["/operator", "Operator"],
   ["/library/skills", "Skills"],
   ["/library/deliverables", "Deliverables"],
   ["/library", "Library"],
@@ -405,7 +405,7 @@ function RailItem({
         )}
       >
         {link.icon}
-        {link.href === "/messages" ? (
+        {link.href === "/inbox" ? (
           <NavBadge count={unread} label={`${unread} unread messages`} />
         ) : null}
       </span>
@@ -442,7 +442,7 @@ function BottomBar({
     PRIMARY_LINKS[0],
     ...PRIMARY_LINKS.filter(
       (link) =>
-        (link.href === "/all-hands" || link.href === "/messages") && canOpenPath(link.href),
+        (link.href === "/meetings" || link.href === "/inbox") && canOpenPath(link.href),
     ),
   ];
   return (
@@ -466,7 +466,7 @@ function BottomBar({
               )}
             >
               {link.icon}
-              {link.href === "/messages" ? (
+              {link.href === "/inbox" ? (
                 <NavBadge count={unread} label={`${unread} unread messages`} />
               ) : null}
             </span>
@@ -504,7 +504,7 @@ function BottomBar({
               )}
             >
               {link.icon}
-              {link.href === "/messages" ? (
+              {link.href === "/inbox" ? (
                 <NavBadge count={unread} label={`${unread} unread messages`} />
               ) : null}
             </span>

@@ -74,6 +74,25 @@ const nextConfig = {
       // The wiki was at /onboarding, which described who it was written for
       // rather than what it is, and it is read long after anybody is new.
       { source: "/onboarding", destination: "/wiki", permanent: false },
+
+      /*
+       * The paths now match the words on the screen.
+       *
+       * Five of them did not: you clicked Meetings and landed on /all-hands,
+       * Inbox and landed on /messages, Operator and landed on /admin. The name
+       * in the address bar is part of the product, and a person reading a link
+       * to /all-hands has no idea it is the meetings page.
+       *
+       * Temporary rather than permanent redirects, deliberately. A 308 is
+       * cached by the browser indefinitely and cannot be taken back, which is
+       * an unpleasant thing to be wrong about; these can be promoted later once
+       * the new paths have been live long enough to trust.
+       */
+      { source: "/ceo", destination: "/orchestrator", permanent: false },
+      { source: "/all-hands", destination: "/meetings", permanent: false },
+      { source: "/messages", destination: "/inbox", permanent: false },
+      { source: "/manage", destination: "/people", permanent: false },
+      { source: "/admin", destination: "/operator", permanent: false },
     ];
   },
 

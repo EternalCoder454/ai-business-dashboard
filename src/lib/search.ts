@@ -40,12 +40,12 @@ export interface SearchCorpus {
 }
 
 const PAGES: { title: string; subtitle: string; href: string }[] = [
-  { title: "Inbox", subtitle: "Direct messages with colleagues", href: "/messages" },
+  { title: "Inbox", subtitle: "Direct messages with colleagues", href: "/inbox" },
   { title: "Internal Wiki", subtitle: "How this works and what not to do", href: "/wiki" },
   { title: "Dashboard", subtitle: "The numbers, what is open, and who to ask", href: "/" },
   { title: "Tasks", subtitle: "What is outstanding, by state", href: "/tasks" },
-  { title: "Chief of Staff", subtitle: "Talk to Ruth", href: "/ceo" },
-  { title: "Meetings", subtitle: "Put one question to every head at once", href: "/all-hands" },
+  { title: "Chief of Staff", subtitle: "Talk to Ruth", href: "/orchestrator" },
+  { title: "Meetings", subtitle: "Put one question to every head at once", href: "/meetings" },
   { title: "Projects", subtitle: "Work grouped across departments", href: "/projects" },
   { title: "Library", subtitle: "Files, deliverables, and skills", href: "/library" },
   { title: "Skills", subtitle: "SKILL.md playbooks", href: "/library/skills" },
@@ -214,7 +214,7 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
           run.rounds.length === 1 ? "question" : "questions"
         }`,
         snippet,
-        href: "/all-hands",
+        href: "/meetings",
         score,
       });
     }

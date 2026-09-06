@@ -20,7 +20,7 @@ import { CEO_ID } from "./seed";
 
 /** The department a path is showing, or undefined when it is not one. */
 export function departmentIdOf(pathname: string): string | undefined {
-  if (pathname === "/ceo") return CEO_ID;
+  if (pathname === "/orchestrator") return CEO_ID;
   if (!pathname.startsWith("/dept/")) return undefined;
   const id = pathname.slice("/dept/".length).split("/")[0];
   return id ? decodeURIComponent(id) : undefined;

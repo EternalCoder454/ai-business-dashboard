@@ -75,12 +75,12 @@ export function Setup() {
       {
         title: "Your heads",
         body: "Pick one from the sidebar and ask. Each keeps its own conversations.",
-        href: "/ceo",
+        href: "/orchestrator",
       },
       {
         title: "Meetings",
         body: `One question to the whole room, every head answering from its own corner, and ${who} reading across the lot. For decisions that touch more than one area.`,
-        href: "/all-hands",
+        href: "/meetings",
       },
       {
         title: "The Library",

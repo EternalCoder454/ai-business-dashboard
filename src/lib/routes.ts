@@ -3,11 +3,11 @@ import type { Department } from "./types";
 
 /** Chat route for a department. The CEO has its own top-level page. */
 export function departmentHref(department: Pick<Department, "id" | "isCeo">): string {
-  return department.isCeo || department.id === CEO_ID ? "/ceo" : `/dept/${department.id}`;
+  return department.isCeo || department.id === CEO_ID ? "/orchestrator" : `/dept/${department.id}`;
 }
 
 export function departmentHrefById(id: string): string {
-  return id === CEO_ID ? "/ceo" : `/dept/${id}`;
+  return id === CEO_ID ? "/orchestrator" : `/dept/${id}`;
 }
 
 /** Chat route pointing at one specific conversation. */

@@ -63,19 +63,19 @@ export const WORK_LINKS: NavLink[] = [
     icon: <DashboardIcon className="h-5 w-5" />,
   },
   {
-    href: "/ceo",
+    href: "/orchestrator",
     label: "Chief of Staff",
     short: "Staff",
     icon: <BriefcaseIcon className="h-5 w-5" />,
   },
   {
-    href: "/all-hands",
+    href: "/meetings",
     label: "Meetings",
     short: "Meetings",
     icon: <UsersIcon className="h-5 w-5" />,
   },
   {
-    href: "/messages",
+    href: "/inbox",
     label: "Inbox",
     short: "Inbox",
     icon: <MailIcon className="h-5 w-5" />,
@@ -166,7 +166,7 @@ export const SETUP_LINKS: NavLink[] = [
  * screen that reads across every workspace on the deployment.
  */
 const OPERATOR_LINK: NavLink = {
-  href: "/admin",
+  href: "/operator",
   label: "Operator",
   short: "Operator",
   icon: <ShieldIcon className="h-5 w-5" />,
@@ -273,7 +273,7 @@ export function SidebarContent({
 
   const activeDepartmentId = pathname.startsWith("/dept/")
     ? decodeURIComponent(pathname.slice("/dept/".length).split("/")[0])
-    : pathname === "/ceo"
+    : pathname === "/orchestrator"
       ? CEO_ID
       : undefined;
 
@@ -400,7 +400,7 @@ export function SidebarContent({
                     >
                       <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
                         {link.icon}
-                        {link.href === "/messages" ? (
+                        {link.href === "/inbox" ? (
                           <NavBadge count={unread} label={`${unread} unread messages`} />
                         ) : null}
                       </span>

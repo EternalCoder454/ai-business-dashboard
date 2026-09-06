@@ -229,7 +229,7 @@ export function Dashboard() {
         <PaneList
           title="Recent conversations"
           icon={<ChevronIcon className="h-3.5 w-3.5" />}
-          href="/ceo"
+          href="/orchestrator"
           empty="No conversations."
           items={conversations
             .filter((c) => c.messageCount > 0)
@@ -247,11 +247,11 @@ export function Dashboard() {
         <PaneList
           title="Meetings"
           icon={<UsersIcon className="h-3.5 w-3.5" />}
-          href="/all-hands"
+          href="/meetings"
           empty="No threads."
           items={allHandsRuns.slice(0, 3).map((run) => ({
             key: run.id,
-            href: "/all-hands",
+            href: "/meetings",
             primary: run.title,
             secondary: `${run.rounds.length} ${
               run.rounds.length === 1 ? "question" : "questions"

@@ -50,8 +50,8 @@ const AREA_KEYS = new Set<string>(AREAS.map((area) => area.key));
 
 /** Which screen belongs to which area, for filtering the navigation. */
 export const AREA_HREF: Partial<Record<Area, string>> = {
-  meetings: "/all-hands",
-  messages: "/messages",
+  meetings: "/meetings",
+  messages: "/inbox",
   briefings: "/briefings",
   tasks: "/tasks",
   projects: "/projects",

@@ -59,7 +59,7 @@ const LINKS = [
  * with separate rules about whose data they can touch.
  */
 const ADMIN = {
-  href: "/manage",
+  href: "/people",
   label: "Your people",
   icon: <UsersIcon className="h-4 w-4" />,
 };
@@ -417,7 +417,7 @@ export function ProfileMenu() {
 }
 
 const OPERATOR = {
-  href: "/admin",
+  href: "/operator",
   label: "Operator",
   icon: <ShieldIcon className="h-4 w-4" />,
 };

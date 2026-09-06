@@ -62,7 +62,7 @@ function main() {
   check("is not treated as an administrator", !allowsArea(null, NO_CALENDAR, "calendar"));
 
   console.log("\npaths");
-  check("the inbox follows the messages area", !allowsHref("member", { denied: ["messages"] }, "/messages"));
+  check("the inbox follows the messages area", !allowsHref("member", { denied: ["messages"] }, "/inbox"));
   check("the dashboard belongs to no area", allowsHref("member", { denied: ["messages"] }, "/"));
   check("the account page belongs to no area", allowsHref("member", { denied: ["messages"] }, "/account"));
 
