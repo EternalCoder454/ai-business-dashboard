@@ -2,8 +2,10 @@ import { buildLibraryBlock } from "./library";
 import { buildMemoryBlock } from "./memory";
 import { COMPANY_ID, SHARED_OPERATING_RULES, WRITING_RULES } from "./seed";
 import { buildSkillsBlock } from "./skills";
+import { buildDeliverablesBlock } from "./deliverables";
 import type {
   CompanyProfile,
+  Deliverable,
   Department,
   LibraryFile,
   MemoryEntry,
@@ -338,6 +340,11 @@ export function buildSystemPrompt(
    * a test measuring the tasks block, gets the same prompt it got before.
    */
   files: LibraryFile[] = [],
+  /*
+   * Last again, and for the reason above: every caller passes positionally, and
+   * one measuring the tasks block should not have to know this exists.
+   */
+  deliverables: Deliverable[] = [],
 ): { stable: string; volatile: string } {
   const context = buildCompanyContext(profile, companyName);
 
@@ -379,6 +386,13 @@ export function buildSystemPrompt(
      * scanned return on every message that had nothing to do with it.
      */
     buildLibraryBlock(files, department.id),
+    /*
+     * Titles and dates, not bodies, for exactly the reason the Library block
+     * gives. It changes when this head saves or revises something, which is
+     * rarer than a task being filed, so it belongs above the breakpoint with
+     * the rest of what a head knows about itself rather than below it.
+     */
+    buildDeliverablesBlock(deliverables, department.id),
     account ? buildUserContext(account, companyName) : "",
     buildToolsBlock(tools),
     SHARED_OPERATING_RULES,

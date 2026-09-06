@@ -80,6 +80,10 @@ console.log("the registry is well formed");
     // Reads a document this business owns and already showed this head the
     // title of. Nothing leaves the panel and nothing is written.
     read_document: "reads the Library, changes nothing",
+    // Reads back work this head produced itself, so it can revise the whole
+    // document rather than rewrite it from memory. update_deliverable, which is
+    // the half that overwrites, is deliberately not here.
+    read_deliverable: "reads its own output, changes nothing",
   };
 
   const readOnly = BUILT_IN_TOOLS.filter((t) => !t.writes);

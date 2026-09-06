@@ -1,6 +1,7 @@
 "use client";
 
 import { excerptOf, findDocument, libraryFor } from "./library";
+import { deliverablesFor, excerptOfDeliverable, findDeliverable } from "./deliverables";
 import { findTool, parseDay, resolveScope } from "./tools";
 import type { StoreValue } from "./store";
 import type { ProposedToolCall } from "./types";
@@ -72,6 +73,48 @@ export async function runTool(
         departmentId,
       });
       return `Saved “${deliverable.title}”.`;
+    }
+
+    case "read_deliverable": {
+      const wanted = text("title");
+      const found = findDeliverable(store.deliverables, departmentId, wanted);
+      if (!found) {
+        const available = deliverablesFor(store.deliverables, departmentId)
+          .slice(0, 20)
+          .map((item) => item.title);
+        // Thrown so the model treats it as a failed call and picks a real
+        // title, rather than revising something it invented.
+        throw new Error(
+          available.length
+            ? `Nothing called "${wanted}". You have: ${available.join(", ")}.`
+            : `You have not produced anything yet.`,
+        );
+      }
+
+      // The snapshot carries an opening, not the whole thing, so this fetches.
+      // Revising from a preview would silently truncate the document.
+      const body = await store.openDeliverable(found.id);
+      return `${found.title}
+
+${excerptOfDeliverable(body)}`;
+    }
+
+    case "update_deliverable": {
+      const wanted = text("title");
+      const found = findDeliverable(store.deliverables, departmentId, wanted);
+      if (!found) {
+        throw new Error(
+          `Nothing called "${wanted}" to update. Save it as new work, or use the exact title.`,
+        );
+      }
+
+      const body = text("body");
+      // An update that empties a document is a mistake rather than an edit, and
+      // there is no earlier version to put back.
+      if (!body.trim()) throw new Error("An update needs the whole document, not an empty one.");
+
+      await store.updateDeliverable(found.id, { body, bodyLoaded: true });
+      return `Updated “${found.title}”.`;
     }
 
     case "create_project": {

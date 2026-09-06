@@ -25,6 +25,7 @@ import { runTool } from "@/lib/runTool";
 import { findTool, searchModeFor, toolsFor } from "@/lib/tools";
 import { COMPANY_ID } from "@/lib/seed";
 import { libraryFor } from "@/lib/library";
+import { deliverablesFor } from "@/lib/deliverables";
 import { buildSystemPrompt, deriveConversationTitle, hasProfileContent } from "@/lib/prompts";
 import { conversationHref, departmentHrefById } from "@/lib/routes";
 import { STATUS_MEANING, setDepartmentActivity, useDepartmentStatus } from "@/lib/presence";
@@ -267,6 +268,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     createDeliverable,
     saveMemory,
     files,
+    deliverables,
     projects,
     serverKeys,
     workspaceKeys,
@@ -555,11 +557,13 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             toolsFor(departmentId, {
               admin,
               webSearch: searchMode,
+              deliverables: deliverablesFor(deliverables, departmentId).length,
               documents: libraryFor(files, departmentId).length,
             }),
             calendar,
             calendarStatus,
             files,
+            deliverables,
           ),
           messages: (await Promise.all(history.map(toTurns))).flat(),
           // A department pointed at its own model wins; otherwise the
@@ -569,7 +573,12 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           provider: providerOf(department.model || settings.model),
           effort: settings.effort,
           // Only this department's, so nothing can act outside its own area.
-          tools: toolsFor(departmentId, { admin, webSearch: searchMode }).map((tool) => ({
+          tools: toolsFor(departmentId, {
+            admin,
+            webSearch: searchMode,
+            documents: libraryFor(files, departmentId).length,
+            deliverables: deliverablesFor(deliverables, departmentId).length,
+          }).map((tool) => ({
             name: tool.name,
             description: tool.description,
             schema: tool.schema,

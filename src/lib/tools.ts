@@ -64,6 +64,8 @@ export interface ToolDefinition {
    * tool was offered.
    */
   libraryOnly?: boolean;
+  /** Offered only where this head has produced something to revise. */
+  deliverablesOnly?: boolean;
   /** Shown on the confirmation card, in the person's words rather than JSON. */
   summarise: (input: Record<string, unknown>) => string;
 }
@@ -130,7 +132,10 @@ export const BUILT_IN_TOOLS: ToolDefinition[] = [
   {
     name: "save_deliverable",
     description:
-      "Save a piece of work you have produced so it can be found later. Use for something finished and worth keeping, not for an explanation.",
+      "Save a new piece of work you have produced so it can be found later. Use for " +
+      "something finished and worth keeping, not for an explanation. If a version of " +
+      "this already exists under YOUR DELIVERABLES, use update_deliverable instead: a " +
+      "second copy with no way to tell which is current is worse than no copy.",
     schema: {
       type: "object",
       properties: {
@@ -309,6 +314,49 @@ export const BUILT_IN_TOOLS: ToolDefinition[] = [
     libraryOnly: true,
     summarise: (input) => `Read “${input.title}”`,
   },
+  {
+    name: "read_deliverable",
+    description:
+      "Read back something you produced earlier, in full. Do this before revising one, " +
+      "so the update is the whole corrected document rather than a rewrite from memory. " +
+      "The titles you can read are listed under YOUR DELIVERABLES.",
+    schema: {
+      type: "object",
+      properties: {
+        title: str("The title, exactly as it appears in YOUR DELIVERABLES."),
+      },
+      required: ["title"],
+    },
+    // Reading back your own work. Nothing leaves the panel and nothing changes.
+    writes: false,
+    deliverablesOnly: true,
+    summarise: (input) => `Read “${input.title}”`,
+  },
+  {
+    name: "update_deliverable",
+    description:
+      "Replace something you produced earlier with a corrected version. Use whenever a " +
+      "change is asked for to work that already exists, rather than saving another copy. " +
+      "Read it first, and send the whole document: this replaces the body entirely, so " +
+      "anything you leave out is deleted.",
+    schema: {
+      type: "object",
+      properties: {
+        title: str("The title of the one to replace, as it appears in YOUR DELIVERABLES."),
+        body: str("The complete revised document, in markdown. Not a fragment or a diff."),
+      },
+      required: ["title", "body"],
+    },
+    /*
+     * Waits to be approved, unlike the read beside it. This overwrites a
+     * document somebody may be about to send a client, and the old version is
+     * not kept anywhere: the card is the only thing between a misread
+     * instruction and work that no longer exists.
+     */
+    writes: true,
+    deliverablesOnly: true,
+    summarise: (input) => `Rewrite deliverable “${input.title}”`,
+  },
 ];
 
 /**
@@ -369,7 +417,12 @@ export function searchModeFor(
 
 export function toolsFor(
   departmentId: string,
-  options: { admin?: boolean; webSearch?: string; documents?: number } = {},
+  options: {
+    admin?: boolean;
+    webSearch?: string;
+    documents?: number;
+    deliverables?: number;
+  } = {},
 ): ToolDefinition[] {
   return allTools().filter((tool) => {
     if (tool.adminOnly && !options.admin) return false;
@@ -377,6 +430,9 @@ export function toolsFor(
     // Offered only when there is something to read. A head told it can read
     // documents, in a business with none, will offer to go and read one.
     if (tool.libraryOnly && !options.documents) return false;
+    // Same reasoning: a head told it can revise its work, in a department that
+    // has produced none, will offer to go and revise something.
+    if (tool.deliverablesOnly && !options.deliverables) return false;
     return !tool.departments?.length || tool.departments.includes(departmentId);
   });
 }
