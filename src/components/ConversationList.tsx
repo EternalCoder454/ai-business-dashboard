@@ -25,10 +25,24 @@ export function ConversationList({
   department,
   conversations,
   onDelete,
+  compact = false,
+  activeId,
 }: {
   department: Department;
   conversations: Conversation[];
   onDelete: (id: string) => void;
+  /**
+   * Rendered as a column beside a conversation from large up.
+   *
+   * Expressed as breakpoint variants rather than a second render, because below
+   * large this same list is still the whole screen and needs its header, its
+   * account menu and its reading column. From large it is a 320px pane next to
+   * a conversation that already carries all three, so they go away and the rows
+   * take the full width: at 320px there is none to give to a measure.
+   */
+  compact?: boolean;
+  /** The conversation showing next to it, so the row can say which. */
+  activeId?: string;
 }) {
   const who = department.personaName || department.name;
   const [profileOpen, setProfileOpen] = useState(false);
@@ -48,6 +62,7 @@ export function ConversationList({
         className={cx(
           "flex flex-none items-center gap-3 border-b border-outline-variant",
           "px-4 py-4 medium:px-6",
+          compact && "large:hidden",
         )}
       >
         {/* Same as in a conversation: the picture is the way to who they are. */}
@@ -91,7 +106,12 @@ export function ConversationList({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 py-5">
+      <div
+        className={cx(
+          "min-h-0 flex-1 overflow-y-auto px-4 py-5 medium:px-6",
+          compact && "large:px-2 large:py-3",
+        )}
+      >
         {/*
          * A narrow column rather than the full width. These are one-line
          * titles, and stretched across a wide screen the date ended up a hand's
@@ -100,7 +120,7 @@ export function ConversationList({
          * measure-rows rather than measure-read: same width, but flush with the
          * header above instead of centred under it.
          */}
-        <ul className="measure-rows flex flex-col gap-1.5">
+        <ul className={cx("measure-rows flex flex-col gap-1.5", compact && "large:max-w-none")}>
           {/*
            * Starting a new one is the first row, not a button in the corner.
            * It is the most common thing anybody does here and it wants to be
@@ -132,8 +152,13 @@ export function ConversationList({
             <li
               key={conversation.id}
               className={cx(
-                "group relative flex items-center gap-3 rounded-xl bg-container",
-                "px-4 py-3 transition-colors hover:bg-high",
+                "group relative flex items-center gap-3 rounded-xl px-4 py-3 transition-colors",
+                compact && "large:px-3 large:py-2.5",
+                // Which one is on screen beside the list. Only meaningful once
+                // the two are visible together, which is why it is a variant.
+                conversation.id === activeId
+                  ? "large:bg-primary-container large:text-on-primary-container bg-container"
+                  : "bg-container hover:bg-high",
               )}
             >
               <div className="min-w-0 flex-1">

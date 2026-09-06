@@ -683,15 +683,12 @@ export function ChatView({ departmentId }: { departmentId: string }) {
    * After the not-found branch, so a bad department id still says so, and
    * before anything that assumes a conversation, because there is not one.
    */
-  if (showList) {
-    return (
-      <ConversationList
-        department={department}
-        conversations={started}
-        onDelete={(id) => void deleteConversation(id)}
-      />
-    );
-  }
+  /*
+   * No early return for the list any more. Both panes are rendered and the
+   * breakpoint decides which is visible, so from large the list and the
+   * conversation are on screen together and picking another thread is a click
+   * rather than a trip back through a separate screen.
+   */
 
   // A key on the server answers just as well as one typed into Settings,
   // so testing only the local one told a hosted workspace it had none.
@@ -705,8 +702,51 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   });
   const profileMissing = !hasProfileContent(profile);
 
+  /*
+   * The conversation list stays on screen beside the conversation.
+   *
+   * A department used to be two screens: a list, and one thread with a back
+   * arrow. Reading a second thread meant going back and picking again, and on a
+   * wide monitor the thread sat in the middle of an otherwise empty page while
+   * the history it belonged to was somewhere else entirely.
+   *
+   * The split starts at large rather than expanded. At expanded the rail plus a
+   * 320px list would leave about 440px for the conversation, which is narrower
+   * than the thread deserves; by large there is a permanent drawer and room for
+   * both. Below that nothing changes: it is still a list, then a thread, with
+   * the back arrow the shell already provides.
+   */
+  const listPane =
+    started.length > 0 ? (
+      <div
+        className={cx(
+          "min-h-0 min-w-0 flex-1 flex-col",
+          "large:flex large:w-80 large:flex-none large:border-r large:border-outline-variant",
+          showList ? "flex" : "hidden",
+        )}
+      >
+        <ConversationList
+          compact
+          activeId={active?.id}
+          department={department}
+          conversations={started}
+          onDelete={(id) => void deleteConversation(id)}
+        />
+      </div>
+    ) : null;
+
+
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0">
+      {listPane}
+
+      <div
+        className={cx(
+          "flex h-full min-h-0 min-w-0 flex-1 flex-col",
+          // On a narrow window the list is the screen, so the thread waits.
+          showList && "hidden large:flex",
+        )}
+      >
       <header className="safe-top safe-pt-3 medium:safe-pt-4 safe-x safe-px-3 medium:safe-px-6 flex flex-none items-center gap-3 border-b border-outline-variant pb-3 medium:gap-4 medium:pb-4">
         <button
           onClick={() => {
@@ -1193,6 +1233,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             }}
           />
         </div>
+      </div>
       </div>
     </div>
   );
