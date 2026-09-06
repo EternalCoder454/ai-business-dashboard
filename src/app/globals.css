@@ -522,11 +522,39 @@
  * other page. A reading column still centres, because there the text is the
  * whole page rather than one band inside it.
  */
+/*
+ * The caps grow with the window rather than stopping dead.
+ *
+ * They were single fixed values, which on a 1920 screen left a third of the
+ * content area empty on .measure and over half on .measure-read, with every
+ * header and tab strip above still running the full width. A band of content
+ * ending in the middle of the page reads as a broken layout, and it was one.
+ *
+ * Prose does not widen with them: the 68ch cap above still holds each paragraph
+ * to a readable line, so what grows is the number of cards that fit across.
+ */
 .measure {
   width: 100%;
   max-width: 64rem;
 }
 
+@media (min-width: 1200px) {
+  .measure {
+    max-width: 76rem;
+  }
+}
+
+@media (min-width: 1600px) {
+  .measure {
+    max-width: 92rem;
+  }
+}
+
+/*
+ * The reading column, and the one that should NOT chase the window. Line length
+ * is the point of it. If a page using this looks empty, the page is a list or a
+ * form and wants .measure instead.
+ */
 .measure-read {
   width: 100%;
   max-width: 44rem;
@@ -538,6 +566,18 @@
 .measure-wide {
   width: 100%;
   max-width: 76rem;
+}
+
+@media (min-width: 1200px) {
+  .measure-wide {
+    max-width: 92rem;
+  }
+}
+
+@media (min-width: 1600px) {
+  .measure-wide {
+    max-width: 108rem;
+  }
 }
 
 /*
@@ -794,6 +834,21 @@
 /*
  * Markdown rendered inside chat bubbles and deliverables
  */
+
+/*
+ * Markdown prose caps its own line, wherever it is rendered.
+ *
+ * The container caps grew so pages would stop ending halfway across a wide
+ * screen. That moved the problem rather than solving it: markdown paragraphs
+ * carry no class, so the 68ch rule above missed them and the changelog was
+ * measured at 1,502px lines, roughly 180 characters. Too wide is as unreadable
+ * as too narrow, and this is the guard that holds for every markdown surface at
+ * once: chat, wiki, documentation and changelog.
+ */
+.prose-md3 p,
+.prose-md3 li {
+  max-width: 68ch;
+}
 
 .prose-md3 {
   font-size: 0.9375rem;

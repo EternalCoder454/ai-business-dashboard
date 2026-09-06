@@ -497,6 +497,24 @@ export function SidebarContent({
      */
         }}
       />
+
+      {/*
+        A maker's mark, not a banner. It sits outside the scrolling nav so it is
+        always at the foot of the drawer, and at 40% it reads as a signature
+        rather than as another row somebody has to look past. The rail does not
+        get one: it is icons wide, and there is nowhere for this to go that is
+        not in the way.
+
+        The year is computed rather than written down so it does not quietly go
+        stale. suppressHydrationWarning covers the one second a year where a
+        server rendered in the old year could meet a browser loading in the new.
+      */}
+      <p
+        suppressHydrationWarning
+        className="md-label-sm flex-none px-5 pb-4 pt-1 text-on-variant/40"
+      >
+        &copy; {new Date().getFullYear()} Eterneon
+      </p>
     </>
   );
 }

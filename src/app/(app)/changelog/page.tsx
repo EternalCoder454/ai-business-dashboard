@@ -60,10 +60,24 @@ export default function ChangelogPage() {
       <div className="min-h-0 flex-1 overflow-y-auto page-x py-6">
         <ol className="measure flex flex-col gap-7">
           {days.map(([date, forDay]) => (
-            <li key={date}>
-              <h2 className="md-title mb-3">{longDate(date)}</h2>
+            /*
+             * The date becomes a rail on a wide window rather than a heading
+             * above. Prose cannot widen past a readable line, so the way to use
+             * a 1600px screen is to put something in the space beside it rather
+             * than to stretch the text into it.
+             */
+            <li key={date} className="large:grid large:grid-cols-[10rem_minmax(0,1fr)] large:gap-8">
+              <h2 className="md-title mb-3 large:sticky large:top-0 large:mb-0 large:self-start large:py-1 large:text-on-variant">
+                {longDate(date)}
+              </h2>
 
-              <ul className="flex flex-col gap-3">
+              {/*
+                Two columns once there is room for two readable ones. Prose
+                cannot stretch, so a single column on a 1600px screen leaves
+                half of every card empty; a second column puts an entry there
+                instead. A day with one release simply occupies one column.
+              */}
+              <ul className="flex flex-col gap-3 xlarge:grid xlarge:grid-cols-2 xlarge:items-start">
                 {forDay.map((entry) => (
                   <li key={entry.id}>
                     <Entry entry={entry} view={view} isNew={newerThan(entry, seen)} />

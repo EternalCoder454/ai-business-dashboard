@@ -22,10 +22,26 @@ function check(label: string, condition: boolean, detail = "") {
   if (!condition) failures += 1;
 }
 
-const at = (hours: number) => Date.now() + hours * 3_600_000;
+/*
+ * Anchored to midday on a calendar day, not offset from the current clock.
+ *
+ * This was `Date.now() + hours`, which made "two hours from now" land on today
+ * for twenty two hours a day and on tomorrow for the other two. The suite
+ * therefore failed every night between roughly ten and midnight and passed
+ * again by morning, which is the worst kind of failing test: it looks like a
+ * real regression and disappears before anybody investigates. dayName compares
+ * calendar midnights, so the fixture has to name a day rather than a distance.
+ */
+const middayIn = (days: number) => {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  return d.getTime() + days * 86_400_000;
+};
+const HOUR = 3_600_000;
+
 const events: PromptCalendarEvent[] = [
-  { title: "Board review", start: at(2), end: at(3), allDay: false },
-  { title: "Supplier call", start: at(26), end: at(27), allDay: false },
+  { title: "Board review", start: middayIn(0), end: middayIn(0) + HOUR, allDay: false },
+  { title: "Supplier call", start: middayIn(1), end: middayIn(1) + HOUR, allDay: false },
 ];
 
 console.log("nobody has connected one");
@@ -66,7 +82,7 @@ check("no two are the same text", new Set(all).size === 4);
 
 console.log("\nnothing but titles and times leaves the calendar");
 const withGuests: PromptCalendarEvent[] = [
-  { title: "Standup", start: at(1), end: at(2), allDay: false },
+  { title: "Standup", start: middayIn(0), end: middayIn(0) + HOUR, allDay: false },
 ];
 const block = buildCalendarBlock(withGuests, "connected");
 // The type carries no guest list, description or link, so there is nothing to
