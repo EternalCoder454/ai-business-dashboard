@@ -47,6 +47,8 @@ import {
   ChevronIcon,
   CloseIcon,
   CopyIcon,
+  EditIcon,
+  RefreshIcon,
   Chip,
   Dialog,
   DocIcon,
@@ -417,6 +419,197 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     [pending.length],
   );
 
+  /**
+   * Ask the head, given a history that already ends with the question.
+   *
+   * Split out of `send` so the three things that need it can share it: a new
+   * message, a redo of the last answer, and an edited question re-asked. They
+   * differ only in how the history is built, and duplicating a hundred lines of
+   * streaming, tool handling and error recovery three times over is how the
+   * three quietly stop behaving the same.
+   */
+  const generate = useCallback(
+    async (
+      conversation: Conversation,
+      history: Message[],
+      firstExchange: boolean,
+      titleSource: string,
+    ) => {
+      if (!department) return;
+      stickToBottom.current = true;
+      setStream(EMPTY_STREAM);
+      setIsStreaming(true);
+      setDepartmentActivity(departmentId, "busy");
+
+      await setMessages(conversation.id, history);
+      // The count, not what is loaded: a thread that has messages but has not
+      // been fetched yet is not a new one, and renaming it here would rename
+      // somebody's conversation out from under them.
+      if (firstExchange) {
+        await updateConversation(conversation.id, { title: deriveConversationTitle(titleSource) });
+      }
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      // Filled by onSources below, once the answer is finished.
+      let sources: { title: string; url: string }[] = [];
+      const result = await streamChat(
+        {
+          ...splitPrompt(
+            department,
+            profile,
+            settings.companyName,
+            skillsFor(departmentId),
+            settings.writingRules,
+            account,
+            memory,
+            tasks,
+            toolsFor(departmentId, {
+              admin,
+              webSearch: settings.webSearch,
+              documents: libraryFor(files, departmentId).length,
+            }),
+            calendar,
+            calendarStatus,
+            files,
+          ),
+          messages: await Promise.all(
+            history.map(async (m) => ({ role: m.role, content: await toWire(m) })),
+          ),
+          // A department pointed at its own model wins; otherwise the
+          // workspace default, which is what every department has until one is
+          // changed.
+          model: department.model || settings.model,
+          provider: providerOf(department.model || settings.model),
+          effort: settings.effort,
+          // Only this department's, so nothing can act outside its own area.
+          tools: toolsFor(departmentId, { admin, webSearch: settings.webSearch }).map((tool) => ({
+            name: tool.name,
+            description: tool.description,
+            schema: tool.schema,
+          })),
+          // Off unless the business turned it on, and the mode it chose.
+          webSearch: settings.webSearch ?? "off",
+        },
+        settings.apiKey,
+        settings.workspaceId,
+        {
+          onText: (_delta, full) => setStream((current) => ({ ...current, text: full })),
+          onThinking: (_delta, full) =>
+            setStream((current) => ({ ...current, thinking: full })),
+          onUsage: setLastUsage,
+          onSources: (found) => {
+            sources = found;
+          },
+        },
+        controller.signal,
+        { openai: settings.openaiKey, google: settings.googleKey },
+      );
+
+      const collectedThinking = result.thinking;
+      const failure = result.error ?? "";
+
+      /*
+       * Written into the reply rather than kept beside it.
+       *
+       * A cited answer is worth nothing if the citations are lost the moment the
+       * conversation is reloaded, and the messages table has no column for them.
+       * As markdown they are saved with the answer, render as links through the
+       * same component as everything else, and export with the rest of the work.
+       */
+      const collectedText =
+        sources.length && result.text
+          ? result.text +
+            "\n\n**Sources**\n\n" +
+            sources.map((source) => `- [${source.title}](${source.url})`).join("\n")
+          : result.text;
+
+      const assistantMessage: Message = {
+        id: newId("msg"),
+        role: "assistant",
+        content: collectedText || failure || "No response was returned.",
+        thinking: collectedThinking || undefined,
+        timestamp: Date.now(),
+        error: !collectedText && Boolean(failure),
+        // Recorded on the message rather than only shown under the composer, so
+        // spend can still be attributed to a person and a head months later.
+        usage: result.usage,
+        model: result.usage ? settings.model : undefined,
+        // Proposed, not run. Each one waits on the card in the transcript.
+        toolCalls: result.toolCalls.length
+          ? result.toolCalls.map((call) => ({ ...call, state: "pending" as const }))
+          : undefined,
+      };
+
+      // A trailing error after partial text is appended so it is not lost.
+      const finalContent =
+        collectedText && failure
+          ? `${collectedText}\n\n> ⚠️ ${failure}`
+          : assistantMessage.content;
+
+      await setMessages(conversation.id, [
+        ...history,
+        { ...assistantMessage, content: finalContent },
+      ]);
+
+      abortRef.current = null;
+      setIsStreaming(false);
+      // A failed reply leaves the dot showing the department cannot be reached,
+      // which is the state someone needs to see rather than a green light.
+      setDepartmentActivity(
+        departmentId,
+        !collectedText && failure ? "error" : "idle",
+      );
+      setStream(EMPTY_STREAM);
+      inputRef.current?.focus();
+
+      /*
+       * A better name for the thread, read from the answer as well as the
+       * question. After the reply is on screen, because the result is only a
+       * rename and nobody is waiting on it.
+       */
+      if (firstExchange && collectedText) {
+        void (async () => {
+          try {
+            const response = await fetch("/api/workspace/title", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ question: titleSource, answer: collectedText }),
+            });
+            const body = (await response.json()) as { title?: string };
+            const named = body.title?.trim();
+            if (named) await updateConversation(conversation.id, { title: named });
+          } catch {
+            // The title written from the text stays, which is the whole cost.
+          }
+        })();
+      }
+    },
+    [
+      draft,
+      pending,
+      memory,
+      tasks,
+      isStreaming,
+      department,
+      active,
+      calendar,
+      calendarStatus,
+      createConversation,
+      departmentId,
+      openConversation,
+      router,
+      setMessages,
+      updateConversation,
+      settings,
+      profile,
+      skillsFor,
+      account,
+      admin,
+    ],
+  );
+
   const send = useCallback(async () => {
     const text = draft.trim();
     if ((!text && pending.length === 0) || isStreaming || !department) return;
@@ -459,178 +652,91 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     setPending([]);
     setAttachError(null);
     if (inputRef.current) inputRef.current.style.height = "auto";
-    stickToBottom.current = true;
-    setStream(EMPTY_STREAM);
-    setIsStreaming(true);
-    setDepartmentActivity(departmentId, "busy");
-
-    await setMessages(conversation.id, history);
-    // The count, not what is loaded: a thread that has messages but has not
-    // been fetched yet is not a new one, and renaming it here would rename
-    // somebody's conversation out from under them.
+    /*
+     * The count, not what is loaded: a thread that has messages but has not
+     * been fetched yet is not a new one, and renaming it here would rename
+     * somebody's conversation out from under them.
+     */
     const firstExchange = conversation.messageCount === 0 && prior.length === 0;
-    if (firstExchange) {
-      await updateConversation(conversation.id, { title: deriveConversationTitle(text) });
-    }
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    // Filled by onSources below, once the answer is finished.
-    let sources: { title: string; url: string }[] = [];
-    const result = await streamChat(
-      {
-        ...splitPrompt(
-          department,
-          profile,
-          settings.companyName,
-          skillsFor(departmentId),
-          settings.writingRules,
-          account,
-          memory,
-          tasks,
-          toolsFor(departmentId, {
-            admin,
-            webSearch: settings.webSearch,
-            documents: libraryFor(files, departmentId).length,
-          }),
-          calendar,
-          calendarStatus,
-          files,
-        ),
-        messages: await Promise.all(
-          history.map(async (m) => ({ role: m.role, content: await toWire(m) })),
-        ),
-        // A department pointed at its own model wins; otherwise the
-        // workspace default, which is what every department has until one is
-        // changed.
-        model: department.model || settings.model,
-        provider: providerOf(department.model || settings.model),
-        effort: settings.effort,
-        // Only this department's, so nothing can act outside its own area.
-        tools: toolsFor(departmentId, { admin, webSearch: settings.webSearch }).map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          schema: tool.schema,
-        })),
-        // Off unless the business turned it on, and the mode it chose.
-        webSearch: settings.webSearch ?? "off",
-      },
-      settings.apiKey,
-      settings.workspaceId,
-      {
-        onText: (_delta, full) => setStream((current) => ({ ...current, text: full })),
-        onThinking: (_delta, full) =>
-          setStream((current) => ({ ...current, thinking: full })),
-        onUsage: setLastUsage,
-        onSources: (found) => {
-          sources = found;
-        },
-      },
-      controller.signal,
-      { openai: settings.openaiKey, google: settings.googleKey },
-    );
-
-    const collectedThinking = result.thinking;
-    const failure = result.error ?? "";
-
-    /*
-     * Written into the reply rather than kept beside it.
-     *
-     * A cited answer is worth nothing if the citations are lost the moment the
-     * conversation is reloaded, and the messages table has no column for them.
-     * As markdown they are saved with the answer, render as links through the
-     * same component as everything else, and export with the rest of the work.
-     */
-    const collectedText =
-      sources.length && result.text
-        ? result.text +
-          "\n\n**Sources**\n\n" +
-          sources.map((source) => `- [${source.title}](${source.url})`).join("\n")
-        : result.text;
-
-    const assistantMessage: Message = {
-      id: newId("msg"),
-      role: "assistant",
-      content: collectedText || failure || "No response was returned.",
-      thinking: collectedThinking || undefined,
-      timestamp: Date.now(),
-      error: !collectedText && Boolean(failure),
-      // Recorded on the message rather than only shown under the composer, so
-      // spend can still be attributed to a person and a head months later.
-      usage: result.usage,
-      model: result.usage ? settings.model : undefined,
-      // Proposed, not run. Each one waits on the card in the transcript.
-      toolCalls: result.toolCalls.length
-        ? result.toolCalls.map((call) => ({ ...call, state: "pending" as const }))
-        : undefined,
-    };
-
-    // A trailing error after partial text is appended so it is not lost.
-    const finalContent =
-      collectedText && failure
-        ? `${collectedText}\n\n> ⚠️ ${failure}`
-        : assistantMessage.content;
-
-    await setMessages(conversation.id, [
-      ...history,
-      { ...assistantMessage, content: finalContent },
-    ]);
-
-    abortRef.current = null;
-    setIsStreaming(false);
-    // A failed reply leaves the dot showing the department cannot be reached,
-    // which is the state someone needs to see rather than a green light.
-    setDepartmentActivity(
-      departmentId,
-      !collectedText && failure ? "error" : "idle",
-    );
-    setStream(EMPTY_STREAM);
-    inputRef.current?.focus();
-
-    /*
-     * A better name for the thread, read from the answer as well as the
-     * question. After the reply is on screen, because the result is only a
-     * rename and nobody is waiting on it.
-     */
-    if (firstExchange && collectedText) {
-      void (async () => {
-        try {
-          const response = await fetch("/api/workspace/title", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ question: text, answer: collectedText }),
-          });
-          const body = (await response.json()) as { title?: string };
-          const named = body.title?.trim();
-          if (named) await updateConversation(conversation.id, { title: named });
-        } catch {
-          // The title written from the text stays, which is the whole cost.
-        }
-      })();
-    }
+    await generate(conversation, history, firstExchange, text);
   }, [
     draft,
     pending,
-    memory,
-    tasks,
     isStreaming,
     department,
     active,
-    calendar,
-    calendarStatus,
     createConversation,
     departmentId,
     openConversation,
     router,
-    setMessages,
-    updateConversation,
-    settings,
-    profile,
-    skillsFor,
-    account,
-    admin,
+    generate,
   ]);
+
+  /*
+   * Ask the same question again.
+   *
+   * The answer is dropped and the history up to it is sent back unchanged, so
+   * this is the question asked a second time rather than a follow-up saying the
+   * first answer was no good. Anything after the answer goes with it: a thread
+   * cannot keep replies to something that no longer exists.
+   */
+  const regenerate = useCallback(
+    async (assistantId: string) => {
+      if (!active || isStreaming) return;
+      const at = active.messages.findIndex((message) => message.id === assistantId);
+      // Never the first message: there is no question above it to re-ask.
+      if (at < 1) return;
+      await generate(active, active.messages.slice(0, at), false, "");
+    },
+    [active, isStreaming, generate],
+  );
+
+  /*
+   * Change the question, then ask it.
+   *
+   * Everything after the edited message is discarded rather than kept, because
+   * a reply to the question as it was is not a reply to the question as it now
+   * reads, and leaving it there is how a transcript starts lying about what was
+   * asked.
+   */
+  const editAndResend = useCallback(
+    async (userId: string, text: string) => {
+      if (!active || isStreaming || !text.trim()) return;
+      const at = active.messages.findIndex((message) => message.id === userId);
+      if (at < 0) return;
+      const edited: Message = {
+        ...active.messages[at],
+        content: text.trim(),
+        timestamp: Date.now(),
+      };
+      await generate(active, [...active.messages.slice(0, at), edited], false, text.trim());
+    },
+    [active, isStreaming, generate],
+  );
+
+  /*
+   * Remove a question and the answer it got, as a pair.
+   *
+   * Deleting only the question would leave an answer to nothing, which reads as
+   * the head having volunteered it. The reply goes only when it is the very
+   * next message, so a question somebody deletes out of the middle of a thread
+   * does not take an unrelated answer with it.
+   */
+  const removeExchange = useCallback(
+    async (userId: string) => {
+      if (!active || isStreaming) return;
+      const at = active.messages.findIndex((message) => message.id === userId);
+      if (at < 0) return;
+      const next = active.messages[at + 1];
+      const drop = next && next.role === "assistant" ? 2 : 1;
+      await setMessages(active.id, [
+        ...active.messages.slice(0, at),
+        ...active.messages.slice(at + drop),
+      ]);
+    },
+    [active, isStreaming, setMessages],
+  );
+
 
   /**
    * Until the workspace has loaded there is no list for a department to be
@@ -895,6 +1001,10 @@ export function ChatView({ departmentId }: { departmentId: string }) {
                 });
               }}
               onRecordDecision={() => setCapture(splitForCapture(message.content))}
+              busy={isStreaming}
+              onRegenerate={() => void regenerate(message.id)}
+              onEdit={(text) => void editAndResend(message.id, text)}
+              onDelete={() => void removeExchange(message.id)}
               onDecideTool={async (callId, approve) => {
                 const call = message.toolCalls?.find((entry) => entry.id === callId);
                 if (!call || call.state !== "pending" || !active) return;
@@ -1314,19 +1424,29 @@ function MessageBubble({
   onSaveDeliverable,
   onRecordDecision,
   onDecideTool,
+  busy,
+  onRegenerate,
+  onEdit,
+  onDelete,
 }: {
   message: Message;
   onSaveDeliverable: () => Promise<void>;
   onRecordDecision: () => void;
   onDecideTool: (callId: string, approve: boolean) => Promise<void>;
+  /** A reply is streaming, so nothing may rewrite the thread underneath it. */
+  busy: boolean;
+  onRegenerate: () => void;
+  onEdit: (text: string) => void;
+  onDelete: () => void;
 }) {
   const entered = useEnter();
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
 
   if (message.role === "user") {
     return (
-      <div ref={entered} className="flex flex-col items-end">
+      <div ref={entered} className="group flex flex-col items-end">
         {/* Only on a shared thread, where "who said this" is a real question. */}
         {message.authorEmail ? (
           <span className="md-label-sm mb-1 mr-1 text-on-variant/75">
@@ -1370,13 +1490,80 @@ function MessageBubble({
             </ul>
           ) : null}
           {/* Anywhere, not break-word: a pasted URL or key is one word, and one
-              word wider than the bubble takes the layout with it. */}
+              word wider than the bubble takes the layout with it.
+
+              select-text is stated rather than left to the default. Somebody
+              reported not being able to select their own message while the
+              head's replies selected fine, and nothing in the DOM explained it:
+              no overlay, user-select auto on the element and every ancestor,
+              and a range over the same node selects all of it. Saying so
+              explicitly costs nothing and removes the only difference between
+              this element and the replies that do work. */}
           {message.content ? (
-            <p className="md-body whitespace-pre-wrap [overflow-wrap:anywhere]">
+            <p className="md-body select-text whitespace-pre-wrap [overflow-wrap:anywhere]">
               {message.content}
             </p>
           ) : null}
         </div>
+
+        {/*
+         * The same hover row the replies have, on the other side.
+         *
+         * Copy is here for its own sake and because it is the answer to not
+         * being able to select the text: whatever is wrong with selecting it,
+         * a button that puts it on the clipboard is not affected.
+         */}
+        {editing === null ? (
+          <div className="mt-1 flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+            <IconAction
+              label={copied ? "Copied" : "Copy"}
+              onClick={async () => {
+                await navigator.clipboard.writeText(message.content);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1600);
+              }}
+            >
+              {copied ? <CheckIcon className="h-3.5 w-3.5" /> : <CopyIcon className="h-3.5 w-3.5" />}
+            </IconAction>
+            {busy ? null : (
+              <>
+                <IconAction label="Edit" onClick={() => setEditing(message.content)}>
+                  <EditIcon className="h-3.5 w-3.5" />
+                </IconAction>
+                <IconAction label="Delete" onClick={onDelete}>
+                  <TrashIcon className="h-3.5 w-3.5" />
+                </IconAction>
+              </>
+            )}
+          </div>
+        ) : null}
+
+        {editing !== null ? (
+          <div className="mt-2 flex w-full max-w-[85%] flex-col gap-2">
+            <TextArea
+              autoFocus
+              rows={3}
+              value={editing}
+              aria-label="Edit your message"
+              onChange={(event) => setEditing(event.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="text" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={!editing.trim()}
+                onClick={() => {
+                  onEdit(editing);
+                  setEditing(null);
+                }}
+              >
+                Save and ask again
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -1427,6 +1614,13 @@ function MessageBubble({
           <IconAction label="Record a decision" onClick={onRecordDecision}>
             <SparkIcon className="h-3.5 w-3.5" />
           </IconAction>
+          {/* Asks the same question again rather than asking for a better
+              answer, so the head is not told its last attempt was poor. */}
+          {busy ? null : (
+            <IconAction label="Redo" onClick={onRegenerate}>
+              <RefreshIcon className="h-3.5 w-3.5" />
+            </IconAction>
+          )}
         </div>
       ) : null}
     </div>
