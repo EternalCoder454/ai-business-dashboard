@@ -10,15 +10,7 @@
  */
 import { systemPromptText, buildToolsBlock } from "../src/lib/prompts";
 import { CEO_ID, COMPANY_ID, seedDepartments } from "../src/lib/seed";
-import {
-  BUILT_IN_TOOLS,
-  allTools,
-  findTool,
-  parseDay,
-  registerTool,
-  resolveScope,
-  toolsFor,
-} from "../src/lib/tools";
+import { BUILT_IN_TOOLS, allTools, findTool, parseDay, registerTool, resolveScope, searchModeFor, toolsFor } from "../src/lib/tools";
 import type { CompanyProfile } from "../src/lib/types";
 
 let failures = 0;
@@ -261,6 +253,49 @@ console.log("\nregistering a tool");
     clashed = true;
   }
   check("a duplicate name is refused", clashed);
+}
+
+console.log("\nsearching needs both switches, and the business's is the outer one");
+{
+  const off = { webSearch: false };
+  const on = { webSearch: true };
+  const untouched = {};
+
+  check(
+    "a business that is off searches nothing, whatever a head says",
+    searchModeFor("off", on) === "off" && searchModeFor(undefined, on) === "off",
+  );
+  check(
+    "a head switched off searches nothing, even where the business pays",
+    searchModeFor("perplexity", off) === "off",
+  );
+  check(
+    "both on searches, in the mode the business chose",
+    searchModeFor("perplexity", on) === "perplexity" &&
+      searchModeFor("native", on) === "native",
+  );
+  check(
+    "a head that has never been asked inherits rather than blocking",
+    searchModeFor("perplexity", untouched) === "perplexity" &&
+      searchModeFor("perplexity", undefined) === "perplexity",
+  );
+
+  /*
+   * The rule is a spending control, so the thing worth asserting is not that it
+   * works on the cases somebody thought of, but that no combination of the two
+   * switches turns on something the business is paying to keep off.
+   */
+  const modes = [undefined, "off", "native", "perplexity"] as const;
+  const heads = [off, on, untouched, undefined];
+  check(
+    "no pair of switches produces a mode the business did not name",
+    modes.every((business) =>
+      heads.every((head) => {
+        const got = searchModeFor(business, head);
+        return got === "off" || got === business;
+      }),
+    ),
+  );
 }
 
 console.log(failures ? "\nFAILURES ABOVE" : "\nall checks passed");

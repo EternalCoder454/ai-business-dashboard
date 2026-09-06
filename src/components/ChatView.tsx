@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ConversationList } from "./ConversationList";
+import { ComposerMenu } from "./ComposerMenu";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { HeadProfile } from "./HeadProfile";
 import { allToBlob } from "@/lib/blobUpload";
@@ -21,7 +22,7 @@ import {
 import { AttachmentError, MAX_ATTACHMENTS_PER_MESSAGE, attachmentSrc } from "@/lib/images";
 import { providerOf } from "@/lib/providers";
 import { runTool } from "@/lib/runTool";
-import { findTool, toolsFor } from "@/lib/tools";
+import { findTool, searchModeFor, toolsFor } from "@/lib/tools";
 import { COMPANY_ID } from "@/lib/seed";
 import { libraryFor } from "@/lib/library";
 import { buildSystemPrompt, deriveConversationTitle, hasProfileContent } from "@/lib/prompts";
@@ -51,7 +52,6 @@ import {
   RefreshIcon,
   Chip,
   Dialog,
-  DocIcon,
   Field,
   SendIcon,
   SparkIcon,
@@ -223,6 +223,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     calendar,
     calendarStatus,
     skillsFor,
+    updateDepartment,
     profile,
     settings,
     account,
@@ -237,6 +238,22 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   const admin = store.workspaceRole === "admin";
 
   const department = getDepartment(departmentId);
+
+  /*
+   * What this head is allowed to do about the web, as one answer.
+   *
+   * Two switches, and the business's is the outer one. An administrator decides
+   * whether the business searches at all and pays for the key; the composer
+   * decides which heads reach for it. So a head turned on here can still search
+   * nothing when the business is off, and there is no arrangement of the two
+   * that spends money the business has not agreed to.
+   *
+   * Undefined on the department means yes. Every head predates this switch and
+   * none of them should change behaviour for having been asked a new question.
+   */
+  const businessSearches = settings.webSearch ?? "off";
+  const headMaySearch = department?.webSearch !== false;
+  const searchMode = searchModeFor(settings.webSearch, department);
   const liveStatus = useDepartmentStatus(
     hasKeyFor(getDepartment(departmentId)?.model || settings.model, {
       serverKeys,
@@ -467,7 +484,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             tasks,
             toolsFor(departmentId, {
               admin,
-              webSearch: settings.webSearch,
+              webSearch: searchMode,
               documents: libraryFor(files, departmentId).length,
             }),
             calendar,
@@ -484,13 +501,13 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           provider: providerOf(department.model || settings.model),
           effort: settings.effort,
           // Only this department's, so nothing can act outside its own area.
-          tools: toolsFor(departmentId, { admin, webSearch: settings.webSearch }).map((tool) => ({
+          tools: toolsFor(departmentId, { admin, webSearch: searchMode }).map((tool) => ({
             name: tool.name,
             description: tool.description,
             schema: tool.schema,
           })),
-          // Off unless the business turned it on, and the mode it chose.
-          webSearch: settings.webSearch ?? "off",
+          // Off unless the business turned it on and this head is allowed it.
+          webSearch: searchMode,
         },
         settings.apiKey,
         settings.workspaceId,
@@ -1118,28 +1135,31 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               which needs every control in the row to be the same height as one
               line. md-target and md-composer-field are that height. */}
           <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-lowest py-2 pl-3 pr-2 transition-colors focus-within:border-primary">
-            {/* Uploads can be switched off for one person, and the Library
-                picker goes with them: both put a file into the business. */}
-            {can("files") ? (
-              <button
-                onClick={() => fileRef.current?.click()}
-                aria-label="Attach a file"
-                title="Images, PDFs, Word documents and text files."
-                className="md-state md-target grid h-10 w-10 flex-none place-items-center rounded-full text-on-variant"
-              >
-                <PaperclipIcon className="h-5 w-5" />
-              </button>
-            ) : null}
-            {shared.length && can("library") ? (
-              <button
-                onClick={() => setPickerOpen(true)}
-                aria-label="Attach from the Library"
-                title={`${shared.length} file${shared.length === 1 ? "" : "s"} shared with this department`}
-                className="md-state md-target grid h-10 w-10 flex-none place-items-center rounded-full text-on-variant"
-              >
-                <DocIcon className="h-5 w-5" />
-              </button>
-            ) : null}
+            {/* One plus rather than a row of glyphs. Uploads can be switched
+                off for one person, and the Library picker goes with them: both
+                put a file into the business. */}
+            <ComposerMenu
+              libraryCount={can("library") ? shared.length : 0}
+              onAddFiles={can("files") ? () => fileRef.current?.click() : undefined}
+              onFromLibrary={can("library") ? () => setPickerOpen(true) : undefined}
+              search={
+                /*
+                 * Only when the business searches at all. A switch that cannot
+                 * do anything is worse than no switch: it reads as broken
+                 * rather than as unavailable, and the thing that would fix it
+                 * is a key on a screen this person may not be able to open.
+                 */
+                businessSearches === "off" || !department
+                  ? undefined
+                  : {
+                      on: headMaySearch,
+                      onToggle: () =>
+                        void updateDepartment(departmentId, {
+                          webSearch: !headMaySearch,
+                        }),
+                    }
+              }
+            />
             <textarea
               ref={inputRef}
               value={draft}
@@ -1695,13 +1715,6 @@ function ThinkingBlock({ text, defaultOpen = false }: { text: string; defaultOpe
   );
 }
 
-function PaperclipIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden className={className}>
-      <path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z" />
-    </svg>
-  );
-}
 
 
 /**

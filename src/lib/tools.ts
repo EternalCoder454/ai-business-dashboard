@@ -1,4 +1,5 @@
 import { CEO_ID, COMPANY_ID } from "./seed";
+import type { WebSearchMode } from "./types";
 
 /**
  * What a department is allowed to do, beyond writing a reply.
@@ -338,6 +339,29 @@ export function allTools(): ToolDefinition[] {
  * to false so a caller that has not thought about it offers fewer tools rather
  * than more.
  */
+/**
+ * Whether this head searches the web, out of two switches that both apply.
+ *
+ * The business's is the outer one. An administrator decides whether the company
+ * searches at all and pays for the key; the composer decides which heads reach
+ * for it. So a head switched on here searches nothing while the business is
+ * off, and there is no arrangement of the two that spends money nobody agreed
+ * to. Written here rather than inline in the composer because it is a spending
+ * control, and a spending control that lives in a JSX expression is one nobody
+ * can test.
+ *
+ * Undefined on the department means yes. Every head predates this switch and
+ * none should change behaviour for having been asked a new question.
+ */
+export function searchModeFor(
+  businessMode: WebSearchMode | undefined,
+  department: { webSearch?: boolean } | undefined,
+): WebSearchMode {
+  const business = businessMode ?? "off";
+  if (business === "off") return "off";
+  return department?.webSearch === false ? "off" : business;
+}
+
 export function toolsFor(
   departmentId: string,
   options: { admin?: boolean; webSearch?: string; documents?: number } = {},
