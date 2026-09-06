@@ -7,7 +7,6 @@ import {
   CheckIcon,
   ChevronIcon,
   Field,
-  TextArea,
   cx,
 } from "@/components/ui";
 import { buildCompanyContext, hasProfileContent } from "@/lib/prompts";
@@ -121,13 +120,31 @@ function GrowingArea({
     el.style.height = `${el.scrollHeight}px`;
   }, [value]);
 
+  /*
+   * Borderless, because the card around it is already the box.
+   *
+   * Every field was a bordered, filled textarea inside a filled card: nine
+   * fields drawn as eighteen nested rectangles, each with its own padding, its
+   * own edge and a resize handle in the corner. The page read as a form dumped
+   * into cards rather than as a profile. The card is the field now, the text
+   * sits directly on it, and the card takes the focus ring so it is still
+   * obvious what is editable and which one you are in.
+   */
+  /*
+   * A bare textarea rather than the shared TextArea.
+   *
+   * That component carries a border, a fill and its own padding, and
+   * overriding all three from the call site is the collision its own comment
+   * warns about: p-0 against the size-s py-2.5 was decided by the order
+   * Tailwind emitted them and lost, leaving a 10px inset nothing asked for.
+   * A size never fights itself, so this does not pick the fight.
+   */
   return (
-    <TextArea
+    <textarea
       ref={ref}
       rows={minRows}
       value={value}
-      // It sizes itself, so the drag handle would only fight the effect above.
-      className="resize-none overflow-hidden"
+      className="md-body w-full min-w-0 resize-none overflow-hidden border-0 bg-transparent p-0 text-on-surface placeholder:text-on-variant/70 focus:outline-none"
       {...rest}
     />
   );
@@ -208,14 +225,24 @@ export default function CompanyProfilePage() {
           {FIELDS.map((field) => (
             <Card
               key={field.key}
+              elevated={false}
               className={cx(
+                // focus-within rather than focus: the ring belongs to the card,
+                // and the thing being focused is the textarea inside it.
+                "transition-colors focus-within:border-primary",
+                !local[field.key].trim() && "border-dashed",
                 field.key === "mission" && "medium:col-span-2 expanded:col-span-3",
                 field.key === "keyFacts" && "medium:col-span-2",
               )}
             >
               <Field label={field.label}>
                 <GrowingArea
-                  minRows={field.rows}
+                  /*
+                   * One row, not three. rows is the floor, and a three row
+                   * floor meant "Honest, not hype-driven" reserved two empty
+                   * lines under itself in every short field on the page.
+                   */
+                  minRows={1}
                   value={local[field.key]}
                   placeholder={field.placeholder}
                   onChange={(event) => {
