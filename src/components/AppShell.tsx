@@ -33,7 +33,7 @@ import {
   readConversationOpen,
   subscribeConversationOpen,
 } from "@/lib/chatRoute";
-import { BriefcaseIcon, ChevronIcon, CloseIcon, NavBadge, cx } from "./ui";
+import { BriefcaseIcon, ChevronIcon, CloseIcon, NavBadge, PersonIcon, cx } from "./ui";
 import { ROUTE_TITLES } from "@/lib/routes";
 import { createRipple } from "./ui/ripple";
 
@@ -177,6 +177,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         onOpenSearch={() => setSearchOpen(true)}
         collapsed={navCollapsed}
         onExpand={() => setNavCollapsed(false)}
+        onOpenHeads={() => setHeadsOpen((value) => !value)}
+        headsOpen={headsOpen}
       />
 
       <WorkspaceFavicon />
@@ -204,7 +206,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       </div>
 
+      {/* The same state drawn two ways: a sheet up from the bottom on a phone,
+          a column against the rail from medium up. */}
       <HeadsSheet open={headsOpen} onClose={() => setHeadsOpen(false)} />
+      <RailHeadsPanel
+        open={headsOpen}
+        onClose={() => setHeadsOpen(false)}
+        fromRight={navRight}
+        activeId={departmentIdOf(pathname)}
+      />
 
       <ModalDrawer
         fromRight={navRight}
@@ -325,21 +335,24 @@ function NavigationRail({
   onOpenSearch,
   collapsed,
   onExpand,
+  onOpenHeads,
+  headsOpen,
 }: {
   pathname: string;
   onOpenDrawer: () => void;
   onOpenSearch: () => void;
   collapsed: boolean;
   onExpand: () => void;
+  onOpenHeads: () => void;
+  headsOpen: boolean;
 }) {
   const { canOpenPath, canOpenHead, allDepartments } = useStore();
 
   /*
-   * Everybody the drawer would list, in the drawer's order: the heads of the
-   * business first, then anyone's own. Filtered by what this person was given,
-   * because a face you cannot open is worse than no face.
+   * Only whether there is anybody to show. The panel builds its own list, and
+   * two copies of the same filter is how the two come to disagree.
    */
-  const heads = allDepartments.filter((department) => canOpenHead(department.id));
+  const hasHeads = allDepartments.some((department) => canOpenHead(department.id));
   const reference = WORKSPACE_LINKS.filter((link) => canOpenPath(link.href));
   const activeDepartmentId = departmentIdOf(pathname);
 
@@ -421,34 +434,58 @@ function NavigationRail({
         ))}
       </div>
 
-      {heads.length > 0 ? (
+      {hasHeads ? (
         <>
           <RailRule />
           {/*
-           * Two across rather than one down.
+           * One slot that opens the list, rather than the list itself.
            *
-           * A rail item is an icon over a caption and takes about 52px, which
-           * for nine heads is most of a screen. A disc needs neither the
-           * caption nor the width, so they pair up: nine heads become five rows
-           * instead of nine, and the rail goes from 1042px of content to about
-           * 820, which fits the window it is drawn in.
+           * The faces were in the rail directly, two across, and it never
+           * looked like navigation: nine coloured discs in an 80px column read
+           * as a chart of something. It also fought for height with everything
+           * below it, which took three passes to make fit and still meant the
+           * captions came off short windows.
+           *
+           * A rail is a set of destinations and the heads are one destination
+           * with a choice inside it, which is what the bottom bar already does
+           * on a phone. Same state, so there is one answer to "are the heads
+           * open" and two ways of drawing it.
            */}
-          {/* A floor of one row: flex-1 against a column that is already too
-              tall resolves to zero, and the faces vanished entirely rather
-              than scrolling. */}
-          <div className="rail-scroll min-h-9 flex-1 overflow-y-auto">
-            <div className="grid grid-cols-2 gap-0.5 px-1">
-              {heads.map((head) => (
-                <RailHead
-                  key={head.id}
-                  head={head}
-                  active={activeDepartmentId === head.id}
-                />
-              ))}
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              createRipple(event);
+              onOpenHeads();
+            }}
+            aria-expanded={headsOpen}
+            aria-label="Heads"
+            className="flex w-full flex-col items-center gap-1 py-1"
+          >
+            <span
+              className={cx(
+                "md-state grid h-8 w-14 place-items-center rounded-full transition-colors",
+                headsOpen || activeDepartmentId
+                  ? "bg-secondary-container text-on-secondary-container"
+                  : "text-on-variant",
+              )}
+            >
+              <PersonIcon className="h-5 w-5" />
+            </span>
+            <span
+              className={cx(
+                "rail-caption md-label-sm",
+                headsOpen || activeDepartmentId ? "text-on-surface" : "text-on-variant",
+              )}
+            >
+              Heads
+            </span>
+          </button>
         </>
       ) : null}
+
+      {/* Pushes the reference pages to the bottom of the rail, where the
+          sidebar also keeps them, instead of stacking everything at the top. */}
+      <span className="min-h-2 flex-1" />
 
       {reference.length > 0 ? (
         <>
@@ -467,43 +504,6 @@ function NavigationRail({
 /** A hairline between groups, inset so it does not touch the rail's edges. */
 function RailRule() {
   return <span aria-hidden className="my-1.5 h-px w-8 flex-none bg-outline-variant" />;
-}
-
-/**
- * A head in the rail: their disc, and nothing else.
- *
- * The presence dot is deliberately not here. The rail is 80px of a screen
- * somebody is working in, and eight status dots down the side of it is a row of
- * moving lights beside whatever they are reading. The list in the drawer, which
- * is where you go to choose, keeps it.
- */
-function RailHead({
-  head,
-  active,
-}: {
-  head: Department;
-  active: boolean;
-}) {
-  const who = head.personaName || head.name;
-  return (
-    <Link
-      href={departmentHrefById(head.id)}
-      onClick={createRipple}
-      title={who}
-      aria-label={who}
-      aria-current={active ? "page" : undefined}
-      className="flex flex-col items-center"
-    >
-      <span
-        className={cx(
-          "md-state grid h-9 w-9 place-items-center rounded-full transition-colors",
-          active ? "bg-secondary-container" : null,
-        )}
-      >
-        <DepartmentAvatar department={head} size={26} />
-      </span>
-    </Link>
-  );
 }
 
 function RailItem({
@@ -743,6 +743,114 @@ function HeadsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
           ))}
         </ul>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The heads, in a column against the rail.
+ *
+ * Not a modal. It sits beside the navigation the way a second sidebar would,
+ * because that is what it is: the rail is one destination wide and this is the
+ * choice inside one of those destinations. So there is no dark scrim over the
+ * page, only an invisible sheet to catch the click that dismisses it, and the
+ * page underneath stays readable while you pick.
+ *
+ * It does not push the content. Below large the rail is the whole navigation
+ * and the window can be 600px wide, where a second permanent column would leave
+ * nothing for the page; and at large it would undo the collapsing that put the
+ * rail there in the first place. Fixed beside the rail costs no layout either
+ * way, and the offset follows the sidebar setting along with everything else.
+ */
+function RailHeadsPanel({
+  open,
+  onClose,
+  fromRight,
+  activeId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  fromRight: boolean;
+  activeId?: string;
+}) {
+  const { allDepartments, canOpenHead } = useStore();
+  const panel = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  const render = usePresence(open, (phase) => {
+    const entering = phase === "enter";
+    const away = fromRight ? "translateX(100%)" : "translateX(-100%)";
+    return play(
+      panel.current,
+      entering ? { transform: [away, "none"] } : { transform: ["none", away] },
+      {
+        duration: entering ? DURATION.medium : DURATION.short,
+        ease: entering ? EASE.decelerate : EASE.accelerate,
+      },
+    );
+  });
+
+  if (!render) return null;
+
+  const heads = allDepartments.filter((department) => canOpenHead(department.id));
+
+  return (
+    <div className="fixed inset-0 z-40 hidden medium:block">
+      <button
+        type="button"
+        aria-label="Close the heads list"
+        onClick={onClose}
+        className="absolute inset-0 cursor-default"
+      />
+      <nav
+        ref={panel}
+        aria-label="Heads"
+        className={cx(
+          "safe-top safe-bottom absolute inset-y-0 flex w-64 flex-col bg-low shadow-e3",
+          fromRight ? "right-20 border-l" : "left-20 border-r",
+          "border-outline-variant",
+        )}
+      >
+        <p className="md-label-sm flex-none px-4 pb-1 pt-5 text-on-variant/70">Heads</p>
+        <ul className="min-h-0 flex-1 overflow-y-auto p-2">
+          {heads.map((head) => (
+            <li key={head.id}>
+              <Link
+                href={departmentHrefById(head.id)}
+                onClick={(event) => {
+                  createRipple(event);
+                  onClose();
+                }}
+                aria-current={activeId === head.id ? "page" : undefined}
+                className={cx(
+                  "md-state flex items-center gap-3 rounded-xl px-3 py-2 transition-colors",
+                  activeId === head.id
+                    ? "bg-primary-container text-on-primary-container"
+                    : null,
+                )}
+              >
+                <DepartmentAvatar department={head} size={32} />
+                <span className="min-w-0 flex-1">
+                  <span className="md-body block truncate">
+                    {head.personaName || head.name}
+                  </span>
+                  <span className="md-label-sm block truncate text-on-variant/75">
+                    {head.roleTitle || head.name}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
     </div>
   );
 }

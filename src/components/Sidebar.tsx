@@ -206,7 +206,24 @@ export function Sidebar({
   return (
     <aside
       className={cx(
-        "hidden h-full w-[17.5rem] flex-none flex-col border-r border-outline-variant bg-low",
+        /*
+         * As wide as its contents, between a floor and a ceiling.
+         *
+         * It was a flat 280px whatever was in it, which is a lot of column to
+         * give a list reading "Legal" and "Design". fit-content asks the widest
+         * row how much it needs; the floor keeps the search field and the new
+         * conversation button from being squeezed, and the ceiling stops one
+         * long department name taking a fifth of the screen, since every row
+         * truncates once it reaches the limit.
+         *
+         * Stable in practice rather than by luck: what sets the width here is
+         * the company name, the section headings and the department names, none
+         * of which change as you move around. Recent conversations are
+         * deliberately not in this list, which is what would have made it
+         * twitch.
+         */
+        "hidden h-full w-fit min-w-[13rem] max-w-[20rem] flex-none flex-col",
+        "border-r border-outline-variant bg-low",
         !collapsed && "large:flex",
       )}
     >
@@ -322,7 +339,15 @@ export function SidebarContent({
         )}
         <div className="min-w-0 flex-1">
           <p className="md-title truncate">{settings.companyName}</p>
+          {/*
+            size={1} because the sidebar is now as wide as its widest row, and
+            an input's default is size={20}: about 172px of intrinsic width
+            whatever is typed in it, which with the mark and the gutters came to
+            264 and was single handedly setting the width of the whole column.
+            It is w-full, so it still fills whatever row it ends up in.
+          */}
           <input
+            size={1}
             value={subtitle}
             onChange={(event) => setSubtitle(event.target.value)}
             onBlur={() => {
