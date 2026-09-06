@@ -56,11 +56,16 @@ export default function SkillsPage() {
 
 function SkillsView() {
   const searchParams = useSearchParams();
-  const { allDepartments, skills, createSkill, updateSkill, deleteSkill } = useStore();
+  const { allDepartments, skills, createSkill, updateSkill, deleteSkill, resetSkills } =
+    useStore();
 
   const [filter, setFilter] = useState<string>("all");
   const [draft, setDraft] = useState<SkillDraft | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Asked before, not undone after: the reset overwrites whatever anybody has
+  // edited into a shipped skill, and there is nothing to put it back from.
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   // Deep link from a department chat header.
@@ -146,6 +151,9 @@ function SkillsView() {
         title="Skills"
         actions={
           <>
+            <Button variant="text" onClick={() => setConfirmReset(true)}>
+              Reset
+            </Button>
             <Button variant="outlined" onClick={() => fileRef.current?.click()}>
               Import .md
             </Button>
@@ -338,6 +346,40 @@ function SkillsView() {
           if (files.length) void upload(files);
         }}
       />
+
+      <Dialog
+        open={confirmReset}
+        title="Reset skills"
+        onClose={() => setConfirmReset(false)}
+        width="max-w-md"
+        footer={
+          <>
+            <Button variant="text" onClick={() => setConfirmReset(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={resetting}
+              onClick={async () => {
+                setResetting(true);
+                const { restored, removed } = await resetSkills();
+                setResetting(false);
+                setConfirmReset(false);
+                setNotice(
+                  `${restored} skills restored${removed ? `, ${removed} retired ones removed` : ""}.`,
+                );
+              }}
+            >
+              {resetting ? "Resetting…" : "Reset"}
+            </Button>
+          </>
+        }
+      >
+        <p className="md-body text-on-variant">
+          Every skill the panel ships goes back to the version it ships with,
+          including any you have edited, disabled or deleted. Skills you wrote
+          yourself are not touched.
+        </p>
+      </Dialog>
 
       <Dialog
         open={Boolean(draft)}

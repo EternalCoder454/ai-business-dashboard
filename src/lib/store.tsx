@@ -183,6 +183,16 @@ export interface StoreValue {
   createSkill: (input: Partial<Skill> & { departmentId: string }) => Promise<Skill>;
   updateSkill: (id: string, patch: Partial<Skill>) => Promise<void>;
   deleteSkill: (id: string) => Promise<void>;
+  /**
+   * Put the shipped skill library back exactly as it ships.
+   *
+   * Restores anything edited, disabled or deleted, and removes shipped skills
+   * that have since been retired. Skills written in this workspace are left
+   * alone: "back to default" is about the ones the panel provided, and a reset
+   * that quietly deleted somebody's own playbooks would be a different and much
+   * worse button. Returns how many rows it touched, so the page can say.
+   */
+  resetSkills: () => Promise<{ restored: number; removed: number }>;
   conversationsFor: (departmentId: string) => Conversation[];
 
   updateSettings: (patch: Partial<Omit<Settings, "id">>) => Promise<void>;
@@ -1043,6 +1053,36 @@ export function StoreProvider({
 
       deleteSkill: async (id) => {
         await push({ table: "skills", action: "delete", ids: [id] });
+      },
+
+      resetSkills: async () => {
+        const shipped = seedSkills();
+        const stored = remoteRef.current?.skills ?? [];
+
+        /*
+         * Told apart by id, not by content. A shipped skill's id is derived
+         * from its department and name and never changes, so anything starting
+         * skill_seed_ came from the panel and anything else was written here.
+         * Content would be the wrong test: the whole point of this button is
+         * that the content has been changed.
+         */
+        const current = new Set(shipped.map((skill) => skill.id));
+        const retired = stored
+          .filter((skill) => skill.id.startsWith("skill_seed_") && !current.has(skill.id))
+          .map((skill) => skill.id);
+
+        /*
+         * Everything is rewritten, not just what differs. Working out which
+         * ones changed would save a few rows and would have to get the
+         * comparison exactly right, including enabled and the description, on
+         * the one path where being wrong means the reset silently did not
+         * reset. Twenty two rows is not worth being clever about.
+         */
+        await push({ table: "skills", action: "upsert", rows: shipped });
+        if (retired.length) {
+          await push({ table: "skills", action: "delete", ids: retired });
+        }
+        return { restored: shipped.length, removed: retired.length };
       },
 
       createProject: async (input) => {

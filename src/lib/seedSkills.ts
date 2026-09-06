@@ -352,6 +352,29 @@ Rules:
   // ------------------------------------------------------ Engineering
   {
     departmentId: "engineering",
+    name: "Writing a Skill",
+    description:
+      "Use when the user asks how to write a skill, wants one drafted for something they do repeatedly, or asks why a skill is not being used.",
+    content: `A skill is a playbook a head follows when a particular kind of work comes up. Write it as instructions to somebody competent who has not done this job here before.
+
+Draft it in four parts.
+
+1. The trigger. One sentence saying when to reach for this, phrased as the situation rather than the topic: "when a client asks for a fixed price before the scope is settled", not "pricing". This line is the whole of what gets matched against, so it decides whether the skill is ever used.
+2. The steps, numbered, in the order they are actually done. Each one an action with an output, not a consideration.
+3. The specifics only this business knows: the numbers, the thresholds, the names of the tools, the things that went wrong last time. This is the part worth writing.
+4. Rules at the end. The three or four things that go wrong when somebody does this badly, stated as prohibitions.
+
+To get a first draft, describe the job to the head who would do it and ask for those four parts. Then do the work the model cannot: replace every general statement with what is true here. A draft that would suit any company is a draft that teaches nothing, because the model already knows it.
+
+Rules:
+- One job per skill. A skill covering two is used for neither, because the trigger cannot describe both.
+- Under 300 words. Every enabled skill is sent in full on every message to that head, so length is a running cost rather than a one off.
+- Put it on the one department that does the work. Company wide means every head carries it on every message, which is only worth it for something all of them genuinely do.
+- If it has no numbers, no names and no thresholds, it is not finished.
+- Disable rather than delete while testing. A skill that is not helping costs tokens on every turn, and turning it off is instant.`,
+  },
+  {
+    departmentId: "engineering",
     name: "Code Review",
     description:
       "Use when reviewing a change, a pull request, or code the user has written and wants checked.",
