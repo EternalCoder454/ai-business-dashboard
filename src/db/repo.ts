@@ -348,7 +348,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       persona: row.persona,
       systemPrompt: row.systemPrompt,
       model: row.model ?? undefined,
-      webSearch: row.webSearch ?? undefined,
+      webSearch: (row.webSearch as Department["webSearch"]) ?? undefined,
       status: row.status as Department["status"],
       order: row.sortOrder,
       isCeo: row.isCeo || undefined,

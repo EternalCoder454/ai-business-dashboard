@@ -177,15 +177,20 @@ export interface Department {
    */
   model?: string;
   /**
-   * Whether this head may search the web, when the business allows it at all.
+   * How this head searches the web, when the business allows it at all.
    *
-   * Undefined means yes, which is what every head is until somebody turns one
-   * off, so a workspace that predates this needs no migration and behaves
-   * exactly as it did. The business's own setting is still the master: this
-   * chooses among heads once an administrator has decided to allow it and paid
-   * for a key, and can never turn on something the business has switched off.
+   * Undefined means whatever the business chose, which is what every head is
+   * until somebody picks differently, so a workspace that predates this needs
+   * no migration and behaves exactly as it did. Set, it overrides the default:
+   * one head on Perplexity and the rest on their own provider is a reasonable
+   * thing to want, and it was not expressible.
+   *
+   * The business's own setting is still the master switch rather than merely a
+   * default. Off there means off everywhere, whatever any head says, because
+   * that is the control that decides whether the company spends anything on
+   * searching at all.
    */
-  webSearch?: boolean;
+  webSearch?: WebSearchMode;
   /** Legacy seed value. The real count is derived from the skills table. */
   skillCount?: number;
   status: DepartmentStatus;

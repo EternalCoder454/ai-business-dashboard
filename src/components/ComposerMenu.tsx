@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CheckIcon, DocIcon, PlusIcon, SparkIcon, UploadIcon, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
+import type { WebSearchMode } from "@/lib/types";
 
 /**
  * The one control at the left of the composer, and everything it can add.
@@ -32,10 +33,17 @@ export function ComposerMenu({
   libraryCount: number;
   /**
    * Absent when the business has not turned searching on at all, which is the
-   * difference between a head that may not search and a business that cannot.
-   * Offering a switch that does nothing is worse than offering none.
+   * difference between a head choosing not to search and a business that
+   * cannot. Offering a control that does nothing is worse than offering none.
+   *
+   * `perplexity` says whether that engine is worth listing: it needs a second
+   * paid account, and a row that always fails is not a choice.
    */
-  search?: { on: boolean; onToggle: () => void };
+  search?: {
+    mode: WebSearchMode;
+    perplexity: boolean;
+    onPick: (mode: WebSearchMode) => void;
+  };
 }) {
   const [open, setOpen] = useState(false);
   const wrapper = useRef<HTMLDivElement | null>(null);
@@ -91,17 +99,47 @@ export function ComposerMenu({
   }
 
   if (search) {
+    /*
+     * Three rows under a heading rather than one row that cycles.
+     *
+     * Off, the head's own provider, or Perplexity are alternatives rather than
+     * levels, so they are a set to pick from. A single control that advanced
+     * through them on each click would make the choice depend on where it
+     * started, which is the wrong shape for a thing that spends money.
+     *
+     * Perplexity is listed only where a key exists, since it is a second paid
+     * account and the row would otherwise be an offer the panel cannot keep.
+     */
+    const choices: { id: WebSearchMode; label: string; detail: string }[] = [
+      { id: "off", label: "Off", detail: "Answers from what it already knows" },
+      { id: "native", label: "Native", detail: "This head's own provider searches" },
+      ...(search.perplexity
+        ? [
+            {
+              id: "perplexity" as const,
+              label: "Perplexity",
+              detail: "The same search whatever model it runs on",
+            },
+          ]
+        : []),
+    ];
+
     rows.push(
-      <MenuRow
-        key="search"
-        icon={<SparkIcon className="h-4 w-4" />}
-        label="Search the web"
-        detail={search.on ? "On for this head" : "Off for this head"}
-        checked={search.on}
-        // Stays open. A switch is a thing somebody may want to see the state of
-        // after flipping it, and closing the menu hides the answer.
-        onClick={search.onToggle}
-      />,
+      <div key="search" className="border-t border-outline-variant">
+        <p className="md-label-sm px-3 pb-1 pt-2.5 text-on-variant/70">Search the web</p>
+        {choices.map((choice) => (
+          <MenuRow
+            key={choice.id}
+            icon={<SparkIcon className="h-4 w-4" />}
+            label={choice.label}
+            detail={choice.detail}
+            checked={search.mode === choice.id}
+            // Stays open. Somebody who has just changed which engine a head
+            // uses may want to see that it took, and closing hides the answer.
+            onClick={() => search.onPick(choice.id)}
+          />
+        ))}
+      </div>,
     );
   }
 
@@ -157,7 +195,7 @@ function MenuRow({
   return (
     <button
       type="button"
-      role={checked === undefined ? "menuitem" : "menuitemcheckbox"}
+      role={checked === undefined ? "menuitem" : "menuitemradio"}
       aria-checked={checked}
       onClick={(event) => {
         createRipple(event);

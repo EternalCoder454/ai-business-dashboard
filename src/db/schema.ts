@@ -50,9 +50,9 @@ export const departments = pgTable(
     // Null means the workspace default, which is every department until one is
     // pointed somewhere else.
     model: text("model"),
-    // Null means yes, the same way model null means the workspace default: a
-    // head is allowed to search until somebody says otherwise.
-    webSearch: boolean("web_search"),
+    // Null means the business's own choice, the same way a null model means the
+    // workspace default. Text rather than boolean since this became a mode.
+    webSearch: text("web_search"),
     status: text("status").notNull().default("online"),
     sortOrder: integer("sort_order").notNull().default(0),
     isCeo: boolean("is_ceo").notNull().default(false),

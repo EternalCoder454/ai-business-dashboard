@@ -252,7 +252,6 @@ export function ChatView({ departmentId }: { departmentId: string }) {
    * none of them should change behaviour for having been asked a new question.
    */
   const businessSearches = settings.webSearch ?? "off";
-  const headMaySearch = department?.webSearch !== false;
   const searchMode = searchModeFor(settings.webSearch, department);
   const liveStatus = useDepartmentStatus(
     hasKeyFor(getDepartment(departmentId)?.model || settings.model, {
@@ -1144,19 +1143,24 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               onFromLibrary={can("library") ? () => setPickerOpen(true) : undefined}
               search={
                 /*
-                 * Only when the business searches at all. A switch that cannot
-                 * do anything is worse than no switch: it reads as broken
-                 * rather than as unavailable, and the thing that would fix it
-                 * is a key on a screen this person may not be able to open.
+                 * Only when the business searches at all, and only for an
+                 * administrator.
+                 *
+                 * The first because a control that cannot do anything reads as
+                 * broken rather than unavailable, and what would fix it is a
+                 * key on a screen this person may not be able to open. The
+                 * second to match the card in Settings, which has always been
+                 * admin only to change: which engine a head uses is a question
+                 * about what the business spends, and moving the control next
+                 * to the work is not a reason to widen who decides.
                  */
-                businessSearches === "off" || !department
+                businessSearches === "off" || !department || !admin
                   ? undefined
                   : {
-                      on: headMaySearch,
-                      onToggle: () =>
-                        void updateDepartment(departmentId, {
-                          webSearch: !headMaySearch,
-                        }),
+                      mode: searchMode,
+                      perplexity: Boolean(workspaceKeys.perplexity?.set),
+                      onPick: (mode) =>
+                        void updateDepartment(departmentId, { webSearch: mode }),
                     }
               }
             />

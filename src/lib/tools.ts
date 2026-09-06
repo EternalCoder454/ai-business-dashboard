@@ -342,24 +342,29 @@ export function allTools(): ToolDefinition[] {
 /**
  * Whether this head searches the web, out of two switches that both apply.
  *
- * The business's is the outer one. An administrator decides whether the company
- * searches at all and pays for the key; the composer decides which heads reach
- * for it. So a head switched on here searches nothing while the business is
- * off, and there is no arrangement of the two that spends money nobody agreed
- * to. Written here rather than inline in the composer because it is a spending
+ * The business's is the outer one, and it is a switch rather than a default:
+ * an administrator decides whether the company searches at all and pays for the
+ * keys, and off there is off for every head. Inside that, a head may be pointed
+ * at a different engine from the rest, or switched off on its own.
+ *
+ * Written here rather than inline in the composer because it is a spending
  * control, and a spending control that lives in a JSX expression is one nobody
  * can test.
  *
- * Undefined on the department means yes. Every head predates this switch and
- * none should change behaviour for having been asked a new question.
+ * Undefined on the department means whatever the business chose. Every head
+ * predates this and none should change behaviour for having been asked a new
+ * question.
  */
 export function searchModeFor(
   businessMode: WebSearchMode | undefined,
-  department: { webSearch?: boolean } | undefined,
+  department: { webSearch?: WebSearchMode } | undefined,
 ): WebSearchMode {
   const business = businessMode ?? "off";
+  // The master switch, not a default. Off here is off everywhere, whatever a
+  // head has been set to, because this is the control that decides whether the
+  // company spends anything on searching at all.
   if (business === "off") return "off";
-  return department?.webSearch === false ? "off" : business;
+  return department?.webSearch ?? business;
 }
 
 export function toolsFor(

@@ -255,45 +255,43 @@ console.log("\nregistering a tool");
   check("a duplicate name is refused", clashed);
 }
 
-console.log("\nsearching needs both switches, and the business's is the outer one");
+console.log("\nthe business switch is the outer one, and a head picks inside it");
 {
-  const off = { webSearch: false };
-  const on = { webSearch: true };
+  const off = { webSearch: "off" } as const;
+  const native = { webSearch: "native" } as const;
+  const pplx = { webSearch: "perplexity" } as const;
   const untouched = {};
 
   check(
     "a business that is off searches nothing, whatever a head says",
-    searchModeFor("off", on) === "off" && searchModeFor(undefined, on) === "off",
+    searchModeFor("off", pplx) === "off" && searchModeFor(undefined, pplx) === "off",
   );
   check(
     "a head switched off searches nothing, even where the business pays",
     searchModeFor("perplexity", off) === "off",
   );
   check(
-    "both on searches, in the mode the business chose",
-    searchModeFor("perplexity", on) === "perplexity" &&
-      searchModeFor("native", on) === "native",
+    "a head that has never been asked follows the business",
+    searchModeFor("perplexity", untouched) === "perplexity" &&
+      searchModeFor("native", undefined) === "native",
   );
   check(
-    "a head that has never been asked inherits rather than blocking",
-    searchModeFor("perplexity", untouched) === "perplexity" &&
-      searchModeFor("perplexity", undefined) === "perplexity",
+    "a head can use a different engine from the rest of the business",
+    searchModeFor("native", pplx) === "perplexity" &&
+      searchModeFor("perplexity", native) === "native",
   );
 
   /*
-   * The rule is a spending control, so the thing worth asserting is not that it
-   * works on the cases somebody thought of, but that no combination of the two
-   * switches turns on something the business is paying to keep off.
+   * The business switch is the one that decides whether the company spends
+   * anything at all, so what is worth asserting is not that the happy cases
+   * work but that nothing anywhere in the matrix searches while it is off.
    */
-  const modes = [undefined, "off", "native", "perplexity"] as const;
-  const heads = [off, on, untouched, undefined];
+  const heads = [off, native, pplx, untouched, undefined];
   check(
-    "no pair of switches produces a mode the business did not name",
-    modes.every((business) =>
-      heads.every((head) => {
-        const got = searchModeFor(business, head);
-        return got === "off" || got === business;
-      }),
+    "nothing searches while the business is off",
+    heads.every(
+      (head) =>
+        searchModeFor("off", head) === "off" && searchModeFor(undefined, head) === "off",
     ),
   );
 }
