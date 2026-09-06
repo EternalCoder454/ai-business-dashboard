@@ -28,11 +28,25 @@ export function MeetingList({
   onOpen,
   onNew,
   onDelete,
+  compact = false,
+  activeId,
 }: {
   runs: AllHandsRun[];
   onOpen: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
+  /**
+   * Rendered as a column beside a meeting from large up.
+   *
+   * Breakpoint variants rather than a second render, for the reason the
+   * conversation list gives: below large this same list is still the whole
+   * screen and needs its header, its account menu and its reading column. From
+   * large it is a 320px pane next to a transcript that already carries all
+   * three, so they go away and the rows take the full width.
+   */
+  compact?: boolean;
+  /** The meeting showing next to it, so the row can say which. */
+  activeId?: string;
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -40,6 +54,7 @@ export function MeetingList({
         className={cx(
           "flex flex-none items-center gap-3 border-b border-outline-variant",
           "px-4 py-4 medium:px-6",
+          compact && "large:hidden",
         )}
       >
         <div className="grid h-10 w-10 flex-none place-items-center rounded-2xl bg-primary-container text-on-primary-container">
@@ -62,8 +77,13 @@ export function MeetingList({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 py-5">
-        <ul className="measure-rows flex flex-col gap-1.5">
+      <div
+        className={cx(
+          "min-h-0 flex-1 overflow-y-auto px-4 py-5 medium:px-6",
+          compact && "large:px-2 large:py-3",
+        )}
+      >
+        <ul className={cx("measure-rows flex flex-col gap-1.5", compact && "large:max-w-none")}>
           {/* First row, not a button in the corner: it is the most common thing
               anybody does here and belongs where the eye already is. */}
           <li>
@@ -94,8 +114,13 @@ export function MeetingList({
             <li
               key={run.id}
               className={cx(
-                "group relative flex items-center gap-3 rounded-xl bg-container",
-                "px-4 py-3 transition-colors hover:bg-high",
+                "group relative flex items-center gap-3 rounded-xl px-4 py-3 transition-colors",
+                compact && "large:px-3 large:py-2.5",
+                // Which one is on screen beside the list. Only meaningful once
+                // the two are visible together, which is why it is a variant.
+                run.id === activeId
+                  ? "bg-container large:bg-primary-container large:text-on-primary-container"
+                  : "bg-container hover:bg-high",
               )}
             >
               <div className="min-w-0 flex-1">

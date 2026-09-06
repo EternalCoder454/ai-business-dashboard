@@ -58,6 +58,24 @@
   --md-accent-blue: #7e91dd;
   --md-accent-orchid: #db76d4;
 
+  /* A stacked bar is not nine departments.
+     The accent wheel above is categorical: nine hues spread right round the
+     circle so no two heads look alike. Borrowed for a composition bar it
+     becomes a rainbow, seven unrelated saturated colours jammed edge to edge,
+     and the segments stop reading as parts of one thing.
+     One sweep instead, teal through indigo, lightness stepping the whole way
+     so neighbours separate by brightness as well as hue. Order carries the
+     meaning: the bands are always in the same sequence, so the legend maps by
+     position and the colours only have to stay apart. Reversed per theme, the
+     dark end nearest the card in each. */
+  --md-chart-1: #008b9e;
+  --md-chart-2: #0098bf;
+  --md-chart-3: #22a4de;
+  --md-chart-4: #5caef8;
+  --md-chart-5: #8cb8ff;
+  --md-chart-6: #b5c4ff;
+  --md-chart-7: #d6d2ff;
+
   --md-state-hover: rgb(227 226 230 / 0.07);
   --md-state-pressed: rgb(227 226 230 / 0.12);
   --md-ripple: rgb(227 226 230 / 0.18);
@@ -125,6 +143,14 @@
   --md-accent-teal: #1c7862;
   --md-accent-blue: #2d4abe;
   --md-accent-orchid: #ae29a5;
+
+  --md-chart-1: #004f60;
+  --md-chart-2: #006182;
+  --md-chart-3: #0071a4;
+  --md-chart-4: #3580c2;
+  --md-chart-5: #6890d7;
+  --md-chart-6: #93a1e5;
+  --md-chart-7: #b9b5ec;
 
   --md-state-hover: rgb(25 28 30 / 0.06);
   --md-state-pressed: rgb(25 28 30 / 0.11);

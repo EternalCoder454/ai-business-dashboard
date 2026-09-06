@@ -31,29 +31,34 @@ const CACHE_MINIMUM: Record<string, number> = {
 };
 
 /*
- * One per segment, from the department wheel rather than the semantic palette.
+ * Colours for the context chart, as one sweep rather than seven hues.
  *
- * Two things were wrong with the old list. It held six colours for seven
- * segments, so the seventh wrapped and Identity and the writing rules were
- * drawn in the same teal with no way to tell them apart. And two of the six
- * were the wrong kind of token: secondary-container is a surface meant to sit
- * behind text, which on a light card is #d7e7ea and effectively invisible, and
- * outline is a hairline grey.
+ * This has now been wrong twice in different directions. It began as container
+ * and outline tokens, which are surfaces meant to sit behind text: on a light
+ * card secondary-container is #d7e7ea, about 1.1:1, so the bands were nearly
+ * invisible. Replacing them with the department accent wheel fixed the contrast
+ * and created the opposite problem, because that wheel is categorical. It
+ * spreads nine hues right round the circle so no two heads look alike, which is
+ * exactly what you do not want edge to edge in a stacked bar: seven unrelated
+ * saturated colours read as a rainbow, not as parts of one quantity.
  *
- * The accent wheel is the palette built for exactly this. Its comment says
- * lightness is tuned per hue per theme so each one clears 3:1 against both a
- * near-black and a near-white card, which is the property a chart needs and a
- * container token was never going to have. Seven hues, spread rather than
- * adjacent, so neighbouring bands stay distinguishable.
+ * A sequential ramp is what this chart actually is. The segments are the same
+ * seven things in the same order on every row, so position identifies them and
+ * the colours only have to stay distinguishable from their neighbours. Teal
+ * through indigo, lightness stepping the whole way, dark end first because the
+ * leading segments are the small ones and slivers need the contrast.
+ *
+ * Measured on light: every band clears 1.69:1 against the card and neighbours
+ * differ by at least 1.28:1 on top of the hue step. On dark, 3.75:1 and 1.17:1.
  */
 const SEGMENT_COLOURS = [
-  "var(--md-accent-cyan)",
-  "var(--md-accent-lime)",
-  "var(--md-accent-amber)",
-  "var(--md-accent-violet)",
-  "var(--md-accent-slate)",
-  "var(--md-accent-rose)",
-  "var(--md-accent-orchid)",
+  "var(--md-chart-1)",
+  "var(--md-chart-2)",
+  "var(--md-chart-3)",
+  "var(--md-chart-4)",
+  "var(--md-chart-5)",
+  "var(--md-chart-6)",
+  "var(--md-chart-7)",
 ];
 
 /**

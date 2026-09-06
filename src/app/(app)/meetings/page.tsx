@@ -180,22 +180,56 @@ export default function AllHandsPage() {
 
   const usage = thread ? runUsage(thread) : null;
 
-  if (showList) {
-    return (
-      <MeetingList
-        runs={allHandsRuns}
-        onOpen={(id) => setOpenId(id)}
-        onNew={() => {
-          setOpenId(null);
-          setComposingNew(true);
-        }}
-        onDelete={(id) => void deleteAllHandsRun(id)}
-      />
-    );
-  }
+  /*
+   * Every meeting, beside the one being read rather than instead of it.
+   *
+   * This was an early return: the list was the whole screen, and opening a
+   * meeting replaced it. So reading a second meeting meant going back and
+   * picking again, and on a wide monitor the transcript sat in the middle of an
+   * otherwise empty page while the meetings it belonged to were somewhere else
+   * entirely. The chat had the same problem and this is the same answer.
+   *
+   * The split starts at large, as it does there. Below it nothing changes: it
+   * is still a list, then a transcript, with a back arrow between them.
+   */
+  const listPane =
+    held.length > 0 ? (
+      <div
+        className={cx(
+          "min-h-0 min-w-0 flex-1 flex-col",
+          "large:flex large:w-80 large:flex-none large:border-r large:border-outline-variant",
+          showList ? "flex" : "hidden",
+        )}
+      >
+        <MeetingList
+          compact
+          activeId={thread?.id}
+          runs={allHandsRuns}
+          onOpen={(id) => {
+            setOpenId(id);
+            setComposingNew(false);
+          }}
+          onNew={() => {
+            setLive(null);
+            setOpenId(null);
+            setComposingNew(true);
+          }}
+          onDelete={(id) => void deleteAllHandsRun(id)}
+        />
+      </div>
+    ) : null;
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0">
+      {listPane}
+
+      <div
+        className={cx(
+          "flex h-full min-h-0 min-w-0 flex-1 flex-col",
+          // On a narrow window the list is the screen, so the transcript waits.
+          showList && "hidden large:flex",
+        )}
+      >
       {/* Header doubles as the thread switcher, so past threads never sit at
           the bottom of the scroll where you have to hunt for them. */}
       <header className="flex flex-none items-center gap-3 border-b border-outline-variant px-4 medium:px-6 expanded:px-8 py-3.5">
@@ -210,7 +244,7 @@ export default function AllHandsPage() {
               setOpenId(null);
               setComposingNew(false);
             }}
-            className="md-state md-target grid flex-none place-items-center rounded-full text-on-variant"
+            className="md-state md-target grid flex-none place-items-center rounded-full text-on-variant large:hidden"
           >
             <ChevronIcon className="h-5 w-5 rotate-180" />
           </button>
@@ -277,7 +311,7 @@ export default function AllHandsPage() {
             information becomes a horizontal strip above the feed. */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {thread ? (
-            <div className="flex flex-none gap-1.5 overflow-x-auto border-b border-outline-variant px-4 py-2 large:hidden">
+            <div className="flex flex-none gap-1.5 overflow-x-auto border-b border-outline-variant px-4 py-2 xlarge:hidden">
               {departments.map((department) => {
                 const response = currentRound?.responses.find(
                   (r) => r.departmentId === department.id,
@@ -396,7 +430,17 @@ export default function AllHandsPage() {
 
         {/* Who is in the room. Keeps the cast visible without scrolling, and
             gives an answer to "has Desmond replied yet" at a glance. */}
-        <aside className="hidden w-[13.75rem] flex-none flex-col border-l border-outline-variant bg-low large:flex">
+        {/*
+         * Waits for xlarge now that the meetings list has the left edge.
+         *
+         * Three columns do not fit at large. The sidebar is 280px and the list
+         * is 320px, so a 220px roster as well would leave about 380px for the
+         * transcript, which is narrower than it was before the list existed. At
+         * xlarge there is room for all three. Between the two, the roster is
+         * already the horizontal strip above the feed, which carries the same
+         * names and the same states.
+         */}
+        <aside className="hidden w-[13.75rem] flex-none flex-col border-l border-outline-variant bg-low xlarge:flex">
           <div className="flex items-baseline justify-between gap-2 px-4 pb-1 pt-4">
             <p className="md-label-sm text-on-variant/70">In the room</p>
             {excluded.size > 0 ? (
@@ -581,6 +625,7 @@ export default function AllHandsPage() {
             ) : null}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
