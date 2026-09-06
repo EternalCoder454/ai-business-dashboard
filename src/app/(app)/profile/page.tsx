@@ -83,6 +83,56 @@ const FIELDS: {
   },
 ];
 
+/**
+ * A field that is the size of what is in it.
+ *
+ * Every field was a fixed three rows, so anything longer scrolled inside a box
+ * about an inch tall. The products field on a real profile was four lines of
+ * pricing behind a scrollbar: you could not read your own answer without
+ * dragging inside it, on the one screen in the panel that every head reads
+ * before it says anything.
+ *
+ * `rows` stays as the minimum rather than the size, so an empty field still has
+ * a shape to aim at and a full one is simply all there.
+ */
+function GrowingArea({
+  value,
+  minRows,
+  ...rest
+}: {
+  value: string;
+  minRows: number;
+  placeholder: string;
+  onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  /*
+   * Measured after the value lands rather than from its length: wrapping
+   * depends on the column width, so counting characters guesses and reading
+   * scrollHeight knows. Height is cleared first because scrollHeight never
+   * reports smaller than the box already is, so without it a field that lost a
+   * paragraph would keep the taller size.
+   */
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <TextArea
+      ref={ref}
+      rows={minRows}
+      value={value}
+      // It sizes itself, so the drag handle would only fight the effect above.
+      className="resize-none overflow-hidden"
+      {...rest}
+    />
+  );
+}
+
 export default function CompanyProfilePage() {
   const { profile, settings, updateProfile } = useStore();
   const [local, setLocal] = useState<CompanyProfile>(profile);
@@ -107,18 +157,36 @@ export default function CompanyProfilePage() {
 
   const preview = buildCompanyContext(local, settings.companyName);
 
+  /*
+   * Shown because this page pays for itself more than any other and looks
+   * finished long before it is. Every head reads these fields on every message,
+   * so a half filled profile is the difference between advice and advice about
+   * this business, and nothing on the screen said which half was missing.
+   */
+  const filled = FIELDS.filter((field) => local[field.key].trim()).length;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader
         eyebrow="Shared context"
         title="Company Profile"
         actions={
-          savedAt ? (
-            <span className="md-label flex items-center gap-1.5 text-success">
-              <CheckIcon className="h-4 w-4" />
-              Saved
+          <div className="flex items-center gap-4">
+            <span
+              className={cx(
+                "md-label",
+                filled === FIELDS.length ? "text-success" : "text-on-variant",
+              )}
+            >
+              {filled} of {FIELDS.length} filled
             </span>
-          ) : null
+            {savedAt ? (
+              <span className="md-label flex items-center gap-1.5 text-success">
+                <CheckIcon className="h-4 w-4" />
+                Saved
+              </span>
+            ) : null}
+          </div>
         }
       />
 
@@ -133,7 +201,10 @@ export default function CompanyProfilePage() {
          * gaps, and the whole profile is on one screen on a desktop instead of
          * a scroll through mostly empty boxes.
          */}
-        <div className="measure-wide grid grid-cols-1 gap-5 medium:grid-cols-2 expanded:grid-cols-3">
+        {/* items-start so a short answer keeps a short card. Without it every
+            card in a row grew to match the tallest, which left Constraints as a
+            mostly empty box the height of Key facts. */}
+        <div className="measure-wide grid grid-cols-1 items-start gap-5 medium:grid-cols-2 expanded:grid-cols-3">
           {FIELDS.map((field) => (
             <Card
               key={field.key}
@@ -143,8 +214,8 @@ export default function CompanyProfilePage() {
               )}
             >
               <Field label={field.label}>
-                <TextArea
-                  rows={field.rows}
+                <GrowingArea
+                  minRows={field.rows}
                   value={local[field.key]}
                   placeholder={field.placeholder}
                   onChange={(event) => {

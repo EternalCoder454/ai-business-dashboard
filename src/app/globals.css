@@ -551,6 +551,21 @@
 }
 
 /*
+ * One more rung, because the ladder stopped below the screens people actually
+ * have. On a 2560px monitor the content area is about 2280px and a 92rem cap
+ * left 550px of it empty, which is the same complaint that started this,
+ * arrived at from a wider desk.
+ *
+ * It still ends somewhere. Uncapped, an ultrawide would give a form field a
+ * 1100px column, and a field you cannot take in at a glance is its own problem.
+ */
+@media (min-width: 2000px) {
+  .measure {
+    max-width: 108rem;
+  }
+}
+
+/*
  * The reading column, and the one that should NOT chase the window. Line length
  * is the point of it. If a page using this looks empty, the page is a list or a
  * form and wants .measure instead.
@@ -594,6 +609,12 @@
 @media (min-width: 1600px) {
   .measure-wide {
     max-width: 108rem;
+  }
+}
+
+@media (min-width: 2000px) {
+  .measure-wide {
+    max-width: 132rem;
   }
 }
 
