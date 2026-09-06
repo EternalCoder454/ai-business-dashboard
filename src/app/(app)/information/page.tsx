@@ -82,6 +82,9 @@ export default function InformationPage() {
       return { department, segments, total, skillCount: mine.length };
     });
   }, [allDepartments, skillsFor, profile, settings, files]);
+  const uncached = anatomy
+    .filter(({ total }) => total < minimum)
+    .map(({ department }) => department.personaName || department.name);
 
   const storage = [
     { label: "Departments", value: allDepartments.length },
@@ -108,26 +111,21 @@ export default function InformationPage() {
           {/* ------------------------------------------------ caching */}
           <Card>
             <h2 className="md-title-lg mb-1">Caching</h2>
-            <p className="md-body mb-4 text-on-variant">
-              Cached above {minimum.toLocaleString()} tokens of context.
+            {/*
+             * One sentence, not one chip per head.
+             *
+             * This card used to list every head with its token count, which is
+             * the same eight numbers the section below already draws with a
+             * breakdown. The only thing it knew that the other did not was
+             * whether each head clears the threshold, so that is the only thing
+             * it says now, and it names the ones that do not rather than making
+             * you compare eight figures against a number in a sentence.
+             */}
+            <p className="md-body text-on-variant">
+              {uncached.length === 0
+                ? `Every head is above the ${minimum.toLocaleString()} token minimum, so the stable part of each prompt is cached rather than re-sent.`
+                : `${uncached.length} of ${anatomy.length} are under the ${minimum.toLocaleString()} token minimum and are re-sent in full each message: ${uncached.join(", ")}.`}
             </p>
-            <div className="flex flex-wrap gap-2">
-              {anatomy.map(({ department, total }) => (
-                <Chip
-                  key={department.id}
-                  tone={total >= minimum ? "success" : "warning"}
-                  title={
-                    total >= minimum
-                      ? "Cached"
-                      : "Below the cache threshold"
-                  }
-                >
-                  <DepartmentAvatar department={department} size={18} />
-                  {department.personaName || department.name} ·{" "}
-                  {total.toLocaleString()}
-                </Chip>
-              ))}
-            </div>
           </Card>
 
           {/* ------------------------------------------------ anatomy */}

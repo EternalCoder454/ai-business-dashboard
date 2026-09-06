@@ -161,7 +161,13 @@ export default function BriefingsPage() {
         }
       />
 
-      <div className="measure flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-6">
+      {/* The cap is for a list of cards. An empty state is the whole area. */}
+      <div
+        className={cx(
+          "flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-6",
+          (briefings.length > 0 || (schedules?.length ?? 0) > 0) && "measure",
+        )}
+      >
         {error ? <p className="md-label text-error">{error}</p> : null}
 
         {briefings.length === 0 && (schedules?.length ?? 0) === 0 ? (

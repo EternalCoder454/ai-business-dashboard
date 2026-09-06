@@ -221,7 +221,17 @@ export default function LibraryPage() {
           dragging && "bg-primary-container/10",
         )}
       >
-        <div className="measure">
+        {/*
+          * The cap comes off when there is nothing to cap.
+          *
+          * .measure exists to stop a grid of cards running the full width of a
+          * large monitor. An empty state is not a grid: it is the whole area
+          * saying it is empty, and capped it stopped a few hundred pixels short
+          * of the header above it and read as an unfinished box. On this page
+          * it is also the drop target, which should be the whole area it claims
+          * to be.
+          */}
+        <div className={cx(visible.length > 0 && "measure")}>
           {notice ? (
             <p className="md-label mb-4 inline-block rounded-full bg-low px-4 py-2 text-on-variant">
               {notice}
