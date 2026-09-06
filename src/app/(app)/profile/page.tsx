@@ -2,107 +2,121 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { useEffect, useRef, useState } from "react";
-import {
-  Card,
-  CheckIcon,
-  ChevronIcon,
-  Field,
-  cx,
-} from "@/components/ui";
+import { Card, CheckIcon, ChevronIcon, cx } from "@/components/ui";
 import { buildCompanyContext, hasProfileContent } from "@/lib/prompts";
 import { useStore } from "@/lib/store";
 import type { CompanyProfile } from "@/lib/types";
 
-const FIELDS: {
+interface ProfileField {
   key: keyof CompanyProfile;
   label: string;
   placeholder: string;
-  rows: number;
-}[] = [
+}
+
+/**
+ * Grouped, rather than nine cards in a ragged grid.
+ *
+ * Nine separate cards of different natural heights left every row with an
+ * uneven bottom edge and a gap beside the shortest one, which reads as
+ * unorganised however tidy each card is on its own. Four groups of related
+ * questions give the page a shape somebody can take in, and the fields inside a
+ * group are the ones you would answer in the same sitting.
+ */
+const GROUPS: { id: string; title: string; fields: ProfileField[] }[] = [
   {
-    key: "mission",
-    label: "Mission",
-    placeholder: "What the business does, for whom, and why it exists.",
-    rows: 3,
+    id: "business",
+    title: "The business",
+    fields: [
+      {
+        key: "mission",
+        label: "Mission",
+        placeholder: "What the business does, for whom, and why it exists.",
+      },
+      {
+        key: "products",
+        label: "What you make",
+        placeholder:
+          "The actual things you sell. Name them, say what each one is, and roughly what it costs.",
+      },
+      {
+        key: "stage",
+        label: "Where the business is",
+        placeholder: "Age, headcount, rough turnover, and whether it is your main income.",
+      },
+    ],
   },
   {
-    key: "products",
-    label: "What you make",
-    placeholder:
-      "The actual things you sell. Name them, say what each one is, and roughly what it costs.",
-    rows: 3,
+    id: "market",
+    title: "The market",
+    fields: [
+      {
+        key: "audience",
+        label: "Audience",
+        placeholder:
+          "Who buys, who uses, what they are doing today instead, and what they care about.",
+      },
+      {
+        key: "competitors",
+        label: "Competition",
+        placeholder:
+          "Who else does this, and the honest reason someone picks you instead. Include who you lose to.",
+      },
+      {
+        key: "brandVoice",
+        label: "Brand voice",
+        placeholder: "How the company sounds, and what it never sounds like.",
+      },
+    ],
   },
   {
-    key: "audience",
-    label: "Audience",
-    placeholder:
-      "Who buys, who uses, what they are doing today instead, and what they care about.",
-    rows: 3,
+    id: "direction",
+    title: "Direction",
+    fields: [
+      {
+        key: "goals",
+        label: "What you are aiming at",
+        placeholder: "What has to be true in six months.",
+      },
+      {
+        key: "constraints",
+        label: "Constraints",
+        placeholder: "Budget, hours, skills, anything off the table.",
+      },
+    ],
   },
   {
-    key: "brandVoice",
-    label: "Brand voice",
-    placeholder:
-      "How the company sounds, and what it never sounds like.",
-    rows: 3,
-  },
-  {
-    key: "stage",
-    label: "Where the business is",
-    placeholder:
-      "Age, headcount, rough turnover, and whether it is your main income.",
-    rows: 3,
-  },
-  {
-    key: "goals",
-    label: "What you are aiming at",
-    placeholder: "What has to be true in six months.",
-    rows: 3,
-  },
-  {
-    key: "competitors",
-    label: "Competition",
-    placeholder:
-      "Who else does this, and the honest reason someone picks you instead. Include who you lose to.",
-    rows: 3,
-  },
-  {
-    key: "constraints",
-    label: "Constraints",
-    placeholder:
-      "Budget, hours, skills, anything off the table.",
-    rows: 3,
-  },
-  {
-    key: "keyFacts",
-    label: "Key facts",
-    placeholder:
-      "Pricing, headcount, launch dates, current numbers, tools you run on, constraints, anything you are tired of repeating.",
-    rows: 6,
+    id: "facts",
+    title: "Key facts",
+    fields: [
+      {
+        key: "keyFacts",
+        label: "Anything you are tired of repeating",
+        placeholder:
+          "Pricing, headcount, launch dates, current numbers, tools you run on, constraints.",
+      },
+    ],
   },
 ];
 
+const ALL_FIELDS = GROUPS.flatMap((group) => group.fields);
+
 /**
- * A field that is the size of what is in it.
+ * One question and its answer.
  *
- * Every field was a fixed three rows, so anything longer scrolled inside a box
- * about an inch tall. The products field on a real profile was four lines of
- * pricing behind a scrollbar: you could not read your own answer without
- * dragging inside it, on the one screen in the panel that every head reads
- * before it says anything.
- *
- * `rows` stays as the minimum rather than the size, so an empty field still has
- * a shape to aim at and a full one is simply all there.
+ * The answer sits on its own surface rather than directly on the card. Flat
+ * text gave no sign it could be edited at all, and a full bordered input inside
+ * a bordered card drew every field twice. A fill with no border is the middle:
+ * it reads as somewhere to type, and it does not add a second edge to the card
+ * it is already inside.
  */
-function GrowingArea({
+function ProfileEntry({
+  field,
   value,
-  minRows,
-  ...rest
+  onChange,
 }: {
+  field: ProfileField;
   value: string;
-  minRows: number;
-  placeholder: string;
-  onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onChange: (next: string) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -110,43 +124,54 @@ function GrowingArea({
    * Measured after the value lands rather than from its length: wrapping
    * depends on the column width, so counting characters guesses and reading
    * scrollHeight knows. Height is cleared first because scrollHeight never
-   * reports smaller than the box already is, so without it a field that lost a
-   * paragraph would keep the taller size.
+   * reports smaller than the box already is, so a field that lost a paragraph
+   * would otherwise keep the taller size.
    */
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+
+    const fit = () => {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    };
+    fit();
+
+    /*
+     * Re-measured when the box changes width, not only when the text changes.
+     * Wrapping depends on the column, so dragging a window narrower rewraps
+     * every answer into more lines than the height set for the old width, and
+     * the field silently goes back to scrolling. Caught by resizing from 1200
+     * to 1920 and finding six of nine had started scrolling again.
+     */
+    const observer = new ResizeObserver(fit);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [value]);
 
-  /*
-   * Borderless, because the card around it is already the box.
-   *
-   * Every field was a bordered, filled textarea inside a filled card: nine
-   * fields drawn as eighteen nested rectangles, each with its own padding, its
-   * own edge and a resize handle in the corner. The page read as a form dumped
-   * into cards rather than as a profile. The card is the field now, the text
-   * sits directly on it, and the card takes the focus ring so it is still
-   * obvious what is editable and which one you are in.
-   */
-  /*
-   * A bare textarea rather than the shared TextArea.
-   *
-   * That component carries a border, a fill and its own padding, and
-   * overriding all three from the call site is the collision its own comment
-   * warns about: p-0 against the size-s py-2.5 was decided by the order
-   * Tailwind emitted them and lost, leaving a 10px inset nothing asked for.
-   * A size never fights itself, so this does not pick the fight.
-   */
   return (
-    <textarea
-      ref={ref}
-      rows={minRows}
-      value={value}
-      className="md-body w-full min-w-0 resize-none overflow-hidden border-0 bg-transparent p-0 text-on-surface placeholder:text-on-variant/70 focus:outline-none"
-      {...rest}
-    />
+    <label className="block">
+      <span className="md-label mb-1.5 block text-on-variant">{field.label}</span>
+      {/*
+       * A bare textarea rather than the shared TextArea. Overriding that
+       * component's border, fill and padding from here is the collision its own
+       * comment warns about: p-0 against the size's py-2.5 is decided by the
+       * order Tailwind emits them, and it loses. A size never fights itself.
+       */}
+      <textarea
+        ref={ref}
+        rows={1}
+        value={value}
+        placeholder={field.placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        className={cx(
+          "md-body w-full min-w-0 resize-none overflow-hidden rounded-lg border-0 px-3 py-2.5",
+          "bg-lowest/60 text-on-surface placeholder:text-on-variant/60",
+          "transition-colors hover:bg-lowest focus:bg-lowest focus:outline-none",
+          "focus:ring-1 focus:ring-primary",
+        )}
+      />
+    </label>
   );
 }
 
@@ -180,7 +205,12 @@ export default function CompanyProfilePage() {
    * so a half filled profile is the difference between advice and advice about
    * this business, and nothing on the screen said which half was missing.
    */
-  const filled = FIELDS.filter((field) => local[field.key].trim()).length;
+  const filled = ALL_FIELDS.filter((field) => local[field.key].trim()).length;
+
+  const set = (key: keyof CompanyProfile) => (next: string) => {
+    dirty.current = true;
+    setLocal((current) => ({ ...current, [key]: next }));
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -192,10 +222,10 @@ export default function CompanyProfilePage() {
             <span
               className={cx(
                 "md-label",
-                filled === FIELDS.length ? "text-success" : "text-on-variant",
+                filled === ALL_FIELDS.length ? "text-success" : "text-on-variant",
               )}
             >
-              {filled} of {FIELDS.length} filled
+              {filled} of {ALL_FIELDS.length} filled
             </span>
             {savedAt ? (
               <span className="md-label flex items-center gap-1.5 text-success">
@@ -209,52 +239,29 @@ export default function CompanyProfilePage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 expanded:px-8 py-6">
         {/*
-         * Three columns once there is room for them.
-         *
-         * Two columns left seven ordinary fields to fill six slots, so
-         * Constraints sat alone beside an empty half while Key facts waited
-         * below the fold. At three, Mission spans the top, the seven fill two
-         * full rows and one slot, and Key facts takes the two beside it. No
-         * gaps, and the whole profile is on one screen on a desktop instead of
-         * a scroll through mostly empty boxes.
+         * Two columns of groups rather than three of fields. Groups are taller
+         * and fewer, so two columns fill the width without leaving the ragged
+         * bottom edge that nine independently sized cards produced.
          */}
-        {/* items-start so a short answer keeps a short card. Without it every
-            card in a row grew to match the tallest, which left Constraints as a
-            mostly empty box the height of Key facts. */}
-        <div className="measure-wide grid grid-cols-1 items-start gap-5 medium:grid-cols-2 expanded:grid-cols-3">
-          {FIELDS.map((field) => (
-            <Card
-              key={field.key}
-              elevated={false}
-              className={cx(
-                // focus-within rather than focus: the ring belongs to the card,
-                // and the thing being focused is the textarea inside it.
-                "transition-colors focus-within:border-primary",
-                !local[field.key].trim() && "border-dashed",
-                field.key === "mission" && "medium:col-span-2 expanded:col-span-3",
-                field.key === "keyFacts" && "medium:col-span-2",
-              )}
-            >
-              <Field label={field.label}>
-                <GrowingArea
-                  /*
-                   * One row, not three. rows is the floor, and a three row
-                   * floor meant "Honest, not hype-driven" reserved two empty
-                   * lines under itself in every short field on the page.
-                   */
-                  minRows={1}
-                  value={local[field.key]}
-                  placeholder={field.placeholder}
-                  onChange={(event) => {
-                    dirty.current = true;
-                    setLocal((current) => ({ ...current, [field.key]: event.target.value }));
-                  }}
-                />
-              </Field>
+        <div className="measure-wide grid grid-cols-1 items-start gap-5 large:grid-cols-2">
+          {GROUPS.map((group) => (
+            <Card key={group.id} elevated={false}>
+              <h2 className="md-title-lg mb-4">{group.title}</h2>
+
+              <div className="flex flex-col gap-4">
+                {group.fields.map((field) => (
+                  <ProfileEntry
+                    key={field.key}
+                    field={field}
+                    value={local[field.key]}
+                    onChange={set(field.key)}
+                  />
+                ))}
+              </div>
             </Card>
           ))}
 
-          <div className="medium:col-span-2 expanded:col-span-3">
+          <div className="large:col-span-2">
             <button
               onClick={() => setShowPreview((value) => !value)}
               className="md-state md-label flex items-center gap-2 rounded-xl px-3 py-2 text-on-variant"
