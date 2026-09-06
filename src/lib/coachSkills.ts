@@ -231,6 +231,7 @@ export function seedCoachSkills(): Skill[] {
     description: skill.description,
     content: skill.content,
     enabled: true,
+    archived: false,
     createdAt: now + index,
     updatedAt: now + index,
   }));

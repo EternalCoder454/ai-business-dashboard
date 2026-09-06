@@ -462,6 +462,7 @@ export function seedSkills(now: number = Date.now()): Skill[] {
     description: skill.description,
     content: skill.content,
     enabled: true,
+    archived: false,
     createdAt: now,
     updatedAt: now,
   }));

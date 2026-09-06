@@ -186,13 +186,17 @@ export interface StoreValue {
   /**
    * Put the shipped skill library back exactly as it ships.
    *
-   * Restores anything edited, disabled or deleted, and removes shipped skills
-   * that have since been retired. Skills written in this workspace are left
-   * alone: "back to default" is about the ones the panel provided, and a reset
-   * that quietly deleted somebody's own playbooks would be a different and much
-   * worse button. Returns how many rows it touched, so the page can say.
+   * Restores anything edited, disabled or deleted. Skills written in this
+   * workspace are left alone: "back to default" is about the ones the panel
+   * provided, and a reset that quietly deleted somebody's own playbooks would
+   * be a different and much worse button.
+   *
+   * Nothing is deleted. A shipped skill you had edited is archived as a copy
+   * before the shipped version goes back, and a shipped skill the panel has
+   * withdrawn is archived where it stands rather than removed. Returns what it
+   * restored and what it set aside, so the page can say.
    */
-  resetSkills: () => Promise<{ restored: number; removed: number }>;
+  resetSkills: () => Promise<{ restored: number; archived: number }>;
   conversationsFor: (departmentId: string) => Conversation[];
 
   updateSettings: (patch: Partial<Omit<Settings, "id">>) => Promise<void>;
@@ -1031,6 +1035,7 @@ export function StoreProvider({
           description: input.description?.trim() ?? "",
           content: input.content ?? "",
           enabled: input.enabled ?? true,
+          archived: input.archived ?? false,
           createdAt: now,
           updatedAt: now,
         };
@@ -1058,6 +1063,8 @@ export function StoreProvider({
       resetSkills: async () => {
         const shipped = seedSkills();
         const stored = remoteRef.current?.skills ?? [];
+        const now = Date.now();
+        const byId = new Map(stored.map((skill) => [skill.id, skill]));
 
         /*
          * Told apart by id, not by content. A shipped skill's id is derived
@@ -1067,22 +1074,59 @@ export function StoreProvider({
          * that the content has been changed.
          */
         const current = new Set(shipped.map((skill) => skill.id));
-        const retired = stored
-          .filter((skill) => skill.id.startsWith("skill_seed_") && !current.has(skill.id))
-          .map((skill) => skill.id);
 
         /*
-         * Everything is rewritten, not just what differs. Working out which
-         * ones changed would save a few rows and would have to get the
+         * Nothing is destroyed, only set aside.
+         *
+         * Two things would otherwise be lost. A shipped skill somebody has
+         * edited is about to be written back over, and a shipped skill the
+         * panel has since withdrawn was being deleted outright. Both are
+         * somebody's library, and a reset that quietly eats writing is a button
+         * nobody can afford to press.
+         *
+         * The edited one is archived as a copy under a new id, so the shipped
+         * version can go back to the id it belongs to and both exist. The
+         * withdrawn one is archived where it stands, since nothing is coming to
+         * take its place.
+         */
+        const kept = shipped.flatMap((fresh) => {
+          const mine = byId.get(fresh.id);
+          if (!mine) return [];
+          const same =
+            mine.content === fresh.content && mine.description === fresh.description;
+          if (same) return [];
+          return [
+            {
+              ...mine,
+              id: newId("skill"),
+              name: `${mine.name} (before reset)`,
+              enabled: false,
+              archived: true,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ];
+        });
+
+        const withdrawn = stored
+          .filter((skill) => skill.id.startsWith("skill_seed_") && !current.has(skill.id))
+          .filter((skill) => !skill.archived)
+          .map((skill) => ({ ...skill, enabled: false, archived: true, updatedAt: now }));
+
+        /*
+         * Everything shipped is rewritten, not just what differs. Working out
+         * which ones changed would save a few rows and would have to get the
          * comparison exactly right, including enabled and the description, on
          * the one path where being wrong means the reset silently did not
-         * reset. Twenty two rows is not worth being clever about.
+         * reset. Twenty rows is not worth being clever about.
          */
-        await push({ table: "skills", action: "upsert", rows: shipped });
-        if (retired.length) {
-          await push({ table: "skills", action: "delete", ids: retired });
-        }
-        return { restored: shipped.length, removed: retired.length };
+        await push({
+          table: "skills",
+          action: "upsert",
+          rows: [...shipped, ...kept, ...withdrawn],
+        });
+
+        return { restored: shipped.length, archived: kept.length + withdrawn.length };
       },
 
       createProject: async (input) => {

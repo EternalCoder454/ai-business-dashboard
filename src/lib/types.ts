@@ -198,6 +198,16 @@ export interface Skill {
   /** The markdown body: the actual playbook. */
   content: string;
   enabled: boolean;
+  /**
+   * Kept for history, out of the prompt and out of the list.
+   *
+   * Where a deleted skill is gone, an archived one is what Reset does with
+   * anything it would otherwise have destroyed: the version you had edited, and
+   * shipped skills the panel has since withdrawn. Same idea as an archived
+   * memory entry, and for the same reason: the alternative is a button that
+   * silently loses writing.
+   */
+  archived: boolean;
   createdAt: number;
   updatedAt: number;
 }

@@ -88,7 +88,11 @@ export function estimateTokens(text: string): number {
 }
 
 export function buildSkillsBlock(skills: Skill[]): string {
-  const active = skills.filter((skill) => skill.enabled && skill.content.trim());
+  // Archived as well as disabled. An archived skill is history rather than a
+  // playbook, and it stays out of the prompt whatever its enabled flag says.
+  const active = skills.filter(
+    (skill) => skill.enabled && !skill.archived && skill.content.trim(),
+  );
   if (active.length === 0) return "";
 
   const bodies = active

@@ -382,6 +382,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       description: row.description,
       content: row.content,
       enabled: row.enabled,
+      archived: row.archived,
       createdAt: ms(row.createdAt),
       updatedAt: ms(row.updatedAt),
     })),
@@ -833,6 +834,7 @@ export async function applyMutations(
               description: row.description,
               content: row.content,
               enabled: row.enabled,
+              archived: row.archived ?? false,
               updatedAt: now,
             };
             await tx

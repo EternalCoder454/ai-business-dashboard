@@ -5,6 +5,7 @@ import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArchiveIcon,
   Button,
   Card,
   Chip,
@@ -65,6 +66,7 @@ function SkillsView() {
   // Asked before, not undone after: the reset overwrites whatever anybody has
   // edited into a shipped skill, and there is nothing to put it back from.
   const [confirmReset, setConfirmReset] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [resetting, setResetting] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -74,10 +76,17 @@ function SkillsView() {
     if (requestedDept) setFilter(requestedDept);
   }, [requestedDept]);
 
+  /*
+   * Archived skills are out of the way, not gone. They are history: no longer
+   * in any prompt, and off the list unless somebody goes looking, which is what
+   * makes Reset safe to press.
+   */
   const visible = useMemo(
     () =>
-      (filter === "all" ? skills : skills.filter((s) => s.departmentId === filter)).slice(),
-    [skills, filter],
+      (filter === "all" ? skills : skills.filter((s) => s.departmentId === filter))
+        .filter((skill) => showArchived || !skill.archived)
+        .slice(),
+    [skills, filter, showArchived],
   );
 
   const departmentOf = (id: string) => allDepartments.find((d) => d.id === id);
@@ -85,7 +94,10 @@ function SkillsView() {
     id === COMPANY_ID
       ? "Every department"
       : departmentOf(id)?.personaName || departmentOf(id)?.name || "Unassigned";
-  const countFor = (id: string) => skills.filter((s) => s.departmentId === id).length;
+  // Archived ones are in no prompt, so they are in no count either.
+  const countFor = (id: string) =>
+    skills.filter((s) => s.departmentId === id && !s.archived).length;
+  const archivedCount = skills.filter((s) => s.archived).length;
 
   const save = async () => {
     if (!draft) return;
@@ -151,6 +163,14 @@ function SkillsView() {
         title="Skills"
         actions={
           <>
+            {archivedCount > 0 ? (
+              <Chip
+                selected={showArchived}
+                onClick={() => setShowArchived((value) => !value)}
+              >
+                Archived · {archivedCount}
+              </Chip>
+            ) : null}
             <Button variant="text" onClick={() => setConfirmReset(true)}>
               Reset
             </Button>
@@ -248,7 +268,12 @@ function SkillsView() {
                 const department = departmentOf(skill.departmentId);
                 return (
                   <li key={skill.id}>
-                    <Card className={cx("group", !skill.enabled && "opacity-60")}>
+                    <Card
+                      className={cx(
+                        "group",
+                        (!skill.enabled || skill.archived) && "opacity-60",
+                      )}
+                    >
                       {/* Stacked until there is room, or the owner chip and the
                           action buttons collide with the name on a narrow card. */}
                       <div className="flex flex-col gap-2 medium:flex-row medium:items-start medium:justify-between medium:gap-3">
@@ -266,20 +291,26 @@ function SkillsView() {
                             {skill.departmentId === COMPANY_ID ? (
                               <Chip tone="primary">Every department</Chip>
                             ) : null}
-                            {!skill.enabled ? <Chip>Disabled</Chip> : null}
+                            {skill.archived ? (
+                              <Chip>Archived</Chip>
+                            ) : !skill.enabled ? (
+                              <Chip>Disabled</Chip>
+                            ) : null}
                           </div>
                           <p className="md-label mt-1 text-on-variant">
                             {ownerLabel(skill.departmentId)} ·{" "}
                             {skill.description || "No trigger described"}
                           </p>
                           <p className="md-label-sm mt-1 text-on-variant/75">
-                            {skill.enabled
-                              ? `Costs about ${estimateTokens(skill.content).toLocaleString()} tokens on every message to ${
-                                  skill.departmentId === COMPANY_ID
-                                    ? "every department"
-                                    : ownerLabel(skill.departmentId)
-                                }`
-                              : `Off, saving about ${estimateTokens(skill.content).toLocaleString()} tokens a message`}
+                            {skill.archived
+                              ? "Archived, and in no prompt"
+                              : skill.enabled
+                                ? `Costs about ${estimateTokens(skill.content).toLocaleString()} tokens on every message to ${
+                                    skill.departmentId === COMPANY_ID
+                                      ? "every department"
+                                      : ownerLabel(skill.departmentId)
+                                  }`
+                                : `Off, saving about ${estimateTokens(skill.content).toLocaleString()} tokens a message`}
                           </p>
                         </div>
 
@@ -291,15 +322,42 @@ function SkillsView() {
                             nothing to tell them apart. The visible text stays
                             short; only the announced name grows.
                           */}
-                          <Chip
-                            selected={skill.enabled}
-                            ariaLabel={`${skill.enabled ? "Switch off" : "Switch on"} ${skill.name}`}
-                            onClick={() =>
-                              void updateSkill(skill.id, { enabled: !skill.enabled })
-                            }
-                          >
-                            {skill.enabled ? "On" : "Off"}
-                          </Chip>
+                          {/* An archived skill has no on and off: it is out of
+                              every prompt until it is brought back, and a
+                              switch offering otherwise would be lying. */}
+                          {skill.archived ? (
+                            <Chip
+                              ariaLabel={`Restore ${skill.name}`}
+                              onClick={() =>
+                                void updateSkill(skill.id, { archived: false })
+                              }
+                            >
+                              Restore
+                            </Chip>
+                          ) : (
+                            <>
+                              <Chip
+                                selected={skill.enabled}
+                                ariaLabel={`${skill.enabled ? "Switch off" : "Switch on"} ${skill.name}`}
+                                onClick={() =>
+                                  void updateSkill(skill.id, { enabled: !skill.enabled })
+                                }
+                              >
+                                {skill.enabled ? "On" : "Off"}
+                              </Chip>
+                              <IconAction
+                                label={`Archive ${skill.name}`}
+                                onClick={() =>
+                                  void updateSkill(skill.id, {
+                                    archived: true,
+                                    enabled: false,
+                                  })
+                                }
+                              >
+                                <ArchiveIcon className="h-4 w-4" />
+                              </IconAction>
+                            </>
+                          )}
                           <IconAction label={`Download ${skill.name} as markdown`} onClick={() => download(skill)}>
                             <DownloadIcon className="h-4 w-4" />
                           </IconAction>
@@ -361,12 +419,12 @@ function SkillsView() {
               disabled={resetting}
               onClick={async () => {
                 setResetting(true);
-                const { restored, removed } = await resetSkills();
+                const { restored, archived } = await resetSkills();
                 setResetting(false);
                 setConfirmReset(false);
                 setNotice(
                   `${restored} shipped skills restored${
-                    removed ? `, ${removed} retired ones removed` : ""
+                    archived ? `, ${archived} archived rather than lost` : ""
                   }. Your own skills were not touched.`,
                 );
               }}
@@ -379,7 +437,9 @@ function SkillsView() {
         <p className="md-body text-on-variant">
           Skills you wrote yourself are left exactly as they are. Only the ones
           the panel ships are affected: each goes back to the version it ships
-          with, including any you have edited, disabled or deleted.
+          with, including any you have edited, disabled or deleted. Nothing is
+          deleted. Anything you had edited is archived first, and stays here
+          under Archived.
         </p>
       </Dialog>
 

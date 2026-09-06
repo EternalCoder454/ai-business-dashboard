@@ -175,6 +175,7 @@ export const skills = pgTable(
     description: text("description").notNull().default(""),
     content: text("content").notNull().default(""),
     enabled: boolean("enabled").notNull().default(true),
+    archived: boolean("archived").notNull().default(false),
     createdAt: created(),
     updatedAt: updated(),
   },

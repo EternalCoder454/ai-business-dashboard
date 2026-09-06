@@ -166,6 +166,7 @@ console.log("\nretired skills are removed, unless edited");
     // A real shipped body, so it fingerprints as untouched.
     content: shipped[0]!.content,
     enabled: true,
+    archived: false,
     createdAt: 1,
     updatedAt: 1,
   };
