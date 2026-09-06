@@ -93,11 +93,14 @@ export function ConversationList({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 py-5">
         {/*
-         * A reading column rather than the full width. These are one-line
+         * A narrow column rather than the full width. These are one-line
          * titles, and stretched across a wide screen the date ended up a hand's
          * width from the thing it belonged to.
+         *
+         * measure-rows rather than measure-read: same width, but flush with the
+         * header above instead of centred under it.
          */}
-        <ul className="measure-read flex flex-col gap-1.5">
+        <ul className="measure-rows flex flex-col gap-1.5">
           {/*
            * Starting a new one is the first row, not a button in the corner.
            * It is the most common thing anybody does here and it wants to be

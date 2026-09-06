@@ -63,7 +63,7 @@ export function MeetingList({
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 py-5">
-        <ul className="measure-read flex flex-col gap-1.5">
+        <ul className="measure-rows flex flex-col gap-1.5">
           {/* First row, not a button in the corner: it is the most common thing
               anybody does here and belongs where the eye already is. */}
           <li>

@@ -561,6 +561,23 @@
   margin-inline: auto;
 }
 
+/*
+ * A list of one line rows: narrow like the reading column, flush like .measure.
+ *
+ * Two forces pull opposite ways here. A row carries a title on the left and a
+ * date on the right, so stretching it across a wide screen leaves the date a
+ * hand-s width from the thing it belongs to. But centring a narrow column under
+ * a header that runs the full width is the fragment-of-another-page problem
+ * .measure was widened to fix, and the row lists inherited it by using
+ * .measure-read for its width and getting its centring as well.
+ *
+ * So: the width of a reading column, the alignment of a content column.
+ */
+.measure-rows {
+  width: 100%;
+  max-width: 44rem;
+}
+
 /* Two-pane layouts, which need room for a list and its supporting column.
    Flush with the gutter for the same reason .measure is. */
 .measure-wide {
