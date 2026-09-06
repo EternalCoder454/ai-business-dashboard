@@ -30,6 +30,7 @@ import { lookup as dnsLookup } from "node:dns";
 import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
 import type { LookupAddress } from "node:dns";
+import type { LookupFunction } from "node:net";
 
 /** Long enough for a webhook, short enough that a hung host is not our problem. */
 const TIMEOUT_MS = 5_000;
@@ -167,6 +168,53 @@ export async function send({ url, body, approvedHosts }: OutboundRequest): Promi
     return { ok: false, detail: "Blocked: the message is too large to send." };
   }
 
+  const checked = await resolvePublic(host);
+  if (!checked.ok) return checked;
+
+  return sendPinned(parsed, checked.address, body, host);
+}
+
+/**
+ * Where a hostname actually points, and a refusal if it is anywhere private.
+ *
+ * Split out of send because the page reader needs exactly this and nothing
+ * else, and two copies of an address check is two chances for one of them to
+ * be looser than the other.
+ */
+/**
+ * A DNS lookup that always answers with the one address already checked.
+ *
+ * Node calls a custom lookup two different ways and it matters which. Since
+ * Happy Eyeballs became the default, a connection asks with `{ all: true }` and
+ * expects an array of `{ address, family }` back; the older form wants
+ * `(err, address, family)`. Answering only the old way makes the socket layer
+ * read an array position that is not there, and the connection dies with
+ * "Invalid IP address: undefined" before a packet is sent, which looks exactly
+ * like the site being unreachable.
+ *
+ * Shared, because the addon sender and the page reader both pin and both got
+ * this wrong in the same place.
+ */
+export function pinnedLookup(address: string): LookupFunction {
+  const family = isIP(address);
+  return ((_hostname: string, options: unknown, callback?: unknown) => {
+    const done = (typeof options === "function" ? options : callback) as (
+      error: null,
+      address: string | LookupAddress[],
+      family?: number,
+    ) => void;
+
+    const wantsAll =
+      typeof options === "object" && options !== null && (options as { all?: boolean }).all;
+
+    if (wantsAll) done(null, [{ address, family }]);
+    else done(null, address, family);
+  }) as LookupFunction;
+}
+
+export async function resolvePublic(
+  host: string,
+): Promise<{ ok: true; address: string } | { ok: false; detail: string }> {
   // A literal address gets the same treatment as a resolved one, so
   // https://127.0.0.1 cannot skip the check by never needing a lookup.
   let addresses: string[];
@@ -189,7 +237,7 @@ export async function send({ url, body, approvedHosts }: OutboundRequest): Promi
     };
   }
 
-  return sendPinned(parsed, addresses[0], body, host);
+  return { ok: true, address: addresses[0] };
 }
 
 /**
@@ -232,14 +280,7 @@ function sendPinned(
         // the address does not weaken the identity check: a private address
         // cannot answer for a public name without the matching certificate.
         servername: host,
-        lookup: (_hostname, options, callback) => {
-          const family = isIP(address);
-          if (typeof options === "function") {
-            (options as (e: null, a: string, f: number) => void)(null, address, family);
-          } else {
-            callback(null, address, family);
-          }
-        },
+        lookup: pinnedLookup(address),
         timeout: TIMEOUT_MS,
       },
       (response) => {

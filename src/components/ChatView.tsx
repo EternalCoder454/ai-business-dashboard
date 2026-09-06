@@ -564,6 +564,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             calendarStatus,
             files,
             deliverables,
+            searchMode,
           ),
           messages: (await Promise.all(history.map(toTurns))).flat(),
           // A department pointed at its own model wins; otherwise the

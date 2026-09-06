@@ -57,6 +57,15 @@ export interface ToolDefinition {
    */
   searchOnly?: boolean;
   /**
+   * Offered wherever the business allows the web at all, either engine.
+   *
+   * Distinct from searchOnly, which names a tool that only exists because the
+   * business chose Perplexity. Opening a page uses neither engine, so the only
+   * question is whether this business reaches the web, and off is the one
+   * answer that means no.
+   */
+  webOnly?: boolean;
+  /**
    * Offered only when this head can see at least one readable document.
    *
    * Same reasoning as searchOnly, and not a permission either. What a head may
@@ -315,6 +324,27 @@ export const BUILT_IN_TOOLS: ToolDefinition[] = [
     summarise: (input) => `Read “${input.title}”`,
   },
   {
+    name: "fetch_url",
+    description:
+      "Open a web page you have been given the address of and read it. Use when " +
+      "somebody names a site, or when a search result is worth reading properly " +
+      "rather than from its extract. Searching finds pages; this opens one. Https " +
+      "only, and it does not follow redirects: if it reports one, ask for that " +
+      "address instead.",
+    schema: {
+      type: "object",
+      properties: {
+        url: str("The full address, as it was given to you."),
+      },
+      required: ["url"],
+    },
+    // Reads a page anyone could open. Nothing is written and nothing of this
+    // business is sent, so stopping to approve it would only interrupt.
+    writes: false,
+    webOnly: true,
+    summarise: (input) => `Open ${input.url}`,
+  },
+  {
     name: "read_deliverable",
     description:
       "Read back something you produced earlier, in full. Do this before revising one, " +
@@ -427,6 +457,7 @@ export function toolsFor(
   return allTools().filter((tool) => {
     if (tool.adminOnly && !options.admin) return false;
     if (tool.searchOnly && options.webSearch !== "perplexity") return false;
+    if (tool.webOnly && (options.webSearch ?? "off") === "off") return false;
     // Offered only when there is something to read. A head told it can read
     // documents, in a business with none, will offer to go and read one.
     if (tool.libraryOnly && !options.documents) return false;

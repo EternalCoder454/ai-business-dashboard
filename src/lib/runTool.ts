@@ -75,6 +75,46 @@ export async function runTool(
       return `Saved “${deliverable.title}”.`;
     }
 
+    case "fetch_url": {
+      /*
+       * Straight to the server, because the guards are there: the address is
+       * resolved and checked against the private ranges, and the socket is
+       * pinned to the address that was checked. A browser fetch would answer to
+       * the page's CORS policy rather than to ours, and would tell us nothing
+       * about where the name actually pointed.
+       */
+      const response = await fetch("/api/fetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: text("url") }),
+      });
+
+      const page = (await response.json().catch(() => null)) as {
+        url?: string;
+        title?: string;
+        text?: string;
+        truncated?: boolean;
+        error?: string;
+      } | null;
+
+      if (!response.ok) {
+        // Thrown so the model sees a failed call and can say so or try the
+        // address it was redirected to, rather than treating the refusal as
+        // the contents of the page.
+        throw new Error(page?.error ?? "That page could not be opened.");
+      }
+
+      /*
+       * Title, address, then the prose. The address is on its own line so a
+       * head citing the page has it to hand rather than reconstructing it.
+       */
+      const parts = [page?.title ?? '', page?.url ?? '', '', page?.text ?? ''];
+      if (page?.truncated) {
+        parts.push('', '[The page continues past what was read.]');
+      }
+      return parts.join("\n");
+    }
+
     case "read_deliverable": {
       const wanted = text("title");
       const found = findDeliverable(store.deliverables, departmentId, wanted);

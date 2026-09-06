@@ -84,6 +84,10 @@ console.log("the registry is well formed");
     // document rather than rewrite it from memory. update_deliverable, which is
     // the half that overwrites, is deliberately not here.
     read_deliverable: "reads its own output, changes nothing",
+    // Opens a page anyone could open. Nothing of this business is sent and
+    // nothing is written, and stopping to approve a page the person just named
+    // is asking them to confirm what they have already asked for.
+    fetch_url: "reads a public page, changes nothing",
   };
 
   const readOnly = BUILT_IN_TOOLS.filter((t) => !t.writes);
@@ -213,7 +217,31 @@ console.log("\nthe prompt says what can be done");
   check("nothing is said when there are no tools", buildToolsBlock([]) === "");
   const block = buildToolsBlock(toolsFor("operations"));
   check("every tool is named", block.includes("create_project") && block.includes("create_task"));
-  check("it says nothing runs unapproved", block.includes("Nothing you call happens on its own"));
+  check(
+    "it says which calls wait and which do not",
+    block.includes("Anything that only reads runs as soon as you call it") &&
+      block.includes("shown to the user to approve first"),
+  );
+
+  /*
+   * Native search never appears in the tool list, because it is a server tool
+   * run by the model's own provider rather than something the panel offers. So
+   * the only way a head learns it has it is this block saying so, and without
+   * that line a head asked to look something up read its own capabilities and
+   * concluded it had no way to reach the web.
+   */
+  check(
+    "native search is mentioned even though it is not a tool",
+    buildToolsBlock(toolsFor("operations"), "native").includes("search the web"),
+  );
+  check(
+    "and is not claimed when the business has search off",
+    !buildToolsBlock(toolsFor("operations"), "off").includes("search the web"),
+  );
+  check(
+    "a head with no tools but native search still gets a block",
+    buildToolsBlock([], "native").includes("search the web"),
+  );
   check("it says not to call one instead of answering", block.includes("instead of answering"));
 
   const ops = seedDepartments().find((d) => d.id === "operations")!;

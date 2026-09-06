@@ -199,17 +199,38 @@ export function buildTasksBlock(tasks: Task[], departmentId: string): string {
  * The schemas are already sent, but a model given tools and no guidance either
  * ignores them or reaches for one on every message. This says when.
  */
-export function buildToolsBlock(tools: { name: string }[]): string {
-  if (!tools.length) return "";
+export function buildToolsBlock(
+  tools: { name: string }[],
+  /*
+   * Whether the business searches, and how.
+   *
+   * Native search is a server tool: it is named in the request and run by the
+   * model's own provider, so it never appears in this list. Which meant that on
+   * native the block said "you can call" and then a list with no search in it,
+   * and a head reading its own capabilities concluded it had no way to reach
+   * the web and said so. It was right about the list and wrong about itself.
+   */
+  webSearch: string = "off",
+): string {
+  const native = webSearch === "native";
+  if (!tools.length && !native) return "";
+
   return [
     "=== WHAT YOU CAN DO ===",
-    `Besides replying, you can call: ${tools.map((t) => t.name).join(", ")}.`,
+    tools.length
+      ? `Besides replying, you can call: ${tools.map((t) => t.name).join(", ")}.`
+      : null,
+    native
+      ? "You can also search the web. It is built into you rather than being one of the tools above, so use it as part of answering: when what you need depends on something current, search, then say what you searched for and cite what you used."
+      : null,
     "",
-    "Nothing you call happens on its own. It is shown to the user as something to approve, so a call they did not want costs them a glance rather than a wrong record.",
+    "Anything that only reads runs as soon as you call it. Anything that changes the workspace is shown to the user to approve first, so a change they did not want costs them a glance rather than a wrong record.",
     "Call one when the user has agreed to the thing, or asked you to write it down. Do not call one to show willing, and never call one instead of answering the question.",
     "Say what you did in the reply as well, in a clause, so the transcript reads on its own.",
     "=== END ===",
-  ].join("\n");
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
 }
 
 /**
@@ -345,6 +366,11 @@ export function buildSystemPrompt(
    * one measuring the tasks block should not have to know this exists.
    */
   deliverables: Deliverable[] = [],
+  /*
+   * Last again. Only the tools block reads it, and only to say that native
+   * search exists, since a server tool never appears in the list of tools.
+   */
+  webSearch: string = "off",
 ): { stable: string; volatile: string } {
   const context = buildCompanyContext(profile, companyName);
 
@@ -394,7 +420,7 @@ export function buildSystemPrompt(
      */
     buildDeliverablesBlock(deliverables, department.id),
     account ? buildUserContext(account, companyName) : "",
-    buildToolsBlock(tools),
+    buildToolsBlock(tools, webSearch),
     SHARED_OPERATING_RULES,
   ]
     .filter(Boolean)

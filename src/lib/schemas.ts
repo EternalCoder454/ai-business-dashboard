@@ -173,3 +173,11 @@ export const addonsBody = z.object({
 export const searchBody = z.object({
   query: z.string().min(1).max(400),
 });
+
+/*
+ * An address a head was given. Long enough for a real one with a query string,
+ * short enough that nothing is being smuggled through the field.
+ */
+export const fetchBody = z.object({
+  url: z.string().min(4).max(1_000),
+});
