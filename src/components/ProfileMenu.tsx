@@ -59,8 +59,8 @@ const LINKS = [
  * with separate rules about whose data they can touch.
  */
 const ADMIN = {
-  href: "/people",
-  label: "Your people",
+  href: "/manage",
+  label: "Management",
   icon: <UsersIcon className="h-4 w-4" />,
 };
 

@@ -91,7 +91,12 @@ const nextConfig = {
       { source: "/ceo", destination: "/orchestrator", permanent: false },
       { source: "/all-hands", destination: "/meetings", permanent: false },
       { source: "/messages", destination: "/inbox", permanent: false },
-      { source: "/manage", destination: "/people", permanent: false },
+      /*
+       * /people existed for about an hour before /manage was preferred, and it
+       * reached production in that window, so it redirects back rather than
+       * 404ing for anybody who opened it.
+       */
+      { source: "/people", destination: "/manage", permanent: false },
       { source: "/admin", destination: "/operator", permanent: false },
     ];
   },

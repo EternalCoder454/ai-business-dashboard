@@ -441,7 +441,7 @@ function presenceOf(member: {
   if (member.presence === "busy") return { label: "Do not disturb", tone: "busy" };
   if (member.presence === "away") return { label: "Away", tone: "off" };
   if (member.presence === "online") return { label: "Online", tone: "on" };
-  // Either timestamp is proof they have been here. See the note in Your people.
+  // Either timestamp is proof they have been here. See the note in Management.
   if (!member.lastSignedInAt && !member.lastSeenAt) {
     return { label: "Never signed in", tone: "off" };
   }

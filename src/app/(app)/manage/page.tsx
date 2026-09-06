@@ -74,6 +74,12 @@ function presenceOf(member: Member): { label: string; tone: "on" | "busy" | "off
 export default function ManagePage() {
   const { workspaceRole, statusReady, settings, allDepartments } = useStore();
   const [tab, setTab] = useState<"people" | "reports">("people");
+  /*
+   * Which person the right hand pane is showing, by address rather than by
+   * object, so a refresh that rebuilds the list does not drop the selection or
+   * leave the pane rendering a copy of a row that has since changed.
+   */
+  const [selected, setSelected] = useState<string | null>(null);
 
   const [members, setMembers] = useState<Member[] | null>(null);
   const [you, setYou] = useState("");
@@ -150,7 +156,7 @@ export default function ManagePage() {
   if (workspaceRole !== "admin") {
     return (
       <>
-        <PageHeader eyebrow={settings.companyName} title="Your people" />
+        <PageHeader eyebrow={settings.companyName} title="Management" />
         <div className="measure min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
           <EmptyState
             icon={<UsersIcon className="h-8 w-8" />}
@@ -163,12 +169,13 @@ export default function ManagePage() {
   }
 
   const admins = members?.filter((m) => m.role === "admin").length ?? 0;
+  const current = members?.find((member) => member.email === selected) ?? null;
 
   return (
     <>
       <PageHeader
         eyebrow={settings.companyName}
-        title={tab === "people" ? "Your people" : "Reports"}
+        title={tab === "people" ? "Management" : "Reports"}
         actions={
           tab === "people" ? (
             <Button onClick={() => setInviting(true)}>
@@ -211,30 +218,52 @@ export default function ManagePage() {
           <ReportsTab scope="workspace" />
         </div>
       ) : (
-      <div className="measure flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
-        {error ? <p className="md-label text-error">{error}</p> : null}
-        {notice ? <p className="md-label text-primary">{notice}</p> : null}
+      <div className="flex min-h-0 flex-1">
+        {/*
+         * A list beside a detail pane, the same shape as the Inbox.
+         *
+         * Every person used to be a card carrying every control they had: a
+         * role select, a permissions button, a remove button and two lines of
+         * status, repeated down the page. Ten colleagues meant forty controls
+         * on one screen and no way to look at one person without reading past
+         * everybody else. The list answers who is here; the pane answers what
+         * you can do about one of them.
+         */}
+        <div
+          className={cx(
+            "min-h-0 min-w-0 flex-1 overflow-y-auto p-3",
+            // An explicit width rather than a cap, for the reason the Inbox
+            // gives: flex-none with only a max shrinks to the longest name.
+            "expanded:w-80 expanded:flex-none expanded:border-r expanded:border-outline-variant",
+            selected && "hidden expanded:block",
+          )}
+        >
+          {error ? <p className="md-label mb-3 px-2 text-error">{error}</p> : null}
+          {notice ? <p className="md-label mb-3 px-2 text-primary">{notice}</p> : null}
 
-        {members === null ? null : members.length === 0 ? (
-          <EmptyState
-            icon={<UsersIcon className="h-8 w-8" />}
-            title="Only you so far"
-            description="Add a colleague to message them."
-          />
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {members.map((member) => {
-              const presence = presenceOf(member);
-              const isYou = member.email === you;
-              // Demoting or removing the only administrator would lock the
-              // business out of its own settings, so the controls go away
-              // rather than failing when pressed.
-              const lastAdmin = member.role === "admin" && admins <= 1;
-
-              return (
-                <li key={member.email}>
-                  <Card>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          {members === null ? null : members.length === 0 ? (
+            <div className="px-1 py-4">
+              <EmptyState
+                icon={<UsersIcon className="h-8 w-8" />}
+                title="Only you so far"
+                description="Add a colleague to message them."
+              />
+            </div>
+          ) : (
+            <ul className="flex flex-col gap-0.5">
+              {members.map((member) => {
+                const presence = presenceOf(member);
+                return (
+                  <li key={member.email}>
+                    <button
+                      type="button"
+                      onClick={() => setSelected(member.email)}
+                      aria-current={selected === member.email}
+                      className={cx(
+                        "md-state flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left",
+                        selected === member.email && "bg-primary-container text-on-primary-container",
+                      )}
+                    >
                       <span
                         aria-hidden
                         className={cx(
@@ -244,89 +273,52 @@ export default function ManagePage() {
                           presence.tone === "off" && "bg-outline-variant",
                         )}
                       />
-                      <div className="min-w-0 flex-1">
-                        <p className="md-title truncate">
+                      <span className="min-w-0 flex-1">
+                        <span className="md-body block truncate">
                           {member.displayName || member.email}
-                          {isYou ? (
+                          {member.email === you ? (
                             <span className="md-label-sm text-on-variant/75"> · you</span>
                           ) : null}
-                        </p>
-                        <p className="md-label-sm truncate text-on-variant/75">
+                        </span>
+                        <span className="md-label-sm block truncate text-on-variant/75">
                           {member.email}
-                          {member.roleTitle ? ` · ${member.roleTitle}` : ""}
-                        </p>
-                      </div>
-
-                      <Chip tone={member.role === "admin" ? "primary" : undefined}>
-                        {member.role === "admin" ? "Administrator" : "Member"}
-                      </Chip>
-                      <span className="md-label-sm text-on-variant/75">{presence.label}</span>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <Select
-                        size="sm"
-                        aria-label={`Role for ${member.email}`}
-                        value={member.role}
-                        disabled={busy || lastAdmin}
-                        onChange={(event) =>
-                          void act(
-                            {
-                              action: "role",
-                              email: member.email,
-                              role: event.target.value,
-                            },
-                            "Saved.",
-                          )
-                        }
-                      >
-                        <option value="member">Member</option>
-                        <option value="admin">Administrator</option>
-                      </Select>
-
-                      {member.role === "member" ? (
-                        <Button
-                          size="sm"
-                          variant="outlined"
-                          disabled={busy}
-                          onClick={() => setEditing(member)}
-                        >
-                          <ShieldIcon className="h-4 w-4" />
-                          Permissions
-                          {unrestricted(member.permissions) ? "" : " · set"}
-                        </Button>
-                      ) : null}
-
-                      {!isYou && !lastAdmin ? (
-                        <Button
-                          size="sm"
-                          variant="text"
-                          disabled={busy}
-                          // Named, because a list of people gives every row a
-                          // button reading "Remove" and a screen reader then
-                          // announces the same thing for each of them with no
-                          // way to tell whose access is about to go.
-                          aria-label={`Remove ${member.email}`}
-                          onClick={() => setRemoving(member)}
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                          Remove
-                        </Button>
-                      ) : null}
-
-                      <span className="md-label-sm ml-auto text-on-variant/75">
-                        {member.lastSignedInAt
-                          ? `Last signed in ${formatRelativeTime(member.lastSignedInAt)}`
-                          : "Has not signed in yet"}
+                        </span>
                       </span>
-                    </div>
-                  </Card>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                      {member.role === "admin" ? (
+                        <ShieldIcon
+                          aria-label="Administrator"
+                          className="h-4 w-4 flex-none text-on-variant/75"
+                        />
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
 
+        <div className={cx("min-h-0 min-w-0 flex-1 overflow-y-auto", !selected && "hidden expanded:flex")}>
+          {current ? (
+            <PersonPane
+              key={current.email}
+              member={current}
+              isYou={current.email === you}
+              lastAdmin={current.role === "admin" && admins <= 1}
+              busy={busy}
+              onBack={() => setSelected(null)}
+              onRole={(role) =>
+                void act({ action: "role", email: current.email, role }, "Saved.")
+              }
+              onPermissions={() => setEditing(current)}
+              onRemove={() => setRemoving(current)}
+            />
+          ) : (
+            <div className="hidden w-full items-center justify-center p-8 expanded:flex">
+              <p className="md-body text-on-variant">Pick somebody to manage.</p>
+            </div>
+          )}
+        </div>
       </div>
       )}
 
@@ -443,6 +435,143 @@ export default function ManagePage() {
  * them and every one is the same yes or no, so a grid of them can be read at a
  * glance and set in a few clicks, which is not true of twenty labelled rows.
  */
+/**
+ * Everything you can do about one person, on its own.
+ *
+ * The controls are the same ones the list used to carry on every row. What
+ * changes is that they are attached to a name you have chosen rather than
+ * repeated forty times down a page, so a destructive one is never a button you
+ * meet by accident while reading about somebody else.
+ */
+function PersonPane({
+  member,
+  isYou,
+  lastAdmin,
+  busy,
+  onBack,
+  onRole,
+  onPermissions,
+  onRemove,
+}: {
+  member: Member;
+  isYou: boolean;
+  /** Demoting or removing the last administrator locks the business out. */
+  lastAdmin: boolean;
+  busy: boolean;
+  onBack: () => void;
+  onRole: (role: string) => void;
+  onPermissions: () => void;
+  onRemove: () => void;
+}) {
+  const presence = presenceOf(member);
+
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <header className="flex flex-none items-center gap-3 border-b border-outline-variant px-4 py-4 medium:px-6">
+        {/* Only on narrow, where the list is the screen you came from. */}
+        <Button variant="text" size="sm" className="expanded:hidden" onClick={onBack}>
+          Back
+        </Button>
+        <div className="min-w-0 flex-1">
+          <p className="md-title-lg truncate">
+            {member.displayName || member.email}
+            {isYou ? <span className="md-label text-on-variant/75"> · you</span> : null}
+          </p>
+          <p className="md-label-sm truncate text-on-variant/75">
+            {member.email}
+            {member.roleTitle ? ` · ${member.roleTitle}` : ""}
+          </p>
+        </div>
+        <Chip tone={member.role === "admin" ? "primary" : undefined}>
+          {member.role === "admin" ? "Administrator" : "Member"}
+        </Chip>
+      </header>
+
+      <div className="measure flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 medium:p-6">
+        <Card>
+          <h3 className="md-title mb-3">Role</h3>
+          <Select
+            aria-label={`Role for ${member.email}`}
+            value={member.role}
+            disabled={busy || lastAdmin}
+            onChange={(event) => onRole(event.target.value)}
+          >
+            <option value="member">Member</option>
+            <option value="admin">Administrator</option>
+          </Select>
+          {lastAdmin ? (
+            <p className="md-label-sm mt-2 text-on-variant/75">
+              The only administrator. Promote somebody else before changing this.
+            </p>
+          ) : null}
+        </Card>
+
+        {member.role === "member" ? (
+          <Card>
+            <h3 className="md-title mb-3">Access</h3>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="outlined" disabled={busy} onClick={onPermissions}>
+                <ShieldIcon className="h-4 w-4" />
+                Permissions
+              </Button>
+              <span className="md-label-sm text-on-variant/75">
+                {unrestricted(member.permissions) ? "Everything" : "Restricted"}
+              </span>
+            </div>
+          </Card>
+        ) : null}
+
+        <Card>
+          <h3 className="md-title mb-3">Activity</h3>
+          <dl className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+              <dt className="md-label text-on-variant">Status</dt>
+              <dd className="md-body">{presence.label}</dd>
+            </div>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+              <dt className="md-label text-on-variant">Last signed in</dt>
+              <dd className="md-body">
+                {member.lastSignedInAt
+                  ? formatRelativeTime(member.lastSignedInAt)
+                  : "Never"}
+              </dd>
+            </div>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+              <dt className="md-label text-on-variant">Added</dt>
+              <dd className="md-body">{formatRelativeTime(member.createdAt)}</dd>
+            </div>
+            {member.invitedBy ? (
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+                <dt className="md-label text-on-variant">Invited by</dt>
+                <dd className="md-body truncate">{member.invitedBy}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </Card>
+
+        {/*
+         * Last, and only when it is actually allowed. Hidden rather than
+         * disabled for the last administrator and for yourself, because a
+         * greyed out Remove still reads as something you could talk the app
+         * into doing.
+         */}
+        {!isYou && !lastAdmin ? (
+          <Card>
+            <h3 className="md-title mb-1">Remove from this business</h3>
+            <p className="md-body mb-3 text-on-variant">
+              They lose access immediately. Their messages and anything they filed stay.
+            </p>
+            <Button variant="outlined" disabled={busy} onClick={onRemove}>
+              <TrashIcon className="h-4 w-4" />
+              Remove {member.displayName || member.email}
+            </Button>
+          </Card>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function PermissionsDialog({
   member,
   heads,
