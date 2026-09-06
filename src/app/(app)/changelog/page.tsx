@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Markdown } from "@/components/Markdown";
 import { Card, Chip, cx } from "@/components/ui";
@@ -71,13 +71,7 @@ export default function ChangelogPage() {
                 {longDate(date)}
               </h2>
 
-              {/*
-                Two columns once there is room for two readable ones. Prose
-                cannot stretch, so a single column on a 1600px screen leaves
-                half of every card empty; a second column puts an entry there
-                instead. A day with one release simply occupies one column.
-              */}
-              <ul className="flex flex-col gap-3 xlarge:grid xlarge:grid-cols-2 xlarge:items-start">
+              <ul className="flex flex-col gap-3">
                 {forDay.map((entry) => (
                   <li key={entry.id}>
                     <Entry entry={entry} view={view} isNew={newerThan(entry, seen)} />
@@ -116,6 +110,22 @@ function Entry({
   const plain = view === "simple" ? entry.plain : undefined;
   const kind = plain ? KIND[plain.kind] : null;
 
+  /*
+   * Collapsed to its opening paragraph, with the rest on request.
+   *
+   * Every entry used to render in full. Two hundred releases of that is a wall
+   * of prose, and widening the page only made more of it visible at once: the
+   * complaint about it was "bombarded by text", which was fair. A changelog is
+   * scanned far more often than it is read, so the default is the shape you
+   * scan and the detail is one click away.
+   */
+  const [open, setOpen] = useState(false);
+  const body = (plain ? plain.detail : entry.detail) ?? "";
+  // Paragraphs are separated by a blank line, the same convention the writer
+  // used. The first is the summary in nearly every entry we have.
+  const [opening, ...rest] = body.split(/\n\s*\n/);
+  const more = rest.join("\n\n").trim();
+
   return (
     <Card>
       <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -132,10 +142,21 @@ function Entry({
 
       {/* The same renderer the heads' replies use, so a bullet list here looks
           like a bullet list anywhere else in the panel. */}
-      {(plain ? plain.detail : entry.detail) ? (
-        <div className={cx("mt-1.5 text-on-variant")}>
-          <Markdown>{plain ? plain.detail : entry.detail}</Markdown>
+      {opening ? (
+        <div className={cx("mt-1.5 text-on-variant", !open && "prose-preview")}>
+          <Markdown>{open ? body : opening}</Markdown>
         </div>
+      ) : null}
+
+      {more ? (
+        <button
+          type="button"
+          onClick={() => setOpen((was) => !was)}
+          aria-expanded={open}
+          className="md-state md-label-sm mt-2 rounded-lg px-2 py-1 text-primary"
+        >
+          {open ? "Show less" : "Read the rest"}
+        </button>
       ) : null}
     </Card>
   );
