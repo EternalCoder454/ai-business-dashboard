@@ -1,0 +1,57 @@
+# What gitleaks should not shout about, and why each one is safe.
+#
+# A scanner that fails on its first run for things somebody already checked is a
+# scanner that gets switched off within a week. These three were each verified
+# by hand before being listed: the whole history was scanned for live credential
+# shapes and produced exactly these, all of them fixtures or placeholders.
+#
+# Anything not listed here fails the build. Adding to this file is the
+# deliberate act, and the reason has to be written next to it.
+
+title = "Eterneon Panel"
+
+[extend]
+# Every rule gitleaks ships, then narrowed below rather than replaced. Writing
+# our own rule set would mean silently losing the ones nobody thought to copy.
+useDefault = true
+
+[allowlist]
+description = "Verified fixtures and placeholders"
+
+paths = [
+  # Placeholders, by definition. This file exists to be copied and filled in.
+  '''\.env\.local\.example$''',
+  '''src/lib/changelog\.data\.ts$''',
+  # A Next.js build directory that was tracked once and removed in 93d983b. It
+  # holds previewModeSigningKey and previewModeEncryptionKey, which Next
+  # generates fresh on every build and which this app never uses, since nothing
+  # here turns on draft mode. They cannot be rotated out of git history without
+  # rewriting it, and rewriting published history to retire two dead keys from a
+  # development build is a worse trade than saying so here.
+  '''\.next-noauth/''',
+]
+
+regexes = [
+  # The scrubbing test asserts that a key in an error note never reaches the
+  # database. It needs something key shaped to assert about, and the padding is
+  # Q and W precisely so nobody mistakes it for real.
+  '''sk-ant-api03-QQQQ[A-Za-z0-9_-]*''',
+  '''sk-ant-KEYTEST[A-Za-z0-9_-]*''',
+  # postgresql://user:password@host/db and friends, in documentation and
+  # examples. A real Neon URL carries a project id and a region.
+  '''postgres(ql)?://(user|username|USER)[:@]''',
+  # This app's own browser storage keys, which are names rather than values.
+  # The entropy rule reads `const STORE_KEY = "..."` as a credential because of
+  # what the constant is called, not what is in it.
+  '''eterneon[.:][a-z0-9.:_-]+''',
+]
+
+# A file that is English prose rather than configuration. It quotes past commit
+# messages, several of which describe credential handling and quote fixture
+# keys, so scanning it finds the text of an old bug report and never a bug.
+#
+# Listed as a path above rather than as a rule with an allowlist, which is how
+# the first version of this file did it: gitleaks took the placeholder regex
+# `$^`, meant to match nothing, as matching at every position, and reported 323
+# leaks across the whole repository. A rule that fires everywhere and a rule
+# that fires nowhere look identical until you run it.

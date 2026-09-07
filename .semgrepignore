@@ -1,0 +1,24 @@
+# What Semgrep should not read.
+#
+# Only things that are not this project's source. Nothing is excluded here to
+# quieten a finding: a rule that fires on real code gets fixed or gets a
+# `nosemgrep` comment on the line, with the reason, where the next person
+# reading that line will see it.
+
+node_modules/
+.next/
+out/
+build/
+coverage/
+
+# Generated. changelog.ids.ts is written by npm run changelog-ids.
+src/lib/changelog.ids.ts
+
+# A data file of English prose quoting past commit messages, several of which
+# describe credential handling and quote fixture keys. Scanning it finds the
+# text of an old bug report, never a bug.
+src/lib/changelog.data.ts
+
+# Migrations are applied by hand against a known database, and are reviewed as
+# SQL rather than as application code.
+drizzle/

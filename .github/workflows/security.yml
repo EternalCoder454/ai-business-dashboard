@@ -1,0 +1,112 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Neither of these depends on the code changing. A key committed last month is
+  # still committed, and a Semgrep rule written next week finds what today's did
+  # not, so this runs on a schedule as well as on a push.
+  schedule:
+    - cron: "0 6 * * 1"
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read the code and nothing else. A workflow that scans for credentials is the
+# last one that should be able to write anything.
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The whole history, which is the point. A key removed in the next
+          # commit is still in the one before it, and still public.
+          fetch-depth: 0
+
+      # The released binary rather than the marketplace action, for two reasons:
+      # the action asks organisations for a licence key, and a workflow whose
+      # job is finding secrets is a poor place to hand a third party a token.
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          VERSION=8.21.2
+          curl -sSfL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks version
+
+      # History only. A working tree pass was here and came out, because in CI it
+      # is the wrong scan: --no-git walks the filesystem including everything
+      # git ignores, so it reads node_modules, the build output and, on a
+      # developer's machine, the real .env.local. Measured before removing it,
+      # that was all 37 of its findings and none of the history scan's.
+      #
+      # In a checkout every tracked file is in the history anyway, so this pass
+      # covers the same ground without the noise. The place for a working tree
+      # scan is a pre-commit hook, where the file is not a commit yet and the
+      # answer still matters.
+      - name: Scan history
+        run: ./gitleaks detect --source . --config .gitleaks.toml --redact --verbose
+
+  static-analysis:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The published image, so the scan does not depend on a Python install
+    # resolving the same way twice. Semgrep's engine is not pure Python and
+    # will not run natively on every developer's machine, which is a reason to
+    # pin the environment rather than the package.
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      # `scan`, not `ci`: the latter reports to Semgrep's own service and wants
+      # a token for it. Nothing here needs to leave the runner.
+      #
+      # Rule packs rather than `--config=auto`, which also phones home. These
+      # four are the ones that know this stack.
+      #
+      # ERROR only. The warning and info tiers are largely style and would bury
+      # the findings that matter under things nobody is going to act on; a
+      # security job that is usually red is one people stop reading. Widen it by
+      # dropping --severity once the ERROR tier is quiet and staying that way.
+      - name: Scan
+        run: |
+          semgrep scan \
+            --config=p/typescript \
+            --config=p/react \
+            --config=p/nextjs \
+            --config=p/secrets \
+            --severity=ERROR \
+            --error \
+            --metrics=off \
+            --quiet
+
+  dependencies:
+    name: Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Production only. Everything the build and the tests need is real code
+      # too, but an advisory in a CLI that never reaches a server is not
+      # something to hold a deploy for, and mixing the two makes both easy to
+      # ignore. High and above, since moderate advisories in transitive build
+      # tooling are a steady drip that teaches people to run this with --force.
+      - name: Audit
+        run: npm audit --omit=dev --audit-level=high
