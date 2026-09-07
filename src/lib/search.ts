@@ -1,3 +1,4 @@
+import { DOC_HEADINGS } from "./documentation.titles";
 import { conversationHref, departmentHrefById } from "./routes";
 import { COMPANY_ID } from "./seed";
 import type {
@@ -17,7 +18,9 @@ export type ResultKind =
   | "deliverable"
   | "project"
   | "room"
-  | "page";
+  | "page"
+  | "doc"
+  | "change";
 
 export interface SearchResult {
   id: string;
@@ -91,10 +94,33 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
     id === COMPANY_ID
       ? "Every head"
       : corpus.departments.find((d) => d.id === id)?.name ?? "Unassigned";
-    for (const page of PAGES) {
+  for (const page of PAGES) {
     const score = scoreField(page.title, needle, 8);
     if (score) {
       results.push({ ...page, id: `page:${page.href}`, kind: "page", score });
+    }
+  }
+
+  /*
+   * The manual, by heading only.
+   *
+   * Headings rather than the whole text, and from a generated list rather than
+   * from documentation.ts, because this runs in the shell on every screen and
+   * importing the manual would put all 24KB of it in the chunk every visitor
+   * downloads to match two dozen short strings. Somebody searching "backup"
+   * wants the section, and the section is where the words are.
+   */
+  for (const heading of DOC_HEADINGS) {
+    const score = scoreField(heading.title, needle, 7);
+    if (score) {
+      results.push({
+        id: `doc:${heading.id}`,
+        kind: "doc",
+        title: heading.title,
+        subtitle: heading.chapter,
+        href: `/documentation#${heading.id}`,
+        score,
+      });
     }
   }
 
@@ -231,6 +257,8 @@ export const KIND_LABEL: Record<ResultKind, string> = {
   deliverable: "Deliverables",
   project: "Projects",
   room: "Meeting",
+  doc: "Documentation",
+  change: "Changelog",
 };
 
 /** Groups results for display while preserving the overall ranking. */
@@ -244,6 +272,8 @@ export function groupResults(results: SearchResult[]): [ResultKind, SearchResult
     "deliverable",
     "room",
     "message",
+    "doc",
+    "change",
   ];
   return order
     .map((kind) => [kind, results.filter((r) => r.kind === kind)] as [ResultKind, SearchResult[]])

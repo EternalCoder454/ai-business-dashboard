@@ -13,6 +13,7 @@ import {
 import { useStore } from "@/lib/store";
 import {
   BookIcon,
+  ScheduleIcon,
   BriefcaseIcon,
   BuildingIcon,
   CloseIcon,
@@ -268,6 +269,8 @@ function ResultIcon({ kind, href }: { kind: ResultKind; href: string }) {
     skill: <SparkIcon className={className} />,
     deliverable: <DocIcon className={className} />,
     project: <FolderIcon className={className} />,
+    doc: <BookIcon className={className} />,
+    change: <ScheduleIcon className={className} />,
     room: <UsersIcon className={className} />,
   };
   return <>{byKind[kind]}</>;

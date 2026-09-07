@@ -638,5 +638,45 @@
     "kind": "new",
     "title": "Eterneon",
     "detail": "The first version of the panel: *a room of department heads you can go and ask*."
+  },
+  "fc05c00": {
+    "kind": "new",
+    "title": "Backups",
+    "detail": "Your workspace can now be put back to how it was, from Settings.\n\nA backup holds everything your business has written: conversations and their messages in full, deliverables, skills, the wiki, tasks, memory and the company profile. Take one by hand before you do something you are unsure about, and give it a name so you recognise it later.\n\nRestoring replaces everything with the contents of that backup, so anything written since is removed. It is safe to try anyway: before it replaces a single thing, the panel takes a backup of the workspace as it stands, so restoring the wrong one is undone by restoring the one it just made.\n\nA restore never touches your API keys, who can open the workspace, or your uploaded files. Reinstating a key you had rotated, or a list of people you had removed somebody from, would be a worse problem than the one you were fixing."
+  },
+  "cb49d6c": {
+    "kind": "new",
+    "title": "A backup every night",
+    "detail": "The panel now takes a backup of your workspace overnight, without being asked.\n\nA backup you remembered to take is useful. The one that matters is the one nobody thought about until the morning they needed it.\n\nIt skips a night where nothing has changed, so a quiet fortnight does not fill your history with fourteen identical copies and push out the last one taken while you were still working."
+  },
+  "c396c80": {
+    "kind": "new",
+    "title": "Editing messages, and naming your people",
+    "detail": "You can now edit or delete a message you sent in the Inbox. An edited one is marked as edited, and a deleted one disappears from the thread for both of you.\n\nIt does not disappear from the business. An administrator reading the Messages tab under Management still sees it, marked as withdrawn, along with what an edited message originally said. You should be able to take back something you regret, and a business that may have to answer for what was said inside it should not lose the record because the sender would rather it were gone.\n\nAdministrators can also now set what this business calls somebody and what they do here, plus a private note only administrators see. That name applies here and nowhere else: it never changes what the person calls themselves, or what another business they belong to sees."
+  },
+  "3cfebc5": {
+    "kind": "better",
+    "title": "The numbers moved to the Dashboard",
+    "detail": "The Information screen is gone. What the heads cost, what each of them is sent, and how much room your workspace is using are now a section at the bottom of the Dashboard, which is where you were when you wondered.\n\nSpend and context are charts you can actually compare now. The context bars used to be the same length for every head, so the one thing they could not tell you was which head was expensive.\n\nStorage counts real bytes rather than rows. A row is not a size: one conversation with a pasted contract in it outweighs a thousand tasks."
+  },
+  "6038d7e": {
+    "kind": "better",
+    "title": "Schedules moved onto Tasks",
+    "detail": "Briefings sat directly under Tasks and asked the same question: what is owed, and when. The only difference is whether it comes round again, so it is a tab on Tasks now rather than a screen of its own.\n\nRenamed to Schedules, which is the thing you actually set. A briefing is what a schedule produces, so the old name meant the button on that page said New schedule on a screen called Briefings."
+  },
+  "d4e778f": {
+    "kind": "fixed",
+    "title": "A head can see the deliverable it just wrote",
+    "detail": "A head that had just saved a deliverable carried on with the list from before it existed, so it could not see the thing it had made a moment earlier. Asking it to revise that document made a second copy instead."
+  },
+  "7d81928": {
+    "kind": "fixed",
+    "title": "Changes save in the order you made them",
+    "detail": "Every change was sent the moment you made it, in its own request, racing every other one. That is fine until two changes are close together: a field that saves as you type sent a request per character, and whichever arrived last won rather than whichever you typed last, so a field could end up holding part of what you entered.\n\nWorse, when a save failed the panel reloaded to recover, which could quietly replace changes that were still on their way with a version from before they landed.\n\nChanges now go in one at a time, in order, and several made at once travel together."
+  },
+  "5cc9c42": {
+    "kind": "better",
+    "title": "A lighter inbox",
+    "detail": "The panel asked the server for your inbox every twenty five seconds all day, whether or not anything had happened, which was more than half of everything the server did.\n\nIt now waits longer while the answer keeps coming back the same, and goes straight back to checking often the moment anything changes or you return to the tab. A message still arrives as quickly as it did."
   }
 }

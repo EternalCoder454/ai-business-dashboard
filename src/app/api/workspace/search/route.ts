@@ -5,6 +5,7 @@ import * as t from "@/db/schema";
 import { membershipFor } from "@/db/tenancy";
 import { withinRate } from "@/lib/rateLimit";
 import { conversationHref } from "@/lib/routes";
+import { CHANGELOG } from "@/lib/changelog.data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -120,7 +121,46 @@ export async function GET(request: Request) {
       if (results.length >= LIMIT) break;
     }
 
-    return Response.json({ results });
+    /*
+     * The changelog, searched here rather than in the browser.
+     *
+     * It is 320KB of prose, and the palette lives in the shell on every screen,
+     * so importing it there would put the whole thing in the chunk every
+     * visitor downloads on every page. That is the exact mistake changelog.ids
+     * was written to undo. On the server it costs nothing: this request is
+     * already going out for message bodies.
+     *
+     * Title first and body second, weighted the same way the local search
+     * weights them, so searching "backup" finds the entry about backups rather
+     * than every entry that happens to mention one in passing.
+     */
+    const needle = query.toLowerCase();
+    const changes = [];
+    for (const entry of CHANGELOG) {
+      const inTitle = entry.title.toLowerCase().includes(needle);
+      const inBody = !inTitle && entry.detail.toLowerCase().includes(needle);
+      if (!inTitle && !inBody) continue;
+
+      changes.push({
+        id: `change:${entry.id}`,
+        kind: "change" as const,
+        title: entry.title,
+        subtitle: new Date(entry.date).toLocaleDateString(undefined, {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }),
+        snippet: inBody ? snippet(entry.detail, query) : undefined,
+        href: `/changelog#${entry.id}`,
+        // Below a message, which is this business's own writing, and above
+        // nothing: the changelog is ours rather than theirs.
+        score: inTitle ? 2.5 : 1.5,
+      });
+      if (changes.length >= 6) break;
+    }
+
+    return Response.json({ results: [...results, ...changes] });
+
   } catch (error) {
     console.error("[api/workspace/search]", error);
     return Response.json({ results: [] });

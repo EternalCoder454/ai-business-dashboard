@@ -73,7 +73,11 @@ export default function ChangelogPage() {
 
               <ul className="flex flex-col gap-3">
                 {forDay.map((entry) => (
-                  <li key={entry.id}>
+                  /* Anchored, so a changelog result in the search lands on the
+                     entry rather than at the top of a long page. scroll-mt
+                     clears the sticky header the same way the manual's
+                     headings do. */
+                  <li key={entry.id} id={entry.id} className="scroll-mt-24">
                     <Entry entry={entry} view={view} isNew={newerThan(entry, seen)} />
                   </li>
                 ))}
