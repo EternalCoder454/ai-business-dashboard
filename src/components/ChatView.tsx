@@ -779,19 +779,23 @@ export function ChatView({ departmentId }: { departmentId: string }) {
       }
     },
     [
-      draft,
-      pending,
+      /*
+       * Seven names came out of this list at the same time as five went in:
+       * draft, pending, isStreaming, active, createConversation,
+       * openConversation and router. None of them is read by generate. They
+       * belong to send, below, which is where they came from, and listing them
+       * here rebuilt this callback on every keystroke along with the three
+       * callbacks that depend on it.
+       *
+       * That churn is also what hid the missing five, since a list rebuilt
+       * constantly is never stale for long enough to notice.
+       */
       memory,
       tasks,
-      isStreaming,
       department,
-      active,
       calendar,
       calendarStatus,
-      createConversation,
       departmentId,
-      openConversation,
-      router,
       setMessages,
       updateConversation,
       settings,
@@ -799,6 +803,28 @@ export function ChatView({ departmentId }: { departmentId: string }) {
       skillsFor,
       account,
       admin,
+      /*
+       * The five this was missing, and why it mattered on one path in
+       * particular.
+       *
+       * generate reads all of these: the library and deliverable lists it tells
+       * the head about and sends with the request, the search mode, the
+       * projects, and the store that runTool is handed. Leaving them out meant
+       * the callback was not rebuilt when they changed, so it kept sending the
+       * lists as they were when it was last built.
+       *
+       * Typing hid it, because `draft` is a dependency and so every keystroke
+       * rebuilt the callback with fresh values. The path with no typing on it
+       * is the one that broke: after a tool call, the loop continues through
+       * `again.current`, so a head that had just written a deliverable carried
+       * on with the list from before it existed and could not see the thing it
+       * had made a moment earlier.
+       */
+      deliverables,
+      files,
+      projects,
+      searchMode,
+      store,
     ],
   );
 
