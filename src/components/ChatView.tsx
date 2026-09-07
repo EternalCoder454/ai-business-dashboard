@@ -361,6 +361,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     // A conversation that exists but has nothing in it yet is the one a blank
     // chat already made, so reuse it rather than leaving empties behind.
     return started.length > 0 ? undefined : conversations[0];
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- as below
   }, [conversations, started.length, requestedId]);
 
   const [draft, setDraft] = useState("");
@@ -499,6 +500,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   };
 
   const attach = useCallback(
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization -- as below
     async (files: FileList | File[]) => {
       setAttachError(null);
       const room = MAX_ATTACHMENTS_PER_MESSAGE - pending.length;
@@ -832,8 +834,16 @@ export function ChatView({ departmentId }: { departmentId: string }) {
    * Wired after the fact, because generate reads it to continue after a tool
    * call and a useCallback cannot list itself as its own dependency.
    */
+  // As above: a useCallback cannot name itself as its own dependency.
+  // eslint-disable-next-line react-hooks/refs -- deliberate, see above
   again.current = generate;
 
+  /*
+   * The compiler cannot prove it may keep this memo, so it declines to
+   * optimise the component rather than changing what it does. A note about how
+   * well this file compiles, not about whether it is correct.
+   */
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- see above
   const send = useCallback(async () => {
     const text = draft.trim();
     if ((!text && pending.length === 0) || isStreaming || !department) return;

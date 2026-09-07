@@ -357,6 +357,13 @@ export function Dialog({
   const panel = useRef<HTMLDivElement | null>(null);
   const scrim = useRef<HTMLDivElement | null>(null);
   const lastOpen = useRef({ title, children, footer });
+  /*
+   * Written during render on purpose, which is the ordinary way to keep a
+   * previous value and is safe to run twice: the same props produce the same
+   * assignment. Without it a dialog blanks out as it closes, which is the empty
+   * modal with a stale title that this was added to fix.
+   */
+  // eslint-disable-next-line react-hooks/refs -- see above
   if (open) lastOpen.current = { title, children, footer };
 
   useEffect(() => {
@@ -443,6 +450,7 @@ export function Dialog({
    * frames. Held in a ref updated during render, which is the ordinary way to
    * keep a previous value and is safe to run twice.
    */
+  // eslint-disable-next-line react-hooks/refs -- the previous value, as above
   const shown = open ? { title, children, footer } : lastOpen.current;
 
   return (

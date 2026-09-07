@@ -44,6 +44,14 @@ export function CalendarCard() {
    */
   const { calendar, calendarStatus, ready } = useStore();
 
+  /*
+   * The clock, read during render, which the purity rule is right to notice in
+   * general and which cannot matter here. The horizon is three days out and is
+   * only used to decide which events are near enough to show, so two renders a
+   * millisecond apart choose the same ones. Reading it in an effect instead
+   * would buy nothing and cost a second render on every mount.
+   */
+  // eslint-disable-next-line react-hooks/purity -- see above
   const horizon = Date.now() + 3 * 86_400_000;
   const events = calendar.filter((event) => event.start < horizon);
   const problem = calendarStatus === "connected" ? null : calendarStatus;

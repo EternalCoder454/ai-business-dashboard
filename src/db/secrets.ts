@@ -88,7 +88,7 @@ export function encryptSecret(
   }
 
   const iv = randomBytes(IV_BYTES);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const cipher = createCipheriv("aes-256-gcm", key, iv, { authTagLength: TAG_BYTES });
   cipher.setAAD(aad(workspaceId, field));
   const body = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
@@ -138,7 +138,18 @@ export function decryptSecret(
     const body = Buffer.from(bodyPart, "base64url");
     if (iv.length !== IV_BYTES || tag.length !== TAG_BYTES) return "";
 
-    const decipher = createDecipheriv("aes-256-gcm", key, iv);
+    /*
+     * The tag length is stated rather than left to the default.
+     *
+     * GCM will accept a shorter tag than it produced, and a shorter tag is
+     * proportionally easier to forge. The length check above already rejects
+     * one, so this was never open, but the guarantee sat three lines away from
+     * the call that depends on it and was invisible to anything reading the
+     * call on its own, including the scanner that raised it.
+     */
+    const decipher = createDecipheriv("aes-256-gcm", key, iv, {
+      authTagLength: TAG_BYTES,
+    });
     decipher.setAAD(aad(workspaceId, field));
     decipher.setAuthTag(tag);
     return Buffer.concat([decipher.update(body), decipher.final()]).toString("utf8");

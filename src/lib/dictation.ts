@@ -159,6 +159,8 @@ export function useDictation(onText: (text: string) => void): Dictation {
    * dependency it would tear down and rebuild the recogniser mid sentence.
    */
   const deliver = useRef(onText);
+  // As above: as a dependency this would rebuild the recogniser mid sentence.
+  // eslint-disable-next-line react-hooks/refs -- deliberate, see above
   deliver.current = onText;
 
   /*
