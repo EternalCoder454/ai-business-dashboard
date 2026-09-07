@@ -136,7 +136,7 @@ export async function GET(request: Request) {
           sum(COALESCE((response->'usage'->>'cacheRead')::int, 0))::int AS cache_read,
           sum(COALESCE((response->'usage'->>'cacheWrite')::int, 0))::int AS cache_write,
           count(*)::int AS replies
-        FROM all_hands_rounds
+        FROM meeting_rounds
         CROSS JOIN LATERAL jsonb_array_elements(responses) AS response
         WHERE workspace_id = ${workspaceId}
           AND created_at >= to_timestamp(${since} / 1000.0)

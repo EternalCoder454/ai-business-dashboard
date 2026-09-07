@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarCard } from "./CalendarCard";
+import type { DashboardPreview } from "@/lib/dashboardPreview";
 import { SpendCard } from "./SpendCard";
 import { ContextCard } from "./ContextCard";
 import { StorageCard } from "./StorageCard";
@@ -33,7 +34,7 @@ import { useStore } from "@/lib/store";
  * a short line of text next to a lot of nothing, and a scroll to reach what
  * would have fitted.
  */
-export function Dashboard() {
+export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
   const {
     ready,
     departments,
@@ -111,6 +112,32 @@ export function Dashboard() {
     }
     return counts;
   }, [openTasks, now]);
+
+  /*
+   * The two panes the server already drew, until the snapshot arrives.
+   *
+   * These were the last things on the dashboard to fill in, about a second and
+   * a half after the rest, because they wait on /api/workspace and that waits
+   * on the browser having run the JavaScript first. The server reads the same
+   * ten lines on the request that renders the page, so they are in the markup,
+   * and this swaps to the live copy the moment there is one.
+   *
+   * `ready` rather than a length check. A workspace with no conversations yet
+   * would otherwise never stop preferring the preview, and the preview is empty
+   * too, so it would work by accident rather than on purpose.
+   */
+  const recent = ready
+    ? conversations.filter((c) => c.messageCount > 0).slice(0, 4)
+    : (preview?.conversations ?? []);
+
+  const recentMeetings = ready
+    ? meetings.slice(0, 3).map((run) => ({
+        id: run.id,
+        title: run.title,
+        rounds: run.rounds.length,
+        updatedAt: run.updatedAt,
+      }))
+    : (preview?.meetings ?? []);
 
   const activeProjects = projects.filter((p) => p.status === "active").length;
   const threads = conversations.filter((c) => c.messageCount > 0).length;
@@ -235,17 +262,14 @@ export function Dashboard() {
           icon={<ChevronIcon className="h-3.5 w-3.5" />}
           href="/orchestrator"
           empty="No conversations."
-          items={conversations
-            .filter((c) => c.messageCount > 0)
-            .slice(0, 4)
-            .map((conversation) => ({
-              key: conversation.id,
-              href: conversationHref(conversation.departmentId, conversation.id),
-              primary: conversation.title,
-              secondary: `${nameOf(conversation.departmentId)} · ${formatRelativeTime(
-                conversation.updatedAt,
-              )}`,
-            }))}
+          items={recent.map((conversation) => ({
+            key: conversation.id,
+            href: conversationHref(conversation.departmentId, conversation.id),
+            primary: conversation.title,
+            secondary: `${nameOf(conversation.departmentId)} · ${formatRelativeTime(
+              conversation.updatedAt,
+            )}`,
+          }))}
         />
 
         <PaneList
@@ -253,12 +277,12 @@ export function Dashboard() {
           icon={<UsersIcon className="h-3.5 w-3.5" />}
           href="/meetings"
           empty="No threads."
-          items={meetings.slice(0, 3).map((run) => ({
+          items={recentMeetings.map((run) => ({
             key: run.id,
             href: "/meetings",
             primary: run.title,
-            secondary: `${run.rounds.length} ${
-              run.rounds.length === 1 ? "question" : "questions"
+            secondary: `${run.rounds} ${
+              run.rounds === 1 ? "question" : "questions"
             } · ${formatRelativeTime(run.updatedAt)}`,
           }))}
         />

@@ -17,8 +17,8 @@ async function main() {
 
   // Row counts and column weights straight from Postgres, which knows.
   const heavy = await db.execute<{ label: string; rows: string; bytes: string }>(sql`
-    SELECT 'all_hands_rounds.responses' AS label, count(*)::text AS rows,
-           coalesce(sum(pg_column_size(responses)),0)::text AS bytes FROM all_hands_rounds
+    SELECT 'meeting_rounds.responses' AS label, count(*)::text AS rows,
+           coalesce(sum(pg_column_size(responses)),0)::text AS bytes FROM meeting_rounds
     UNION ALL SELECT 'files.text_content', count(*)::text,
            coalesce(sum(pg_column_size(text_content)),0)::text FROM files
     UNION ALL SELECT 'files.data', count(*)::text,

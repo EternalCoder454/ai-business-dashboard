@@ -41,7 +41,7 @@ function note(label: string, value: string) {
 const SCOPED = [
   "departments", "projects", "conversations", "messages", "skills",
   "wiki_pages", "tasks", "memory", "deliverables", "files",
-  "all_hands_runs", "all_hands_rounds", "profiles", "settings",
+  "meetings", "meeting_rounds", "profiles", "settings",
   "direct_messages", "schedules", "briefings", "reports", "telemetry",
   "api_keys", "link_allowlist",
 ];
@@ -58,7 +58,7 @@ const SCOPED = [
 const PARENTS: [string, string, string][] = [
   ["conversations", "department_id", "departments"],
   ["messages", "conversation_id", "conversations"],
-  ["all_hands_rounds", "run_id", "all_hands_runs"],
+  ["meeting_rounds", "run_id", "meetings"],
   ["deliverables", "department_id", "departments"],
   ["skills", "department_id", "departments"],
   ["tasks", "department_id", "departments"],
