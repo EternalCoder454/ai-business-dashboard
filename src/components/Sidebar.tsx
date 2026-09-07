@@ -4,14 +4,7 @@ import { hasKeyFor } from "@/lib/hasKey";
 import Link from "next/link";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
-import {
-  moveNavSection,
-  resetNavLayout,
-  toggleNavSection,
-  useNavLayout,
-  type NavSectionId,
-} from "@/lib/navLayout";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CompanyMark } from "./CompanyMark";
 import { ORCHESTRATOR_ID } from "@/lib/seed";
 import { conversationHref, departmentHref, formatExactTime } from "@/lib/routes";
@@ -258,6 +251,33 @@ export function Sidebar({
  * Drawer contents, shared by the permanent drawer and by the modal drawer that
  * compact, medium, and expanded windows open from the top app bar.
  */
+/**
+ * Height to content, which a textarea will not do on its own.
+ *
+ * The borders have to be added back. scrollHeight is the content box, the
+ * element is border-box, and this one carries a 1px border on each side that
+ * turns visible on hover. Setting height to scrollHeight alone leaves it two
+ * pixels short of its own text, which is not enough to see and is enough to
+ * scroll: the last line drifts under the edge as you type.
+ */
+function growSubtitle(el: HTMLTextAreaElement): void {
+  /*
+   * An empty field is one row, whatever the placeholder would need.
+   *
+   * scrollHeight measures the placeholder when there is nothing else to
+   * measure, and "Add a subtitle…" wraps to two lines in a narrow sidebar. So
+   * a subtitle typed and then cleared left a box twice the height of the one
+   * the page had loaded with, for a field with nothing in it.
+   */
+  if (!el.value) {
+    el.style.height = "";
+    return;
+  }
+
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+}
+
 export function SidebarContent({
   onNavigate,
   onOpenSearch,
@@ -323,6 +343,18 @@ export function SidebarContent({
 
   const recent = conversations.filter((c) => c.messageCount > 0).slice(0, 24);
 
+  /*
+   * The subtitle grows to fit what it holds.
+   *
+   * Run on every change and once the stored value arrives, because the value
+   * lands a moment after the first render and a box measured before it does is
+   * a box sized for nothing.
+   */
+  const subtitleRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    if (subtitleRef.current) growSubtitle(subtitleRef.current);
+  }, [subtitle]);
+
   return (
     <>
       {/* Just the mark. It used to be the fold button, with a chevron that
@@ -332,31 +364,56 @@ export function SidebarContent({
       <div className="flex items-start gap-3 px-5 pb-4 pt-5">
         <CompanyMark size={40} />
         <div className="min-w-0 flex-1">
-          <p className="md-title truncate">{settings.companyName}</p>
           {/*
-            size={1} because the sidebar is now as wide as its widest row, and
-            an input's default is size={20}: about 172px of intrinsic width
-            whatever is typed in it, which with the mark and the gutters came to
-            264 and was single handedly setting the width of the whole column.
-            It is w-full, so it still fills whatever row it ends up in.
+            * Wraps rather than truncates. The column is draggable now, so its
+            * width is whatever somebody chose, and a business called Northbound
+            * Analytics read "Northbound A..." at any width they happened to
+            * like. A name is not a row in a list: there are two of them on the
+            * screen and a second line costs nothing next to not being able to
+            * read your own company's name.
+            *
+            * [overflow-wrap:anywhere] as well as normal wrapping, so a single
+            * unbroken word longer than the column breaks instead of pushing the
+            * whole sidebar wider than it was dragged to.
+            */}
+          <p className="md-title [overflow-wrap:anywhere]">{settings.companyName}</p>
+          {/*
+            A textarea rather than an input, for the same reason, since an input
+            is one line by definition and cannot be told otherwise. rows={1} and
+            it grows to whatever it holds.
+
+            size={1} on the input this replaces was there because the sidebar is
+            as wide as its widest row and an input's default size is about 172px
+            of intrinsic width whatever is typed in it. A textarea has the same
+            habit, which is what cols={1} answers.
           */}
-          <input
-            size={1}
+          <textarea
+            ref={subtitleRef}
+            rows={1}
+            cols={1}
             value={subtitle}
-            onChange={(event) => setSubtitle(event.target.value)}
+            onChange={(event) => {
+              setSubtitle(event.target.value);
+              growSubtitle(event.target);
+            }}
             onBlur={() => {
               if (subtitle !== settings.companySubtitle) {
                 void updateSettings({ companySubtitle: subtitle });
               }
             }}
             onKeyDown={(event) => {
-              if (event.key === "Enter") event.currentTarget.blur();
+              // A subtitle is one thing, not a paragraph, so Enter finishes it
+              // rather than adding a line nobody asked for.
+              if (event.key === "Enter") {
+                event.preventDefault();
+                event.currentTarget.blur();
+              }
             }}
             aria-label="Company subtitle"
             placeholder="Add a subtitle…"
             className={cx(
-              "md-label-sm w-full truncate rounded border border-transparent bg-transparent",
-              "px-1 py-0.5 -ml-1 text-on-variant transition-colors",
+              "md-label-sm w-full resize-none overflow-hidden rounded border border-transparent",
+              "bg-transparent px-1 py-0.5 -ml-1 text-on-variant transition-colors",
               "hover:border-outline-variant focus:border-primary focus:outline-none",
             )}
           />
@@ -569,88 +626,34 @@ interface SectionSpec {
 }
 
 /**
- * The drawer's sections, in whatever order this browser has put them.
+ * The drawer's sections, in the order they are declared.
  *
- * Reordering is HTML5 drag and drop rather than a library: there are six
- * items, they only move vertically, and a pointer-events implementation would
- * be more code than the feature. Editing is behind a toggle so a stray drag
- * while navigating cannot rearrange the menu.
+ * They used to be reorderable and hideable, behind an "Edit menu" toggle that
+ * turned every header into a drag handle. Four sections, none of which anybody
+ * had a reason to put in a different order, and the control sat at the bottom
+ * of the navigation on every screen advertising itself. It cost a store, a drag
+ * implementation, a second mode for the headers, and a Reset button, to arrange
+ * a list that reads Work, Departments, Personal, Recent in the only order those
+ * four make sense in.
+ *
+ * What is left is what people actually used: each section still folds, and
+ * still remembers whether it is folded. Anybody who had hidden a section will
+ * see it again, which is the honest consequence of taking the feature out.
  */
 function SidebarSections({
   sections,
 }: {
-  sections: Partial<Record<NavSectionId, SectionSpec | undefined>>;
+  sections: Partial<Record<string, SectionSpec | undefined>>;
 }) {
-  const layout = useNavLayout();
-  const [editing, setEditing] = useState(false);
-  const [dragging, setDragging] = useState<NavSectionId | null>(null);
-
-  const present = layout.order.filter((id) => sections[id]);
-  const visible = editing ? present : present.filter((id) => !layout.hidden.includes(id));
-  const hiddenCount = present.filter((id) => layout.hidden.includes(id)).length;
-
   return (
     <nav className="flex-1 overflow-y-auto px-3 pb-6">
-      {visible.map((id, index) => {
-        const spec = sections[id];
-        if (!spec) return null;
-        const isHidden = layout.hidden.includes(id);
-        return (
-          <div
-            key={id}
-            draggable={editing}
-            onDragStart={() => setDragging(id)}
-            onDragEnd={() => setDragging(null)}
-            onDragOver={(event) => {
-              if (!editing || !dragging || dragging === id) return;
-              event.preventDefault();
-            }}
-            onDrop={(event) => {
-              if (!editing || !dragging || dragging === id) return;
-              event.preventDefault();
-              moveNavSection(dragging, layout.order.indexOf(id));
-              setDragging(null);
-            }}
-            className={cx(
-              editing && "rounded-xl border border-dashed border-outline-variant/70 mb-1",
-              dragging === id && "opacity-40",
-              isHidden && "opacity-50",
-            )}
-          >
-            <Section
-              id={id}
-              label={spec.label}
-              count={spec.count}
-              editing={editing}
-              hidden={isHidden}
-              onToggleHidden={() => toggleNavSection(id)}
-            >
-              {spec.content}
-            </Section>
-          </div>
-        );
-      })}
-
-      <div className="mt-2 flex items-center gap-2 px-3">
-        <button
-          type="button"
-          onClick={() => setEditing((value) => !value)}
-          className="md-state md-label-sm rounded-lg px-2 py-1 text-on-variant/75"
-        >
-          {editing ? "Done" : "Edit menu"}
-        </button>
-        {editing ? (
-          <button
-            type="button"
-            onClick={resetNavLayout}
-            className="md-state md-label-sm rounded-lg px-2 py-1 text-on-variant/75"
-          >
-            Reset
-          </button>
-        ) : hiddenCount > 0 ? (
-          <span className="md-label-sm text-on-variant/60">{hiddenCount} hidden</span>
-        ) : null}
-      </div>
+      {Object.entries(sections).map(([id, spec]) =>
+        spec ? (
+          <Section key={id} id={id} label={spec.label} count={spec.count}>
+            {spec.content}
+          </Section>
+        ) : null,
+      )}
     </nav>
   );
 }
@@ -659,18 +662,11 @@ function Section({
   id,
   label,
   count,
-  editing,
-  hidden,
-  onToggleHidden,
   children,
 }: {
   id: string;
   label: string;
   count?: number;
-  /** While the menu is being rearranged, the header is a handle, not a toggle. */
-  editing?: boolean;
-  hidden?: boolean;
-  onToggleHidden?: () => void;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(true);
@@ -700,38 +696,23 @@ function Section({
       <div className="flex items-center gap-0.5">
         <button
           type="button"
-          onClick={editing ? onToggleHidden : toggle}
-          aria-expanded={editing ? undefined : open}
-          aria-pressed={editing ? !hidden : undefined}
-          title={editing ? (hidden ? `Show ${label}` : `Hide ${label}`) : undefined}
+          onClick={toggle}
+          aria-expanded={open}
           className="md-state md-label-sm flex flex-1 items-center gap-1.5 rounded-lg px-3 pb-1.5 pt-2 text-left text-on-variant/75 transition-colors"
         >
-          {editing ? (
-            // Six dots, the ordinary sign that a thing can be dragged.
-            <span aria-hidden className="flex-none text-on-variant/60">
-              ⠿
-            </span>
-          ) : (
-            <ChevronIcon
-              className={cx(
-                "h-3 w-3 flex-none transition-transform duration-150",
-                open ? "rotate-90" : "rotate-0",
-              )}
-            />
-          )}
-          <span className={cx("flex-1", hidden && "line-through")}>{label}</span>
-          {editing ? (
-            <span className="font-normal normal-case tracking-normal opacity-70">
-              {hidden ? "Hidden" : "Shown"}
-            </span>
-          ) : count === undefined ? null : (
+          <ChevronIcon
+            className={cx(
+              "h-3 w-3 flex-none transition-transform duration-150",
+              open ? "rotate-90" : "rotate-0",
+            )}
+          />
+          <span className="flex-1">{label}</span>
+          {count === undefined ? null : (
             <span className="font-normal normal-case tracking-normal opacity-60">{count}</span>
           )}
         </button>
       </div>
-      {/* Headers only while rearranging. Six rows fit on one screen and can
-          be dragged without scrolling; the expanded menu cannot. */}
-      {editing ? null : open ? children : null}
+      {open ? children : null}
     </>
   );
 }
