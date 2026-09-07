@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Markdown } from "@/components/Markdown";
-import { Card, EmptyState, TextInput, cx } from "@/components/ui";
+import { Card, ChevronIcon, EmptyState, TextInput, cx } from "@/components/ui";
 import { createRipple } from "@/components/ui/ripple";
 import { DOCUMENTATION, searchDocs } from "@/lib/documentation";
 
@@ -23,6 +23,15 @@ import { DOCUMENTATION, searchDocs } from "@/lib/documentation";
  */
 export default function DocumentationPage() {
   const [query, setQuery] = useState("");
+  /*
+   * Whether the contents list is open, which only matters below expanded.
+   *
+   * Wide, it is a rail beside the text and is always there. Narrow, it was the
+   * first thing on the page and there are twenty odd links in it, so a phone
+   * opened the manual on a full screen of titles and another half screen after
+   * that before a word of documentation. Shut by default, and one row to open.
+   */
+  const [contentsOpen, setContentsOpen] = useState(false);
   /*
    * Which section is being read, so the contents rail can say so.
    *
@@ -97,17 +106,39 @@ export default function DocumentationPage() {
       >
         <div className="measure-wide flex flex-col gap-6 expanded:flex-row expanded:items-start expanded:gap-10">
           {/*
-            Sticky on a wide window, and simply the first thing on the page on a
-            narrow one. A contents list that scrolls away is no worse than no
-            contents list, but one pinned over a phone screen costs a third of
-            the reading area.
+            Sticky on a wide window, and a row you can open on a narrow one. A
+            contents list that scrolls away is no worse than no contents list,
+            and one pinned over a phone screen costs a third of the reading
+            area, but one that simply sits in front of the manual costs the
+            whole first screen of it.
           */}
           <nav
             aria-label="Contents"
             className="flex-none expanded:sticky expanded:top-0 expanded:w-60"
           >
-            <p className="md-label-sm mb-2 text-on-variant/75">Contents</p>
-            <ul className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => setContentsOpen((was) => !was)}
+              aria-expanded={contentsOpen}
+              className="md-state md-label-sm -ml-1 flex items-center gap-1.5 rounded-lg px-1 py-0.5 text-on-variant/75 expanded:hidden"
+            >
+              <ChevronIcon
+                className={cx(
+                  "h-3.5 w-3.5 flex-none transition-transform",
+                  contentsOpen ? "rotate-90" : "",
+                )}
+              />
+              Contents
+            </button>
+            <p className="md-label-sm mb-2 hidden text-on-variant/75 expanded:block">
+              Contents
+            </p>
+            <ul
+              className={cx(
+                "flex-col gap-3",
+                contentsOpen ? "mt-3 flex" : "hidden expanded:flex",
+              )}
+            >
               {chapters.map((chapter) => (
                 <li key={chapter.id}>
                   <p className="md-label mb-1">{chapter.title}</p>
@@ -116,7 +147,10 @@ export default function DocumentationPage() {
                       <li key={section.id}>
                         <a
                           href={`#${section.id}`}
-                          onClick={createRipple}
+                          onClick={(event) => {
+                            createRipple(event);
+                            setContentsOpen(false);
+                          }}
                           aria-current={reading === section.id ? "location" : undefined}
                           className={cx(
                             "md-state md-body block truncate rounded-lg px-2 py-1",

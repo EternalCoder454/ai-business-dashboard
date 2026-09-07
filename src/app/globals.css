@@ -461,6 +461,15 @@ table,
     min-height: 48px;
   }
 
+  /* A square button has to grow both ways or the target is a tall sliver. */
+  .md-button-sm.md-button-icon {
+    min-width: 44px;
+  }
+
+  .md-button-md.md-button-icon {
+    min-width: 48px;
+  }
+
 }
 
 /*

@@ -216,35 +216,11 @@ function TasksBody() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <PageHeader
-        eyebrow="Work"
-        title={tab === "tasks" ? "Tasks" : "Schedules"}
-        /* Nothing rather than a space. The blank held the line so the header
-           did not change height when the counts arrived, which cost nothing
-           while the title was above it. With the title gone on a phone it was
-           the only thing in the header, so an empty band sat under the top bar
-           with a lone button in the corner. */
-        description={
-          tab === "tasks" && ready && open > 0
-            ? `${open} open${overdue ? `, ${overdue} overdue` : ""}`
-            : undefined
-        }
-        actions={
-          /* A plus on a phone. The page is called Tasks and the button is the
-             only one on it, so the word was answering a question nobody could
-             have. Same shape as the one on Meetings. */
-          tab === "tasks" ? (
-            <Button
-              icon={<PlusIcon className="h-4 w-4" />}
-              aria-label="New task"
-              className="px-2 medium:px-3"
-              onClick={() => openNew()}
-            >
-              <span className="hidden medium:inline">New task</span>
-            </Button>
-          ) : undefined
-        }
-      />
+      {/* The count and the button used to be here, which cost a bordered,
+          padded band of its own under the top bar to hold one short phrase and
+          one plus. They are on the row below now, beside the tabs, which was
+          already drawing a band and had the width to spare. */}
+      <PageHeader eyebrow="Work" title={tab === "tasks" ? "Tasks" : "Schedules"} />
 
       {/*
         * Two tabs rather than two screens.
@@ -254,27 +230,50 @@ function TasksBody() {
         * entry in the navigation directly under Tasks, which read as two
         * places to look for the same thing.
         */}
-      {canSchedules ? (
-        <div className="flex flex-none items-center gap-2 border-b border-outline-variant px-4 py-3 sm:px-6">
-          {(["tasks", "schedules"] as const).map((key) => (
-            <Chip key={key} selected={tab === key} onClick={() => setTab(key)}>
-              <span className="flex items-center gap-1.5">
-                {key === "tasks" ? (
-                  <CheckIcon className="h-4 w-4" />
-                ) : (
-                  <ScheduleIcon className="h-4 w-4" />
-                )}
-                {key === "tasks" ? "Tasks" : "Schedules"}
-                {key === "schedules" && unreadBriefings > 0 ? (
-                  <span className="md-label-sm rounded-full bg-primary px-1.5 text-on-primary">
-                    {unreadBriefings}
-                  </span>
-                ) : null}
-              </span>
-            </Chip>
-          ))}
+      <div className="flex flex-none flex-wrap items-center gap-x-2 gap-y-1 border-b border-outline-variant px-4 py-2 sm:px-6">
+        {canSchedules
+          ? (["tasks", "schedules"] as const).map((key) => (
+              <Chip key={key} selected={tab === key} onClick={() => setTab(key)}>
+                <span className="flex items-center gap-1.5">
+                  {key === "tasks" ? (
+                    <CheckIcon className="h-4 w-4" />
+                  ) : (
+                    <ScheduleIcon className="h-4 w-4" />
+                  )}
+                  {key === "tasks" ? "Tasks" : "Schedules"}
+                  {key === "schedules" && unreadBriefings > 0 ? (
+                    <span className="md-label-sm rounded-full bg-primary px-1.5 text-on-primary">
+                      {unreadBriefings}
+                    </span>
+                  ) : null}
+                </span>
+              </Chip>
+            ))
+          : null}
+
+        <div className="ml-auto flex flex-none items-center gap-3">
+          {tab === "tasks" && ready && open > 0 ? (
+            <span className="md-label-sm text-on-variant/75">
+              {open} open{overdue ? `, ${overdue} overdue` : ""}
+            </span>
+          ) : null}
+          {tab === "tasks" ? (
+            /* A plus on a phone. The page is called Tasks and the button is
+               the only one on it, so the word was answering a question nobody
+               could have. Same shape as the one on Meetings. */
+            <Button
+              size="sm"
+              icon={<PlusIcon className="h-4 w-4" />}
+              aria-label="New task"
+              iconOnly
+              className="medium:w-auto medium:px-4"
+              onClick={() => openNew()}
+            >
+              <span className="hidden medium:inline">New task</span>
+            </Button>
+          ) : null}
         </div>
-      ) : null}
+      </div>
 
       {tab === "schedules" ? (
         <SchedulesTab onUnread={setUnreadBriefings} />

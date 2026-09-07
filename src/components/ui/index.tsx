@@ -41,14 +41,39 @@ const BUTTON_SIZES: Record<ButtonSize, string> = {
   md: "md-button-md h-10 px-5 text-[0.875rem]",
 };
 
+/*
+ * A button holding one icon and no words, which is square rather than a pill.
+ *
+ * It has to be the component's own business rather than a px-0 from the caller,
+ * because Tailwind sorts a utility by its value and not by where it was written:
+ * px-2 next to the size's px-5 loses, so a caller trying to narrow an icon
+ * button silently got the full pill. That is how the plus on Tasks came to be
+ * 56px wide to hold a 16px icon.
+ *
+ * The width is dropped rather than the height: on a touch screen these grow to
+ * a 44 or 48px target and that is deliberate, so the square is the target.
+ */
+const BUTTON_ICON_SIZES: Record<ButtonSize, string> = {
+  sm: "md-button-sm md-button-icon h-8 w-8 text-[0.8125rem]",
+  md: "md-button-md md-button-icon h-10 w-10 text-[0.875rem]",
+};
+
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   icon?: ReactNode;
+  /**
+   * Square, for a button whose whole content is the icon.
+   *
+   * A button that is icon-only on a phone and labelled on a desktop sets this
+   * and puts the desktop half back with `medium:w-auto medium:px-4`, which
+   * works because there is no padding of its own left to lose to.
+   */
+  iconOnly?: boolean;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "filled", size = "md", icon, className, children, onClick, ...rest },
+  { variant = "filled", size = "md", icon, iconOnly, className, children, onClick, ...rest },
   ref,
 ) {
   return (
@@ -61,7 +86,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       className={cx(
         "md-state inline-flex items-center justify-center gap-2 rounded-full font-medium",
         "transition-shadow duration-150 disabled:pointer-events-none disabled:opacity-[0.38]",
-        BUTTON_SIZES[size],
+        iconOnly ? BUTTON_ICON_SIZES[size] : BUTTON_SIZES[size],
         BUTTON_VARIANTS[variant],
         className,
       )}
