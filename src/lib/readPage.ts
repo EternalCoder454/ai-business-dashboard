@@ -1,3 +1,4 @@
+import { decode } from "html-entities";
 import { request as httpsRequest } from "node:https";
 import { pinnedLookup, resolvePublic } from "./addons/outbound";
 
@@ -43,27 +44,49 @@ export type PageResult =
  *
  * Script and style go first and whole, contents included, because their bodies
  * are text as far as a tag stripper is concerned and a page's stylesheet is not
- * something a head should be reading. Then tags, then entities, then the
- * whitespace that markup leaves behind. It is not a browser and does not need
- * to be: what a head wants is the prose.
+ * something a head should be reading. Then the furniture, then tags, then the
+ * whitespace markup leaves behind. It is not a browser and does not need to be:
+ * what a head wants is the prose.
+ *
+ * Entities are decoded by html-entities rather than by a list here. The list
+ * was six long and the specification has over two thousand, which is not a gap
+ * that gets closed by adding a few more. Measured against an ordinary marketing
+ * page, ten kinds got through untouched, and the one that mattered was
+ * `&pound;` sitting in front of a price: a head asked what something costs read
+ * back "our starter plan is &pound;29". Prices, quotation marks and dashes are
+ * most of what a business page is made of.
  */
 export function textFromHtml(html: string): { title: string; text: string } {
   const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? "";
 
-  const text = html
-    .replace(/<(script|style|noscript|template|svg)[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    // Block ends become line breaks, so paragraphs do not run together into one
-    // sentence that says something neither of them said.
-    .replace(/<\/(p|div|section|article|h[1-6]|li|tr|br)[^>]*>/gi, "\n")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
+  /*
+   * The page's own content, where it says where that is.
+   *
+   * Without this a head reads the navigation, the cookie banner and the footer
+   * along with the article, which costs tokens on every read and buries the
+   * answer in "Home About Privacy Policy All rights reserved". Most pages worth
+   * reading mark their content; the ones that do not fall through to the whole
+   * document, which is what this always did.
+   */
+  const body =
+    html.match(/<main[^>]*>([\s\S]*?)<\/main>/i)?.[1] ??
+    html.match(/<article[^>]*>([\s\S]*?)<\/article>/i)?.[1] ??
+    html;
+
+  const text = decode(
+    body
+      .replace(/<(script|style|noscript|template|svg)[\s\S]*?<\/\1>/gi, " ")
+      .replace(/<!--[\s\S]*?-->/g, " ")
+      // Furniture rather than content, dropped by name. A page that puts its
+      // article inside one of these keeps it, because the match above already
+      // narrowed to that article.
+      .replace(/<(nav|header|footer|aside)[\s\S]*?<\/\1>/gi, " ")
+      // Block ends become line breaks, so paragraphs do not run together into
+      // one sentence that says something neither of them said.
+      .replace(/<\/(p|div|section|article|h[1-6]|li|tr|br)[^>]*>/gi, "\n")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, " "),
+  )
     .replace(/[ \t\f\v]+/g, " ")
     .replace(/\n\s*\n\s*\n+/g, "\n\n")
     .split("\n")
@@ -71,18 +94,7 @@ export function textFromHtml(html: string): { title: string; text: string } {
     .join("\n")
     .trim();
 
-  return { title: decodeEntities(title), text };
-}
-
-function decodeEntities(value: string): string {
-  return value
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .trim();
+  return { title: decode(title).trim(), text };
 }
 
 /** Never throws. A page that will not load is a sentence, not an exception. */
