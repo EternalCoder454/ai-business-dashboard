@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Card, EmptyState, MailIcon, cx } from "./ui";
+import { Button, Card, Dialog, EmptyState, MailIcon, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
 import { formatExactTime } from "@/lib/routes";
 import { SidePane } from "@/components/ui/SidePane";
@@ -14,6 +14,9 @@ interface ThreadSummary {
   lastFrom: string;
   preview: string;
 }
+
+/** A message, or a whole conversation, waiting to be confirmed. */
+type Withdrawing = { kind: "message"; id: string } | { kind: "thread"; key: string };
 
 interface Line {
   id: string;
@@ -82,6 +85,40 @@ export function MessageReview() {
     const body = (await response.json()) as { messages?: Line[] };
     setLines(body.messages ?? []);
   }, []);
+
+  /*
+   * What an administrator is about to take out of circulation.
+   *
+   * Asked before it happens because it changes what other people can see, and
+   * nothing on their side will say why a message they were reading is gone.
+   */
+  const [confirming, setConfirming] = useState<Withdrawing | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const withdraw = useCallback(
+    async (target: Withdrawing) => {
+      const query =
+        target.kind === "thread"
+          ? `thread=${encodeURIComponent(target.key)}`
+          : `message=${encodeURIComponent(target.id)}`;
+      try {
+        const response = await fetch(`/api/messages/review?${query}`, { method: "DELETE" });
+        if (!response.ok) return;
+      } catch {
+        // The thread is reloaded either way, so a failure shows as nothing
+        // having changed rather than as a screen that disagrees with the server.
+      }
+      // Re-read the thread so the withdrawal shows, and the list so its
+      // preview stops quoting a message nobody can see any more.
+      if (open) await read(open);
+      const refreshed = await fetch("/api/messages/review");
+      if (refreshed.ok) {
+        const body = (await refreshed.json()) as { threads?: ThreadSummary[] };
+        setThreads(body.threads ?? []);
+      }
+    },
+    [read, open],
+  );
 
   if (failed) {
     return (
@@ -154,6 +191,38 @@ export function MessageReview() {
         </ul>
       </SidePane>
 
+      <Dialog
+        open={Boolean(confirming)}
+        onClose={() => setConfirming(null)}
+        title={confirming?.kind === "thread" ? "Withdraw this conversation?" : "Withdraw this message?"}
+        footer={
+          <>
+            <Button variant="text" onClick={() => setConfirming(null)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={busy}
+              onClick={async () => {
+                if (!confirming) return;
+                setBusy(true);
+                await withdraw(confirming);
+                setBusy(false);
+                setConfirming(null);
+              }}
+            >
+              {busy ? "Withdrawing…" : "Withdraw"}
+            </Button>
+          </>
+        }
+      >
+        <p className="md-body text-on-variant">
+          {confirming?.kind === "thread"
+            ? "Every message in it leaves both inboxes."
+            : "It leaves both inboxes."}{" "}
+          The transcript stays here, marked, with your address against it.
+        </p>
+      </Dialog>
+
       <div
         className={cx(
           "min-h-0 min-w-0 flex-1 overflow-y-auto p-4",
@@ -168,16 +237,30 @@ export function MessageReview() {
               <h2 className="md-title min-w-0 truncate">
                 {current.participants.join(" and ")}
               </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(null);
-                  setLines(null);
-                }}
-                className="md-state md-label flex-none rounded-lg px-2 py-1 text-primary large:hidden"
-              >
-                Back
-              </button>
+              <div className="flex flex-none items-center gap-2">
+                {/* Only where there is still something in circulation to take
+                    out of it. A thread everybody has already withdrawn from
+                    offers a button that would do nothing. */}
+                {lines?.some((line) => !line.deletedAt) ? (
+                  <Button
+                    size="sm"
+                    variant="outlined"
+                    onClick={() => setConfirming({ kind: "thread", key: current.threadKey })}
+                  >
+                    Withdraw all
+                  </Button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(null);
+                    setLines(null);
+                  }}
+                  className="md-state md-label rounded-lg px-2 py-1 text-primary large:hidden"
+                >
+                  Back
+                </button>
+              </div>
             </div>
 
             {lines === null ? (
@@ -222,6 +305,19 @@ export function MessageReview() {
                       >
                         {line.body}
                       </p>
+
+                      {/* Under the text rather than beside the header, so
+                          the thing being withdrawn is read before the control
+                          that withdraws it. */}
+                      {line.deletedAt ? null : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirming({ kind: "message", id: line.id })}
+                          className="md-state md-label-sm mt-2 rounded-lg px-1.5 py-0.5 text-on-variant/75 transition-colors hover:text-error"
+                        >
+                          Withdraw
+                        </button>
+                      )}
 
                       {line.originalBody ? (
                         <div className="mt-2 border-l-2 border-outline-variant pl-3">

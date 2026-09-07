@@ -1,6 +1,6 @@
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
-import { auditThread, auditThreads } from "@/db/messages";
+import { auditThread, auditThreads, withdrawForReview } from "@/db/messages";
 import { membershipFor } from "@/db/tenancy";
 import { track } from "@/lib/telemetry";
 
@@ -31,7 +31,8 @@ export const dynamic = "force-dynamic";
  * exists to somebody who should not know that it does.
  */
 async function reviewer(): Promise<
-  { ok: true; workspaceId: string } | { ok: false; status: number; error: string }
+  | { ok: true; workspaceId: string; email: string }
+  | { ok: false; status: number; error: string }
 > {
   if (!authEnabled || !databaseEnabled) {
     return { ok: false, status: 501, error: "Not configured." };
@@ -42,7 +43,7 @@ async function reviewer(): Promise<
 
   const mine = await membershipFor(email);
   if (mine?.role !== "admin") return { ok: false, status: 404, error: "Not found." };
-  return { ok: true, workspaceId: mine.workspaceId };
+  return { ok: true, workspaceId: mine.workspaceId, email };
 }
 
 export async function GET(request: Request) {
@@ -69,4 +70,34 @@ export async function GET(request: Request) {
     auditThreads(who.workspaceId),
   );
   return Response.json({ threads });
+}
+
+/**
+ * Withdraws a message, or a whole thread, on the administrator's authority.
+ *
+ * Behind the same check reading is behind, which is the point: the person who
+ * can be asked what was said is the person who can take it out of circulation.
+ * An operator is not that person, for the reason the reviewer above gives.
+ *
+ * It does not erase. The message leaves both inboxes and stays on this screen
+ * with the administrator's address against it, because the record is what this
+ * screen is for.
+ */
+export async function DELETE(request: Request) {
+  const who = await reviewer();
+  if (!who.ok) return Response.json({ error: who.error }, { status: who.status });
+
+  const query = new URL(request.url).searchParams;
+  const messageId = query.get("message")?.trim() || undefined;
+  const threadKey = query.get("thread")?.trim() || undefined;
+
+  if (!messageId && !threadKey) {
+    return Response.json({ error: "Name a message or a thread." }, { status: 400 });
+  }
+
+  const { withdrawn } = await track("messages.review.withdraw", who.workspaceId, () =>
+    withdrawForReview(who.workspaceId, who.email, { messageId, threadKey }),
+  );
+
+  return Response.json({ withdrawn });
 }

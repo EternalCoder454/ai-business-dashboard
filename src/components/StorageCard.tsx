@@ -51,10 +51,21 @@ export function StorageCard() {
   return (
     <Card>
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3">
+        {/*
+          * Two true numbers that look like a contradiction.
+          *
+          * A backup reads 131 KB on its own card and 65 KB here, because that
+          * card measures the document it wrote and this measures the row it
+          * landed in, after Postgres has compressed the long text in it. Both
+          * are worth knowing: the first is what you get if you export it, the
+          * second is what the business is actually paying to keep. So each says
+          * which it is rather than one of them being quietly corrected to
+          * agree with the other.
+          */}
         <h2 className="md-title-lg">Storage</h2>
         {lines ? (
           <span className="md-label-sm tabular-nums text-on-variant/75">
-            {formatBytes(total)} in total
+            {formatBytes(total)} in total, as stored
           </span>
         ) : null}
       </div>

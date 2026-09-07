@@ -54,7 +54,7 @@ type TabKey = (typeof TABS)[number];
 
 const TAB_LABEL: Record<TabKey, string> = {
   company: "Company",
-  profile: "Company profile",
+  profile: "Company Profile",
   heads: "Heads",
   models: "Models and keys",
   integrations: "Integrations",

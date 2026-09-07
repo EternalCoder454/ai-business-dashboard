@@ -212,7 +212,7 @@ export function BackupsCard() {
                     <Chip>{KIND_LABEL[backup.kind] ?? backup.kind}</Chip>
                   </div>
                   <p className="md-body-sm mt-0.5 text-on-variant">
-                    {when(backup.createdAt)} · {size(backup.bytes)}
+                    {when(backup.createdAt)} · {size(backup.bytes)} uncompressed
                   </p>
                   <p className="md-body-sm text-on-variant">{contents(backup.counts)}</p>
                 </div>

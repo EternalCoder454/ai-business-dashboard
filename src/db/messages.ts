@@ -635,3 +635,52 @@ export async function auditThread(
     deletedBy: row.deletedBy ?? undefined,
   }));
 }
+
+/**
+ * Withdraws a message, or a whole thread, on the administrator's authority.
+ *
+ * The same soft delete a sender can do to their own, opened to the person who
+ * answers for the business. It disappears from both inboxes and stays here,
+ * marked, with their address against it.
+ *
+ * Marked rather than removed, and that is the whole design. A business that may
+ * have to answer for what was said inside it should not lose the record because
+ * somebody would rather it were gone, and that holds whether the somebody is
+ * the sender or the manager. What an administrator gets is the power to take a
+ * message out of circulation, not the power to make it never have happened.
+ *
+ * Returns how many it took down, so the screen can say what it did rather than
+ * assume it worked.
+ */
+export async function withdrawForReview(
+  workspaceId: string,
+  actor: string,
+  target: { messageId?: string; threadKey?: string },
+): Promise<{ withdrawn: number }> {
+  const db = requireDb();
+  const by = normalise(actor);
+  const now = Date.now();
+
+  const scope = target.messageId
+    ? eq(t.directMessages.id, target.messageId)
+    : target.threadKey
+      ? eq(t.directMessages.threadKey, target.threadKey)
+      : undefined;
+  if (!scope) return { withdrawn: 0 };
+
+  const taken = await db
+    .update(t.directMessages)
+    .set({ deletedAt: now, deletedBy: by })
+    .where(
+      and(
+        eq(t.directMessages.workspaceId, workspaceId),
+        scope,
+        // Anything already withdrawn keeps the timestamp and the name it has,
+        // so a second pass over a thread does not rewrite who took down what.
+        isNull(t.directMessages.deletedAt),
+      ),
+    )
+    .returning({ id: t.directMessages.id });
+
+  return { withdrawn: taken.length };
+}

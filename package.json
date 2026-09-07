@@ -91,7 +91,8 @@
     "offers-test": "tsx scripts/offers-test.ts",
     "mentions-test": "tsx scripts/mentions-test.ts",
     "budget-test": "tsx --env-file=.env.local scripts/budget-test.ts",
-    "colourblind-test": "tsx scripts/colourblind-test.ts"
+    "colourblind-test": "tsx scripts/colourblind-test.ts",
+    "message-withdraw-test": "tsx --env-file=.env.local scripts/message-withdraw-test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",
