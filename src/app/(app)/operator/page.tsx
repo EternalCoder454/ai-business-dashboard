@@ -596,11 +596,20 @@ function AccessTab({
 
   return (
     <div className="measure flex flex-col gap-5">
+      {/*
+        * One card, not two. This was "Who can sign in" and "Operators" sitting
+        * one above the other, both opening by saying the same list is set as
+        * OPERATOR_EMAILS and both then explaining what an operator is. The
+        * second said it better and the first had the names, so this is the
+        * second's words over the first's list.
+        */}
       <Card>
-        <h2 className="md-title-lg mb-1">Who can sign in</h2>
+        <h2 className="md-title-lg mb-1">Operators</h2>
         <p className="md-body mb-4 text-on-variant">
-          Set as OPERATOR_EMAILS. An operator runs this deployment and can read
-          any workspace. Changing it needs a redeploy, which is deliberate:
+          Set as OPERATOR_EMAILS. An operator runs this deployment: they can
+          read any workspace and delete one. Being an administrator of your own
+          business is a different thing, granted per workspace, and gives none
+          of this. Changing the list needs a redeploy, which is deliberate:
           nothing the app does should be able to grant it.
         </p>
         <ul className="flex flex-col gap-1.5">
@@ -611,16 +620,6 @@ function AccessTab({
             </li>
           ))}
         </ul>
-      </Card>
-
-      <Card>
-        <h2 className="md-title-lg mb-1">Operators</h2>
-        <p className="md-body text-on-variant">
-          Set as OPERATOR_EMAILS, defaulting to the first address on the
-          allowlist. An operator runs this deployment: they can read any
-          workspace and delete one. Being an administrator of your own business
-          is a different thing, granted per workspace, and gives none of this.
-        </p>
       </Card>
     </div>
   );

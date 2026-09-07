@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Button, Card, cx } from "./ui";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { createRipple } from "./ui/ripple";
+import { departmentHref } from "@/lib/routes";
 import { useStore } from "@/lib/store";
 
 /**
@@ -69,27 +71,27 @@ export function Setup() {
     const all: Slide[] = [
       {
         title: `Welcome to ${settings.companyName || "your panel"}`,
-        body: "A room of department heads, each answering in its own area. Two minutes on what is where.",
+        body: "Eight heads, one for each part of a business. Two minutes on what is where.",
         href: "/",
       },
       {
         title: "Your heads",
-        body: "Pick one from the sidebar and ask. Each keeps its own conversations.",
+        body: "Open one below and ask it something, the way you would ask a colleague. Each keeps its own conversations, so Finance never gets mixed up with Legal.",
         href: "/orchestrator",
       },
       {
         title: "Meetings",
-        body: `One question to the whole room, every head answering from its own corner, and ${who} reading across the lot. For decisions that touch more than one area.`,
+        body: `Put one question to every head at once and read the answers side by side, with ${who} pulling them together. Use it for decisions that cross departments, like "should we raise prices" or "what would it take to hire someone".`,
         href: "/meetings",
       },
       {
         title: "The Library",
-        body: "Anything a head writes, kept and exportable as Word, Markdown or text. Uploaded files live here too.",
+        body: "Upload your real documents here, a price list, a contract, last month's numbers, and the heads answer from them instead of guessing what a business like yours probably charges. Their finished work is kept here too, and exports as Word, Markdown or text.",
         href: "/library",
       },
       {
-        title: "Tasks and briefings",
-        body: "What is outstanding, and the decisions the heads reason from. Set a question to repeat and the answer is waiting under Briefings rather than something you remember to ask for.",
+        title: "Tasks and schedules",
+        body: "The board is what is outstanding, one card per job, moved across as it gets done. The tab beside it, Schedules, is where you set a question to be asked every week, so the answer is waiting on Monday rather than something you have to remember to ask for.",
         href: "/tasks",
       },
       {
@@ -140,14 +142,22 @@ export function Setup() {
       role="dialog"
       aria-label="A quick tour"
       className={cx(
-        // Docked rather than covering, so the screen being described is the
-        // thing you are looking at. No backdrop for the same reason.
-        "safe-bottom safe-pb-3 safe-x safe-px-3 fixed inset-x-0 bottom-0 z-[55] flex justify-center pt-3",
-        // The page underneath stays usable; only the card itself takes clicks.
-        "pointer-events-none",
+        /*
+         * A row in the column rather than a card floating over it, so the page
+         * is pushed up by exactly the height of this and nothing is hidden
+         * behind it.
+         *
+         * Fixed to the bottom of the viewport, it landed on the composer: step
+         * two says to pick a head and ask it something, and step three opens
+         * Meetings, and on both of those the box you type into is at the bottom
+         * of the screen. The tour covered the one control it was telling you to
+         * use. WriteError above has the same note for the same reason, about
+         * the navigation bar.
+         */
+        "safe-bottom safe-pb-3 safe-x safe-px-3 flex flex-none justify-center border-t border-outline-variant bg-low pt-3",
       )}
     >
-      <Card className="measure-read pointer-events-auto w-full shadow-e3">
+      <Card className="measure-read w-full" elevated={false}>
         <p className="md-label-sm text-on-variant">
           {step + 1} of {slides.length}
         </p>
@@ -158,11 +168,38 @@ export function Setup() {
           <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
             {heads.map((head) =>
               head ? (
-                <li key={head.id} className="flex min-w-0 items-center gap-2">
-                  <DepartmentAvatar department={head} size={24} />
-                  <span className="md-label-sm truncate text-on-variant">
-                    {head.personaName || head.name}
-                  </span>
+                <li key={head.id} className="min-w-0">
+                  {/*
+                    * Openable from here, rather than described as being
+                    * somewhere. This step used to say "pick one from the
+                    * sidebar", which is wrong on a phone, where there is no
+                    * sidebar and the button is called Heads, and imprecise on a
+                    * desktop, where the section is called Departments. Pointing
+                    * at a place that changes with the width is worse than
+                    * putting the thing itself within reach.
+                    */}
+                  <Link
+                    href={departmentHref(head)}
+                    className="md-state flex min-w-0 items-center gap-2 rounded-full px-2 py-1"
+                  >
+                    <DepartmentAvatar department={head} size={24} />
+                  {/*
+                    * The department first, because that is the word in the
+                    * sidebar this step has just told them to look at. It used
+                    * to show only the persona name, so the tour said "pick one
+                    * from the sidebar" beside a list of Ruth and Marisol and
+                    * the sidebar said Marketing and Social Media. Nothing on
+                    * screen connected the two.
+                    */}
+                    <span className="md-label-sm min-w-0 truncate text-on-surface">
+                      {head.name}
+                    </span>
+                    {head.personaName && head.personaName !== head.name ? (
+                      <span className="md-label-sm flex-none text-on-variant/70">
+                        {head.personaName}
+                      </span>
+                    ) : null}
+                  </Link>
                 </li>
               ) : null,
             )}
