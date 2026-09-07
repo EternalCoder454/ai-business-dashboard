@@ -12,7 +12,7 @@ import { useSyncExternalStore } from "react";
  * on what they are doing, which is not something this can decide for them.
  *
  * Kept in this browser rather than in the workspace, for the same reason
- * navCollapsed is: it is a property of the screen you are sitting at rather
+ * the navigation always did: it is a property of the screen you are sitting at rather
  * than of the company. A laptop and a desktop want different widths, and
  * syncing the two would mean one of them is always wrong.
  *
@@ -84,7 +84,7 @@ function subscribe(listener: () => void): () => void {
  * Reading localStorage during render would make the markup depend on something
  * the server cannot know, which is a hydration mismatch. So every pane draws at
  * its default width for one frame and takes its stored width immediately after,
- * which is the same trade navCollapsed makes.
+ * which is the trade every browser-held preference in here makes.
  */
 export function usePane(id: string): PaneState {
   return useSyncExternalStore(

@@ -41,7 +41,8 @@ import {
 } from "./ui";
 import { SearchIcon } from "./CommandPalette";
 import { createRipple } from "./ui/ripple";
-import { PaneResizeHandle, usePaneResize } from "./ui/SidePane";
+import { PaneFoldButton, PaneResizeHandle, usePaneResize } from "./ui/SidePane";
+import { setPaneHidden } from "@/lib/paneLayout";
 
 export interface NavLink {
   href: string;
@@ -177,12 +178,11 @@ export function isActive(pathname: string, href: string): boolean {
  */
 export function Sidebar({
   onOpenSearch,
-  collapsed,
-  onCollapse,
+  folded,
 }: {
   onOpenSearch?: () => void;
-  collapsed?: boolean;
-  onCollapse?: () => void;
+  /** Folded to the rail, which is one flag in paneLayout now. */
+  folded?: boolean;
 }) {
   const { stored, wide, width, ceiling, dragging, setDragging, paneRef, resizeTo } = usePaneResize({
     id: "nav",
@@ -223,25 +223,30 @@ export function Sidebar({
         "hidden h-full min-w-[13rem] max-w-[25rem] flex-none flex-col",
         stored.width === undefined && "w-fit",
         "relative border-r border-outline-variant bg-low",
-        !collapsed && "large:flex",
+        !folded && "large:flex",
       )}
       style={wide && stored.width !== undefined ? { width } : undefined}
     >
-      <SidebarContent onOpenSearch={onOpenSearch} onCollapse={onCollapse} />
+      <SidebarContent onOpenSearch={onOpenSearch} />
 
-      {/* No fold here. This one already folds, to the icon rail beside it,
-          which keeps every destination one click away instead of none. */}
-      {wide && !collapsed ? (
-        <PaneResizeHandle
-          id="nav"
-          label="the navigation"
-          width={width}
-          minWidth={208}
-          maxWidth={ceiling}
-          dragging={dragging}
-          onStart={() => setDragging(true)}
-          onResize={resizeTo}
-        />
+      {wide && !folded ? (
+        <>
+          <PaneResizeHandle
+            id="nav"
+            label="the navigation"
+            width={width}
+            minWidth={208}
+            maxWidth={ceiling}
+            dragging={dragging}
+            onStart={() => setDragging(true)}
+            onResize={resizeTo}
+            onFold={() => setPaneHidden("nav", true)}
+          />
+          {/* Folds to the icon rail rather than to a bare strip, which is what
+              makes this pane different from the lists: every destination stays
+              one click away instead of none. The control is the same one. */}
+          <PaneFoldButton id="nav" label="the navigation" />
+        </>
       ) : null}
     </aside>
   );
@@ -254,12 +259,9 @@ export function Sidebar({
 export function SidebarContent({
   onNavigate,
   onOpenSearch,
-  onCollapse,
 }: {
   onNavigate?: () => void;
   onOpenSearch?: () => void;
-  /** Only passed by the permanent drawer. The modal one has nothing to collapse to. */
-  onCollapse?: () => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -321,38 +323,12 @@ export function SidebarContent({
 
   return (
     <>
+      {/* Just the mark. It used to be the fold button, with a chevron that
+          appeared over it on hover and a logo the rest of the time, so the only
+          people who knew the sidebar folded were the ones who had been told.
+          Folding is the same control every other pane has now. */}
       <div className="flex items-start gap-3 px-5 pb-4 pt-5">
-        {onCollapse ? (
-          <button
-            onClick={(event) => {
-              createRipple(event);
-              onCollapse();
-            }}
-            aria-label="Collapse the sidebar"
-            title="Collapse the sidebar"
-            className={cx(
-              "md-state group relative grid flex-none place-items-center rounded-xl",
-              "transition-transform active:scale-95",
-            )}
-          >
-            <CompanyMark size={40} />
-            {/* Shown on hover only. The mark is the workspace's identity first
-                and a control second, so the affordance should not compete with
-                it at rest. */}
-            <span
-              aria-hidden
-              className={cx(
-                "pointer-events-none absolute inset-0 grid place-items-center rounded-xl",
-                "bg-highest/85 text-on-surface opacity-0 transition-opacity",
-                "group-hover:opacity-100 group-focus-visible:opacity-100",
-              )}
-            >
-              <ChevronIcon className="h-4 w-4 rotate-180" />
-            </span>
-          </button>
-        ) : (
-          <CompanyMark size={40} />
-        )}
+        <CompanyMark size={40} />
         <div className="min-w-0 flex-1">
           <p className="md-title truncate">{settings.companyName}</p>
           {/*

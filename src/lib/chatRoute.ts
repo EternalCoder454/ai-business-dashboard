@@ -52,7 +52,7 @@ export function showsConversationList(
  * fails the build: a hook that depends on the query string, used in a layout,
  * bails every page in the group out of prerendering, and the first page without
  * a Suspense boundary of its own stops the build. Nothing above both the shell
- * and the chat owns any other state, so this follows navCollapsed and keeps the
+ * and the chat owns any other state, so this follows paneLayout and keeps the
  * one boolean here.
  *
  * Defaults to false, which is the safe way round: a shell that wrongly believes

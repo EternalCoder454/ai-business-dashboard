@@ -8,7 +8,7 @@ import { useSyncExternalStore } from "react";
  * Kept in this browser rather than in the workspace, for the same reason the
  * collapsed rail is: it follows the screen, not the company. A phone wants the
  * list and a monitor wants the cards, and syncing the choice between them
- * would leave one of the two wrong every time. See [[navCollapsed]] for the
+ * would leave one of the two wrong every time. See [[paneLayout]] for the
  * same argument at more length.
  */
 export type LibraryView = "cards" | "compact" | "list";

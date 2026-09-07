@@ -27,7 +27,8 @@ import { LoadFailed } from "./LoadFailed";
 import { NoWorkspace } from "./NoWorkspace";
 import { Setup } from "./Setup";
 import { WriteError } from "./WriteError";
-import { setNavCollapsed, useNavCollapsed } from "@/lib/navCollapsed";
+import { usePane } from "@/lib/paneLayout";
+import { PaneUnfoldButton } from "./ui/SidePane";
 import {
   departmentIdOf,
   readConversationOpen,
@@ -54,7 +55,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
 
   const { settings, getDepartment } = useStore();
-  const navCollapsed = useNavCollapsed();
+  /*
+   * Folded to the rail, read from the same store every other pane uses.
+   *
+   * This had a store of its own, and a pair of controls of its own hidden
+   * behind hovering the company mark. One system for all of them now: the
+   * sidebar folds with the button every pane has, and what it folds to is the
+   * icon rail rather than a bare strip, because a navigation with no
+   * destinations on it is not a navigation.
+   */
+  const navFolded = Boolean(usePane("nav").hidden);
 
   /** Cmd and Ctrl K always work. This is the bare key, which can be turned off. */
   const bareKey =
@@ -168,15 +178,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     >
       <Sidebar
         onOpenSearch={() => setSearchOpen(true)}
-        collapsed={navCollapsed}
-        onCollapse={() => setNavCollapsed(true)}
+        folded={navFolded}
       />
       <NavigationRail
         pathname={pathname}
         onOpenDrawer={() => setDrawerOpen(true)}
         onOpenSearch={() => setSearchOpen(true)}
-        collapsed={navCollapsed}
-        onExpand={() => setNavCollapsed(false)}
+        folded={navFolded}
         onOpenHeads={() => setHeadsOpen((value) => !value)}
         headsOpen={headsOpen}
       />
@@ -333,16 +341,15 @@ function NavigationRail({
   pathname,
   onOpenDrawer,
   onOpenSearch,
-  collapsed,
-  onExpand,
+  folded,
   onOpenHeads,
   headsOpen,
 }: {
   pathname: string;
   onOpenDrawer: () => void;
   onOpenSearch: () => void;
-  collapsed: boolean;
-  onExpand: () => void;
+  /** At large this is the sidebar folded. Below it, it is the navigation. */
+  folded: boolean;
   onOpenHeads: () => void;
   headsOpen: boolean;
 }) {
@@ -352,7 +359,9 @@ function NavigationRail({
    * Only whether there is anybody to show. The panel builds its own list, and
    * two copies of the same filter is how the two come to disagree.
    */
-  const hasHeads = allDepartments.some((department) => canOpenHead(department.id));
+  const heads = allDepartments.filter(
+    (department) => !department.personal && canOpenHead(department.id),
+  );
   const reference = WORKSPACE_LINKS.filter((link) => canOpenPath(link.href));
   const activeDepartmentId = departmentIdOf(pathname);
 
@@ -377,7 +386,7 @@ function NavigationRail({
          * rather than that something is silently missing from it.
          */
         "overflow-y-auto rail-scroll border-r border-outline-variant bg-low py-3 medium:flex",
-        collapsed ? "large:flex" : "large:hidden",
+        folded ? "large:flex" : "large:hidden",
       )}
     >
       {/* Two controls in one slot, because what the top of the rail does
@@ -395,27 +404,11 @@ function NavigationRail({
         <MenuIcon />
       </button>
 
-      <button
-        onClick={(event) => {
-          createRipple(event);
-          onExpand();
-        }}
-        aria-label="Expand the sidebar"
-        title="Expand the sidebar"
-        className="md-state group relative mb-2 hidden place-items-center rounded-xl transition-transform active:scale-95 large:grid"
-      >
+      {/* The mark, as a mark. Unfolding is the chevron at the foot of the
+          rail, which is where every other folded pane keeps it. */}
+      <span className="mb-2 hidden large:block">
         <CompanyMark size={48} />
-        <span
-          aria-hidden
-          className={cx(
-            "pointer-events-none absolute inset-0 grid place-items-center rounded-xl",
-            "bg-highest/85 text-on-surface opacity-0 transition-opacity",
-            "group-hover:opacity-100 group-focus-visible:opacity-100",
-          )}
-        >
-          <ChevronIcon className="h-4 w-4" />
-        </span>
-      </button>
+      </span>
 
       <button
         onClick={(event) => {
@@ -434,58 +427,51 @@ function NavigationRail({
         ))}
       </div>
 
-      {hasHeads ? (
+      {heads.length > 0 ? (
         <>
           <RailRule />
           {/*
-           * One slot that opens the list, rather than the list itself.
+           * The heads themselves, one per row.
            *
-           * The faces were in the rail directly, two across, and it never
-           * looked like navigation: nine coloured discs in an 80px column read
-           * as a chart of something. It also fought for height with everything
-           * below it, which took three passes to make fit and still meant the
-           * captions came off short windows.
+           * This was a single "Heads" slot that opened a sheet, because an
+           * earlier attempt at putting the faces in the rail put them two
+           * across, and nine coloured discs in a grid read as a chart rather
+           * than as navigation. One per row is a list of destinations, which is
+           * what the rest of the rail is, and it scrolls inside whatever height
+           * is left rather than pushing the reference links off the bottom.
            *
-           * A rail is a set of destinations and the heads are one destination
-           * with a choice inside it, which is what the bottom bar already does
-           * on a phone. Same state, so there is one answer to "are the heads
-           * open" and two ways of drawing it.
+           * Talking to a head is the one thing anybody is here for. Two clicks
+           * and a sheet was the wrong price for it.
            */}
-          <button
-            type="button"
-            onClick={(event) => {
-              createRipple(event);
-              onOpenHeads();
-            }}
-            aria-expanded={headsOpen}
-            aria-label="Heads"
-            className="flex w-full flex-col items-center gap-1 py-1"
-          >
-            <span
-              className={cx(
-                "md-state grid h-8 w-14 place-items-center rounded-full transition-colors",
-                headsOpen || activeDepartmentId
-                  ? "bg-secondary-container text-on-secondary-container"
-                  : "text-on-variant",
-              )}
-            >
-              <PersonIcon className="h-5 w-5" />
-            </span>
-            <span
-              className={cx(
-                "rail-caption md-label-sm",
-                headsOpen || activeDepartmentId ? "text-on-surface" : "text-on-variant",
-              )}
-            >
-              Heads
-            </span>
-          </button>
+          <div className="flex w-full min-h-0 flex-1 flex-col items-center overflow-y-auto rail-scroll">
+            {heads.map((head) => {
+              const active = activeDepartmentId === head.id;
+              return (
+                <Link
+                  key={head.id}
+                  href={departmentHrefById(head.id)}
+                  onClick={createRipple}
+                  aria-current={active ? "page" : undefined}
+                  title={head.personaName ? `${head.name}, ${head.personaName}` : head.name}
+                  className="flex w-full flex-none justify-center py-0.5"
+                >
+                  <span
+                    className={cx(
+                      "md-state grid h-10 w-14 place-items-center rounded-full transition-colors",
+                      active ? "bg-secondary-container" : "",
+                    )}
+                  >
+                    <DepartmentAvatar department={head} size={28} />
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         </>
-      ) : null}
-
-      {/* Pushes the reference pages to the bottom of the rail, where the
-          sidebar also keeps them, instead of stacking everything at the top. */}
-      <span className="min-h-2 flex-1" />
+      ) : (
+        /* Nothing to list, so the reference links still go to the bottom. */
+        <span className="min-h-2 flex-1" />
+      )}
 
       {reference.length > 0 ? (
         <>
@@ -497,6 +483,24 @@ function NavigationRail({
           </div>
         </>
       ) : null}
+
+      {/*
+        * Only at large, where this rail is the sidebar folded. Below that it is
+        * the navigation itself and there is nothing to unfold to.
+        *
+        * Drawn as the same bordered circle that folds it, rather than as the
+        * bare chevron the 28px list rails use. Those are a thin strip where the
+        * whole strip is the affordance; this is an 80px column of destinations,
+        * and a dim chevron at the foot of it reads as one more of them.
+        */}
+      <div className="hidden w-full flex-none flex-col items-center pb-1 pt-1 large:flex">
+        <RailRule />
+        <PaneUnfoldButton
+          id="nav"
+          label="the navigation"
+          className="mt-1 h-8 w-8 flex-none rounded-full border border-outline-variant bg-low shadow-e1"
+        />
+      </div>
     </nav>
   );
 }

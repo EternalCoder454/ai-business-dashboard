@@ -224,15 +224,7 @@ export function SidePane({
         )}
         style={{ width: FOLDED }}
       >
-        <button
-          type="button"
-          onClick={() => setPaneHidden(id, false)}
-          aria-label={`Show ${label}`}
-          title={`Show ${label}`}
-          className="md-state grid h-10 w-full flex-none place-items-center text-on-variant transition-colors hover:text-on-surface"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        <PaneUnfoldButton id={id} label={label} />
       </div>
     );
   }
@@ -271,41 +263,70 @@ export function SidePane({
             onFold={() => setPaneHidden(id, true)}
           />
 
-          {/*
-           * The fold control, on the pane rather than on the page.
-           *
-           * It is the last thing in the column and sits at the bottom, out of
-           * the way of the list, because folding a pane is something somebody
-           * does once and then forgets about.
-           */}
-          {/*
-           * The absolute goes on a wrapper, not on the button.
-           *
-           * `md-state` sets `position: relative` for its state layer, and it
-           * loads after Tailwind, so `absolute` on the same element loses and
-           * says nothing about it. The button then sat eight pixels outside
-           * the pane it was supposed to be folding, which is exactly what it
-           * did before this comment existed.
-           */}
-          <div className="absolute bottom-2 right-2 z-10">
-            <button
-              type="button"
-              onClick={() => setPaneHidden(id, true)}
-              aria-label={`Hide ${label}`}
-              title={`Hide ${label}`}
-              /*
-               * A background of its own at rest, not only on hover. It floats
-               * over the end of the list, and against a full one a bare chevron
-               * reads as part of whatever row it happens to land on.
-               */
-              className="md-state grid h-8 w-8 place-items-center rounded-full border border-outline-variant bg-low text-on-variant shadow-e1 transition-colors hover:text-on-surface"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-          </div>
+          <PaneFoldButton id={id} label={label} />
         </>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Fold this pane away. Bottom right of the column, on every pane there is.
+ *
+ * It replaced a control nobody could find. The navigation used to fold by
+ * clicking the company mark, which showed a chevron over itself on hover and
+ * looked exactly like a logo the rest of the time, so the only people who knew
+ * the sidebar folded at all were the people who had been told.
+ *
+ * The absolute goes on a wrapper rather than on the button, because `md-state`
+ * sets `position: relative` for its state layer and loads after Tailwind, so
+ * `absolute` on the same element loses silently. The button then sat eight
+ * pixels outside the pane it was folding.
+ */
+export function PaneFoldButton({ id, label }: { id: string; label: string }) {
+  return (
+    <div className="absolute bottom-2 right-2 z-10">
+      <button
+        type="button"
+        onClick={() => setPaneHidden(id, true)}
+        aria-label={`Hide ${label}`}
+        title={`Hide ${label}`}
+        /*
+         * A background of its own at rest, not only on hover. It floats over
+         * the end of the list, and against a full one a bare chevron reads as
+         * part of whatever row it happens to land on.
+         */
+        className="md-state grid h-8 w-8 place-items-center rounded-full border border-outline-variant bg-low text-on-variant shadow-e1 transition-colors hover:text-on-surface"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+/** Bring it back. Sits where the fold button was, on whatever is left behind. */
+export function PaneUnfoldButton({
+  id,
+  label,
+  className,
+}: {
+  id: string;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => setPaneHidden(id, false)}
+      aria-label={`Show ${label}`}
+      title={`Show ${label}`}
+      className={cx(
+        "md-state grid place-items-center text-on-variant transition-colors hover:text-on-surface",
+        className ?? "h-10 w-full flex-none",
+      )}
+    >
+      <ChevronRight className="h-4 w-4" />
+    </button>
   );
 }
 

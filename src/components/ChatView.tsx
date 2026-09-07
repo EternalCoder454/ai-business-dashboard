@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ConversationList } from "./ConversationList";
 import { SidePane } from "./ui/SidePane";
+import { usePane } from "@/lib/paneLayout";
 import { ComposerMenu } from "./ComposerMenu";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { HeadProfile } from "./HeadProfile";
@@ -36,6 +37,7 @@ import { ProjectPicker } from "./ProjectBits";
 import type {
   Attachment,
   Conversation,
+  Effort,
   Message,
   Role,
   TokenUsage,
@@ -408,6 +410,9 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   );
 
   const showList = showsConversationList(requestedId, started.length);
+
+  /** Whether the list column is folded away, which decides if "back" has a job. */
+  const listFolded = Boolean(usePane("chat-list").hidden);
 
   /*
    * Tells the shell which of the two this is, because it strips the top and
@@ -1283,15 +1288,25 @@ ${turn.content}` }
         >
           <ChevronIcon className="h-5 w-5 rotate-180" />
         </button>
-        {/* Back to this head's other conversations, once there are any. The
-            arrow above is the phone's back gesture and goes wherever they came
-            from; this always goes to the list. */}
+        {/*
+          * Back to this head's other conversations, where they are not already
+          * on screen.
+          *
+          * The arrow above is the phone's back gesture and goes wherever they
+          * came from; this always goes to the list. At large the list is the
+          * column immediately to the left, so the button was an arrow pointing
+          * at something already visible. It comes back if that column is
+          * folded away, because then there is somewhere to go again.
+          */}
         {started.length > 0 ? (
           <Link
             href={departmentHrefById(departmentId)}
             aria-label={`All conversations with ${department.personaName || department.name}`}
             onClick={createRipple}
-            className="md-state md-target hidden flex-none place-items-center rounded-full text-on-variant medium:grid"
+            className={cx(
+              "md-state md-target hidden flex-none place-items-center rounded-full text-on-variant medium:grid",
+              !listFolded && "large:hidden",
+            )}
           >
             <ChevronIcon className="h-5 w-5 rotate-180" />
           </Link>
@@ -1612,6 +1627,22 @@ ${turn.content}` }
                         void updateDepartment(departmentId, { webSearch: mode }),
                     }
               }
+              effort={
+                supportsEffort(settings.model)
+                  ? {
+                      current: settings.effort,
+                      levels: EFFORT_OPTIONS.filter(
+                        (option) =>
+                          !settings.maxEffort ||
+                          EFFORT_ORDER.indexOf(option.id as (typeof EFFORT_ORDER)[number]) <=
+                            EFFORT_ORDER.indexOf(
+                              settings.maxEffort as (typeof EFFORT_ORDER)[number],
+                            ),
+                      ),
+                      onPick: (next) => void updateSettings({ effort: next as Effort }),
+                    }
+                  : undefined
+              }
             />
             <textarea
               ref={inputRef}
@@ -1765,34 +1796,9 @@ ${turn.content}` }
               * anything older reject the setting with a 400, so a control there
               * would be a switch that breaks the next message.
               */}
-            {supportsEffort(settings.model) ? (
-              <button
-                type="button"
-                onClick={() => {
-                  /*
-                   * Cycles within what this business allows. The ceiling is
-                   * enforced on the server too, and has to be: this only stops
-                   * somebody choosing a setting that would be quietly reduced.
-                   */
-                  const allowed = EFFORT_ORDER.filter(
-                    (id) =>
-                      !settings.maxEffort ||
-                      EFFORT_ORDER.indexOf(id) <=
-                        EFFORT_ORDER.indexOf(settings.maxEffort as (typeof EFFORT_ORDER)[number]),
-                  );
-                  const at = allowed.indexOf(settings.effort as (typeof EFFORT_ORDER)[number]);
-                  void updateSettings({ effort: allowed[(at + 1) % allowed.length] });
-                }}
-                title={`${EFFORT_OPTIONS.find((o) => o.id === settings.effort)?.hint ?? ""}. Click to change.`}
-                className="md-state rounded-full px-1.5 py-0.5 underline decoration-dotted underline-offset-2 hover:text-on-surface"
-              >
-                {settings.effort} effort
-              </button>
-            ) : (
-              <span title="This model does not take an effort setting.">
-                {settings.effort} effort
-              </span>
-            )}
+            <span title={EFFORT_OPTIONS.find((o) => o.id === settings.effort)?.hint}>
+              {settings.effort} effort
+            </span>
             {lastUsage ? (
               <>
                 {" · "}
