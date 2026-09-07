@@ -104,6 +104,58 @@ void (async () => {
       check("and it has a size", made.backup.bytes > 100, `${made.backup.bytes} bytes`);
     }
 
+    console.log("\nthe nightly pass skips a workspace nobody touched");
+    {
+      /*
+       * Without this a business nobody opened for a fortnight spends its whole
+       * retention on fourteen identical copies of itself, and pushes out the
+       * last backup taken while it was still being used, which is the one
+       * somebody would actually want.
+       */
+      const first = await createBackup({
+        workspaceId: SCRATCH,
+        label: "Daily backup",
+        kind: "automatic",
+        takenBy: "",
+        onlyIfChanged: true,
+      });
+      check("the first nightly backup is taken", "backup" in first);
+
+      const second = await createBackup({
+        workspaceId: SCRATCH,
+        label: "Daily backup",
+        kind: "automatic",
+        takenBy: "",
+        onlyIfChanged: true,
+      });
+      check("a second with nothing changed is skipped", "unchanged" in second);
+
+      // Compared on the tables alone. Every payload carries the moment it was
+      // taken, so comparing the whole thing would differ every single time.
+      await db
+        .update(t.wikiPages)
+        .set({ body: "Changed since the last nightly." })
+        .where(eq(t.wikiPages.workspaceId, SCRATCH));
+
+      const third = await createBackup({
+        workspaceId: SCRATCH,
+        label: "Daily backup",
+        kind: "automatic",
+        takenBy: "",
+        onlyIfChanged: true,
+      });
+      check("and one after a change is taken", "backup" in third);
+
+      // Put it back, so the restore below is checking what it thinks it is.
+      await db
+        .update(t.wikiPages)
+        .set({ body: "Small changes, often." })
+        .where(eq(t.wikiPages.workspaceId, SCRATCH));
+
+      const nightly = (await listBackups(SCRATCH)).filter((row) => row.kind === "automatic");
+      check("two nightly backups exist, not three", nightly.length === 2, `${nightly.length}`);
+    }
+
     console.log("\nnow lose it, the way somebody would");
     {
       await db.delete(t.tasks).where(and(eq(t.tasks.workspaceId, SCRATCH), eq(t.tasks.id, "task_two")));

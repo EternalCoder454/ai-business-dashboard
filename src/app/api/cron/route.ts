@@ -4,6 +4,7 @@ import { isOperator } from "@/lib/admin";
 import { reporterEnabled, runReview } from "@/lib/reporter";
 import { runSchedules } from "@/lib/schedules";
 import { runDailyAddons } from "@/lib/addons/runner";
+import { runDailyBackups } from "@/db/backups";
 import { DEPLOYMENT, flush, kindOf, prune, record } from "@/lib/telemetry";
 import { rateLimitPrune } from "@/lib/rateLimit";
 
@@ -92,6 +93,38 @@ export async function GET(request: Request) {
     return null;
   });
 
+  /*
+   * Then a backup of every workspace, before the review and after the work
+   * that might change something. The point of the whole feature: a backup
+   * somebody remembered to take is useful, and the one that matters is the one
+   * nobody thought about until the morning they needed it.
+   *
+   * Unchanged workspaces are skipped, so a business nobody touched for a
+   * fortnight does not spend its whole retention on fourteen identical copies
+   * and push out the last one taken while it was still being used.
+   */
+  const backupStarted = Date.now();
+  const backups = await runDailyBackups().catch((error) => {
+    console.error("[cron] backups failed", error);
+    record({
+      operation: "cron.backups",
+      workspaceId: DEPLOYMENT,
+      ms: Date.now() - backupStarted,
+      outcome: "error",
+      errorKind: kindOf(error),
+      errorNote: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  });
+  if (backups) {
+    record({
+      operation: "cron.backups",
+      workspaceId: DEPLOYMENT,
+      ms: Date.now() - backupStarted,
+      outcome: "ok",
+    });
+  }
+
   const reviewStarted = Date.now();
   const review = reporterEnabled()
     ? await runReview().catch((error) => {
@@ -151,8 +184,9 @@ export async function GET(request: Request) {
   // this has been running at all.
   console.log(
     `[cron] ${schedules?.ran ?? 0} briefings, ${review?.raised ?? 0} raised, ` +
+      `${backups?.taken ?? 0} backups taken and ${backups?.unchanged ?? 0} unchanged, ` +
       `${pruned} telemetry rows and ${rateRows} rate limit rows dropped, ${ms}ms`,
   );
 
-  return Response.json({ ok: true, schedules, addons, review, pruned, rateRows, ms });
+  return Response.json({ ok: true, schedules, addons, review, backups, pruned, rateRows, ms });
 }

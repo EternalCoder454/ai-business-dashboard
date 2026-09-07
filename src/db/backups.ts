@@ -188,13 +188,40 @@ async function readAll(workspaceId: string): Promise<BackupPayload> {
   return { version: 1, workspaceId, takenAt: new Date().toISOString(), tables };
 }
 
-/** Takes a backup. Returns its summary, or a reason it was refused. */
-export async function createBackup(input: {
+interface NewBackup {
   workspaceId: string;
   label: string;
   kind: BackupKind;
   takenBy: string;
-}): Promise<{ backup: BackupSummary } | { error: string }> {
+  /**
+   * Skip when this would be identical to the last one of the same kind.
+   *
+   * For the nightly pass. A workspace nobody touched for a fortnight would
+   * otherwise spend its whole retention on fourteen identical copies of itself
+   * and push out the last backup taken while it was still being used, which is
+   * the opposite of what keeping fourteen of them is for.
+   */
+  onlyIfChanged?: boolean;
+}
+
+/*
+ * Overloaded so that only the caller who asks for it has to think about the
+ * third answer. Somebody taking a backup by hand can always have one, so the
+ * button, the safety copy before a restore and the tests get back two cases
+ * rather than three, and none of them needs a branch for something that cannot
+ * reach it.
+ */
+export async function createBackup(
+  input: NewBackup & { onlyIfChanged: true },
+): Promise<{ backup: BackupSummary } | { unchanged: true } | { error: string }>;
+export async function createBackup(
+  input: NewBackup & { onlyIfChanged?: false },
+): Promise<{ backup: BackupSummary } | { error: string }>;
+
+/** Takes a backup. Returns its summary, or a reason it was refused. */
+export async function createBackup(
+  input: NewBackup,
+): Promise<{ backup: BackupSummary } | { unchanged: true } | { error: string }> {
   const db = requireDb();
   const payload = await readAll(input.workspaceId);
   const text = JSON.stringify(payload);
@@ -202,6 +229,31 @@ export async function createBackup(input: {
 
   if (bytes > MAX_BACKUP_BYTES) {
     return { error: "This workspace is too large to back up in one piece." };
+  }
+
+  if (input.onlyIfChanged) {
+    const [previous] = await db
+      .select({ payload: t.backups.payload })
+      .from(t.backups)
+      .where(and(eq(t.backups.workspaceId, input.workspaceId), eq(t.backups.kind, input.kind)))
+      .orderBy(desc(t.backups.createdAt))
+      .limit(1);
+
+    if (previous) {
+      try {
+        /*
+         * The tables only. Every payload carries the moment it was taken, so
+         * comparing the whole thing would find a difference every single time
+         * and the check would never once fire.
+         */
+        const before = JSON.parse(previous.payload) as BackupPayload;
+        if (JSON.stringify(before.tables) === JSON.stringify(payload.tables)) {
+          return { unchanged: true };
+        }
+      } catch {
+        // Unreadable, so treat it as nothing to compare against and take one.
+      }
+    }
   }
 
   const counts: Record<string, number> = {};
@@ -369,4 +421,49 @@ export async function restoreBackup(input: {
   });
 
   return { ok: true, safety: safety.backup.id };
+}
+
+/**
+ * A backup of every workspace, once a night, from the cron tick.
+ *
+ * The point of the whole feature. A backup somebody remembered to take is
+ * useful; the one that matters is the one nobody thought about until the
+ * morning they needed it.
+ *
+ * Per workspace rather than in one pass, and one failing does not stop the
+ * rest: a workspace too large to back up must not be the reason nobody else
+ * gets one.
+ */
+export async function runDailyBackups(): Promise<{
+  taken: number;
+  unchanged: number;
+  failed: number;
+}> {
+  const db = requireDb();
+  const workspaces = await db.select({ id: t.workspaces.id }).from(t.workspaces);
+
+  let taken = 0;
+  let unchanged = 0;
+  let failed = 0;
+
+  for (const workspace of workspaces) {
+    try {
+      const made = await createBackup({
+        workspaceId: workspace.id,
+        label: "Daily backup",
+        kind: "automatic",
+        // Nobody. The column is who asked, and here the answer is the clock.
+        takenBy: "",
+        onlyIfChanged: true,
+      });
+      if ("error" in made) failed += 1;
+      else if ("unchanged" in made) unchanged += 1;
+      else taken += 1;
+    } catch (error) {
+      console.error("[backups] nightly failed for", workspace.id, error);
+      failed += 1;
+    }
+  }
+
+  return { taken, unchanged, failed };
 }
