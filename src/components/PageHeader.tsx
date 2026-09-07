@@ -73,32 +73,36 @@ export function PageHeader({
           a line while both fit, and the actions drop to their own line once
           they do not. 10rem is about where a title starts looking cramped. */}
       <div className="min-w-0 flex-1 basis-40">
-        <div className="flex min-w-0 items-baseline gap-2">
-          {/* The group this page belongs to, which the top app bar does not
-              say. Beside the heading rather than over it: it is three words of
-              context and it was costing a whole row. Compact has no room for
-              it at all. */}
-          {eyebrow ? (
-            <span className="md-label-sm hidden flex-none text-primary medium:block">
-              {eyebrow}
-            </span>
-          ) : null}
-          {/*
-            * Announced on a phone, not drawn, when the bar has already said it.
-            *
-            * The bar is the one that stays, because it belongs to the shell and
-            * is on every screen; but a page still needs a heading to navigate
-            * by, so the h1 goes on being an h1 and only stops taking up room.
-            */}
-          <h1
-            className={cx(
-              "md-title-lg min-w-0 truncate",
-              repeated && "sr-only medium:not-sr-only",
-            )}
-          >
-            {title}
-          </h1>
-        </div>
+        {/*
+          * The label above the heading, not beside it.
+          *
+          * Putting them on one line saved a row and read as one broken
+          * sentence: "DASHBOARD Northbound Analytics", two different things in
+          * two different sizes running together with nothing between them. A
+          * label belongs over the thing it labels. The room came from the
+          * padding and the type size instead, which is where it should have
+          * come from, and the header is still a third shorter than it was.
+          */}
+        {eyebrow ? (
+          <span className="md-label-sm hidden leading-tight text-primary medium:block">
+            {eyebrow}
+          </span>
+        ) : null}
+        {/*
+          * Announced on a phone, not drawn, when the bar has already said it.
+          *
+          * The bar is the one that stays, because it belongs to the shell and
+          * is on every screen; but a page still needs a heading to navigate by,
+          * so the h1 goes on being an h1 and only stops taking up room.
+          */}
+        <h1
+          className={cx(
+            "md-title-lg min-w-0 truncate leading-tight",
+            repeated && "sr-only medium:not-sr-only",
+          )}
+        >
+          {title}
+        </h1>
         {description ? (
           <p className="md-body mt-1 text-on-variant">{description}</p>
         ) : null}
