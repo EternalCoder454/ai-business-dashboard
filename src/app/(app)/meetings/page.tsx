@@ -4,6 +4,7 @@ import { hasKeyFor } from "@/lib/hasKey";
 import Link from "next/link";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { MeetingList } from "@/components/MeetingList";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Markdown } from "@/components/Markdown";
@@ -40,7 +41,15 @@ import { useEnter } from "@/lib/motion";
  */
 const COLLAPSE_AT = 260;
 
-export default function MeetingsPage() {
+/**
+ * The page itself, wrapped below.
+ *
+ * Split only because it reads the address for which meeting to open, and
+ * useSearchParams makes a route impossible to prerender unless it sits inside a
+ * Suspense boundary. Without this the build fails on this page alone, at the
+ * very end, with a stack that names none of it.
+ */
+function MeetingsBody() {
   const {
     ready,
     departments,
@@ -899,5 +908,15 @@ function SynthesisMessage({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MeetingsPage() {
+  // Nothing to show while the address is read: it takes no time, and a spinner
+  // that appears for one frame is worse than nothing appearing at all.
+  return (
+    <Suspense fallback={null}>
+      <MeetingsBody />
+    </Suspense>
   );
 }

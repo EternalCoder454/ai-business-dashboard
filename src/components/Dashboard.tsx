@@ -6,7 +6,7 @@ import { SpendCard } from "./SpendCard";
 import { ContextCard } from "./ContextCard";
 import { StorageCard } from "./StorageCard";
 import Link from "next/link";
-import { useMemo, useState, type ReactNode, useEffect} from "react";
+import { useMemo, useState, type ReactNode, useEffect, useRef} from "react";
 import {
   CheckIcon,
   ChevronIcon,
@@ -443,7 +443,7 @@ function Band({
           />
           <h2 className="md-label-sm truncate text-on-variant">{title}</h2>
         </button>
-        {what ? <Hint what={what} /> : null}
+        {what ? <Hint what={what} side="left" /> : null}
         <div className="ml-auto flex flex-none items-center gap-2">{action}</div>
       </div>
       {open ? children : null}
@@ -454,38 +454,78 @@ function Band({
 /**
  * A question mark that says what a section is, when asked.
  *
- * On demand rather than printed under every heading. A line of explanation
- * beside each one is clutter on the ninety nine visits where you already know,
- * and the panel deliberately does not do that. But a section called
- * Deliverables tells you nothing at all until one exists in it, and by then you
- * did not need telling, so the explanation has to be reachable and out of the
- * way at the same time.
+ * On demand rather than printed underneath. A line of explanation beside every
+ * heading is clutter on the ninety nine visits where you already know, and this
+ * panel deliberately does not do that. But a section called Deliverables tells
+ * you nothing at all until one exists in it, and by then you did not need
+ * telling, so the explanation has to be reachable and out of the way at once.
  *
- * Click rather than hover alone. title text does nothing on a phone, which is
- * where somebody is most likely to be looking at a screen they do not know.
+ * Three things the first version got wrong, all visible the moment it opened.
+ *
+ * It used md-label-sm, which is uppercase, so a full sentence came out shouting
+ * and unreadable. That class is for "3D AGO" and the note beside its definition
+ * in globals.css says exactly that. Body text, in sentence case, and normal-case
+ * to defeat the heading it is nested inside.
+ *
+ * It anchored its right edge to the button. Beside a heading on the left of the
+ * screen that puts a 224px panel at a negative offset, half of it off the side
+ * of the window, which is what it did. Which edge to anchor is now the caller's
+ * to say, because only the caller knows where on the row the button sits.
+ *
+ * And it only closed by pressing the same small target again. Escape and a
+ * click anywhere else both close it now, which is what a person will try.
  */
-function Hint({ what }: { what: string }) {
+function Hint({ what, side = "right" }: { what: string; side?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
+  const holder = useRef<HTMLSpanElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const onDown = (event: MouseEvent) => {
+      if (!holder.current?.contains(event.target as Node)) setOpen(false);
+    };
+
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [open]);
 
   return (
-    <span className="relative flex-none">
+    <span ref={holder} className="relative flex-none">
       <button
         type="button"
         aria-label={open ? "Hide what this is" : "What is this"}
         aria-expanded={open}
-        title={what}
+        title={open ? undefined : what}
         onClick={() => setOpen((value) => !value)}
         className={cx(
-          "md-state grid h-5 w-5 place-items-center rounded-full text-[0.6875rem] font-medium",
-          open ? "bg-primary text-on-primary" : "bg-highest text-on-variant",
+          "md-state grid h-5 w-5 place-items-center rounded-full text-[0.6875rem] font-semibold leading-none transition-colors",
+          open
+            ? "bg-primary text-on-primary"
+            : "bg-highest text-on-variant hover:text-on-surface",
         )}
       >
         ?
       </button>
+
       {open ? (
         <span
           role="note"
-          className="md-label-sm absolute right-0 top-6 z-20 w-56 rounded-xl bg-inverse-surface px-3 py-2 text-inverse-on-surface shadow-e3"
+          className={cx(
+            // Never wider than the window it has to fit inside.
+            "absolute top-7 z-30 w-[min(20rem,calc(100vw-2rem))]",
+            side === "right" ? "right-0" : "left-0",
+            "rounded-xl border border-outline-variant bg-container p-3 shadow-e3",
+            // The heading this sits inside is uppercase and tracked out.
+            "md-body-sm block normal-case tracking-normal text-on-surface",
+          )}
         >
           {what}
         </span>
