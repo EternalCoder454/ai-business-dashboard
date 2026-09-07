@@ -85,17 +85,57 @@ function lengthOf(file: LibraryFile): string {
  * which is rare, so it is written into the cache once and read back at a tenth
  * of the price on every message after.
  */
-export function buildLibraryBlock(files: LibraryFile[], departmentId: string): string {
+export function buildLibraryBlock(
+  files: LibraryFile[],
+  departmentId: string,
+  /*
+   * Projects, so the catalogue can be grouped by one.
+   *
+   * Optional and last, because every existing caller passes positionally and a
+   * business with no projects gets exactly the flat list it had before.
+   */
+  projects: { id: string; name: string }[] = [],
+): string {
   const mine = libraryFor(files, departmentId);
   if (mine.length === 0) return "";
 
   const listed = mine.slice(0, LIBRARY_LIMITS.catalogue);
-  const lines = listed
-    .map((file) => {
-      const note = file.note?.trim();
-      return `- "${file.name}" (${lengthOf(file)})${note ? `\n  About: ${note}` : ""}`;
-    })
-    .join("\n");
+  const describe = (file: LibraryFile) => {
+    const note = file.note?.trim();
+    return `- "${file.name}" (${lengthOf(file)})${note ? `\n  About: ${note}` : ""}`;
+  };
+
+  /*
+   * Grouped by project, where the business has any.
+   *
+   * A flat list of forty titles is a list somebody has to read all of to find
+   * the two that belong to the job in front of them. The names alone do not
+   * carry it: "Terms.pdf" and "Terms (2).pdf" are the same document to a
+   * reader and different contracts to a business.
+   *
+   * Only projects that actually hold a document this head can reach appear. A
+   * heading with nothing under it is a claim that there is something there.
+   */
+  const named = projects.filter((project) =>
+    listed.some((file) => file.projectId === project.id),
+  );
+
+  let body: string;
+  if (named.length === 0) {
+    body = listed.map(describe).join("\n");
+  } else {
+    const loose = listed.filter(
+      (file) => !file.projectId || !named.some((project) => project.id === file.projectId),
+    );
+    const sections = named.map((project) => {
+      const belonging = listed.filter((file) => file.projectId === project.id);
+      return `${project.name}:\n${belonging.map(describe).join("\n")}`;
+    });
+    // Last, because a document that belongs to no project is the residue rather
+    // than the point, and putting it first buries the grouping under it.
+    if (loose.length) sections.push(`Not part of a project:\n${loose.map(describe).join("\n")}`);
+    body = sections.join("\n\n");
+  }
 
   const more =
     mine.length > listed.length
@@ -107,7 +147,7 @@ This business has ${mine.length} document${mine.length === 1 ? "" : "s"} you can
 
 Use read_document with the exact title when a document would settle the question, and prefer it over answering from general knowledge: these are this business's real terms, prices and numbers, and what you remember about how such things usually work is not a substitute. Say which document you read. If nothing here covers the question, answer normally and do not guess at what a document might say.
 
-${lines}${more}
+${body}${more}
 === END LIBRARY ===`;
 }
 

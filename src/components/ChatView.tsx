@@ -565,6 +565,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             files,
             deliverables,
             searchMode,
+            projects,
           ),
           messages: (await Promise.all(history.map(toTurns))).flat(),
           // A department pointed at its own model wins; otherwise the

@@ -51,6 +51,7 @@ export default function LibraryPage() {
   const router = useRouter();
   const {
     files,
+    projects,
     allDepartments,
     addFile,
     updateFile,
@@ -59,6 +60,15 @@ export default function LibraryPage() {
   } = useStore();
 
   const [filter, setFilter] = useState<"all" | AttachmentKind>("all");
+  /*
+   * Which project's documents to show, or all of them.
+   *
+   * Separate from the kind filter rather than folded into one row, because they
+   * answer different questions: one is what a document is, the other is what it
+   * belongs to, and a business looking for the Acme contract wants the second
+   * without giving up the first.
+   */
+  const [project, setProject] = useState<string>("all");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [preview, setPreview] = useState<LibraryFile | null>(null);
@@ -69,8 +79,17 @@ export default function LibraryPage() {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const visible = useMemo(
-    () => (filter === "all" ? files : files.filter((file) => file.kind === filter)),
-    [files, filter],
+    () =>
+      files
+        .filter((file) => filter === "all" || file.kind === filter)
+        .filter((file) =>
+          project === "all"
+            ? true
+            : project === "none"
+              ? !file.projectId
+              : file.projectId === project,
+        ),
+    [files, filter, project],
   );
 
   const countFor = (kind: AttachmentKind) => files.filter((f) => f.kind === kind).length;
@@ -167,6 +186,29 @@ export default function LibraryPage() {
               {FILE_ICON[kind]} {KIND_LABEL[kind]} · {countFor(kind)}
             </Chip>
           ))}
+          {/* Only once there is something to group. A row of project chips in a
+              business with no projects is a control for a thing that does not
+              exist yet. */}
+          {projects.length > 0 ? (
+            <>
+              <span aria-hidden className="mx-1 h-5 w-px flex-none bg-outline-variant" />
+              <Chip selected={project === "all"} onClick={() => setProject("all")}>
+                Any project
+              </Chip>
+              {projects.map((one) => (
+                <Chip
+                  key={one.id}
+                  selected={project === one.id}
+                  onClick={() => setProject(one.id)}
+                >
+                  {one.name} · {files.filter((file) => file.projectId === one.id).length}
+                </Chip>
+              ))}
+              <Chip selected={project === "none"} onClick={() => setProject("none")}>
+                No project · {files.filter((file) => !file.projectId).length}
+              </Chip>
+            </>
+          ) : null}
           {files.length > 0 ? (
             <span className="md-label-sm whitespace-nowrap pl-1 text-on-variant/75">
               {formatBytes(totalBytes)} stored
@@ -318,6 +360,27 @@ export default function LibraryPage() {
                   {allDepartments.map((department) => (
                     <option key={department.id} value={department.id}>
                       {department.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              {/* Grouping, not permission. A project says what a document is
+                  part of; who may read it is the control beside this one, and
+                  the two are deliberately separate: a contract can belong to
+                  the Acme job and still be Legal's alone. */}
+              <Field label="Part of">
+                <Select
+                  value={preview.projectId ?? ""}
+                  onChange={(event) => {
+                    const projectId = event.target.value || undefined;
+                    setPreview({ ...preview, projectId });
+                    void updateFile(preview.id, { projectId });
+                  }}
+                >
+                  <option value="">No project</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
                     </option>
                   ))}
                 </Select>

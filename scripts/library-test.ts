@@ -195,5 +195,65 @@ console.log("\nthe tool is offered only when there is something to read");
   );
 }
 
+console.log("\nthe catalogue groups by project, when there are any");
+{
+  const now = Date.now();
+  const file = (name: string, projectId?: string): LibraryFile => ({
+    id: name,
+    name,
+    kind: "document",
+    mediaType: "text/plain",
+    size: 100,
+    text: "some contents",
+    departmentId: COMPANY_ID,
+    projectId,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const files = [
+    file("Acme terms.pdf", "proj_acme"),
+    file("Acme quote.pdf", "proj_acme"),
+    file("Beta scope.pdf", "proj_beta"),
+    file("Insurance.pdf"),
+  ];
+  const projects = [
+    { id: "proj_acme", name: "Acme rebuild" },
+    { id: "proj_beta", name: "Beta pilot" },
+    // A project with nothing in it. A heading over an empty list is a claim
+    // that there is something there.
+    { id: "proj_empty", name: "Nothing here" },
+  ];
+
+  const grouped = buildLibraryBlock(files, "finance", projects);
+  check("names a project that holds something", grouped.includes("Acme rebuild:"));
+  check("names the second one too", grouped.includes("Beta pilot:"));
+  check("and not one that holds nothing", !grouped.includes("Nothing here"));
+  check("the leftovers get their own heading", grouped.includes("Not part of a project:"));
+  check(
+    "which comes last, since it is the residue rather than the point",
+    grouped.indexOf("Not part of a project:") > grouped.indexOf("Acme rebuild:"),
+  );
+  check(
+    "every document still appears exactly once",
+    files.every((one) => grouped.split(`"${one.name}"`).length === 2),
+  );
+  check(
+    "a document sits under its own project",
+    grouped
+      .slice(grouped.indexOf("Beta pilot:"), grouped.indexOf("Not part of a project:"))
+      .includes("Beta scope.pdf"),
+  );
+
+  // The old shape, unchanged, for a business that has never made a project.
+  const flat = buildLibraryBlock(files, "finance", []);
+  check("no projects means no headings", !flat.includes("Not part of a project:"));
+  check("and every document is still listed", flat.includes("Insurance.pdf"));
+  check(
+    "a project nobody filed anything under changes nothing",
+    buildLibraryBlock(files, "finance", [{ id: "proj_empty", name: "Nothing here" }]) === flat,
+  );
+}
+
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} failed`);
 process.exit(failures === 0 ? 0 : 1);

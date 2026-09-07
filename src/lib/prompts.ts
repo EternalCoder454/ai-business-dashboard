@@ -371,6 +371,11 @@ export function buildSystemPrompt(
    * search exists, since a server tool never appears in the list of tools.
    */
   webSearch: string = "off",
+  /*
+   * Last again, and only so the Library catalogue can be grouped by one. A
+   * business with no projects gets exactly the flat list it had before.
+   */
+  projects: { id: string; name: string }[] = [],
 ): { stable: string; volatile: string } {
   const context = buildCompanyContext(profile, companyName);
 
@@ -411,7 +416,7 @@ export function buildSystemPrompt(
      * the entire cached prefix every time the Library changed, and send a
      * scanned return on every message that had nothing to do with it.
      */
-    buildLibraryBlock(files, department.id),
+    buildLibraryBlock(files, department.id, projects),
     /*
      * Titles and dates, not bodies, for exactly the reason the Library block
      * gives. It changes when this head saves or revises something, which is
