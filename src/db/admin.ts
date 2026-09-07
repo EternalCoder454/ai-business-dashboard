@@ -537,6 +537,14 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
     await tx.delete(t.memory).where(eq(t.memory.workspaceId, owner));
     await tx.delete(t.departments).where(eq(t.departments.workspaceId, owner));
 
+    /*
+     * Every point this business could have been put back to. Deleted with it
+     * and not before: a backup holds a full copy of the workspace, so leaving
+     * one behind would keep the whole business after somebody asked for all of
+     * it to go.
+     */
+    await tx.delete(t.backups).where(eq(t.backups.workspaceId, owner));
+
     // What people said to each other. By workspace, not by address: `owner` is
     // a workspace id, and the version that compared it to an email deleted
     // nothing at all.

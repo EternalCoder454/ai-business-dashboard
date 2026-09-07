@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
+import { BackupsCard } from "@/components/BackupsCard";
 import { ProviderKey } from "@/components/ProviderKey";
 import { MODELS, PROVIDERS, modelsFor } from "@/lib/providers";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
@@ -496,6 +497,7 @@ export default function SettingsPage() {
               <p className="md-label mt-4 text-on-variant">{dataNotice}</p>
             ) : null}
           </Card>
+          <BackupsCard />
         </div>
       </div>
 

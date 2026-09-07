@@ -478,6 +478,47 @@ export const tasks = pgTable(
 );
 
 /** The internal wiki, so an installation can write its own. */
+/**
+ * A point this workspace can be put back to.
+ *
+ * The payload is the whole of the workspace's work as JSON: every message body
+ * and every deliverable in full, not the trimmed shape the screens load. A
+ * backup that restores empty conversations is not a backup.
+ *
+ * Text rather than jsonb, deliberately. Nothing ever queries inside it, and
+ * jsonb reparses on the way in and out, reorders keys and rejects a few things
+ * JSON allows. Postgres compresses a large text column on its own, so the only
+ * thing jsonb would add here is a chance to change the bytes that come back.
+ *
+ * What it deliberately leaves out is access, credentials and operational state:
+ * who may open the workspace, the provider keys, Google's tokens, telemetry and
+ * rate limits. Restoring those could lock somebody out of their own business or
+ * bring back a credential that was revoked on purpose, and neither is a thing a
+ * person reaching for a backup is asking for.
+ */
+export const backups = pgTable(
+  "backups",
+  {
+    id: text("id").notNull(),
+    workspaceId: workspace(),
+    label: text("label").notNull().default(""),
+    /** manual, automatic, or the one taken just before a restore. */
+    kind: text("kind").notNull().default("manual"),
+    /** The email that asked for it, or empty when a schedule did. */
+    takenBy: text("taken_by").notNull().default(""),
+    /** Size of the payload, so a list can be drawn without reading them all. */
+    bytes: integer("bytes").notNull().default(0),
+    /** Rows per table, for the same reason. */
+    counts: jsonb("counts").$type<Record<string, number>>(),
+    payload: text("payload").notNull(),
+    createdAt: created(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("backups_ws_idx").on(table.workspaceId, table.createdAt),
+  ],
+);
+
 export const wikiPages = pgTable(
   "wiki_pages",
   {

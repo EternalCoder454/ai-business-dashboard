@@ -44,6 +44,7 @@ const SCOPED = [
   "linkAllowlist",
   "addons",
   "addonRuns",
+  "backups",
 ];
 
 /**
