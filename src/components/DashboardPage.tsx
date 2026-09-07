@@ -31,6 +31,8 @@ export function DashboardPage({ preview }: { preview: DashboardPreview | null })
       <PageHeader
         eyebrow="Dashboard"
         title={settings.companyName}
+        // Not on a phone, for the reason below.
+        compactActions={false}
         actions={
           /*
            * Not on a phone.
@@ -45,7 +47,7 @@ export function DashboardPage({ preview }: { preview: DashboardPreview | null })
            * conversation" and the pair sat at different heights when it broke.
            * None of that is needed for a row that is simply not there.
            */
-          <div className="hidden gap-2 medium:flex">
+          <>
             <Button
               variant="outlined"
               icon={<UsersIcon className="h-4 w-4" />}
@@ -64,7 +66,7 @@ export function DashboardPage({ preview }: { preview: DashboardPreview | null })
             >
               New conversation
             </Button>
-          </div>
+          </>
         }
       />
       <div className="min-h-0 flex-1 overflow-y-auto">

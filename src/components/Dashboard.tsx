@@ -182,7 +182,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-outline-variant p-5">
+          <div className="rounded-2xl border border-dashed border-outline-variant px-4 py-2.5">
             <p className="md-body text-on-variant">No figures recorded.</p>
           </div>
         )}
@@ -199,6 +199,17 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
             View all tasks
           </Link>
         }
+        meta={
+          <>
+            <span className="md-label-sm">
+              {threads} thread{threads === 1 ? "" : "s"}
+            </span>
+            <span className="md-label-sm">
+              {activeProjects} active project{activeProjects === 1 ? "" : "s"}
+            </span>
+            <span className="md-label-sm">{deliverables.length} saved</span>
+          </>
+        }
       >
         <div className="grid grid-cols-2 gap-3 medium:grid-cols-4">
           <Count label="Overdue" value={due.overdue} tone={due.overdue > 0 ? "bad" : undefined} />
@@ -209,18 +220,6 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
             value={due.undated}
             hint={due.later > 0 ? `${due.later} further out` : undefined}
           />
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-          <span className="md-label-sm text-on-variant/75">
-            {threads} thread{threads === 1 ? "" : "s"}
-          </span>
-          <span className="md-label-sm text-on-variant/75">
-            {activeProjects} active project{activeProjects === 1 ? "" : "s"}
-          </span>
-          <span className="md-label-sm text-on-variant/75">
-            {deliverables.length} saved
-          </span>
         </div>
       </Band>
 
@@ -390,7 +389,7 @@ function Count({
   tone?: "bad";
 }) {
   return (
-    <div className="rounded-2xl bg-container p-4 shadow-e1">
+    <div className="rounded-2xl bg-container px-4 py-3 shadow-e1">
       <p className="md-label-sm truncate text-on-variant">{label}</p>
       <p
         className={cx(
@@ -422,12 +421,22 @@ function Band({
   id,
   title,
   what,
+  meta,
   action,
   children,
 }: {
   id: string;
   title: string;
   what?: string;
+  /**
+   * Counts that belong to the band rather than to any one card in it.
+   *
+   * On the heading line, which is the row a band already owns, so a handful of
+   * numbers no longer needs a row of its own underneath the cards. Each child
+   * brings its own type class, because some of these are metadata and belong
+   * in capitals and some are sentences and do not.
+   */
+  meta?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
 }) {
@@ -458,7 +467,14 @@ function Band({
 
   return (
     <section>
-      <div className="mb-3 flex items-center gap-2">
+      {/* The gap under the heading is for what is under it, so a band whose
+          content is all in this row does not leave one. */}
+      <div
+        className={cx(
+          "flex flex-wrap items-center gap-x-2 gap-y-1",
+          open && children ? "mb-3" : "",
+        )}
+      >
         <button
           type="button"
           onClick={toggle}
@@ -474,7 +490,14 @@ function Band({
           <h2 className="md-label-sm truncate text-on-variant">{title}</h2>
         </button>
         {what ? <Hint what={what} side="left" /> : null}
-        <div className="ml-auto flex flex-none items-center gap-2">{action}</div>
+        <div className="ml-auto flex flex-none items-center gap-2 medium:order-2">
+          {action}
+        </div>
+        {meta && open ? (
+          <div className="flex basis-full flex-wrap items-center gap-x-4 gap-y-1 text-on-variant/75 medium:order-1 medium:basis-auto">
+            {meta}
+          </div>
+        ) : null}
       </div>
       {open ? children : null}
     </section>
@@ -582,24 +605,31 @@ function PaneList({
 }) {
   return (
     <section className="rounded-2xl bg-container p-4 shadow-e1">
-      <div className="mb-2 flex items-center justify-between gap-2">
+      <div
+        className={cx(
+          "flex items-center justify-between gap-2",
+          items.length > 0 && "mb-2",
+        )}
+      >
         <h2 className="md-label-sm flex min-w-0 items-center gap-1.5 text-on-variant">
           {icon}
           <span className="truncate">{title}</span>
         </h2>
         <div className="flex flex-none items-center gap-2">
-          {items.length > 0 ? (
+          {items.length === 0 ? (
+            // Beside the name rather than under it. There is no list to head,
+            // so the header is the whole card and the sentence belongs on it.
+            <span className="md-body-sm text-on-variant/75">{empty}</span>
+          ) : (
             <Link href={href} className="md-label-sm text-primary">
               All
             </Link>
-          ) : null}
+          )}
           {what ? <Hint what={what} /> : null}
         </div>
       </div>
 
-      {items.length === 0 ? (
-        <p className="md-label text-on-variant/75">{empty}</p>
-      ) : (
+      {items.length === 0 ? null : (
         <ul className="-mx-2 space-y-0.5">
           {items.map((item) => (
             <li key={item.key}>

@@ -26,6 +26,7 @@ import { LoadFailed } from "./LoadFailed";
 import { NoWorkspace } from "./NoWorkspace";
 import { Setup } from "./Setup";
 import { WriteError } from "./WriteError";
+import { usePageHeading } from "@/lib/pageHeading";
 import { usePane } from "@/lib/paneLayout";
 import { PaneUnfoldButton } from "./ui/SidePane";
 import {
@@ -306,9 +307,33 @@ function useEdgeSwipe(onOpen: () => void, fromRight: boolean) {
  * page already had.
  */
 function TopAppBar({ title }: { title: string }) {
+  /*
+   * The page's own heading, when it has one that is not simply this word again.
+   *
+   * This is the bar taking over the job the page header was doing underneath
+   * it on a phone, in the shape a desktop already uses: the destination in
+   * small capitals over the heading itself. Two bordered rows become one, and
+   * the page header below is left with nothing to draw unless it has a
+   * description or buttons.
+   *
+   * Null until a page mounts and publishes, so the first paint is the single
+   * line this always was.
+   */
+  const heading = usePageHeading();
+  const named = heading && heading !== title ? heading : null;
+
   return (
     <header className="safe-top safe-pt-2 safe-x safe-px-3 flex flex-none items-center gap-2 border-b border-outline-variant bg-low pb-2 medium:hidden">
-      <span className="md-title min-w-0 flex-1 truncate">{title}</span>
+      <div className="min-w-0 flex-1">
+        {named ? (
+          <span className="md-label-sm block truncate leading-tight text-primary">
+            {title}
+          </span>
+        ) : null}
+        <span className="md-title block min-w-0 truncate leading-tight">
+          {named ?? title}
+        </span>
+      </div>
       <div className="flex-none [--badge-ring:var(--md-container-low)]">
         <ProfileMenu />
       </div>

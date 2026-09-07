@@ -1,9 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { Card, Chip, cx } from "./ui";
+import type { ReactNode } from "react";
+import { Chip, ScheduleIcon, cx } from "./ui";
 import { useStore } from "@/lib/store";
 import type { CalendarEvent } from "@/lib/google";
+
+/**
+ * The chrome the other Activity panes wear, so this is one of them.
+ *
+ * Not the Card component, which is the surface the System band uses and is a
+ * size larger in every direction.
+ */
+function Pane({ children, action }: { children: ReactNode; action?: ReactNode }) {
+  return (
+    <section className="rounded-2xl bg-container p-4 shadow-e1">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 className="md-label-sm flex min-w-0 items-center gap-1.5 text-on-variant">
+          <ScheduleIcon className="h-3.5 w-3.5" />
+          <span className="truncate">Your calendar</span>
+        </h2>
+        {action ? <div className="flex flex-none items-center gap-2">{action}</div> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 /** Today, tomorrow, or the weekday, which is how anybody reads a diary. */
 function dayLabel(at: number): string {
@@ -66,21 +88,17 @@ export function CalendarCard() {
    */
   if (problem) {
     return (
-      <Card>
-        <h2 className="md-title-lg mb-1">Your calendar</h2>
-        <p className="md-body text-on-variant">
-          Connected. Could not be read.
-        </p>
-      </Card>
+      <Pane>
+        <p className="md-body-sm text-on-variant/75">Connected. Could not be read.</p>
+      </Pane>
     );
   }
 
   if (events.length === 0) {
     return (
-      <Card>
-        <h2 className="md-title-lg mb-1">Your calendar</h2>
-        <p className="md-body text-on-variant">Nothing in the next three days.</p>
-      </Card>
+      <Pane>
+        <p className="md-body-sm text-on-variant/75">Nothing in the next three days.</p>
+      </Pane>
     );
   }
 
@@ -92,15 +110,14 @@ export function CalendarCard() {
   }
 
   return (
-    <Card>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="md-title-lg">Your calendar</h2>
+    <Pane
+      action={
         <Link href="/settings" className="md-label-sm text-on-variant/75 hover:underline">
           Google
         </Link>
-      </div>
-
-      <div className="flex flex-col gap-4">
+      }
+    >
+      <div className="flex flex-col gap-3">
         {[...byDay.entries()].map(([day, items]) => (
           <div key={day}>
             <p className="md-label-sm mb-1.5 text-on-variant/75">{day}</p>
@@ -129,6 +146,6 @@ export function CalendarCard() {
           </div>
         ))}
       </div>
-    </Card>
+    </Pane>
   );
 }

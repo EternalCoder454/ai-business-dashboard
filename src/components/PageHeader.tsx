@@ -1,9 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { useEffect, type ReactNode } from "react";
+import { setPageHeading } from "@/lib/pageHeading";
 import { ProfileMenu } from "./ProfileMenu";
-import { routeTitle } from "@/lib/routes";
 import { cx } from "./ui";
 
 /**
@@ -19,34 +18,42 @@ export function PageHeader({
   title,
   description,
   actions,
+  compactActions = true,
 }: {
   eyebrow?: string;
   title: string;
   description?: string;
   actions?: ReactNode;
+  /**
+   * Whether the buttons are worth a row on a phone.
+   *
+   * It lives here rather than as a `hidden medium:flex` on the caller's own
+   * wrapper because this header has to know the answer: buttons nobody can see
+   * were still keeping a bordered, padded row on screen holding nothing.
+   */
+  compactActions?: boolean;
 }) {
   /*
-   * Whether the top app bar is already showing this exact word.
+   * Handed to the top app bar, which draws it on a phone.
    *
-   * It usually is: the bar names the destination and most pages then head
-   * themselves with the same name, so a phone said "Tasks" and then said
-   * "Tasks" underneath it. But not always, and the first version of this hid
-   * the heading unconditionally, which took "Eterneon" off the dashboard where
-   * the bar says "Dashboard" and the two were never the same thing. So it asks
-   * rather than assumes.
+   * Cleared on unmount so a page that does not set one cannot inherit the last
+   * page's heading between routes.
    */
-  const pathname = usePathname();
-  const repeated = routeTitle(pathname) === title;
+  useEffect(() => {
+    setPageHeading(title);
+    return () => setPageHeading(null);
+  }, [title]);
 
   /*
    * Whether this header draws anything on a phone.
    *
-   * The eyebrow is hidden there, and where the heading is a repeat it is about
-   * to be, so a header with neither a description nor buttons would be four
-   * pixels of padding and a rule across the screen: a line that looks like a
-   * mistake. Settings is exactly that.
+   * Nothing of it survives there any more except a description and buttons: the
+   * eyebrow was always hidden, and the heading is now in the bar above. So a
+   * header with neither would be four pixels of padding and a rule across the
+   * screen, which is a line that looks like a mistake.
    */
-  const quiet = repeated && !description && !actions;
+  const shown = actions && compactActions ? actions : null;
+  const quiet = !description && !shown;
 
   return (
     <header
@@ -89,18 +96,14 @@ export function PageHeader({
           </span>
         ) : null}
         {/*
-          * Announced on a phone, not drawn, when the bar has already said it.
+          * Announced on a phone, not drawn.
           *
-          * The bar is the one that stays, because it belongs to the shell and
-          * is on every screen; but a page still needs a heading to navigate by,
-          * so the h1 goes on being an h1 and only stops taking up room.
+          * The bar above is the heading there, and it is the one that stays,
+          * because it belongs to the shell and is on every screen. A page still
+          * needs an h1 to navigate by, so it goes on being one and only stops
+          * taking up room.
           */}
-        <h1
-          className={cx(
-            "md-title-lg min-w-0 truncate leading-tight",
-            repeated && "sr-only medium:not-sr-only",
-          )}
-        >
+        <h1 className="md-title-lg min-w-0 truncate leading-tight sr-only medium:not-sr-only">
           {title}
         </h1>
         {description ? (
@@ -110,7 +113,12 @@ export function PageHeader({
       {/* Wraps rather than overflows. A phone is not wide enough to hold two
           buttons and the avatar on one line, and a group that cannot wrap
           puts the avatar off the side of the screen instead. */}
-      <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+      <div
+        className={cx(
+          "min-w-0 flex-wrap items-center justify-end gap-2",
+          compactActions ? "flex" : "hidden medium:flex",
+        )}
+      >
         {actions}
         {/* On compact the top app bar carries it, so showing it here as well
             costs a row of screen to say the same thing twice. */}
