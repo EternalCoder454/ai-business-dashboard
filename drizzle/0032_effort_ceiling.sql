@@ -1,0 +1,1 @@
+ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "max_effort" text NOT NULL DEFAULT '';

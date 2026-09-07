@@ -363,6 +363,7 @@ export const DEFAULT_SETTINGS: Settings = {
   workspaceId: "",
   model: DEFAULT_MODEL,
   effort: "medium",
+  maxEffort: "",
   theme: "dark",
   companyName: "Your Company",
   companySubtitle: "",

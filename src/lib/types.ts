@@ -507,6 +507,14 @@ export interface Settings {
   googleKey?: string;
   /** The workspace default. A department with no model of its own uses this. */
   model: string;
+  /**
+   * The highest effort anybody in this workspace may ask for.
+   *
+   * Empty means no ceiling. Enforced by the chat route rather than only by the
+   * control that offers it, because a dial that spends money is not one to
+   * police in the browser.
+   */
+  maxEffort?: Effort | "";
   effort: Effort;
   theme: ThemeMode;
   companyName: string;

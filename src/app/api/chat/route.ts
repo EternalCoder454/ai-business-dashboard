@@ -5,7 +5,15 @@ import { withinRate } from "@/lib/rateLimit";
 import { kindOf, record, refused } from "@/lib/telemetry";
 import { workspaceKey } from "@/db/keys";
 import { membershipFor } from "@/db/tenancy";
-import { DEFAULT_PROVIDER, providerInfo, providerOf, type Provider } from "@/lib/providers";
+import {
+  clampEffort,
+  DEFAULT_PROVIDER,
+  EFFORT_MODELS,
+  providerInfo,
+  providerOf,
+  type Provider,
+} from "@/lib/providers";
+import { effortCeiling } from "@/db/tenancy";
 import { droppedAttachments, streamDeepSeek, streamGemini, streamOpenAi } from "@/lib/serverProviders";
 import type { ChatRequestBody, ChatStreamEvent, WireContent } from "@/lib/types";
 
@@ -16,16 +24,11 @@ export const maxDuration = 300;
 /**
  * Models that accept adaptive thinking and `output_config.effort`. Older models
  * (Haiku 4.5 and anything before it) reject both with a 400.
+ *
+ * The list lives in lib/providers now, because the composer has to ask the same
+ * question before it draws a control for it and two copies would drift.
  */
-const MODERN_MODELS = new Set([
-  "claude-opus-5",
-  "claude-opus-4-8",
-  "claude-opus-4-7",
-  "claude-opus-4-6",
-  "claude-sonnet-5",
-  "claude-sonnet-4-6",
-  "claude-fable-5",
-]);
+const MODERN_MODELS = EFFORT_MODELS;
 
 /** Server-side refusal fallbacks are an Opus 5 / Fable 5 feature. */
 const FALLBACK_MODELS = new Set(["claude-opus-5", "claude-fable-5"]);
@@ -162,6 +165,15 @@ export async function POST(request: NextRequest) {
   // the end of the stream is per business and a chat is seconds long: one
   // indexed lookup against it is not a cost worth avoiding.
   const tenantId = await workspaceOf(session.email ?? undefined);
+
+  /*
+   * The ceiling this business set, applied here rather than trusted from the
+   * request. The composer only offers what is allowed, and the composer is not
+   * what decides: the effort arrives in the body like everything else and a
+   * hand written one could name any of them.
+   */
+  const ceiling = tenantId ? await effortCeiling(tenantId) : "";
+  const effort = clampEffort(body.effort, ceiling);
   const fromWorkspace =
     serverKey || !tenantId ? "" : await workspaceKey(tenantId, provider);
   const apiKey = serverKey || fromWorkspace || request.headers.get(info.header)?.trim();
@@ -212,7 +224,7 @@ export async function POST(request: NextRequest) {
    * shared abstraction would end up shaped like Anthropic anyway.
    */
   if (provider === "openai" || provider === "google") {
-    return streamThroughAdapter({ provider, model, apiKey, body, request });
+    return streamThroughAdapter({ provider, model, apiKey, body, request, effort });
   }
 
   const client = new Anthropic({
@@ -356,7 +368,7 @@ export async function POST(request: NextRequest) {
             // display: "summarized" is opt-in, and the default returns empty
             // thinking text, which reads as a long pause in a chat UI.
             thinking: { type: "adaptive" as const, display: "summarized" as const },
-            output_config: { effort: body.effort || "medium" },
+            output_config: { effort },
           }
         : {}),
     };
@@ -616,12 +628,15 @@ function streamThroughAdapter({
   apiKey,
   body,
   request,
+  effort,
 }: {
   provider: Exclude<Provider, "anthropic">;
   model: string;
   apiKey: string;
   body: ChatRequestBody;
   request: NextRequest;
+  /** Already clamped to the workspace's ceiling by the caller. */
+  effort: ReturnType<typeof clampEffort>;
 }): Response {
   let upstream: { abort: () => void } | null = null;
   let clientGone = false;
@@ -655,7 +670,7 @@ function streamThroughAdapter({
           model,
           system: body.system,
           messages: body.messages ?? [],
-          effort: body.effort || ("medium" as const),
+          effort,
           // The same ceiling Anthropic gets, from the same table, so a reply
           // costs the same at most whichever provider answers it.
           maxTokens: MAX_TOKENS[model] ?? DEFAULT_MAX_TOKENS,

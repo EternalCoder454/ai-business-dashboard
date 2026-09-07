@@ -548,3 +548,25 @@ export async function countMembers(workspaceId: string): Promise<number> {
     return 0;
   }
 }
+
+/**
+ * The highest effort this business allows, or "" for no ceiling.
+ *
+ * Its own small read rather than part of a larger one, because the chat route
+ * needs exactly this and nothing else about the settings row, and that route
+ * runs on every message.
+ */
+export async function effortCeiling(workspaceId: string): Promise<string> {
+  if (!databaseEnabled || !db) return "";
+  try {
+    const [row] = await db
+      .select({ maxEffort: t.settings.maxEffort })
+      .from(t.settings)
+      .where(eq(t.settings.workspaceId, workspaceId))
+      .limit(1);
+    return row?.maxEffort ?? "";
+  } catch {
+    // A ceiling that cannot be read is not a reason to refuse the message.
+    return "";
+  }
+}

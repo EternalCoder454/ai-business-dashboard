@@ -226,6 +226,34 @@ export default function SettingsPage() {
                   ))}
                 </Select>
               </Field>
+              {/*
+                * The ceiling, for whoever pays the bill.
+                *
+                * Effort is one click from the composer now, so somebody can put
+                * Max on "what is our phone number" without meaning anything by
+                * it. Anything above this comes back as this rather than as an
+                * error, since refusing the message would punish somebody for a
+                * setting they did not know existed.
+                */}
+              {isAdmin ? (
+                <Field label="Highest effort anyone may use">
+                  <Select
+                    value={settings.maxEffort ?? ""}
+                    onChange={(event) =>
+                      void updateSettings({
+                        maxEffort: event.target.value as Effort | "",
+                      })
+                    }
+                  >
+                    <option value="">No limit</option>
+                    {EFFORT_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label} and below
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null}
             </div>
 
             <ul className="flex flex-col gap-3">

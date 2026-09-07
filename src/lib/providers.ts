@@ -160,6 +160,72 @@ export function defaultModelFor(provider: Provider): string {
  * The five levels are Anthropic's. OpenAI takes four, and Gemini takes a
  * thinking budget in tokens, so both are mapped rather than passed through.
  */
+/**
+ * Effort from least to most, which is the order everything below depends on.
+ *
+ * Kept here rather than derived from EFFORT_OPTIONS so the ceiling and the
+ * cycle cannot disagree with each other about which way is up.
+ */
+export const EFFORT_ORDER = ["low", "medium", "high", "xhigh", "max"] as const;
+
+/**
+ * The effort actually used, given what a workspace allows.
+ *
+ * Effort is one click from the composer, so somebody can put Max on "what is
+ * our phone number" without meaning anything by it, and the bill lands on the
+ * business. An administrator sets the top and everything above it comes back
+ * as the top rather than as an error: refusing the message would punish
+ * somebody for a setting they did not know existed, and quietly answering at
+ * the ceiling is what they wanted anyway.
+ *
+ * Applied on the server, because a dial that spends money is not one to police
+ * in the browser.
+ */
+export function clampEffort(
+  wanted: string | undefined,
+  ceiling: string | undefined,
+): (typeof EFFORT_ORDER)[number] {
+  const order = EFFORT_ORDER as readonly string[];
+  const asked = order.indexOf(wanted ?? "medium");
+  const top = ceiling ? order.indexOf(ceiling) : -1;
+
+  const safe = asked === -1 ? order.indexOf("medium") : asked;
+  if (top === -1) return EFFORT_ORDER[safe];
+  return EFFORT_ORDER[Math.min(safe, top)];
+}
+
+/**
+ * Anthropic models that accept an effort setting at all.
+ *
+ * Haiku 4.5 and anything before it reject adaptive thinking and
+ * `output_config.effort` with a 400, so offering the control on one of those
+ * would be offering a switch that breaks the next message.
+ *
+ * The chat route holds the same list for the same reason. It is here as well so
+ * the interface can ask before it draws the control, and the two are checked
+ * against each other by providers-test.
+ */
+export const EFFORT_MODELS = new Set([
+  "claude-opus-5",
+  "claude-opus-4-8",
+  "claude-opus-4-7",
+  "claude-opus-4-6",
+  "claude-sonnet-5",
+  "claude-sonnet-4-6",
+  "claude-fable-5",
+]);
+
+/**
+ * Whether this model does anything with an effort setting.
+ *
+ * OpenAI and Gemini both take one on every model this panel offers, mapped by
+ * the two functions below, so the question is only ever about Anthropic.
+ */
+export function supportsEffort(model: string | undefined): boolean {
+  if (!model) return false;
+  return providerOf(model) === "anthropic" ? EFFORT_MODELS.has(model) : true;
+}
+
 export function openAiEffort(effort: Effort): "minimal" | "low" | "medium" | "high" {
   if (effort === "low") return "low";
   if (effort === "medium") return "medium";

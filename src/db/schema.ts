@@ -397,6 +397,15 @@ export const settings = pgTable("settings", {
    * list: it is an administrator's control, written only by the reports route,
    * the same way the three keys below are written only by the keys route.
    */
+  /**
+   * The highest effort anybody here may ask for, or empty for no ceiling.
+   *
+   * Effort is a dial on how hard a model thinks, and it is cycled from the
+   * composer in one click, so somebody can put Max on "what is our phone
+   * number" without meaning anything by it. The bill lands on the business, so
+   * the business gets to say where the top is.
+   */
+  maxEffort: text("max_effort").notNull().default(""),
   linkPolicy: text("link_policy").notNull().default("open"),
   anthropicKey: text("anthropic_key").notNull().default(""),
   openaiKey: text("openai_key").notNull().default(""),

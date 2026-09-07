@@ -23,7 +23,7 @@ import { AttachmentError, MAX_ATTACHMENTS_PER_MESSAGE, attachmentSrc } from "@/l
 import { providerOf } from "@/lib/providers";
 import { runTool } from "@/lib/runTool";
 import { findTool, searchModeFor, toolsFor } from "@/lib/tools";
-import { COMPANY_ID } from "@/lib/seed";
+import { COMPANY_ID, EFFORT_OPTIONS} from "@/lib/seed";
 import { libraryFor } from "@/lib/library";
 import { deliverablesFor } from "@/lib/deliverables";
 import { buildSystemPrompt, deriveConversationTitle, hasProfileContent } from "@/lib/prompts";
@@ -65,6 +65,7 @@ import {
   cx,
 } from "./ui";
 import { Markdown } from "./Markdown";
+import { EFFORT_ORDER, supportsEffort } from "@/lib/providers";
 import { createRipple } from "./ui/ripple";
 import { appendSpoken, useDictation } from "@/lib/dictation";
 
@@ -285,6 +286,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     updateDepartment,
     profile,
     settings,
+    updateSettings,
     account,
     workspacePeople,
     canOpenHead,
@@ -1483,7 +1485,48 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             <span className="hidden medium:inline">
               Enter to send · Shift+Enter for a new line ·{" "}
             </span>
-            {settings.model} · {settings.effort} effort
+            {settings.model}
+            {" · "}
+            {/*
+              * Effort, as a control rather than a caption.
+              *
+              * It sat here as text you could read and not change, so adjusting
+              * how hard a head thinks about the next message meant leaving the
+              * conversation for Settings and coming back. It cycles in place
+              * now, which is the one thing anybody wants to do with it.
+              *
+              * Only where the model does anything with it. Haiku 4.5 and
+              * anything older reject the setting with a 400, so a control there
+              * would be a switch that breaks the next message.
+              */}
+            {supportsEffort(settings.model) ? (
+              <button
+                type="button"
+                onClick={() => {
+                  /*
+                   * Cycles within what this business allows. The ceiling is
+                   * enforced on the server too, and has to be: this only stops
+                   * somebody choosing a setting that would be quietly reduced.
+                   */
+                  const allowed = EFFORT_ORDER.filter(
+                    (id) =>
+                      !settings.maxEffort ||
+                      EFFORT_ORDER.indexOf(id) <=
+                        EFFORT_ORDER.indexOf(settings.maxEffort as (typeof EFFORT_ORDER)[number]),
+                  );
+                  const at = allowed.indexOf(settings.effort as (typeof EFFORT_ORDER)[number]);
+                  void updateSettings({ effort: allowed[(at + 1) % allowed.length] });
+                }}
+                title={`${EFFORT_OPTIONS.find((o) => o.id === settings.effort)?.hint ?? ""}. Click to change.`}
+                className="md-state rounded-full px-1.5 py-0.5 underline decoration-dotted underline-offset-2 hover:text-on-surface"
+              >
+                {settings.effort} effort
+              </button>
+            ) : (
+              <span title="This model does not take an effort setting.">
+                {settings.effort} effort
+              </span>
+            )}
             {lastUsage ? (
               <>
                 {" · "}

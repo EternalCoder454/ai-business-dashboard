@@ -29,6 +29,7 @@ export const WRITABLE_SETTINGS = [
   "companyMark",
   "webSearch",
   "monthlyBudget",
+  "maxEffort",
   "companyLogoUrl",
   "sidebarSide",
   "searchShortcut",
@@ -58,6 +59,8 @@ export const ADMIN_ONLY_SETTINGS = new Set<string>([
   "wikiSubtitle",
   "writingRules",
   "monthlyBudget",
+  // A spending control like the budget beside it.
+  "maxEffort",
 ]);
 
 /** The fields that may be set back to empty rather than only changed. */
