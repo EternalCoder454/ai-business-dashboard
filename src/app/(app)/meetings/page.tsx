@@ -31,6 +31,7 @@ import { departmentAccent } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import type { MeetingResponse, Meeting, Department } from "@/lib/types";
 import { useEnter } from "@/lib/motion";
+import { SidePane } from "@/components/ui/SidePane";
 
 /**
  * Height at which a head's answer collapses behind a "Show more".
@@ -223,12 +224,12 @@ function MeetingsBody() {
    */
   const listPane =
     held.length > 0 ? (
-      <div
-        className={cx(
-          "min-h-0 min-w-0 flex-1 flex-col",
-          "large:flex large:w-80 large:flex-none large:border-r large:border-outline-variant",
-          showList ? "flex" : "hidden",
-        )}
+      <SidePane
+        id="meetings-list"
+        breakpoint="large"
+        defaultWidth={320}
+        label="the meeting list"
+        className={showList ? "flex" : "hidden"}
       >
         <MeetingList
           compact
@@ -245,7 +246,7 @@ function MeetingsBody() {
           }}
           onDelete={(id) => void deleteMeeting(id)}
         />
-      </div>
+      </SidePane>
     ) : null;
 
   return (

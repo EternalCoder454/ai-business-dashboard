@@ -39,6 +39,7 @@ function modelLabel(id: string): string {
 export default function SettingsPage() {
   const {
     settings,
+    companyTheme,
     updateSettings,
     departments,
     orchestrator,
@@ -370,20 +371,32 @@ export default function SettingsPage() {
               </div>
             ) : null}
 
-            <div className="mt-5">
-              <p className="md-label mb-2 text-on-variant">Theme</p>
-              <div className="flex gap-2">
-                {(["dark", "light"] as ThemeMode[]).map((mode) => (
-                  <Chip
-                    key={mode}
-                    selected={settings.theme === mode}
-                    onClick={() => void updateSettings({ theme: mode })}
-                  >
-                    {mode === "dark" ? "Dark" : "Light"}
-                  </Chip>
-                ))}
+            {/*
+              * What the business opens as, which is not what anybody has to
+              * read in.
+               *
+               * This was one workspace setting anybody could change, so one
+               * person preferring light moved the whole company into light.
+               * It is the starting point now, and each person overrides it for
+               * their own browser from the account menu, where they will
+               * actually look for it.
+               */}
+            {isAdmin ? (
+              <div className="mt-5">
+                <p className="md-label mb-2 text-on-variant">Default theme</p>
+                <div className="flex gap-2">
+                  {(["dark", "light"] as ThemeMode[]).map((mode) => (
+                    <Chip
+                      key={mode}
+                      selected={companyTheme === mode}
+                      onClick={() => void updateSettings({ theme: mode })}
+                    >
+                      {mode === "dark" ? "Dark" : "Light"}
+                    </Chip>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : null}
           </Card>
 
           <Card className="expanded:self-stretch">

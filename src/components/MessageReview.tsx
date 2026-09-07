@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Card, EmptyState, MailIcon, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
 import { formatExactTime } from "@/lib/routes";
+import { SidePane } from "@/components/ui/SidePane";
 
 interface ThreadSummary {
   threadKey: string;
@@ -112,13 +113,14 @@ export function MessageReview() {
     <div className="flex min-h-0 flex-1">
       {/* Below large this is one screen at a time, the way the Inbox and the
           People tab already behave: the list, then the thread. */}
-      <div
-        className={cx(
-          "min-h-0 min-w-0 flex-1 overflow-y-auto p-3",
-          "large:flex large:w-96 large:flex-none large:flex-col",
-          "large:border-r large:border-outline-variant",
-          open ? "hidden large:block" : "block",
-        )}
+      <SidePane
+        id="review-list"
+        breakpoint="large"
+        defaultWidth={384}
+        label="the thread list"
+        scroll
+        contentClassName="p-3"
+        className={cx(open ? "hidden large:flex" : "flex")}
       >
         <ul className="flex flex-col gap-1.5">
           {threads.map((thread) => (
@@ -150,7 +152,7 @@ export function MessageReview() {
             </li>
           ))}
         </ul>
-      </div>
+      </SidePane>
 
       <div
         className={cx(

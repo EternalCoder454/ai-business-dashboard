@@ -21,6 +21,8 @@ import { signOutAction } from "@/app/auth-actions";
 import { useNotifications } from "@/lib/notifications";
 import { baselineChangelog, useUnseenChangelog } from "@/lib/changelogSeen";
 import { useStore } from "@/lib/store";
+import { setThemeChoice, useThemeChoice } from "@/lib/themeChoice";
+import type { ThemeMode } from "@/lib/types";
 
 /**
  * The account menu, in the top right of every screen.
@@ -65,7 +67,8 @@ const ADMIN = {
 };
 
 export function ProfileMenu() {
-  const { account, isOperator, workspaceRole, accountEmail, canOpenPath } = useStore();
+  const { account, isOperator, workspaceRole, accountEmail, canOpenPath, settings } = useStore();
+  const themeChoice = useThemeChoice();
   const [open, setOpen] = useState(false);
 
   /*
@@ -327,6 +330,56 @@ export function ProfileMenu() {
               })}
             </div>
           ) : null}
+
+          {/*
+            * Light or dark, here rather than buried in Settings.
+            *
+            * It was one workspace setting anybody could change, so one person
+            * preferring light moved the whole business into light. What is in
+            * Settings now is what the business opens as, and this is what you
+            * read in. It reaches your browser and nothing else.
+            *
+            * Three choices, not two. Following the company is a real state and
+            * not the same as having picked the colour it happens to be on: pick
+            * dark today and you stay dark when the business moves to light,
+            * leave it alone and you move with it.
+            */}
+          <div className="border-t border-outline-variant px-4 py-3">
+            <p className="md-label mb-2 text-on-variant">Appearance</p>
+            <div className="flex gap-1.5" role="radiogroup" aria-label="Appearance">
+              {(
+                [
+                  { value: "light" as ThemeMode | null, label: "Light" },
+                  { value: "dark" as ThemeMode | null, label: "Dark" },
+                  { value: null as ThemeMode | null, label: "Company" },
+                ]
+              ).map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={themeChoice === option.value}
+                  onClick={(event) => {
+                    createRipple(event);
+                    setThemeChoice(option.value);
+                  }}
+                  title={
+                    option.value === null
+                      ? `Follow the business, which is set to ${settings.theme}`
+                      : undefined
+                  }
+                  className={cx(
+                    "md-state md-label flex-1 rounded-full border px-2 py-1.5 transition-colors",
+                    themeChoice === option.value
+                      ? "border-primary bg-primary-container text-on-primary-container"
+                      : "border-outline-variant text-on-variant hover:text-on-surface",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <nav className="px-2 py-2">
             {/* A button rather than a link: the form is small enough that a

@@ -204,9 +204,9 @@
   --shadow-e2: var(--md-elev-2);
   --shadow-e3: var(--md-elev-3);
 
-  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui,
+  --font-sans: var(--font-roboto), "Roboto", ui-sans-serif, system-ui,
     -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+  --font-mono: var(--font-roboto-mono), "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
     monospace;
 
   --radius-md3: 12px;
@@ -346,6 +346,30 @@
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/*
+ * Figures that hold their column.
+ *
+ * By default a typeface gives each digit the width it looks best at, so a 1 is
+ * narrower than a 0. That is right for a sentence and wrong for anything
+ * stacked: a column of dates jitters left and right by a pixel or two per row,
+ * a counter ticking from 9 to 10 shoves everything after it sideways, and the
+ * eye has to re-find the decimal point on every line. Tabular figures give
+ * every digit the same width, so a column reads as a column.
+ *
+ * Applied by role rather than to the whole document, because proportional
+ * figures really are better inside prose, which is where md-body lives.
+ *
+ * md-label-sm carries most of it. Nearly every number in this panel is
+ * metadata under something: "12 MESSAGES", a timestamp, a token count, a size
+ * in megabytes.
+ */
+.md-label,
+.md-label-sm,
+table,
+[data-figures="tabular"] {
+  font-variant-numeric: tabular-nums;
 }
 
 /*

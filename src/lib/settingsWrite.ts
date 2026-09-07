@@ -61,6 +61,16 @@ export const ADMIN_ONLY_SETTINGS = new Set<string>([
   "monthlyBudget",
   // A spending control like the budget beside it.
   "maxEffort",
+  /*
+   * The theme the business opens as, which is not the theme anybody has to
+   * read in.
+   *
+   * It was writable by everybody and stored once for the whole workspace, so
+   * one person preferring light moved the entire company into light. It is now
+   * the default a browser starts from, and each person overrides it for
+   * themselves in their own browser. See themeChoice.
+   */
+  "theme",
 ]);
 
 /** The fields that may be set back to empty rather than only changed. */

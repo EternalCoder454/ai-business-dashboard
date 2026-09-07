@@ -29,6 +29,7 @@ import {
 } from "@/lib/types";
 
 import { stagger } from "@/lib/motion";
+import { SidePane } from "@/components/ui/SidePane";
 
 /**
  * Staggers a list in, once, when it first appears.
@@ -135,14 +136,13 @@ export default function MessagesPage() {
 
       <div className="flex min-h-0 flex-1">
         {/* ------------------------------------------------- list pane */}
-        <div
-          className={cx(
-            "min-h-0 min-w-0 flex-1 overflow-y-auto",
-            // An explicit width, not just a max: flex-none with only a cap lets
-            // the pane shrink to whatever the longest name happens to be.
-            "expanded:w-80 expanded:flex-none expanded:border-r expanded:border-outline-variant",
-            open && "hidden expanded:block",
-          )}
+        <SidePane
+          id="inbox-list"
+          breakpoint="expanded"
+          defaultWidth={320}
+          label="the people list"
+          scroll
+          className={cx(open && "hidden expanded:flex")}
         >
           {rows.length === 0 ? (
             <div className="px-4 py-6">
@@ -234,7 +234,7 @@ export default function MessagesPage() {
               ))}
             </ul>
           )}
-        </div>
+        </SidePane>
 
         {/* ------------------------------------------------- detail pane */}
         <div className={cx("min-h-0 min-w-0 flex-1", !open && "hidden expanded:flex")}>

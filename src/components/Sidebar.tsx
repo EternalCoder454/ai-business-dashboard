@@ -41,6 +41,7 @@ import {
 } from "./ui";
 import { SearchIcon } from "./CommandPalette";
 import { createRipple } from "./ui/ripple";
+import { PaneResizeHandle, usePaneResize } from "./ui/SidePane";
 
 export interface NavLink {
   href: string;
@@ -183,8 +184,20 @@ export function Sidebar({
   collapsed?: boolean;
   onCollapse?: () => void;
 }) {
+  const { stored, wide, width, ceiling, dragging, setDragging, paneRef, resizeTo } = usePaneResize({
+    id: "nav",
+    breakpoint: "large",
+    // Unused while nothing is stored: the default below is fit-content, which
+    // no number can express. It is the width a drag starts from if the pointer
+    // somehow arrives before a measurement.
+    defaultWidth: 260,
+    minWidth: 208,
+    maxWidth: 400,
+  });
+
   return (
     <aside
+      ref={paneRef}
       className={cx(
         /*
          * As wide as its contents, between a floor and a ceiling.
@@ -201,13 +214,35 @@ export function Sidebar({
          * of which change as you move around. Recent conversations are
          * deliberately not in this list, which is what would have made it
          * twitch.
+         *
+         * All of which is still the default, and now only the default. Dragging
+         * the edge replaces it with a number, because sizing to content is a
+         * good guess about what the column needs and says nothing about what
+         * the person wants to spend on it.
          */
-        "hidden h-full w-fit min-w-[13rem] max-w-[20rem] flex-none flex-col",
-        "border-r border-outline-variant bg-low",
+        "hidden h-full min-w-[13rem] max-w-[25rem] flex-none flex-col",
+        stored.width === undefined && "w-fit",
+        "relative border-r border-outline-variant bg-low",
         !collapsed && "large:flex",
       )}
+      style={wide && stored.width !== undefined ? { width } : undefined}
     >
       <SidebarContent onOpenSearch={onOpenSearch} onCollapse={onCollapse} />
+
+      {/* No fold here. This one already folds, to the icon rail beside it,
+          which keeps every destination one click away instead of none. */}
+      {wide && !collapsed ? (
+        <PaneResizeHandle
+          id="nav"
+          label="the navigation"
+          width={width}
+          minWidth={208}
+          maxWidth={ceiling}
+          dragging={dragging}
+          onStart={() => setDragging(true)}
+          onResize={resizeTo}
+        />
+      ) : null}
     </aside>
   );
 }

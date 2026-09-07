@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ConversationList } from "./ConversationList";
+import { SidePane } from "./ui/SidePane";
 import { ComposerMenu } from "./ComposerMenu";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { HeadProfile } from "./HeadProfile";
@@ -1242,12 +1243,12 @@ ${turn.content}` }
    */
   const listPane =
     started.length > 0 ? (
-      <div
-        className={cx(
-          "min-h-0 min-w-0 flex-1 flex-col",
-          "large:flex large:w-80 large:flex-none large:border-r large:border-outline-variant",
-          showList ? "flex" : "hidden",
-        )}
+      <SidePane
+        id="chat-list"
+        breakpoint="large"
+        defaultWidth={320}
+        label="the conversation list"
+        className={showList ? "flex" : "hidden"}
       >
         <ConversationList
           compact
@@ -1256,7 +1257,7 @@ ${turn.content}` }
           conversations={started}
           onDelete={(id) => void deleteConversation(id)}
         />
-      </div>
+      </SidePane>
     ) : null;
 
 

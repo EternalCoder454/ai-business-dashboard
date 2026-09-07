@@ -1,18 +1,47 @@
 import { loadBranding } from "@/lib/branding";
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Roboto, Roboto_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
-// Self-hosted by next/font, so there is no third-party round trip on the
-// critical path and no shift when the face swaps in.
-const inter = Inter({
+/*
+ * Self-hosted by next/font, so there is no third-party round trip on the
+ * critical path and no shift when the face swaps in.
+ *
+ * Roboto rather than Inter. Inter is the correct answer often enough that it
+ * has stopped being an answer: it is the face of every dashboard shipped in the
+ * last five years, and a panel wearing it looks like the others by default
+ * rather than by decision. Roboto is also the typeface Material Design is drawn
+ * for, and the whole of this interface is Material 3 tokens, so the metrics
+ * this was measured against are the ones it is now set in.
+ */
+const roboto = Roboto({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-inter",
+  variable: "--font-roboto",
+});
+
+/**
+ * The face numbers are set in, and the one that was never actually here.
+ *
+ * The stack asked for JetBrains Mono and nothing ever loaded it, so every
+ * monospaced surface in the panel fell through to whatever the machine
+ * happened to own: Consolas on Windows, Menlo on a Mac, something else again on
+ * Linux. Measured rather than assumed, by comparing the width of a string in
+ * the stack against the width of the same string in a family that does not
+ * exist. They were identical.
+ *
+ * Roboto Mono because it is Roboto's own companion and shares its metrics, so a
+ * figure sitting in a label and the same figure in a table are the same size
+ * and the same colour on the page.
+ */
+const robotoMono = Roboto_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-roboto-mono",
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -90,7 +119,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html
       lang="en"
       data-theme="dark"
-      className={inter.variable}
+      className={`${roboto.variable} ${robotoMono.variable}`}
       suppressHydrationWarning
     >
       <head>

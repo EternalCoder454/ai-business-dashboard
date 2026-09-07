@@ -85,7 +85,7 @@ export function SpendCard() {
         <p className="md-body mt-1 text-on-variant">Adding it up…</p>
       ) : (
         <>
-          <p className="md-headline mt-2">{money(spend.total)}</p>
+          <p className="md-headline mt-2 tabular-nums">{money(spend.total)}</p>
           <p className="md-body-sm mt-1 text-on-variant/75">
             Estimated from published list prices as they stood on {PRICED_ON}. Your own
             invoice is the real number.

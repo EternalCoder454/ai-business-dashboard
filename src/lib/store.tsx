@@ -69,11 +69,14 @@ import type {
   Project,
   Settings,
   Skill,
+  ThemeMode,
   UserAccount,
 } from "./types";
 
 import { PROVIDERS, type Provider } from "./providers";
 import type { Credential } from "@/db/keys";
+import { useThemeChoice } from "./themeChoice";
+
 export interface StoreValue {
   ready: boolean;
   /** The workspace could not be read, after three tries. */
@@ -172,6 +175,15 @@ export interface StoreValue {
   deleteMemory: (id: string) => Promise<void>;
   profile: CompanyProfile;
   settings: Settings;
+  /**
+   * The theme the business opens as, before anybody's own choice.
+   *
+   * `settings.theme` is what to draw, which is this unless the person reading
+   * has said otherwise. Settings needs the difference, because an administrator
+   * choosing the company default while personally reading in dark would
+   * otherwise see their own preference ticked and set the company to it.
+   */
+  companyTheme: ThemeMode;
   account: UserAccount;
 
   getDepartment: (id: string) => Department | undefined;
@@ -713,6 +725,8 @@ export function StoreProvider({
    * document before anything is drawn. Empty on the server, where there is no
    * localStorage and the markup carries the default anyway.
    */
+  const themeChoice = useThemeChoice();
+
   const [storedTheme] = useState<Settings["theme"] | null>(() => {
     if (typeof window === "undefined") return null;
     try {
@@ -722,6 +736,12 @@ export function StoreProvider({
       return null;
     }
   });
+
+  /** Before the personal override. See companyTheme on StoreValue. */
+  const companyTheme: ThemeMode =
+    (remote?.settings?.theme as ThemeMode | undefined) ??
+    storedTheme ??
+    DEFAULT_SETTINGS.theme;
 
   const settings: Settings = useMemo(() => {
     // The server's answer sits between the shipped defaults and the workspace
@@ -748,11 +768,28 @@ export function StoreProvider({
         : {}),
       ...(remote?.settings ?? {}),
     };
+    /*
+     * This person's own theme, over the top of the company's.
+     *
+     * Last, so it beats the workspace: the workspace value is what the business
+     * opens as, and this is what somebody has said they would rather read in.
+     * Null means they never said, and then the company's answer stands and
+     * keeps standing when it changes.
+     */
+    const themed = themeChoice ? { ...base, theme: themeChoice } : base;
+
     // Neither storage holds the credentials, so they are laid over the top from
     // this browser once read. Overlaying unconditionally is what lets an empty
     // key mean cleared rather than merely absent.
-    return credentialsReady ? { ...base, ...credentials } : base;
-  }, [remote?.settings, credentials, credentialsReady, initialBranding, storedTheme]);
+    return credentialsReady ? { ...themed, ...credentials } : themed;
+  }, [
+    remote?.settings,
+    credentials,
+    credentialsReady,
+    initialBranding,
+    storedTheme,
+    themeChoice,
+  ]);
 
   /**
    * Google fills in what the person has not set for themselves.
@@ -959,6 +996,7 @@ export function StoreProvider({
       files: fileList,
       profile,
       settings,
+      companyTheme,
       account,
 
       getDepartment: (id: string) => departmentList.find((d) => d.id === id),
@@ -1644,6 +1682,7 @@ export function StoreProvider({
     taskCommentList,
     profile,
     settings,
+    companyTheme,
     account,
   ]);
 

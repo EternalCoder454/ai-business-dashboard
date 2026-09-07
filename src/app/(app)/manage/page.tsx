@@ -25,6 +25,7 @@ import { MessageReview } from "@/components/MessageReview";
 import { useStore } from "@/lib/store";
 import { AREAS, unrestricted, type Area, type Permissions } from "@/lib/permissions";
 import { formatExactTime } from "@/lib/routes";
+import { SidePane } from "@/components/ui/SidePane";
 
 interface Member {
   email: string;
@@ -246,14 +247,14 @@ export default function ManagePage() {
          * everybody else. The list answers who is here; the pane answers what
          * you can do about one of them.
          */}
-        <div
-          className={cx(
-            "min-h-0 min-w-0 flex-1 overflow-y-auto p-3",
-            // An explicit width rather than a cap, for the reason the Inbox
-            // gives: flex-none with only a max shrinks to the longest name.
-            "expanded:w-80 expanded:flex-none expanded:border-r expanded:border-outline-variant",
-            selected && "hidden expanded:block",
-          )}
+        <SidePane
+          id="manage-list"
+          breakpoint="expanded"
+          defaultWidth={320}
+          label="the member list"
+          scroll
+          contentClassName="p-3"
+          className={cx(selected && "hidden expanded:flex")}
         >
           {error ? <p className="md-label mb-3 px-2 text-error">{error}</p> : null}
           {notice ? <p className="md-label mb-3 px-2 text-primary">{notice}</p> : null}
@@ -313,7 +314,7 @@ export default function ManagePage() {
               })}
             </ul>
           )}
-        </div>
+        </SidePane>
 
         <div className={cx("min-h-0 min-w-0 flex-1 overflow-y-auto", !selected && "hidden expanded:flex")}>
           {current ? (
