@@ -19,7 +19,6 @@ const STORE_KEY = "eterneon.nav.layout.v1";
 /** Every section the drawer can show, in the order it ships. */
 export const NAV_SECTIONS = [
   "work",
-  "workspace",
   "departments",
   "personal",
   "recent",

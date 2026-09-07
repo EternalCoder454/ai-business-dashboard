@@ -90,10 +90,16 @@ export const WORK_LINKS: NavLink[] = [
     short: "Projects",
     icon: <FolderIcon className="h-5 w-5" />,
   },
-];
-
-/** Reference: things you read rather than do. */
-export const WORKSPACE_LINKS: NavLink[] = [
+  /*
+   * The Library was a section of its own called Reference, holding one page.
+   *
+   * A heading over a single row is a heading that only costs space: it took a
+   * label, a rule and a gap to say one word that the row underneath already
+   * said. And the split it was drawing was not a real one. Reference meant
+   * things you read rather than do, but the Library is where the documents a
+   * head answers from are put and where the work it produces is kept, which is
+   * doing rather than reading.
+   */
   {
     href: "/library",
     label: "Library",
@@ -155,11 +161,7 @@ const OPERATOR_LINK: NavLink = {
 };
 
 /** Everything, for search and for anything that needs the full list. */
-export const COMPANY_LINKS: NavLink[] = [
-  ...WORK_LINKS,
-  ...WORKSPACE_LINKS,
-  ...SETUP_LINKS,
-];
+export const COMPANY_LINKS: NavLink[] = [...WORK_LINKS, ...SETUP_LINKS];
 
 /** The five that fit a rail or a bottom bar, which is exactly the work group. */
 export const PRIMARY_LINKS = WORK_LINKS;
@@ -426,29 +428,6 @@ export function SidebarContent({
                   </li>
                 ))}
               </ul>
-        </>
-      ),
-    },
-    workspace: {
-      label: "Reference",
-      content: (
-        <>
-                <ul className="mb-5 space-y-0.5">
-                  {WORKSPACE_LINKS.filter((link) => canOpenPath(link.href)).map((link) => (
-                    <li key={link.href}>
-                      <NavRow
-                        href={link.href}
-                        active={isActive(pathname, link.href)}
-                        onNavigate={onNavigate}
-                      >
-                        <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
-                          {link.icon}
-                        </span>
-                        <span className="md-body truncate">{link.label}</span>
-                      </NavRow>
-                    </li>
-                  ))}
-                </ul>
         </>
       ),
     },

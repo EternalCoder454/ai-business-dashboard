@@ -788,11 +788,20 @@ ${turn.content}` }
          * rather than a failure. It used to read "No response was returned."
          * above the search it had just started, which is the panel calling its
          * own working an error in front of the person waiting for it.
+         *
+         * The same is true of a turn that comes after one. Asked to write
+         * something up, a head calls the tool that writes it and then has
+         * nothing left to say, so the round that follows the tool comes back
+         * empty. That is the job finished, and it was being reported as "No
+         * response was returned." directly above the deliverable it had just
+         * produced. Depth is what tells the two apart: nothing at all on the
+         * first round is a failure worth naming, and nothing on a later one is
+         * a head that is done.
          */
         content:
           collectedText ||
           failure ||
-          (result.toolCalls.length ? "" : "No response was returned."),
+          (result.toolCalls.length || depth > 0 ? "" : "No response was returned."),
         thinking: collectedThinking || undefined,
         timestamp: Date.now(),
         error: !collectedText && Boolean(failure),
@@ -2063,6 +2072,24 @@ function MessageBubble({
    * offer from six replies ago has been answered by everything since, and a
    * half streamed sentence is not yet an offer.
    */
+  /*
+   * Which calls are footnotes and which are events.
+   *
+   * A quiet read is one that finished, was never refused, and could not have
+   * changed anything: `writes: false` is the same flag that lets it run without
+   * being approved in the first place. Everything else is a card.
+   */
+  const [quietReads, loudCalls] = useMemo(() => {
+    const quiet: NonNullable<Message["toolCalls"]> = [];
+    const loud: NonNullable<Message["toolCalls"]> = [];
+    for (const call of message.toolCalls ?? []) {
+      const readOnly = findTool(call.name)?.writes === false;
+      if (readOnly && call.state === "approved") quiet.push(call);
+      else loud.push(call);
+    }
+    return [quiet, loud] as const;
+  }, [message.toolCalls]);
+
   const offered = useMemo(
     () =>
       last && !busy && message.role === "assistant" && !message.error
@@ -2236,9 +2263,26 @@ function MessageBubble({
         </div>
       ) : null}
 
-      {message.toolCalls?.length ? (
+      {/*
+        * Lookups fold into one line; everything else keeps its card.
+        *
+        * A head asked about the business reads three or four departments
+        * before it answers, and each one was a full width card with a title,
+        * two lines of preview and a Show more. Four of those is most of a
+        * screen spent on the fact that it looked, above the answer somebody
+        * actually asked for.
+        *
+        * A read that ran without asking is a footnote. It changed nothing, it
+        * needed no permission, and the only question anybody ever has about it
+        * is what it found, which is one click away. Anything that writes, or
+        * that is waiting to be allowed to, still gets a card, because those are
+        * the ones worth interrupting a reply for.
+        */}
+      {quietReads.length > 0 ? <ReadNote calls={quietReads} /> : null}
+
+      {loudCalls.length > 0 ? (
         <ul className="mt-2 flex flex-col gap-2">
-          {message.toolCalls.map((call) => (
+          {loudCalls.map((call) => (
             <li key={call.id}>
               <ToolCard call={call} onDecide={onDecideTool} />
             </li>
@@ -2395,6 +2439,59 @@ function ToolResult({ text, failed }: { text: string; failed: boolean }) {
         >
           {open ? "Show less" : "Show more"}
         </button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Everything a head looked at before answering, on one line.
+ *
+ * Written to be skipped. It sits above the reply and describes work rather than
+ * being work, so it is the same weight and the same shape as the reasoning
+ * disclosure directly above it: closed by default, one row tall, and openable
+ * by anybody checking where an answer came from.
+ *
+ * The label names the first thing and counts the rest rather than trying to
+ * write a sentence out of the summaries. Reading "Marketing's conversations",
+ * "Finance's conversations" and stitching them into "Marketing, Finance and
+ * Engineering" needs the summaries to be parseable, and they are prose written
+ * per tool. Counting is always right.
+ */
+function ReadNote({ calls }: { calls: NonNullable<Message["toolCalls"]> }) {
+  const [open, setOpen] = useState(false);
+
+  const first = findTool(calls[0].name)?.summarise(calls[0].input) ?? calls[0].name;
+  const rest = calls.length - 1;
+
+  return (
+    <div className="mt-2 rounded-2xl border border-outline-variant bg-low">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="md-label-sm flex w-full items-center gap-2 px-4 py-2 text-left text-on-variant"
+      >
+        <ChevronIcon
+          className={cx("h-3.5 w-3.5 flex-none transition-transform", open && "rotate-90")}
+        />
+        <span className="min-w-0 flex-1 truncate">
+          {first}
+          {rest > 0 ? ` and ${rest} more` : ""}
+        </span>
+      </button>
+
+      {open ? (
+        <ul className="flex flex-col gap-3 px-4 pb-3">
+          {calls.map((call) => (
+            <li key={call.id}>
+              <p className="md-label-sm text-on-variant">
+                {findTool(call.name)?.summarise(call.input) ?? call.name}
+              </p>
+              {call.result ? <ToolResult text={call.result} failed={false} /> : null}
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   );

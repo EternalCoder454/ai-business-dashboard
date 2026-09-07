@@ -16,7 +16,6 @@ import {
   PRIMARY_LINKS,
   Sidebar,
   SidebarContent,
-  WORKSPACE_LINKS,
   isActive,
 } from "./Sidebar";
 import { DepartmentAvatar } from "./DepartmentAvatar";
@@ -362,7 +361,7 @@ function NavigationRail({
   const heads = allDepartments.filter(
     (department) => !department.personal && canOpenHead(department.id),
   );
-  const reference = WORKSPACE_LINKS.filter((link) => canOpenPath(link.href));
+
   const activeDepartmentId = departmentIdOf(pathname);
 
   return (
@@ -469,20 +468,9 @@ function NavigationRail({
           </div>
         </>
       ) : (
-        /* Nothing to list, so the reference links still go to the bottom. */
+        /* Nothing to list, so the fold control still goes to the bottom. */
         <span className="min-h-2 flex-1" />
       )}
-
-      {reference.length > 0 ? (
-        <>
-          <RailRule />
-          <div className="flex w-full flex-none flex-col items-center">
-            {reference.map((link) => (
-              <RailItem key={link.href} link={link} active={isActive(pathname, link.href)} />
-            ))}
-          </div>
-        </>
-      ) : null}
 
       {/*
         * Only at large, where this rail is the sidebar folded. Below that it is
