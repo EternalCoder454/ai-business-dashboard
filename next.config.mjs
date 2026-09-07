@@ -109,12 +109,21 @@ const nextConfig = {
       // Paired with frame-ancestors above, for browsers that honour only one.
       { key: "X-Frame-Options", value: "DENY" },
       { key: "X-DNS-Prefetch-Control", value: "off" },
-      // Nothing here uses any of these, so nothing here should be able to ask.
+      /*
+       * Nothing here uses any of these, so nothing here should be able to ask.
+       *
+       * Except the microphone, which the composer now uses for dictation. It is
+       * (self) rather than (): same origin only, so the panel may ask and
+       * anything it ever embeds may not. This line said () and the comment
+       * above it said nothing uses these, and both were true right up until
+       * dictation shipped, at which point the button appeared, asked, and was
+       * refused by the site it was part of.
+       */
       {
         key: "Permissions-Policy",
         value: [
           "camera=()",
-          "microphone=()",
+          "microphone=(self)",
           "geolocation=()",
           "payment=()",
           "usb=()",
