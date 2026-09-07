@@ -21,6 +21,12 @@ interface Line {
   body: string;
   sentAt: number;
   readAt?: number;
+  /** Set when the sender changed the text, with what it said first. */
+  editedAt?: number;
+  originalBody?: string;
+  /** Set when the sender withdrew it from the thread. It stays here. */
+  deletedAt?: number;
+  deletedBy?: string;
 }
 
 /**
@@ -184,11 +190,47 @@ export function MessageReview() {
                         {formatRelativeTime(line.sentAt)}
                         {line.readAt ? "" : " · unread"}
                       </p>
+
+                      {/*
+                        * The two things the people in the thread cannot see.
+                        *
+                        * A withdrawn message is gone from their inbox and still
+                        * here, because a business that may have to answer for
+                        * what was said inside it should not lose the record
+                        * because the sender would rather it were gone. An
+                        * edited one shows what it said first, since a
+                        * correction that quietly replaces the original is the
+                        * same as no record at all.
+                        */}
+                      {line.deletedAt ? (
+                        <p className="md-label-sm mt-1 text-error">
+                          Withdrawn {formatRelativeTime(line.deletedAt)}
+                          {line.deletedBy ? ` by ${line.deletedBy}` : ""}
+                        </p>
+                      ) : null}
+
                       {/* Anywhere, not break-word: a pasted link is one word,
                           and one word wider than the card takes the layout. */}
-                      <p className="md-body mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">
+                      <p
+                        className={cx(
+                          "md-body mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]",
+                          Boolean(line.deletedAt) &&
+                            "text-on-variant line-through decoration-on-variant/40",
+                        )}
+                      >
                         {line.body}
                       </p>
+
+                      {line.originalBody ? (
+                        <div className="mt-2 border-l-2 border-outline-variant pl-3">
+                          <p className="md-label-sm text-on-variant/75">
+                            Edited {line.editedAt ? formatRelativeTime(line.editedAt) : ""}. Sent as:
+                          </p>
+                          <p className="md-body-sm mt-0.5 whitespace-pre-wrap text-on-variant [overflow-wrap:anywhere]">
+                            {line.originalBody}
+                          </p>
+                        </div>
+                      ) : null}
                     </Card>
                   </li>
                 ))}

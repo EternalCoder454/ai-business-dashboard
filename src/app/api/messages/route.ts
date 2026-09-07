@@ -11,6 +11,9 @@ import {
   seenThrough,
   sendMessage,
   touchPresence,
+  editMessage,
+  deleteMessage,
+  withdrawnSince,
 } from "@/db/messages";
 import { readJson } from "@/lib/guard";
 import { withinRate } from "@/lib/rateLimit";
@@ -118,13 +121,21 @@ export async function GET(request: Request) {
       // Both every time, including on the polling call. `since` bounds the
       // messages, but the watermark has to come back unbounded or a tick on
       // something sent earlier would never reach the screen.
-      const [messages, seen] = await track("messages.thread", mine.workspaceId, () =>
+      const [messages, seen, withdrawn] = await track("messages.thread", mine.workspaceId, () =>
         Promise.all([
           listThread(mine.workspaceId, sender.email, other, since),
           seenThrough(mine.workspaceId, sender.email, other),
+          /*
+           * Only on a polling call. On the first read the thread is built from
+           * nothing, and a withdrawn message is simply not in it; there is no
+           * copy on screen to take away.
+           */
+          since
+            ? withdrawnSince(mine.workspaceId, sender.email, other, since)
+            : Promise.resolve([]),
         ]),
       );
-      return Response.json({ messages, seenThrough: seen });
+      return Response.json({ messages, seenThrough: seen, withdrawn });
     }
 
     const workspace = sender.membership;
@@ -166,9 +177,36 @@ export async function POST(request: Request) {
     return Response.json({ error: parsed.error }, { status: parsed.status });
   }
 
-  const { to, body, markRead } = parsed.body;
+  const { to, body, markRead, edit, withdraw } = parsed.body;
 
   try {
+    /*
+     * Changing a message already sent. Both are the sender's own doing: the
+     * ownership check lives on the row in db/messages, so an administrator
+     * reading a thread on the management screen cannot reach it from here.
+     */
+    if (edit) {
+      const text = body?.trim() ?? "";
+      if (!text) {
+        return Response.json({ error: "A message cannot be empty." }, { status: 400 });
+      }
+      if (text.length > MAX_BODY_CHARS) {
+        return Response.json(
+          { error: `A message can be at most ${MAX_BODY_CHARS} characters.` },
+          { status: 400 },
+        );
+      }
+      const done = await editMessage(sender.membership.workspaceId, edit, sender.email, text);
+      if ("error" in done) return Response.json({ error: done.error }, { status: 403 });
+      return Response.json({ ok: true });
+    }
+
+    if (withdraw) {
+      const done = await deleteMessage(sender.membership.workspaceId, withdraw, sender.email);
+      if ("error" in done) return Response.json({ error: done.error }, { status: 403 });
+      return Response.json({ ok: true });
+    }
+
     if (markRead) {
       const other = markRead.trim().toLowerCase();
       const mine = sender.membership;

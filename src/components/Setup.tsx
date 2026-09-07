@@ -142,7 +142,7 @@ export function Setup() {
       className={cx(
         // Docked rather than covering, so the screen being described is the
         // thing you are looking at. No backdrop for the same reason.
-        "safe-bottom safe-x fixed inset-x-0 bottom-0 z-[55] flex justify-center p-3",
+        "safe-bottom safe-pb-3 safe-x safe-px-3 fixed inset-x-0 bottom-0 z-[55] flex justify-center pt-3",
         // The page underneath stays usable; only the card itself takes clicks.
         "pointer-events-none",
       )}

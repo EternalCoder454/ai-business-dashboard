@@ -30,10 +30,17 @@ export const workspaceRole = z.enum(["member", "admin"]);
 
 /** What an administrator may change about a colleague. */
 export const membersBody = z.object({
-  action: z.enum(["invite", "role", "remove", "permissions"]),
+  action: z.enum(["invite", "role", "remove", "permissions", "details"]),
   email,
   role: z.string().max(20).optional(),
   note: shortText.optional(),
+  /*
+   * What this business calls somebody and what they do here. Written to the
+   * membership, never to the account, which is why an administrator setting
+   * these cannot change the name another business sees. Empty clears it.
+   */
+  displayName: z.string().max(80).optional(),
+  roleTitle: z.string().max(80).optional(),
   invite: z.boolean().optional(),
   // Checked again by parsePermissions, which is the one that decides what a
   // stored value means. This only keeps a string or an array out of the column.
@@ -77,6 +84,13 @@ export const messagesBody = z.object({
   to: email.optional(),
   body: mediumText.optional(),
   markRead: email.optional(),
+  /*
+   * Changing one already sent. The route checks the row belongs to whoever is
+   * asking, since only the sender may edit or withdraw their own message, and
+   * an administrator reading a thread must never be able to rewrite it.
+   */
+  edit: id.optional(),
+  withdraw: id.optional(),
 });
 
 export const keysBody = z.object({

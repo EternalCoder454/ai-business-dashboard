@@ -197,6 +197,10 @@ interface ThreadState {
   send: (body: string) => Promise<void>;
   /** Sends a failed one again. Its text lives nowhere else by then. */
   retry: (message: DirectMessage) => Promise<void>;
+  /** Changes the text of one of your own, already sent. */
+  edit: (id: string, body: string) => Promise<string | null>;
+  /** Takes one of your own back. Management still has it. */
+  withdraw: (id: string) => Promise<string | null>;
   /** The newest thing of mine the other person has read, as a timestamp. */
   seenThrough: number;
 }
@@ -246,6 +250,7 @@ export function useThread(other: string | undefined, self: string | undefined): 
         const body = (await response.json()) as {
           messages: DirectMessage[];
           seenThrough?: number;
+          withdrawn?: { id: string; at: number }[];
         };
 
         // Above the early return below. A tick is the one thing that arrives
@@ -256,10 +261,29 @@ export function useThread(other: string | undefined, self: string | undefined): 
           setSeenThrough((current) => Math.max(current, mark));
         }
 
+        /*
+         * Taken off the screen before anything is added, so a message
+         * withdrawn in the same tick as a reply does not flicker back.
+         */
+        const gone = body.withdrawn ?? [];
+        if (gone.length && !cancelled) {
+          const ids = new Set(gone.map((row) => row.id));
+          setMessages((current) => current.filter((message) => !ids.has(message.id)));
+          newest.current = Math.max(newest.current, ...gone.map((row) => row.at));
+        }
+
         const incoming = body.messages ?? [];
         if (!incoming.length || cancelled) return;
 
-        newest.current = Math.max(newest.current, ...incoming.map((m) => m.sentAt));
+        /*
+         * Past edits as well as sends. An edit does not move sent_at, so a
+         * cursor built from that alone would return the same corrected message
+         * on every tick for as long as the thread stayed quiet.
+         */
+        newest.current = Math.max(
+          newest.current,
+          ...incoming.map((m) => Math.max(m.sentAt, m.editedAt ?? 0)),
+        );
         setMessages((current) => {
           const byId = new Map(current.map((m) => [m.id, m]));
           for (const message of incoming) byId.set(message.id, message);
@@ -394,5 +418,74 @@ export function useThread(other: string | undefined, self: string | undefined): 
     [deliver],
   );
 
-  return { messages, sending, error, send, retry, seenThrough };
+  /**
+   * Changes one of your own, already sent.
+   *
+   * Applied locally first so the correction is on screen at once, and rolled
+   * back if the server refuses. The other person gets it on their next tick,
+   * because an edited message comes back in the delta.
+   */
+  const edit = useCallback(async (id: string, body: string): Promise<string | null> => {
+    const text = body.trim();
+    if (!text) return "A message cannot be empty.";
+
+    let previous: DirectMessage | undefined;
+    setMessages((current) => {
+      previous = current.find((message) => message.id === id);
+      return current.map((message) =>
+        message.id === id ? { ...message, body: text, editedAt: Date.now() } : message,
+      );
+    });
+
+    try {
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ edit: id, body: text }),
+      });
+      if (!response.ok) {
+        const said = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(said?.error ?? "That change could not be saved.");
+      }
+      return null;
+    } catch (problem) {
+      // Back to what it said, rather than leaving the screen showing a change
+      // the server refused.
+      if (previous) {
+        const was = previous;
+        setMessages((current) => current.map((m) => (m.id === id ? was : m)));
+      }
+      return problem instanceof Error ? problem.message : "That change could not be saved.";
+    }
+  }, []);
+
+  /** Takes one of your own back. It leaves the thread and stays on the record. */
+  const withdraw = useCallback(async (id: string): Promise<string | null> => {
+    let previous: DirectMessage | undefined;
+    setMessages((current) => {
+      previous = current.find((message) => message.id === id);
+      return current.filter((message) => message.id !== id);
+    });
+
+    try {
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ withdraw: id }),
+      });
+      if (!response.ok) {
+        const said = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(said?.error ?? "That message could not be withdrawn.");
+      }
+      return null;
+    } catch (problem) {
+      if (previous) {
+        const was = previous;
+        setMessages((current) => [...current, was].sort((a, b) => a.sentAt - b.sentAt));
+      }
+      return problem instanceof Error ? problem.message : "That message could not be withdrawn.";
+    }
+  }, []);
+
+  return { messages, sending, error, send, retry, edit, withdraw, seenThrough };
 }

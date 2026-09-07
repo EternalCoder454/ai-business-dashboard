@@ -172,6 +172,7 @@ export async function listThreads(
       FROM direct_messages
       WHERE workspace_id = ${workspaceId}
         AND (from_email = ${me} OR to_email = ${me})
+        AND deleted_at IS NULL
       ORDER BY thread_key, sent_at DESC
     ),
     pending AS (
@@ -180,6 +181,7 @@ export async function listThreads(
       WHERE workspace_id = ${workspaceId}
         AND to_email = ${me}
         AND read_at IS NULL
+        AND deleted_at IS NULL
       GROUP BY thread_key
     )
     SELECT
@@ -229,7 +231,22 @@ export async function listThread(
       and(
         eq(t.directMessages.workspaceId, workspaceId),
         eq(t.directMessages.threadKey, key),
-        since ? gt(t.directMessages.sentAt, since) : undefined,
+        // Withdrawn by whoever sent it. Gone from the thread for both people
+        // and still on the row, which is what management reads.
+        isNull(t.directMessages.deletedAt),
+        /*
+         * An edit does not move sent_at, so a cursor on that alone would never
+         * carry a correction to the other person: they would sit looking at the
+         * text that was replaced until they next opened the thread. Editing
+         * counts as news about a message, so it comes back in the delta and the
+         * client merges it over the copy it holds by id.
+         */
+        since
+          ? or(
+              gt(t.directMessages.sentAt, since),
+              gt(t.directMessages.editedAt, since),
+            )
+          : undefined,
       ),
     )
     .orderBy(asc(t.directMessages.sentAt))
@@ -244,6 +261,9 @@ export async function listThread(
     body: row.body,
     sentAt: row.sentAt,
     readAt: row.readAt ?? undefined,
+    // Marked as changed, without carrying what it used to say: the person
+    // reading is owed the fact, and the earlier text is the record's business.
+    editedAt: row.editedAt ?? undefined,
   }));
 }
 
@@ -288,6 +308,137 @@ export async function sendMessage(
   await db.insert(t.directMessages).values(message);
 
   return { ...message, readAt: undefined };
+}
+
+/**
+ * Messages withdrawn from this thread since a cursor, so a poll can drop them.
+ *
+ * A withdrawn message cannot come back through listThread, which is the point
+ * of it: nothing that reads a thread for the two people in it should return
+ * one. But the other person is holding a copy already on screen, and telling
+ * them only when they next open the thread is not withdrawing it.
+ *
+ * So the ids come back separately, with the moment each went, so the poll can
+ * remove them and move its cursor past them rather than asking again forever.
+ */
+export async function withdrawnSince(
+  workspaceId: string,
+  self: string,
+  other: string,
+  since: number,
+): Promise<{ id: string; at: number }[]> {
+  const db = requireDb();
+  const rows = await db
+    .select({ id: t.directMessages.id, at: t.directMessages.deletedAt })
+    .from(t.directMessages)
+    .where(
+      and(
+        eq(t.directMessages.workspaceId, workspaceId),
+        eq(t.directMessages.threadKey, threadKeyFor(self, other)),
+        isNotNull(t.directMessages.deletedAt),
+        gt(t.directMessages.deletedAt, since),
+      ),
+    )
+    .limit(200);
+
+  return rows.map((row) => ({ id: row.id, at: row.at ?? 0 }));
+}
+
+/**
+ * Changes the text of a message somebody already sent.
+ *
+ * Only the sender, and only their own message: an administrator has a screen
+ * that reads every thread, and being able to rewrite what a colleague said in
+ * one would make that screen worthless as a record. The check is on the row
+ * rather than in the caller, so there is one place it can be got wrong.
+ *
+ * The first edit keeps the original text. Later edits do not overwrite it,
+ * because the thing worth keeping is what was originally said, not the version
+ * before last.
+ */
+export async function editMessage(
+  workspaceId: string,
+  id: string,
+  actor: string,
+  body: string,
+): Promise<{ ok: true } | { error: string }> {
+  const db = requireDb();
+  const me = normalise(actor);
+  const text = body.trim();
+  if (!text) return { error: "A message cannot be empty." };
+
+  const [row] = await db
+    .select({
+      fromEmail: t.directMessages.fromEmail,
+      body: t.directMessages.body,
+      originalBody: t.directMessages.originalBody,
+      deletedAt: t.directMessages.deletedAt,
+    })
+    .from(t.directMessages)
+    .where(and(eq(t.directMessages.workspaceId, workspaceId), eq(t.directMessages.id, id)))
+    .limit(1);
+
+  if (!row) return { error: "That message no longer exists." };
+  if (normalise(row.fromEmail) !== me) {
+    return { error: "You can only edit your own messages." };
+  }
+  if (row.deletedAt) return { error: "That message was withdrawn." };
+
+  await db
+    .update(t.directMessages)
+    .set({
+      body: text,
+      editedAt: Date.now(),
+      // Only on the first edit. What was originally said is the thing worth
+      // keeping; the version before last is not.
+      originalBody: row.originalBody ?? row.body,
+    })
+    .where(and(eq(t.directMessages.workspaceId, workspaceId), eq(t.directMessages.id, id)));
+
+  return { ok: true };
+}
+
+/**
+ * Withdraws a message, without removing it.
+ *
+ * It disappears from the thread for both people, and the row stays exactly
+ * where it was so the management screen still shows it, marked as withdrawn.
+ *
+ * That split is the point rather than a compromise. Somebody should be able to
+ * take back a message they regret, and a business that may have to answer for
+ * what was said inside it should not lose the record because the sender would
+ * rather it were gone. The screen that keeps it is already administrator only.
+ */
+export async function deleteMessage(
+  workspaceId: string,
+  id: string,
+  actor: string,
+): Promise<{ ok: true } | { error: string }> {
+  const db = requireDb();
+  const me = normalise(actor);
+
+  const [row] = await db
+    .select({
+      fromEmail: t.directMessages.fromEmail,
+      deletedAt: t.directMessages.deletedAt,
+    })
+    .from(t.directMessages)
+    .where(and(eq(t.directMessages.workspaceId, workspaceId), eq(t.directMessages.id, id)))
+    .limit(1);
+
+  if (!row) return { error: "That message no longer exists." };
+  if (normalise(row.fromEmail) !== me) {
+    return { error: "You can only withdraw your own messages." };
+  }
+  // Already gone, and saying so is friendlier than a second timestamp.
+  if (row.deletedAt) return { ok: true };
+
+  await db
+    .update(t.directMessages)
+    .set({ deletedAt: Date.now(), deletedBy: me })
+    .where(and(eq(t.directMessages.workspaceId, workspaceId), eq(t.directMessages.id, id)));
+
+  return { ok: true };
 }
 
 /**
@@ -463,6 +614,14 @@ export async function auditThread(
     .orderBy(asc(t.directMessages.sentAt))
     .limit(500);
 
+  /*
+   * Everything, including what the two people in the thread can no longer see.
+   *
+   * This is the difference between this and listThread, and it is the whole
+   * reason withdrawing a message marks the row instead of removing it. A
+   * business that may have to answer for what was said inside it should not
+   * lose the record because the sender would rather it were gone.
+   */
   return rows.map((row) => ({
     id: row.id,
     fromEmail: row.fromEmail,
@@ -470,5 +629,9 @@ export async function auditThread(
     body: row.body,
     sentAt: row.sentAt,
     readAt: row.readAt ?? undefined,
+    editedAt: row.editedAt ?? undefined,
+    originalBody: row.originalBody ?? undefined,
+    deletedAt: row.deletedAt ?? undefined,
+    deletedBy: row.deletedBy ?? undefined,
   }));
 }

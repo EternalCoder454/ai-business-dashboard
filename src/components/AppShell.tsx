@@ -300,7 +300,7 @@ function useEdgeSwipe(onOpen: () => void, fromRight: boolean) {
  */
 function TopAppBar({ title }: { title: string }) {
   return (
-    <header className="safe-top safe-x flex flex-none items-center gap-2 border-b border-outline-variant bg-low px-3 py-1 medium:hidden">
+    <header className="safe-top safe-pt-2 safe-x safe-px-3 flex flex-none items-center gap-2 border-b border-outline-variant bg-low pb-2 medium:hidden">
       <span className="md-title min-w-0 flex-1 truncate">{title}</span>
       <div className="flex-none [--badge-ring:var(--md-container-low)]">
         <ProfileMenu />

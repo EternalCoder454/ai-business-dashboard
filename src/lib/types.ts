@@ -644,6 +644,18 @@ export interface DirectMessage {
   sentAt: number;
   /** Set once the recipient has opened the thread. */
   readAt?: number;
+  /** When the sender last changed the text, if they have. */
+  editedAt?: number;
+  /*
+   * The two below reach the management screen and never the inbox. A message
+   * somebody withdrew is gone from the thread for both people in it, and still
+   * answerable for by the business it was sent inside.
+   */
+  /** The text as first sent, once it has been edited. */
+  originalBody?: string;
+  /** Set when the sender withdrew it. */
+  deletedAt?: number;
+  deletedBy?: string;
   /**
    * Client only, and never on anything the server returned: where a send of
    * mine has got to. A failed one keeps this and stays on screen, because the

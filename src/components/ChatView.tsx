@@ -1294,7 +1294,8 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           void attach(event.dataTransfer.files);
         }}
         className={cx(
-          "safe-bottom safe-x flex-none border-t px-4 py-3 transition-colors medium:px-6 medium:py-4 expanded:px-8",
+          "safe-bottom safe-pb-3 medium:safe-pb-4 safe-x safe-px-4 medium:safe-px-6 expanded:safe-px-8",
+          "flex-none border-t pt-3 transition-colors medium:pt-4",
           dragging ? "border-primary bg-primary-container/20" : "border-outline-variant",
         )}
       >

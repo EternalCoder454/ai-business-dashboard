@@ -23,7 +23,7 @@ export function WriteError() {
   return (
     <div
       role="alert"
-      className="safe-x flex flex-none justify-center px-4 pb-3 pt-1"
+      className="safe-x safe-px-4 flex flex-none justify-center pb-3 pt-1"
     >
       <div
         className={cx(

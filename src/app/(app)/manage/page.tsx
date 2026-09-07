@@ -13,6 +13,7 @@ import {
   PolicyIcon,
   ShieldIcon,
   Select,
+  TextArea,
   TextInput,
   TrashIcon,
   MailIcon,
@@ -28,8 +29,16 @@ import { formatRelativeTime } from "@/lib/routes";
 interface Member {
   email: string;
   role: "member" | "admin";
+  /** What to show: this business's override, or what they call themselves. */
   displayName: string;
   roleTitle: string;
+  /** What they call themselves, so an admin can see what an override replaced. */
+  ownDisplayName: string;
+  ownRoleTitle: string;
+  /** What this business set. Empty means it has set nothing. */
+  setDisplayName: string;
+  setRoleTitle: string;
+  note: string;
   presence: "auto" | "online" | "away" | "busy";
   lastSeenAt: number | null;
   lastSignedInAt: number | null;
@@ -184,7 +193,7 @@ export default function ManagePage() {
           tab === "people" ? (
             <Button onClick={() => setInviting(true)}>
               <PlusIcon className="h-4 w-4" />
-              Add somebody
+              Invite
             </Button>
           ) : undefined
         }
@@ -319,6 +328,9 @@ export default function ManagePage() {
                 void act({ action: "role", email: current.email, role }, "Saved.")
               }
               onPermissions={() => setEditing(current)}
+              onDetails={(details) =>
+                void act({ action: "details", email: current.email, ...details }, "Saved.")
+              }
               onRemove={() => setRemoving(current)}
             />
           ) : (
@@ -332,7 +344,7 @@ export default function ManagePage() {
 
       <Dialog
         open={inviting}
-        title="Add somebody"
+        title="Invite somebody"
         onClose={() => setInviting(false)}
         width="max-w-md"
         footer={
@@ -459,6 +471,7 @@ function PersonPane({
   onBack,
   onRole,
   onPermissions,
+  onDetails,
   onRemove,
 }: {
   member: Member;
@@ -469,6 +482,11 @@ function PersonPane({
   onBack: () => void;
   onRole: (role: string) => void;
   onPermissions: () => void;
+  onDetails: (details: {
+    displayName: string;
+    roleTitle: string;
+    note: string;
+  }) => void;
   onRemove: () => void;
 }) {
   const presence = presenceOf(member);
@@ -496,6 +514,8 @@ function PersonPane({
       </header>
 
       <div className="measure flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 medium:p-6">
+        <DetailsCard member={member} busy={busy} onSave={onDetails} />
+
         <Card>
           <h3 className="md-title mb-3">Role</h3>
           <Select
@@ -678,5 +698,95 @@ function PermissionsDialog({
         ))}
       </div>
     </Dialog>
+  );
+}
+
+/**
+ * What this business calls somebody, and what they do here.
+ *
+ * Saved onto the membership rather than onto the account, which is the whole
+ * reason this exists as its own card. An account is keyed by email and follows
+ * the person to every business they belong to, so an administrator here must
+ * not be able to rewrite the name another company sees, or overwrite what
+ * somebody chose for themselves in their own settings.
+ *
+ * So an empty field is not a blank name. It means this business has set
+ * nothing and their own value shows through, which is also how an override is
+ * undone: clear it. The placeholder shows what will be used when it is empty,
+ * so that is visible before the field is touched rather than after.
+ */
+function DetailsCard({
+  member,
+  busy,
+  onSave,
+}: {
+  member: Member;
+  busy: boolean;
+  onSave: (details: { displayName: string; roleTitle: string; note: string }) => void;
+}) {
+  const [displayName, setDisplayName] = useState(member.setDisplayName);
+  const [roleTitle, setRoleTitle] = useState(member.setRoleTitle);
+  const [note, setNote] = useState(member.note);
+
+  const changed =
+    displayName !== member.setDisplayName ||
+    roleTitle !== member.setRoleTitle ||
+    note !== member.note;
+
+  return (
+    <Card>
+      <h3 className="md-title mb-3">Details</h3>
+
+      <div className="flex flex-col gap-4">
+        <Field label="Name">
+          <TextInput
+            value={displayName}
+            maxLength={80}
+            placeholder={member.ownDisplayName || member.email}
+            onChange={(event) => setDisplayName(event.target.value)}
+          />
+        </Field>
+
+        <Field label="Job title">
+          <TextInput
+            value={roleTitle}
+            maxLength={80}
+            placeholder={member.ownRoleTitle || "Not set"}
+            onChange={(event) => setRoleTitle(event.target.value)}
+          />
+        </Field>
+
+        {/* Never shown to the person it is about, which is why it is here and
+            not on their own account. */}
+        <Field label="Private note">
+          <TextArea
+            value={note}
+            rows={2}
+            maxLength={500}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </Field>
+      </div>
+
+      <div className="mt-4 flex items-center gap-2">
+        <Button size="sm" disabled={busy || !changed} onClick={() => onSave({ displayName, roleTitle, note })}>
+          Save
+        </Button>
+        {changed ? (
+          <Button
+            size="sm"
+            variant="text"
+            disabled={busy}
+            onClick={() => {
+              setDisplayName(member.setDisplayName);
+              setRoleTitle(member.setRoleTitle);
+              setNote(member.note);
+            }}
+          >
+            Cancel
+          </Button>
+        ) : null}
+      </div>
+    </Card>
   );
 }

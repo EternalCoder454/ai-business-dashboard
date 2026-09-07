@@ -1,0 +1,2 @@
+ALTER TABLE "access" ADD COLUMN IF NOT EXISTS "display_name" text NOT NULL DEFAULT '';
+ALTER TABLE "access" ADD COLUMN IF NOT EXISTS "role_title" text NOT NULL DEFAULT '';

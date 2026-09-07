@@ -220,6 +220,35 @@ export async function POST(request: Request) {
       return done();
     }
 
+    if (action === "details") {
+      /*
+       * What this business calls somebody, and what they do here.
+       *
+       * Written to the membership rather than to the account, because the
+       * account is keyed by email and follows the person to every business
+       * they belong to. An administrator here has no business rewriting the
+       * name another company sees, or overwriting what the person chose for
+       * themselves in their own settings.
+       *
+       * An empty string clears the override rather than blanking the name, and
+       * their own value shows through again. That makes "undo this" reachable
+       * without a second control that only ever means undo.
+       */
+      const text = (value: unknown, limit: number) =>
+        typeof value === "string" ? value.trim().slice(0, limit) : "";
+
+      await requireDb()
+        .update(t.access)
+        .set({
+          displayName: text(parsed.body.displayName, 80),
+          roleTitle: text(parsed.body.roleTitle, 80),
+          // Null rather than an empty string, so "no note" is one value.
+          note: text(parsed.body.note, 500) || null,
+        })
+        .where(and(eq(t.access.email, email), eq(t.access.workspaceId, admin.workspaceId)));
+      return done();
+    }
+
     if (action === "remove") {
       if (email === admin.email) {
         return Response.json(

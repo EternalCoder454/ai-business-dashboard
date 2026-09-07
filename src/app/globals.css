@@ -1143,13 +1143,31 @@
   background: var(--md-container-lowest);
 }
 
-/* The padding a safe-area element wants before the inset is added. */
+/*
+ * The padding a safe-area element wants before the inset is added.
+ *
+ * These exist because .safe-top and friends set the padding property outright,
+ * so pairing one with a Tailwind px-3 does not add three units of padding to
+ * the inset: it replaces it, and on any device without a notch the result is
+ * zero. The phone's title bar sat flush against both edges for exactly this
+ * reason, with the account picture running off the side of the screen.
+ *
+ * So an element using safe-x asks for its padding here rather than from
+ * Tailwind, and safe-area-test fails a file that mixes the two.
+ */
+.safe-pt-2 { --safe-pad-top: 0.5rem; }
 .safe-pt-3 { --safe-pad-top: 0.75rem; }
+.safe-pb-2 { --safe-pad-bottom: 0.5rem; }
 .safe-pb-3 { --safe-pad-bottom: 0.75rem; }
 .safe-px-3 { --safe-pad-x: 0.75rem; }
+.safe-px-4 { --safe-pad-x: 1rem; }
 
 @media (min-width: 600px) {
   .medium\:safe-pt-4 { --safe-pad-top: 1rem; }
   .medium\:safe-pb-4 { --safe-pad-bottom: 1rem; }
   .medium\:safe-px-6 { --safe-pad-x: 1.5rem; }
+}
+
+@media (min-width: 840px) {
+  .expanded\:safe-px-8 { --safe-pad-x: 2rem; }
 }

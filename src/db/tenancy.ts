@@ -437,8 +437,17 @@ export async function renameWorkspace(workspaceId: string, name: string): Promis
 export interface MemberRow {
   email: string;
   role: "member" | "admin";
+  /** What to show: this business's override, falling back to their own. */
   displayName: string;
   roleTitle: string;
+  /** What they call themselves, shown so an admin can see what they overrode. */
+  ownDisplayName: string;
+  ownRoleTitle: string;
+  /** What this business set, empty when it has set nothing. */
+  setDisplayName: string;
+  setRoleTitle: string;
+  /** An administrator's private note about this person. */
+  note: string;
   presence: "auto" | "online" | "away" | "busy";
   lastSeenAt: number | null;
   lastSignedInAt: number | null;
@@ -470,6 +479,14 @@ export async function listMembers(workspaceId: string): Promise<MemberRow[]> {
       createdAt: t.access.createdAt,
       lastSignedInAt: t.access.lastSignedInAt,
       permissions: t.access.permissions,
+      note: t.access.note,
+      /*
+       * Both, so the caller can tell "this business set it" from "this is what
+       * they call themselves". Collapsing them here would make clearing the
+       * override indistinguishable from setting it to the account's value.
+       */
+      setDisplayName: t.access.displayName,
+      setRoleTitle: t.access.roleTitle,
       displayName: t.accounts.displayName,
       roleTitle: t.accounts.roleTitle,
       presence: t.accounts.presence,
@@ -483,8 +500,14 @@ export async function listMembers(workspaceId: string): Promise<MemberRow[]> {
   return rows.map((row) => ({
     email: row.email,
     role: row.role === "admin" ? "admin" : "member",
-    displayName: row.displayName ?? "",
-    roleTitle: row.roleTitle ?? "",
+    // What this business set wins; otherwise what the person calls themselves.
+    displayName: row.setDisplayName || row.displayName || "",
+    roleTitle: row.setRoleTitle || row.roleTitle || "",
+    ownDisplayName: row.displayName ?? "",
+    ownRoleTitle: row.roleTitle ?? "",
+    setDisplayName: row.setDisplayName ?? "",
+    setRoleTitle: row.setRoleTitle ?? "",
+    note: row.note ?? "",
     presence:
       row.presence === "online" || row.presence === "away" || row.presence === "busy"
         ? row.presence

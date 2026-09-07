@@ -589,6 +589,26 @@ export const directMessages = pgTable(
     sentAt: bigint("sent_at", { mode: "number" }).notNull(),
     /** Null until the recipient has actually opened the thread. */
     readAt: bigint("read_at", { mode: "number" }),
+
+    /*
+     * What became of a message after it was sent.
+     *
+     * A message can be edited or withdrawn by whoever wrote it, and neither
+     * removes anything: the row stays, the original text is kept the first time
+     * it is changed, and a withdrawn message is hidden from the two people in
+     * the thread rather than deleted.
+     *
+     * That split is the whole point. Somebody should be able to take back a
+     * message they regret, and a business that has to answer for what was said
+     * in it should still be able to see that something was said and what it
+     * was. Management shows both; the inbox shows neither.
+     */
+    editedAt: bigint("edited_at", { mode: "number" }),
+    /** The text as first sent, kept from the first edit onwards. */
+    originalBody: text("original_body"),
+    deletedAt: bigint("deleted_at", { mode: "number" }),
+    /** Who withdrew it, which is the sender in every path that exists today. */
+    deletedBy: text("deleted_by"),
     createdAt: created(),
   },
   (table) => [
@@ -598,6 +618,8 @@ export const directMessages = pgTable(
     index("dm_unread_idx").on(table.toEmail, table.readAt),
     // The overview needs everything either address touched, in one pass.
     index("dm_from_idx").on(table.fromEmail, table.sentAt),
+    // Every read by a participant now excludes withdrawn messages.
+    index("dm_live_idx").on(table.threadKey, table.deletedAt),
   ],
 );
 
@@ -648,6 +670,20 @@ export const access = pgTable(
      */
     permissions: jsonb("permissions").$type<Permissions>(),
     /** Who this is, in the inviter's words. Shown in Admin, never sent anywhere. */
+    /*
+     * What this business calls this person, and what they do here.
+     *
+     * On the membership rather than on the account, because the account is
+     * keyed by email and follows the person to every business they belong to.
+     * Somebody can be Head of Design at one company and a contractor at
+     * another, and an administrator of one has no business rewriting the name
+     * another sees, or overwriting what the person set for themselves.
+     *
+     * Empty means nothing was set here, and the account's own value shows
+     * through. Clearing the field is how you go back to that.
+     */
+    displayName: text("display_name").notNull().default(""),
+    roleTitle: text("role_title").notNull().default(""),
     note: text("note"),
     invitedBy: text("invited_by"),
     createdAt: created(),

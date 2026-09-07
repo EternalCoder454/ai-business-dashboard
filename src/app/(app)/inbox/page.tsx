@@ -295,7 +295,8 @@ function Thread({
   onBack: () => void;
   onSent: () => void;
 }) {
-  const { messages, sending, error, send, retry, seenThrough } = useThread(other, self);
+  const { messages, sending, error, send, retry, edit, withdraw, seenThrough } =
+    useThread(other, self);
   // Own picture and name, so a run of your own messages is headed like theirs.
   const { account } = useStore();
   const [draft, setDraft] = useState("");
@@ -362,6 +363,8 @@ function Thread({
                 next={messages[index + 1]}
                 delivery={deliveryOf(message, self, seenThrough)}
                 onRetry={retry}
+                onEdit={edit}
+                onWithdraw={withdraw}
                 sender={
                   message.fromEmail === self
                     ? { displayName: account.displayName || "You", avatarUrl: account.avatarUrl }
@@ -383,7 +386,7 @@ function Thread({
         </p>
       ) : null}
 
-      <div className="safe-bottom flex-none border-t border-outline-variant px-3 py-3 medium:px-6">
+      <div className="safe-bottom safe-pb-3 flex-none border-t border-outline-variant px-3 pt-3 medium:px-6">
         <div className="measure-read flex items-end gap-2">
           <TextArea
             ref={box}
@@ -436,6 +439,8 @@ function MessageRow({
   sender,
   delivery,
   onRetry,
+  onEdit,
+  onWithdraw,
 }: {
   message: DirectMessage;
   self?: string;
@@ -444,8 +449,34 @@ function MessageRow({
   sender: { displayName: string; avatarUrl?: string };
   delivery?: Delivery;
   onRetry: (message: DirectMessage) => Promise<void>;
+  onEdit: (id: string, body: string) => Promise<string | null>;
+  onWithdraw: (id: string) => Promise<string | null>;
 }) {
   const mine = message.fromEmail === self;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(message.body);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const save = async () => {
+    setBusy(true);
+    const said = await onEdit(message.id, draft);
+    setBusy(false);
+    if (said) setProblem(said);
+    else {
+      setProblem(null);
+      setEditing(false);
+    }
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    const said = await onWithdraw(message.id);
+    setBusy(false);
+    // Only a failure needs saying. Success takes the message off the screen.
+    if (said) setProblem(said);
+  };
+
   // A new run starts on a different sender, or after five quiet minutes.
   const runOn =
     previous?.fromEmail === message.fromEmail &&
@@ -462,7 +493,7 @@ function MessageRow({
   const showDelivery = delivery && (delivery === "failed" || endsRun);
 
   return (
-    <li className={cx("flex gap-3 px-1", runOn ? "mt-0.5" : "mt-4", sendingNow && "opacity-60")}>
+    <li className={cx("group flex gap-3 px-1", runOn ? "mt-0.5" : "mt-4", sendingNow && "opacity-60")}>
       <div className="w-10 flex-none">
         {runOn ? null : (
           <Avatar
@@ -483,9 +514,79 @@ function MessageRow({
             </span>
           </div>
         )}
-        <p className="md-body whitespace-pre-wrap break-words text-on-surface">
-          {message.body}
-        </p>
+        {editing ? (
+          /*
+           * In place rather than in a dialog. The message stays where it is in
+           * the thread, so the text above and below it is still the context you
+           * are correcting it against.
+           */
+          <div className="mt-1 flex flex-col gap-2">
+            <TextArea
+              value={draft}
+              rows={2}
+              autoFocus
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setEditing(false);
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void save();
+                }
+              }}
+            />
+            <div className="flex items-center gap-2">
+              <Button size="sm" disabled={busy} onClick={() => void save()}>
+                Save
+              </Button>
+              <Button size="sm" variant="text" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+              {problem ? <span className="md-label-sm text-error">{problem}</span> : null}
+            </div>
+          </div>
+        ) : (
+          <p className="md-body whitespace-pre-wrap break-words text-on-surface">
+            {message.body}
+            {message.editedAt ? (
+              <span
+                className="md-label-sm ml-1.5 align-baseline text-on-variant/60"
+                title={`Edited ${formatRelativeTime(message.editedAt)}`}
+              >
+                edited
+              </span>
+            ) : null}
+          </p>
+        )}
+
+        {/*
+         * Only on your own, and only once it is really sent: there is nothing
+         * on the server to change about a message still on its way, and one
+         * that failed already has Retry sitting where these would go.
+         */}
+        {mine && !editing && !message.local ? (
+          <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(message.body);
+                setProblem(null);
+                setEditing(true);
+              }}
+              className="md-state md-label-sm rounded-full px-2 py-1 text-on-variant"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void remove()}
+              className="md-state md-label-sm rounded-full px-2 py-1 text-on-variant"
+            >
+              Delete
+            </button>
+            {problem ? <span className="md-label-sm text-error">{problem}</span> : null}
+          </div>
+        ) : null}
 
         {showDelivery && delivery ? (
           <div className="mt-1 flex items-center justify-end gap-2">
