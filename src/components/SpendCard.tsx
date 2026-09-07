@@ -86,10 +86,8 @@ export function SpendCard() {
       ) : (
         <>
           <p className="md-headline mt-2 tabular-nums">{money(spend.total)}</p>
-          <p className="md-body-sm mt-1 text-on-variant/75">
-            Estimated from published list prices as they stood on {PRICED_ON}. Your own
-            invoice is the real number.
-            {limit > 0 ? ` Budget ${money(limit)}.` : ""}
+          <p className="md-body-sm mt-0.5 text-on-variant/75">
+            Estimated, list prices on {PRICED_ON}
           </p>
 
           {spend.unpriced > 0 ? (
@@ -102,7 +100,7 @@ export function SpendCard() {
           {spend.departments.length === 0 ? (
             <p className="md-body mt-3 text-on-variant">Nothing yet this month.</p>
           ) : (
-            <ul className="mt-4 flex flex-col gap-2">
+            <ul className="mt-3 flex flex-col gap-1.5">
               {spend.departments.map((row) => {
                 const department = allDepartments.find((d) => d.id === row.departmentId);
                 // A bar against the biggest, not against the budget: what this
@@ -123,7 +121,7 @@ export function SpendCard() {
                       </span>
                       <span className="md-label ml-2 tabular-nums">{money(row.cost)}</span>
                     </div>
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-highest">
+                    <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-highest">
                       <div
                         className="h-full rounded-full bg-primary"
                         style={{ width: `${Math.max(share, 1)}%` }}
@@ -146,7 +144,7 @@ export function SpendCard() {
         * towards, and no way of knowing why their heads would stop when it got
         * there. Reading a ceiling and setting one are different permissions.
         */}
-      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-outline-variant pt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-outline-variant pt-3">
         <label className="md-label text-on-variant" htmlFor="monthly-budget">
           Monthly budget
         </label>

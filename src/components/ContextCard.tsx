@@ -85,7 +85,7 @@ export function ContextCard() {
 
   return (
     <Card>
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3">
         <h2 className="md-title-lg">Context per head</h2>
         <span className="md-label-sm text-on-variant/75">
           {anatomy.reduce((sum, a) => sum + a.total, 0).toLocaleString()} tokens in total
@@ -95,10 +95,10 @@ export function ContextCard() {
       {anatomy.length === 0 ? (
         <p className="md-body text-on-variant">No heads yet.</p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-2">
           {anatomy.map(({ department, segments, total }) => (
             <li key={department.id}>
-              <div className="mb-1 flex items-baseline gap-2">
+              <div className="mb-0.5 flex items-baseline gap-2">
                 <DepartmentAvatar department={department} size={18} />
                 <span className="md-body min-w-0 flex-1 truncate">
                   {department.personaName || department.name}
@@ -111,7 +111,7 @@ export function ContextCard() {
               {/* Scaled against the largest head, so the length of the bar is
                   the comparison and the segments inside it are the breakdown. */}
               <div
-                className="flex h-2.5 overflow-hidden rounded-full bg-highest"
+                className="flex h-2 overflow-hidden rounded-full bg-highest"
                 style={{ width: `${biggest ? Math.max((total / biggest) * 100, 2) : 0}%` }}
               >
                 {segments.map((segment, index) => (
@@ -130,7 +130,7 @@ export function ContextCard() {
         </ul>
       )}
 
-      <ul className="mt-4 flex flex-wrap gap-x-3 gap-y-1">
+      <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
         {anatomy[0]?.segments.map((segment, index) => (
           <li key={segment.label} className="md-label-sm flex items-center gap-1.5">
             <span

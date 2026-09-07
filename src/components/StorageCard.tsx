@@ -50,7 +50,7 @@ export function StorageCard() {
 
   return (
     <Card>
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3">
         {/*
           * Two true numbers that look like a contradiction.
           *
@@ -73,7 +73,7 @@ export function StorageCard() {
       {lines === null ? (
         <p className="md-body text-on-variant">Reading…</p>
       ) : (
-        <ul className="flex flex-col gap-2.5">
+        <ul className="flex flex-col gap-1.5">
           {used.map((line) => (
             <li key={line.label}>
               <div className="flex items-baseline gap-2">
@@ -85,7 +85,7 @@ export function StorageCard() {
               </div>
               {/* Against the largest rather than the total, for the same reason
                   the spend bars are: what this answers is which one is big. */}
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-highest">
+              <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-highest">
                 <div
                   className="h-full rounded-full bg-primary"
                   style={{ width: `${biggest ? Math.max((line.bytes / biggest) * 100, 1) : 0}%` }}
