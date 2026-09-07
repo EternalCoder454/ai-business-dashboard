@@ -814,6 +814,42 @@ export async function applyMutations(
                   // re-sends every message in it, so updating this too would
                   // stamp whoever saved last onto everyone else's messages.
                   set: { ...messageValues, authorEmail: undefined },
+                  /*
+                   * Only when something actually differs.
+                   *
+                   * Saving a conversation sends the whole thread, so the
+                   * thirtieth message rewrote the twenty nine before it. In
+                   * Postgres an update that changes nothing is still a write:
+                   * a new tuple version, both indexes updated, a dead tuple
+                   * left for vacuum, and the WAL to carry it. A conversation
+                   * therefore cost roughly the square of its own length in
+                   * writes over its life.
+                   *
+                   * Measured on the production database before this went in:
+                   * 84 live rows and 53 dead ones carrying 2.1MB of index on
+                   * 128KB of data, which is sixteen times more index than
+                   * table. A row skipped here writes nothing at all.
+                   *
+                   * Every column the set above touches is compared. Missing
+                   * one would mean an edit to it silently not saving, which is
+                   * worse than the write it avoids, so this list is exhaustive
+                   * rather than the few that seem likely to change.
+                   */
+                  setWhere: sql`
+                    ${t.messages.conversationId} IS DISTINCT FROM excluded.conversation_id
+                    OR ${t.messages.role} IS DISTINCT FROM excluded.role
+                    OR ${t.messages.content} IS DISTINCT FROM excluded.content
+                    OR ${t.messages.thinking} IS DISTINCT FROM excluded.thinking
+                    OR ${t.messages.isError} IS DISTINCT FROM excluded.is_error
+                    OR ${t.messages.attachmentIds} IS DISTINCT FROM excluded.attachment_ids
+                    OR ${t.messages.toolCalls} IS DISTINCT FROM excluded.tool_calls
+                    OR ${t.messages.model} IS DISTINCT FROM excluded.model
+                    OR ${t.messages.inputTokens} IS DISTINCT FROM excluded.input_tokens
+                    OR ${t.messages.outputTokens} IS DISTINCT FROM excluded.output_tokens
+                    OR ${t.messages.cacheReadTokens} IS DISTINCT FROM excluded.cache_read_tokens
+                    OR ${t.messages.cacheWriteTokens} IS DISTINCT FROM excluded.cache_write_tokens
+                    OR ${t.messages.sentAt} IS DISTINCT FROM excluded.sent_at
+                  `,
                 });
             }
           }

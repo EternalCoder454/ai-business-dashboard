@@ -618,8 +618,6 @@ export const directMessages = pgTable(
     index("dm_unread_idx").on(table.toEmail, table.readAt),
     // The overview needs everything either address touched, in one pass.
     index("dm_from_idx").on(table.fromEmail, table.sentAt),
-    // Every read by a participant now excludes withdrawn messages.
-    index("dm_live_idx").on(table.threadKey, table.deletedAt),
   ],
 );
 
