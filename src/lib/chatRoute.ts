@@ -1,4 +1,4 @@
-import { CEO_ID } from "./seed";
+import { ORCHESTRATOR_ID } from "./seed";
 
 /**
  * Whether a department screen is showing its list of conversations or one
@@ -20,7 +20,7 @@ import { CEO_ID } from "./seed";
 
 /** The department a path is showing, or undefined when it is not one. */
 export function departmentIdOf(pathname: string): string | undefined {
-  if (pathname === "/orchestrator") return CEO_ID;
+  if (pathname === "/orchestrator") return ORCHESTRATOR_ID;
   if (!pathname.startsWith("/dept/")) return undefined;
   const id = pathname.slice("/dept/".length).split("/")[0];
   return id ? decodeURIComponent(id) : undefined;

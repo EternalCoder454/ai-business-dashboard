@@ -26,7 +26,7 @@ export async function GET(request: Request) {
         roleTitle: t.departments.roleTitle,
         personaName: t.departments.personaName,
         status: t.departments.status,
-        isCeo: t.departments.isCeo,
+        isOrchestrator: t.departments.isOrchestrator,
         personal: t.departments.personal,
         sortOrder: t.departments.sortOrder,
       })
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
             role_title: row.roleTitle,
             persona_name: row.personaName,
             status: row.status,
-            is_lead: row.isCeo,
+            is_lead: row.isOrchestrator,
           })),
       },
       { caller },

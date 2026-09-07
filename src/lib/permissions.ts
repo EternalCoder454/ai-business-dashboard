@@ -68,7 +68,7 @@ export const AREA_HREF: Partial<Record<Area, string>> = {
  * which heads somebody may open is a separate question asked separately.
  */
 export const AREA_TABLES: Partial<Record<Area, string[]>> = {
-  meetings: ["allHands"],
+  meetings: ["meetings"],
   tasks: ["tasks"],
   projects: ["projects"],
   library: ["deliverables", "files"],

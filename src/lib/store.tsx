@@ -36,7 +36,7 @@ import {
 } from "./workspace";
 import { createWriteQueue, type WriteQueue } from "@/lib/writeQueue";
 import {
-  CEO_ID,
+  ORCHESTRATOR_ID,
   COMPANY_ID,
   DEFAULT_ACCOUNT,
   DEFAULT_PROFILE,
@@ -52,7 +52,7 @@ import { seedWikiPages } from "./seedWiki";
 import { toBlob } from "./blobUpload";
 import { report } from "./telemetryClient";
 import type {
-  AllHandsRun,
+  Meeting,
   CompanyProfile,
   Conversation,
   Deliverable,
@@ -141,11 +141,11 @@ export interface StoreValue {
   personalDepartments: Department[];
   /** Every department including the CEO, for lookups. */
   allDepartments: Department[];
-  ceo: Department | undefined;
+  orchestrator: Department | undefined;
   conversations: Conversation[];
   deliverables: Deliverable[];
   projects: Project[];
-  allHandsRuns: AllHandsRun[];
+  meetings: Meeting[];
   skills: Skill[];
   files: LibraryFile[];
   /** The studio's own record: decisions that stand, and figures. */
@@ -214,8 +214,8 @@ export interface StoreValue {
   setMessages: (id: string, messages: Message[]) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
 
-  saveAllHandsRun: (run: AllHandsRun) => Promise<void>;
-  deleteAllHandsRun: (id: string) => Promise<void>;
+  saveMeeting: (run: Meeting) => Promise<void>;
+  deleteMeeting: (id: string) => Promise<void>;
 
   createProject: (input: Partial<Project>) => Promise<Project>;
   updateProject: (id: string, patch: Partial<Project>) => Promise<void>;
@@ -476,6 +476,36 @@ export function StoreProvider({
    */
   const hosted = mode === "hosted";
 
+  /**
+   * The workspace request, started at mount rather than after the status one.
+   *
+   * These used to be a waterfall. The snapshot was fetched only once the status
+   * call had come back saying the workspace was hosted, so the request that
+   * actually fills the screen did not begin until an earlier round trip had
+   * finished. Measured on a running server, /api/workspace started eleven
+   * milliseconds after /api/workspace/status ended and never once overlapped
+   * it.
+   *
+   * It never needed to wait. /api/workspace resolves who is asking by itself
+   * and answers 401 or 501 when there is nobody or no database, which is the
+   * same thing the status call would have told us, one round trip later.
+   *
+   * Signed out, this costs one request that answers 401 on the sign-in page.
+   * Signed in, which is everybody who sees anything, it takes a whole round
+   * trip out of every page load.
+   */
+  const started = useRef<Promise<Response | null> | null>(null);
+  useEffect(() => {
+    /*
+     * The catch matters. Nothing awaits this until the effect below runs, and
+     * on a signed out visitor nothing awaits it at all, so a dropped
+     * connection here would surface as an unhandled rejection rather than as
+     * the retry that is already written for it. A failure resolves to null and
+     * the loader fetches again for itself.
+     */
+    started.current = fetch("/api/workspace").catch(() => null);
+  }, []);
+
   // The hosted snapshot is read once; every later change is applied to it
   // locally and sent to the server, so no request is needed to re-render.
   useEffect(() => {
@@ -483,7 +513,14 @@ export function StoreProvider({
     let cancelled = false;
 
     const load = async () => {
-      const response = await fetch("/api/workspace");
+      /*
+       * The one already in flight, if this is the first pass. Cleared as it is
+       * taken, so a retry and a workspace switch both fetch again rather than
+       * reading the same answer twice.
+       */
+      const inFlight = started.current;
+      started.current = null;
+      const response = (inFlight ? await inFlight : null) ?? (await fetch("/api/workspace"));
 
       /*
        * Being in no workspace is not a failure to retry. Somebody signed in
@@ -741,7 +778,7 @@ export function StoreProvider({
   const projectList = remote?.projects ?? NONE;
   const skillList = remote?.skills ?? NONE;
   const fileList = remote?.files ?? NONE;
-  const runList = remote?.allHandsRuns ?? NONE;
+  const runList = remote?.meetings ?? NONE;
 
   const [writeError, setWriteError] = useState<string | null>(null);
 
@@ -870,16 +907,16 @@ export function StoreProvider({
       calendar,
       calendarStatus,
       allDepartments: departmentList,
-      departments: departmentList.filter((d) => !d.isCeo && !d.personal),
+      departments: departmentList.filter((d) => !d.isOrchestrator && !d.personal),
       personalDepartments: departmentList.filter((d) => d.personal),
-      ceo: departmentList.find((d) => d.isCeo) ?? departmentList.find((d) => d.id === CEO_ID),
+      orchestrator: departmentList.find((d) => d.isOrchestrator) ?? departmentList.find((d) => d.id === ORCHESTRATOR_ID),
       conversations: conversationList,
       deliverables: deliverableList,
       memory: memoryList,
       tasks: taskList,
       wikiPages: wikiList,
       projects: projectList,
-      allHandsRuns: runList,
+      meetings: runList,
       skills: skillList,
       files: fileList,
       profile,
@@ -1034,12 +1071,12 @@ export function StoreProvider({
         await push({ table: "conversations", action: "delete", ids: [id] });
       },
 
-      saveAllHandsRun: async (run) => {
-        await push({ table: "allHands", action: "upsert", rows: [run] });
+      saveMeeting: async (run) => {
+        await push({ table: "meetings", action: "upsert", rows: [run] });
       },
 
-      deleteAllHandsRun: async (id) => {
-        await push({ table: "allHands", action: "delete", ids: [id] });
+      deleteMeeting: async (id) => {
+        await push({ table: "meetings", action: "delete", ids: [id] });
       },
 
       addFile: async (file) => {
@@ -1353,7 +1390,7 @@ export function StoreProvider({
           id: newId("del"),
           title: input.title?.trim() || "Untitled deliverable",
           body: input.body ?? "",
-          departmentId: input.departmentId ?? CEO_ID,
+          departmentId: input.departmentId ?? ORCHESTRATOR_ID,
           status: input.status ?? "backlog",
           createdAt: now,
           updatedAt: now,

@@ -13,7 +13,7 @@ import {
   type NavSectionId,
 } from "@/lib/navLayout";
 import { CompanyMark } from "./CompanyMark";
-import { CEO_ID } from "@/lib/seed";
+import { ORCHESTRATOR_ID } from "@/lib/seed";
 import { conversationHref, departmentHref, formatRelativeTime } from "@/lib/routes";
 import { useMessages } from "@/lib/messages";
 import { useDepartmentStatus } from "@/lib/presence";
@@ -277,11 +277,11 @@ export function SidebarContent({
   const activeDepartmentId = pathname.startsWith("/dept/")
     ? decodeURIComponent(pathname.slice("/dept/".length).split("/")[0])
     : pathname === "/orchestrator"
-      ? CEO_ID
+      ? ORCHESTRATOR_ID
       : undefined;
 
   const handleNewConversation = async () => {
-    const targetId = activeDepartmentId ?? CEO_ID;
+    const targetId = activeDepartmentId ?? ORCHESTRATOR_ID;
     const conversation = await createConversation(targetId);
     router.push(conversationHref(targetId, conversation.id));
     onNavigate?.();

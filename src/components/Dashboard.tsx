@@ -40,7 +40,7 @@ export function Dashboard() {
     allDepartments,
     conversations,
     deliverables,
-    allHandsRuns,
+    meetings,
     projects,
     memory,
     tasks,
@@ -253,7 +253,7 @@ export function Dashboard() {
           icon={<UsersIcon className="h-3.5 w-3.5" />}
           href="/meetings"
           empty="No threads."
-          items={allHandsRuns.slice(0, 3).map((run) => ({
+          items={meetings.slice(0, 3).map((run) => ({
             key: run.id,
             href: "/meetings",
             primary: run.title,

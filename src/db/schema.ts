@@ -13,7 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import type { Permissions } from "@/lib/permissions";
 import type {
-  AllHandsResponse,
+  MeetingResponse,
   Attachment,
   ToolCallRecord,
   WikiBlock,
@@ -55,7 +55,7 @@ export const departments = pgTable(
     webSearch: text("web_search"),
     status: text("status").notNull().default("online"),
     sortOrder: integer("sort_order").notNull().default(0),
-    isCeo: boolean("is_ceo").notNull().default(false),
+    isOrchestrator: boolean("is_orchestrator").notNull().default(false),
     createdAt: created(),
     updatedAt: updated(),
   },
@@ -257,8 +257,8 @@ export const files = pgTable(
   ],
 );
 
-export const allHandsRuns = pgTable(
-  "all_hands_runs",
+export const meetings = pgTable(
+  "meetings",
   {
     id: text("id").notNull(),
     workspaceId: workspace(),
@@ -269,7 +269,7 @@ export const allHandsRuns = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.workspaceId, table.id] }),
-    index("all_hands_ws_idx").on(table.workspaceId, table.updatedAt),
+    index("meetings_ws_idx").on(table.workspaceId, table.updatedAt),
   ],
 );
 
@@ -278,14 +278,14 @@ export const allHandsRuns = pgTable(
  * finishes and only ever read as a set, so splitting them into rows would add
  * a join for no query anyone makes.
  */
-export const allHandsRounds = pgTable(
-  "all_hands_rounds",
+export const meetingRounds = pgTable(
+  "meeting_rounds",
   {
     id: text("id").notNull(),
     workspaceId: workspace(),
     runId: text("run_id").notNull(),
     question: text("question").notNull(),
-    responses: jsonb("responses").$type<AllHandsResponse[]>().notNull().default([]),
+    responses: jsonb("responses").$type<MeetingResponse[]>().notNull().default([]),
     synthesis: text("synthesis"),
     synthesisError: boolean("synthesis_error").notNull().default(false),
     sortOrder: integer("sort_order").notNull().default(0),
@@ -550,14 +550,14 @@ export const messageRelations = relations(messages, ({ one }) => ({
   }),
 }));
 
-export const runRelations = relations(allHandsRuns, ({ many }) => ({
-  rounds: many(allHandsRounds),
+export const runRelations = relations(meetings, ({ many }) => ({
+  rounds: many(meetingRounds),
 }));
 
-export const roundRelations = relations(allHandsRounds, ({ one }) => ({
-  run: one(allHandsRuns, {
-    fields: [allHandsRounds.workspaceId, allHandsRounds.runId],
-    references: [allHandsRuns.workspaceId, allHandsRuns.id],
+export const roundRelations = relations(meetingRounds, ({ one }) => ({
+  run: one(meetings, {
+    fields: [meetingRounds.workspaceId, meetingRounds.runId],
+    references: [meetings.workspaceId, meetings.id],
   }),
 }));
 

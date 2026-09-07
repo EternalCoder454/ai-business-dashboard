@@ -22,12 +22,12 @@ import {
 } from "@/components/ui";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { createRipple } from "@/components/ui/ripple";
-import { ROOM_BUDGET, runAllHandsRound, runUsage } from "@/lib/allHands";
+import { ROOM_BUDGET, runMeetingRound, runUsage } from "@/lib/meetings";
 import { deriveConversationTitle } from "@/lib/prompts";
 import { formatRelativeTime } from "@/lib/routes";
 import { departmentAccent } from "@/lib/seed";
 import { useStore } from "@/lib/store";
-import type { AllHandsResponse, AllHandsRun, Department } from "@/lib/types";
+import type { MeetingResponse, Meeting, Department } from "@/lib/types";
 import { useEnter } from "@/lib/motion";
 
 /**
@@ -39,13 +39,13 @@ import { useEnter } from "@/lib/motion";
  */
 const COLLAPSE_AT = 260;
 
-export default function AllHandsPage() {
+export default function MeetingsPage() {
   const {
     ready,
     departments,
-    ceo,
+    orchestrator,
     allDepartments,
-    allHandsRuns,
+    meetings,
     profile,
     settings,
     serverKeys,
@@ -55,15 +55,15 @@ export default function AllHandsPage() {
     calendar,
     skillsFor,
     account,
-    saveAllHandsRun,
-    deleteAllHandsRun,
+    saveMeeting,
+    deleteMeeting,
     createDeliverable,
     updateSettings,
   } = useStore();
 
   const [question, setQuestion] = useState("");
   const [synthesize, setSynthesize] = useState(true);
-  const [live, setLive] = useState<AllHandsRun | null>(null);
+  const [live, setLive] = useState<Meeting | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   // Explicit "starting a fresh room" state. Without it, clearing the selection
   // just falls back to the newest thread and the empty room never shows.
@@ -102,7 +102,7 @@ export default function AllHandsPage() {
    * Meetings that actually happened, which is what decides whether the list is
    * worth showing at all.
    */
-  const held = useMemo(() => allHandsRuns.filter((r) => r.rounds.length > 0), [allHandsRuns]);
+  const held = useMemo(() => meetings.filter((r) => r.rounds.length > 0), [meetings]);
 
   /*
    * The list, once the room has met. Deliberately no fallback to the newest
@@ -111,14 +111,14 @@ export default function AllHandsPage() {
    */
   const showList = !live && !composingNew && !openId && held.length > 0;
 
-  const thread: AllHandsRun | undefined = useMemo(() => {
+  const thread: Meeting | undefined = useMemo(() => {
     if (live) return live;
     if (composingNew) return undefined;
     // No fallback to the newest. Nothing chosen means the list, not whichever
     // meeting happened to be last.
-    if (openId) return allHandsRuns.find((r) => r.id === openId);
-    return held.length > 0 ? undefined : allHandsRuns[0];
-  }, [live, composingNew, openId, allHandsRuns, held.length]);
+    if (openId) return meetings.find((r) => r.id === openId);
+    return held.length > 0 ? undefined : meetings[0];
+  }, [live, composingNew, openId, meetings, held.length]);
 
   const departmentOf = useCallback(
     (id: string) => allDepartments.find((d) => d.id === id),
@@ -147,11 +147,11 @@ export default function AllHandsPage() {
     if (inputRef.current) inputRef.current.style.height = "auto";
     stickToBottom.current = true;
 
-    const finished = await runAllHandsRound({
+    const finished = await runMeetingRound({
       run: startNew || composingNew ? undefined : thread,
       question: text,
       departments: asking,
-      ceo,
+      orchestrator,
       profile,
       settings,
       skillsFor,
@@ -164,7 +164,7 @@ export default function AllHandsPage() {
       onProgress: setLive,
     });
 
-    await saveAllHandsRun(finished);
+    await saveMeeting(finished);
     abortRef.current = null;
     setLive(null);
     setComposingNew(false);
@@ -204,7 +204,7 @@ export default function AllHandsPage() {
         <MeetingList
           compact
           activeId={thread?.id}
-          runs={allHandsRuns}
+          runs={meetings}
           onOpen={(id) => {
             setOpenId(id);
             setComposingNew(false);
@@ -214,7 +214,7 @@ export default function AllHandsPage() {
             setOpenId(null);
             setComposingNew(true);
           }}
-          onDelete={(id) => void deleteAllHandsRun(id)}
+          onDelete={(id) => void deleteMeeting(id)}
         />
       </div>
     ) : null;
@@ -274,7 +274,7 @@ export default function AllHandsPage() {
           <button
             onClick={async (event) => {
               createRipple(event);
-              await deleteAllHandsRun(thread.id);
+              await deleteMeeting(thread.id);
               setOpenId(null);
               setComposingNew(false);
             }}
@@ -386,7 +386,7 @@ export default function AllHandsPage() {
         >
           <div className="measure-read flex flex-col gap-5">
             {!thread ? (
-              <Opening departments={asking} ceoName={ceo?.personaName} />
+              <Opening departments={asking} orchestratorName={orchestrator?.personaName} />
             ) : (
               thread.rounds.map((round) => (
                 <div key={round.id} className="flex flex-col gap-4">
@@ -415,7 +415,7 @@ export default function AllHandsPage() {
 
                   {round.synthesis ? (
                     <SynthesisMessage
-                      ceo={ceo}
+                      orchestrator={orchestrator}
                       text={round.synthesis}
                       error={round.synthesisError}
                     />
@@ -607,7 +607,7 @@ export default function AllHandsPage() {
             </Chip>
             <Chip selected={synthesize} onClick={() => setSynthesize((value) => !value)}>
               {synthesize ? <CheckIcon className="h-3.5 w-3.5" /> : null}
-              {ceo?.personaName ?? "CEO"} reads across the room
+              {orchestrator?.personaName ?? "Orchestrator"} reads across the room
             </Chip>
             {ready &&
             !hasKeyFor(settings.model, {
@@ -666,10 +666,10 @@ function Progress({
 
 function Opening({
   departments,
-  ceoName,
+  orchestratorName,
 }: {
   departments: Department[];
-  ceoName: string | undefined;
+  orchestratorName: string | undefined;
 }) {
   const entered = useEnter();
   return (
@@ -696,7 +696,7 @@ function HeadMessage({
   department,
   onSave,
 }: {
-  response: AllHandsResponse;
+  response: MeetingResponse;
   department: Department | undefined;
   onSave: () => Promise<void>;
 }) {
@@ -843,25 +843,25 @@ function HeadMessage({
  * only message styled differently, because it is the part worth remembering.
  */
 function SynthesisMessage({
-  ceo,
+  orchestrator,
   text,
   error,
 }: {
-  ceo: Department | undefined;
+  orchestrator: Department | undefined;
   text: string;
   error?: boolean;
 }) {
   const entered = useEnter();
   return (
     <div ref={entered} className="flex gap-3">
-      {ceo ? (
-        <DepartmentAvatar department={ceo} size={36} className="mt-1 shadow-e2" />
+      {orchestrator ? (
+        <DepartmentAvatar department={orchestrator} size={36} className="mt-1 shadow-e2" />
       ) : (
         <span aria-hidden className="mt-1 h-9 w-9 flex-none rounded-full bg-primary" />
       )}
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-baseline gap-2">
-          <span className="md-title">{ceo?.personaName ?? "CEO"}</span>
+          <span className="md-title">{orchestrator?.personaName ?? "Orchestrator"}</span>
           <span className="md-label-sm text-primary">
             <SparkIcon className="mr-1 inline h-3 w-3" />
             the call

@@ -110,7 +110,7 @@ console.log("\na restore inserts rows before the rows that point at them");
    */
   const order = (name: string) => covered.indexOf(name as never);
   check("conversations before messages", order("conversations") < order("messages"));
-  check("runs before their rounds", order("allHandsRuns") < order("allHandsRounds"));
+  check("runs before their rounds", order("meetings") < order("meetingRounds"));
   check("departments first of all", order("departments") === 0);
 }
 

@@ -1,6 +1,6 @@
 import type { Permissions } from "./permissions";
 import type {
-  AllHandsRun,
+  Meeting,
   CompanyProfile,
   Conversation,
   Deliverable,
@@ -46,7 +46,7 @@ export interface Workspace {
   memory: MemoryEntry[];
   tasks: Task[];
   wikiPages: WikiPage[];
-  allHandsRuns: AllHandsRun[];
+  meetings: Meeting[];
   profile: CompanyProfile;
   settings: StoredSettings;
   account: UserAccount;
@@ -71,8 +71,8 @@ export type MutationOp =
   | { table: "deliverables"; action: "delete"; ids: string[] }
   | { table: "files"; action: "upsert"; rows: LibraryFile[] }
   | { table: "files"; action: "delete"; ids: string[] }
-  | { table: "allHands"; action: "upsert"; rows: AllHandsRun[] }
-  | { table: "allHands"; action: "delete"; ids: string[] }
+  | { table: "meetings"; action: "upsert"; rows: Meeting[] }
+  | { table: "meetings"; action: "delete"; ids: string[] }
   | { table: "profile"; action: "upsert"; row: CompanyProfile }
   | { table: "settings"; action: "upsert"; row: Partial<StoredSettings> }
   | { table: "account"; action: "upsert"; row: Partial<UserAccount> };
@@ -96,7 +96,7 @@ const WRITABLE: Record<MutationOp["table"], true> = {
   memory: true,
   deliverables: true,
   files: true,
-  allHands: true,
+  meetings: true,
   profile: true,
   settings: true,
   account: true,
@@ -132,7 +132,7 @@ export function emptyWorkspace(
     memory: [],
     tasks: [],
     wikiPages: [],
-    allHandsRuns: [],
+    meetings: [],
     profile,
     settings,
     account,
@@ -264,15 +264,15 @@ export function applyOp(workspace: Workspace, op: MutationOp): Workspace {
             : workspace.files.filter((row) => !op.ids.includes(row.id)),
       };
 
-    case "allHands":
+    case "meetings":
       return {
         ...workspace,
-        allHandsRuns:
+        meetings:
           op.action === "upsert"
-            ? upsertBy(workspace.allHandsRuns, op.rows).sort(
+            ? upsertBy(workspace.meetings, op.rows).sort(
                 (a, b) => b.updatedAt - a.updatedAt,
               )
-            : workspace.allHandsRuns.filter((row) => !op.ids.includes(row.id)),
+            : workspace.meetings.filter((row) => !op.ids.includes(row.id)),
       };
 
     case "profile":

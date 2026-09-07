@@ -9,7 +9,7 @@ import {
   UsersIcon,
 } from "@/components/ui";
 import { conversationHref } from "@/lib/routes";
-import { CEO_ID } from "@/lib/seed";
+import { ORCHESTRATOR_ID } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 
 export default function DashboardPage() {
@@ -49,8 +49,8 @@ export default function DashboardPage() {
               icon={<PlusIcon className="h-4 w-4" />}
               className="whitespace-nowrap"
               onClick={async () => {
-                const conversation = await createConversation(CEO_ID);
-                router.push(conversationHref(CEO_ID, conversation.id));
+                const conversation = await createConversation(ORCHESTRATOR_ID);
+                router.push(conversationHref(ORCHESTRATOR_ID, conversation.id));
               }}
             >
               New conversation

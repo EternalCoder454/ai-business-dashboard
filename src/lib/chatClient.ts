@@ -29,7 +29,7 @@ export interface StreamResult {
  * per-department chat and the all-hands fan-out.
  *
  * Swapping the fan-out to the Batches API later means replacing the caller in
- * `allHands.ts`, not this function: batch has no streaming, so it needs its own
+ * `meetings.ts`, not this function: batch has no streaming, so it needs its own
  * submit-and-poll path rather than a different reader here.
  */
 export async function streamChat(

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui";
 import { LibraryTabs } from "@/components/LibraryTabs";
 import { createRipple } from "@/components/ui/ripple";
-import { CEO_ID, COMPANY_ID } from "@/lib/seed";
+import { ORCHESTRATOR_ID, COMPANY_ID } from "@/lib/seed";
 import {
   buildSkillsBlock,
   estimateTokens,
@@ -132,7 +132,7 @@ function SkillsView() {
   };
 
   const upload = async (files: FileList | File[]) => {
-    const target = filter === "all" ? allDepartments[0]?.id ?? CEO_ID : filter;
+    const target = filter === "all" ? allDepartments[0]?.id ?? ORCHESTRATOR_ID : filter;
     let added = 0;
     for (const file of Array.from(files)) {
       const parsed = parseSkillMarkdown(
@@ -182,7 +182,7 @@ function SkillsView() {
               onClick={() =>
                 setDraft({
                   isNew: true,
-                  departmentId: filter === "all" ? allDepartments[0]?.id ?? CEO_ID : filter,
+                  departmentId: filter === "all" ? allDepartments[0]?.id ?? ORCHESTRATOR_ID : filter,
                   name: "",
                   description: "",
                   content: TEMPLATE,
@@ -250,7 +250,7 @@ function SkillsView() {
                     setDraft({
                       isNew: true,
                       departmentId:
-                        filter === "all" ? allDepartments[0]?.id ?? CEO_ID : filter,
+                        filter === "all" ? allDepartments[0]?.id ?? ORCHESTRATOR_ID : filter,
                       name: "",
                       description: "",
                       content: TEMPLATE,

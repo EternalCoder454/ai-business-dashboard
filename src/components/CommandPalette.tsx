@@ -40,7 +40,7 @@ import { useEnter } from "@/lib/motion";
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const entered = useEnter();
   const router = useRouter();
-  const { departments, conversations, skills, deliverables, projects, allHandsRuns } =
+  const { departments, conversations, skills, deliverables, projects, meetings } =
     useStore();
 
   const [query, setQuery] = useState("");
@@ -50,8 +50,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const local = useMemo(
     () =>
-      search(query, { departments, conversations, skills, deliverables, projects, allHandsRuns }),
-    [query, departments, conversations, skills, deliverables, projects, allHandsRuns],
+      search(query, { departments, conversations, skills, deliverables, projects, meetings }),
+    [query, departments, conversations, skills, deliverables, projects, meetings],
   );
 
   /*
@@ -249,7 +249,7 @@ function ResultIcon({ kind, href }: { kind: ResultKind; href: string }) {
   if (kind === "page") {
     const byHref: [string, ReactNode][] = [
       ["/wiki", <BookIcon key="wiki" className={className} />],
-      ["/orchestrator", <BriefcaseIcon key="ceo" className={className} />],
+      ["/orchestrator", <BriefcaseIcon key="orchestrator" className={className} />],
       ["/meetings", <UsersIcon key="room" className={className} />],
       ["/inbox", <MailIcon key="messages" className={className} />],
       ["/projects", <FolderIcon key="projects" className={className} />],

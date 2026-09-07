@@ -9,7 +9,7 @@
  *   npm run tools-test
  */
 import { systemPromptText, buildToolsBlock } from "../src/lib/prompts";
-import { CEO_ID, COMPANY_ID, seedDepartments } from "../src/lib/seed";
+import { ORCHESTRATOR_ID, COMPANY_ID, seedDepartments } from "../src/lib/seed";
 import { BUILT_IN_TOOLS, allTools, findTool, parseDay, registerTool, resolveScope, searchModeFor, toolsFor } from "../src/lib/tools";
 import type { CompanyProfile } from "../src/lib/types";
 
@@ -174,7 +174,7 @@ console.log("\ndepartments get the tools they should");
   );
   check(
     "the Chief of Staff can create a project",
-    toolsFor(CEO_ID).some((t) => t.name === "create_project"),
+    toolsFor(ORCHESTRATOR_ID).some((t) => t.name === "create_project"),
   );
   check(
     "Marketing cannot create a project",

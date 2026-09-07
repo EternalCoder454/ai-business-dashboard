@@ -83,8 +83,8 @@ const BLANK: Draft = {
  * a tab each rather than on two.
  */
 export function SchedulesTab({ onUnread }: { onUnread?: (n: number) => void }) {
-  const { departments, ceo, settings } = useStore();
-  const heads = ceo ? [ceo, ...departments] : departments;
+  const { departments, orchestrator, settings } = useStore();
+  const heads = orchestrator ? [orchestrator, ...departments] : departments;
 
   const [schedules, setSchedules] = useState<Schedule[] | null>(null);
   const [briefings, setBriefings] = useState<Briefing[]>([]);

@@ -4,7 +4,7 @@ import { PlusIcon, TrashIcon, UsersIcon, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
 import { ProfileMenu } from "./ProfileMenu";
 import { formatRelativeTime } from "@/lib/routes";
-import type { AllHandsRun } from "@/lib/types";
+import type { Meeting } from "@/lib/types";
 
 /**
  * Every meeting the room has held, newest first.
@@ -31,7 +31,7 @@ export function MeetingList({
   compact = false,
   activeId,
 }: {
-  runs: AllHandsRun[];
+  runs: Meeting[];
   onOpen: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;

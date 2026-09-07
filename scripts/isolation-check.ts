@@ -69,7 +69,7 @@ const PARENTS: [string, string, string][] = [
 /**
  * Ids that are not a row.
  *
- * `company` means the whole business and `ceo` is seeded per workspace but can
+ * `company` means the whole business and `orchestrator` is seeded per workspace but can
  * be removed, so neither dangling is a tenancy problem.
  */
 const SENTINELS = ["", "company", "ceo"];

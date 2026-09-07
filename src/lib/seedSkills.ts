@@ -1,4 +1,4 @@
-import { CEO_ID, COMPANY_ID } from "./seed";
+import { ORCHESTRATOR_ID, COMPANY_ID } from "./seed";
 import type { Skill } from "./types";
 
 interface SeedSkill {
@@ -70,7 +70,7 @@ Rules:
 
   // ------------------------------------------------------ Chief of Staff
   {
-    departmentId: CEO_ID,
+    departmentId: ORCHESTRATOR_ID,
     name: "Weekly Priority Call",
     description:
       "Use when asked what to focus on this week, or when a list of competing work needs cutting down to one thing.",
@@ -88,7 +88,7 @@ Rules:
 - Never soften a cut. Naming what gets dropped is the entire value of the call.`,
   },
   {
-    departmentId: CEO_ID,
+    departmentId: ORCHESTRATOR_ID,
     name: "Project Retro",
     description:
       "Use after something ships, or when the user wants to work out what went wrong and what to keep.",

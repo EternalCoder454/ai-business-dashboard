@@ -14,7 +14,7 @@ import {
   str,
 } from "@/lib/api/v1";
 import { claim, finish, release, sweep } from "@/db/idempotency";
-import { CEO_ID } from "@/lib/seed";
+import { ORCHESTRATOR_ID } from "@/lib/seed";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -211,11 +211,11 @@ export async function POST(request: Request) {
 
   try {
     const db = requireDb();
-    const departmentId = str(parsed.body.department_id, 120) || CEO_ID;
+    const departmentId = str(parsed.body.department_id, 120) || ORCHESTRATOR_ID;
 
     // A task pointed at a head that does not exist would never appear on any
     // board, which reads as the write having silently failed.
-    if (departmentId !== CEO_ID) {
+    if (departmentId !== ORCHESTRATOR_ID) {
       const [head] = await db
         .select({ id: t.departments.id })
         .from(t.departments)

@@ -7,8 +7,8 @@ import {
 } from "./prompts";
 import { providerOf } from "./providers";
 import type {
-  AllHandsRound,
-  AllHandsRun,
+  MeetingRound,
+  Meeting,
   CompanyProfile,
   Department,
   MemoryEntry,
@@ -38,12 +38,12 @@ function splitPrompt(...args: Parameters<typeof buildSystemPrompt>) {
  */
 const CONCURRENCY = 4;
 
-export interface AllHandsOptions {
+export interface MeetingOptions {
   /** The thread to append to. Omit to start a new one. */
-  run?: AllHandsRun;
+  run?: Meeting;
   question: string;
   departments: Department[];
-  ceo: Department | undefined;
+  orchestrator: Department | undefined;
   profile: CompanyProfile;
   settings: Settings;
   skillsFor: (departmentId: string) => Skill[];
@@ -57,7 +57,7 @@ export interface AllHandsOptions {
   calendar?: PromptCalendarEvent[];
   /** Whether the CEO reads across the round once every head has answered. */
   synthesize: boolean;
-  onProgress: (run: AllHandsRun) => void;
+  onProgress: (run: Meeting) => void;
   signal?: AbortSignal;
 }
 
@@ -104,7 +104,7 @@ function roomProtocol(budget: number): string {
  * the API requires strict user and assistant alternation.
  */
 function buildHeadHistory(
-  rounds: AllHandsRound[],
+  rounds: MeetingRound[],
   departmentId: string,
   question: string,
   budget: number,
@@ -141,12 +141,12 @@ function buildHeadHistory(
  * store. That trade only makes sense for work nobody is waiting on, such as a
  * scheduled overnight briefing.
  */
-export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHandsRun> {
+export async function runMeetingRound(options: MeetingOptions): Promise<Meeting> {
   const {
     run: existing,
     question,
     departments,
-    ceo,
+    orchestrator,
     profile,
     settings,
     skillsFor,
@@ -162,7 +162,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
   const budget = ROOM_BUDGET[settings.roomBrevity ?? "tight"];
   const now = Date.now();
 
-  const run: AllHandsRun = existing
+  const run: Meeting = existing
     ? { ...existing, rounds: [...existing.rounds], status: "running", updatedAt: now }
     : {
         id: newId("room"),
@@ -175,7 +175,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
 
   const priorRounds = run.rounds;
 
-  const round: AllHandsRound = {
+  const round: MeetingRound = {
     id: newId("round"),
     question,
     createdAt: now,
@@ -256,7 +256,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
 
   const answered = round.responses.filter((r) => !r.error && r.content.trim());
 
-  if (synthesize && ceo && answered.length > 1) {
+  if (synthesize && orchestrator && answered.length > 1) {
     const transcript = answered
       .map((response) => {
         const department = departments.find((d) => d.id === response.departmentId);
@@ -272,10 +272,10 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
         // The department answers go in the user turn, not the system prompt, so
         // the CEO's cached system prefix survives every round.
         ...splitPrompt(
-          ceo,
+          orchestrator,
           profile,
           settings.companyName,
-          skillsFor(ceo.id),
+          skillsFor(orchestrator.id),
           settings.writingRules,
           account,
           memory,
@@ -293,8 +293,8 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
             content: `I put this to every department head:\n\n"${question}"\n\nHere is what each of them said:\n\n${transcript}\n\nGive me your read. Where do they actually agree, where do they genuinely conflict, and what is the one thing I should do first? Name the heads you are agreeing and disagreeing with. Keep it short.`,
           },
         ],
-        model: ceo.model || settings.model,
-        provider: providerOf(ceo.model || settings.model),
+        model: orchestrator.model || settings.model,
+        provider: providerOf(orchestrator.model || settings.model),
         effort: settings.effort,
       },
       settings.apiKey,
@@ -321,7 +321,7 @@ export async function runAllHandsRound(options: AllHandsOptions): Promise<AllHan
 }
 
 /** Total tokens billed across a thread, for the cost line in the header. */
-export function runUsage(run: AllHandsRun) {
+export function runUsage(run: Meeting) {
   return run.rounds
     .flatMap((round) => round.responses)
     .reduce(

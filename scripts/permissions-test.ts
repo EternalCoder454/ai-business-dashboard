@@ -70,7 +70,7 @@ function main() {
   check("tasks", areaOfTable("tasks") === "tasks");
   check("the wiki", areaOfTable("wikiPages") === "wiki");
   check("files belong to the library", areaOfTable("files") === "library");
-  check("a meeting is the meetings area", areaOfTable("allHands") === "meetings");
+  check("a meeting is the meetings area", areaOfTable("meetings") === "meetings");
   // Conversations are deliberately not an area: which heads somebody may open
   // is asked separately, and mapping them here would deny every thread to
   // anyone missing a screen they never had.

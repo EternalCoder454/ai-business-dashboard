@@ -2,7 +2,7 @@ import { DOC_HEADINGS } from "./documentation.titles";
 import { conversationHref, departmentHrefById } from "./routes";
 import { COMPANY_ID } from "./seed";
 import type {
-  AllHandsRun,
+  Meeting,
   Conversation,
   Deliverable,
   Department,
@@ -39,7 +39,7 @@ export interface SearchCorpus {
   skills: Skill[];
   deliverables: Deliverable[];
   projects: Project[];
-  allHandsRuns: AllHandsRun[];
+  meetings: Meeting[];
 }
 
 const PAGES: { title: string; subtitle: string; href: string }[] = [
@@ -218,7 +218,7 @@ export function search(query: string, corpus: SearchCorpus, limit = 24): SearchR
      */
   }
 
-  for (const run of corpus.allHandsRuns) {
+  for (const run of corpus.meetings) {
     let score = scoreField(run.title, needle, 8);
     let snippet: string | undefined;
 

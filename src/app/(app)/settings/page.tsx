@@ -41,7 +41,7 @@ export default function SettingsPage() {
     settings,
     updateSettings,
     departments,
-    ceo,
+    orchestrator,
     storage,
     serverKey,
     ownSkillsFor,
@@ -110,7 +110,7 @@ export default function SettingsPage() {
     if (!keyTouched) setKeyDraft(settings.apiKey);
   }, [settings.apiKey, keyTouched]);
 
-  const editable = ceo ? [ceo, ...departments] : departments;
+  const editable = orchestrator ? [orchestrator, ...departments] : departments;
 
   const saveDepartment = async () => {
     if (!draft) return;
@@ -379,7 +379,7 @@ export default function SettingsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="md-title truncate">
                       {department.name}
-                      {department.isCeo ? (
+                      {department.isOrchestrator ? (
                         <span className="md-label-sm ml-2 rounded-md bg-primary-container px-1.5 py-0.5 text-on-primary-container">
                           Orchestrator
                         </span>
@@ -405,9 +405,9 @@ export default function SettingsPage() {
                   </button>
                   <button
                     onClick={() => setPendingDelete(department)}
-                    disabled={department.isCeo}
+                    disabled={department.isOrchestrator}
                     title={
-                      department.isCeo
+                      department.isOrchestrator
                         ? "The CEO orchestrator cannot be removed"
                         : "Delete department"
                     }

@@ -36,7 +36,7 @@ async function wipe() {
     { table: "skills", action: "delete", ids: current.skills.map((s) => s.id) },
     { table: "deliverables", action: "delete", ids: current.deliverables.map((d) => d.id) },
     { table: "files", action: "delete", ids: current.files.map((f) => f.id) },
-    { table: "allHands", action: "delete", ids: current.allHandsRuns.map((r) => r.id) },
+    { table: "meetings", action: "delete", ids: current.meetings.map((r) => r.id) },
     { table: "projects", action: "delete", ids: current.projects.map((p) => p.id) },
   ]);
 }
@@ -74,7 +74,7 @@ async function main() {
 
   const seeded = await loadWorkspace(USER, USER);
   check("departments round trip", seeded.departments.length === 8, `${seeded.departments.length}`);
-  check("ceo flag survives", Boolean(seeded.departments.find((d) => d.isCeo)));
+  check("orchestrator flag survives", Boolean(seeded.departments.find((d) => d.isOrchestrator)));
   check("order preserved", seeded.departments[0]?.order === 0);
   check("persona text survives", (seeded.departments[1]?.persona.length ?? 0) > 20);
   check(
@@ -193,7 +193,7 @@ async function main() {
   console.log("\nall hands round trip");
   await applyMutations(USER, USER, [
     {
-      table: "allHands",
+      table: "meetings",
       action: "upsert",
       rows: [
         {
@@ -219,7 +219,7 @@ async function main() {
     },
   ]);
   const rooms = await loadWorkspace(USER, USER);
-  const room = rooms.allHandsRuns.find((r) => r.id === "room_smoke");
+  const room = rooms.meetings.find((r) => r.id === "room_smoke");
   check("run stored", Boolean(room));
   check("round responses survive as json", room?.rounds[0]?.responses.length === 2);
   check("synthesis survives", room?.rounds[0]?.synthesis === "Hold for now.");

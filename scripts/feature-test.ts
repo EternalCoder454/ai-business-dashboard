@@ -78,7 +78,7 @@ async function main() {
     ] as never);
     space = await loadWorkspace(ws, OWNER);
     check("seeding gives it department heads", space.departments.length > 0, `${space.departments.length}`);
-    check("one of them is the chief of staff", space.departments.some((d) => d.isCeo));
+    check("one of them is the chief of staff", space.departments.some((d) => d.isOrchestrator));
     check("and a shipped skill library", space.skills.length > 0, `${space.skills.length}`);
     check("and wiki pages", space.wikiPages.length > 0, `${space.wikiPages.length}`);
 
@@ -185,7 +185,7 @@ async function main() {
       skills: space.skills,
       deliverables: space.deliverables,
       projects: space.projects,
-      allHandsRuns: space.allHandsRuns ?? [],
+      meetings: space.meetings ?? [],
     };
     check("it finds a deliverable", search("positioning", corpus).length > 0);
     check("it finds a project", search("spring", corpus).some((r) => r.title.includes("Spring")));

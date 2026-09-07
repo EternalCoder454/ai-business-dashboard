@@ -517,8 +517,8 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
     // The work.
     await tx.delete(t.messages).where(eq(t.messages.workspaceId, owner));
     await tx.delete(t.conversations).where(eq(t.conversations.workspaceId, owner));
-    await tx.delete(t.allHandsRounds).where(eq(t.allHandsRounds.workspaceId, owner));
-    await tx.delete(t.allHandsRuns).where(eq(t.allHandsRuns.workspaceId, owner));
+    await tx.delete(t.meetingRounds).where(eq(t.meetingRounds.workspaceId, owner));
+    await tx.delete(t.meetings).where(eq(t.meetings.workspaceId, owner));
     await tx.delete(t.deliverables).where(eq(t.deliverables.workspaceId, owner));
     await tx.delete(t.projects).where(eq(t.projects.workspaceId, owner));
     // Where this business kept its bytes, read before the rows that say so go.

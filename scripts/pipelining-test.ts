@@ -20,7 +20,7 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 
 const TABLES = [
   t.departments, t.projects, t.conversations, t.skills, t.memory, t.tasks,
-  t.wikiPages, t.files, t.allHandsRuns, t.allHandsRounds, t.settings, t.deliverables,
+  t.wikiPages, t.files, t.meetings, t.meetingRounds, t.settings, t.deliverables,
 ];
 
 async function main() {

@@ -6,7 +6,7 @@ import * as t from "./schema";
 import { forgetBlobs } from "./blobs";
 import type { MutationOp, Workspace } from "@/lib/workspace";
 import type {
-  AllHandsRun,
+  Meeting,
   Attachment,
   Department,
   Conversation,
@@ -282,8 +282,8 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       .from(t.files)
       .where(eq(t.files.workspaceId, workspaceId))
       .orderBy(desc(t.files.updatedAt)),
-    db.select().from(t.allHandsRuns).where(eq(t.allHandsRuns.workspaceId, workspaceId)).orderBy(desc(t.allHandsRuns.updatedAt)),
-    db.select().from(t.allHandsRounds).where(eq(t.allHandsRounds.workspaceId, workspaceId)).orderBy(asc(t.allHandsRounds.sortOrder)),
+    db.select().from(t.meetings).where(eq(t.meetings.workspaceId, workspaceId)).orderBy(desc(t.meetings.updatedAt)),
+    db.select().from(t.meetingRounds).where(eq(t.meetingRounds.workspaceId, workspaceId)).orderBy(asc(t.meetingRounds.sortOrder)),
     // The account is who you are, not where you work: still keyed by address,
     // so moving between workspaces does not change your name or your notes.
     db.select().from(t.accounts).where(eq(t.accounts.userEmail, email)).limit(1),
@@ -324,7 +324,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
     messageCountRows.map((row) => [row.conversationId, Number(row.count)]),
   );
 
-  const roundsByRun = new Map<string, AllHandsRun["rounds"]>();
+  const roundsByRun = new Map<string, Meeting["rounds"]>();
   for (const row of roundRows) {
     const list = roundsByRun.get(row.runId) ?? [];
     list.push({
@@ -352,7 +352,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       webSearch: (row.webSearch as Department["webSearch"]) ?? undefined,
       status: row.status as Department["status"],
       order: row.sortOrder,
-      isCeo: row.isCeo || undefined,
+      isOrchestrator: row.isOrchestrator || undefined,
     })),
 
     projects: projectRows.map((row): Project => ({
@@ -457,10 +457,10 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
         updatedAt: ms(row.updatedAt),
       })),
 
-    allHandsRuns: runRows.map((row) => ({
+    meetings: runRows.map((row) => ({
       id: row.id,
       title: row.title,
-      status: row.status as AllHandsRun["status"],
+      status: row.status as Meeting["status"],
       rounds: roundsByRun.get(row.id) ?? [],
       createdAt: ms(row.createdAt),
       updatedAt: ms(row.updatedAt),
@@ -610,7 +610,7 @@ export async function applyMutations(
               webSearch: row.webSearch ?? null,
               status: row.status,
               sortOrder: row.order,
-              isCeo: Boolean(row.isCeo),
+              isOrchestrator: Boolean(row.isOrchestrator),
               updatedAt: now,
             };
             await tx
@@ -1114,15 +1114,15 @@ export async function applyMutations(
           break;
         }
 
-        case "allHands": {
+        case "meetings": {
           if (op.action === "delete") {
             if (op.ids.length) {
               await tx
-                .delete(t.allHandsRounds)
-                .where(and(eq(t.allHandsRounds.workspaceId, workspaceId), inArray(t.allHandsRounds.runId, op.ids)));
+                .delete(t.meetingRounds)
+                .where(and(eq(t.meetingRounds.workspaceId, workspaceId), inArray(t.meetingRounds.runId, op.ids)));
               await tx
-                .delete(t.allHandsRuns)
-                .where(and(eq(t.allHandsRuns.workspaceId, workspaceId), inArray(t.allHandsRuns.id, op.ids)));
+                .delete(t.meetings)
+                .where(and(eq(t.meetings.workspaceId, workspaceId), inArray(t.meetings.id, op.ids)));
             }
             break;
           }
@@ -1135,10 +1135,10 @@ export async function applyMutations(
               updatedAt: now,
             };
             await tx
-              .insert(t.allHandsRuns)
+              .insert(t.meetings)
               .values(values)
               .onConflictDoUpdate({
-                target: [t.allHandsRuns.workspaceId, t.allHandsRuns.id],
+                target: [t.meetings.workspaceId, t.meetings.id],
                 set: values,
               });
 
@@ -1154,10 +1154,10 @@ export async function applyMutations(
                 sortOrder: index,
               };
               await tx
-                .insert(t.allHandsRounds)
+                .insert(t.meetingRounds)
                 .values(roundValues)
                 .onConflictDoUpdate({
-                  target: [t.allHandsRounds.workspaceId, t.allHandsRounds.id],
+                  target: [t.meetingRounds.workspaceId, t.meetingRounds.id],
                   set: roundValues,
                 });
             }

@@ -38,7 +38,7 @@ const COUNTED: { table: string; label: string }[] = [
   { table: "skills", label: "Skills" },
   { table: "wiki_pages", label: "Wiki" },
   { table: "direct_messages", label: "Internal messages" },
-  { table: "all_hands_rounds", label: "Meetings" },
+  { table: "meeting_rounds", label: "Meetings" },
   { table: "memory", label: "Memory" },
   { table: "tasks", label: "Tasks" },
   { table: "backups", label: "Backups" },

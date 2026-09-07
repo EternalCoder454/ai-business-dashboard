@@ -215,7 +215,7 @@ export interface Department {
   /** Sort order in the sidebar and org chart. */
   order: number;
   /** True only for the CEO orchestrator, which sits above the department row. */
-  isCeo?: boolean;
+  isOrchestrator?: boolean;
   /** Populated on read by `listDepartmentsWithConversations`; not stored inline. */
   conversations?: Conversation[];
 }
@@ -528,7 +528,7 @@ export type SidebarSide = "left" | "right";
 /** The bare key that opens search. Cmd and Ctrl K always work regardless. */
 export type SearchShortcut = "slash" | "k" | "none";
 
-export interface AllHandsResponse {
+export interface MeetingResponse {
   departmentId: string;
   content: string;
   usage?: TokenUsage;
@@ -538,10 +538,10 @@ export interface AllHandsResponse {
 }
 
 /** One question put to the room, and everything that came back. */
-export interface AllHandsRound {
+export interface MeetingRound {
   id: string;
   question: string;
-  responses: AllHandsResponse[];
+  responses: MeetingResponse[];
   /** The CEO's read across the round, once every head has answered. */
   synthesis?: string;
   synthesisError?: boolean;
@@ -549,10 +549,10 @@ export interface AllHandsRound {
 }
 
 /** A group thread: the whole room, across as many rounds as you ask. */
-export interface AllHandsRun {
+export interface Meeting {
   id: string;
   title: string;
-  rounds: AllHandsRound[];
+  rounds: MeetingRound[];
   status: "running" | "done" | "cancelled";
   createdAt: number;
   updatedAt: number;

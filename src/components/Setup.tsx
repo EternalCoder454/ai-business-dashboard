@@ -40,7 +40,7 @@ interface Slide {
 }
 
 export function Setup() {
-  const { ready, storage, settings, departments, ceo, workspaceRole } = useStore();
+  const { ready, storage, settings, departments, orchestrator, workspaceRole } = useStore();
   const router = useRouter();
 
   const [step, setStep] = useState(0);
@@ -59,11 +59,11 @@ export function Setup() {
     }
   }, []);
 
-  const heads = [ceo, ...departments.filter((d) => !d.isCeo && !d.personal)]
+  const heads = [orchestrator, ...departments.filter((d) => !d.isOrchestrator && !d.personal)]
     .filter(Boolean)
     .slice(0, 6);
 
-  const who = ceo?.personaName || "your Chief of Staff";
+  const who = orchestrator?.personaName || "your Chief of Staff";
 
   const slides: Slide[] = useMemo(() => {
     const all: Slide[] = [

@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
+import { ORCHESTRATOR_ID } from "@/lib/seed";
 import Link from "next/link";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useMemo, useState } from "react";
@@ -61,7 +62,7 @@ export default function DeliverablesPage() {
     setDraft({
       title: "",
       body: "",
-      departmentId: allDepartments[0]?.id ?? "ceo",
+      departmentId: allDepartments[0]?.id ?? ORCHESTRATOR_ID,
       status: "backlog",
     });
 

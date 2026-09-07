@@ -1,6 +1,16 @@
 import type { CompanyProfile, Department, Settings, UserAccount } from "./types";
 
-export const CEO_ID = "ceo";
+/*
+ * The orchestrator's department id, which is still the string "ceo".
+ *
+ * The name of this constant changed and its value deliberately did not. Every
+ * workspace has a departments row with this id, and its conversations, tasks,
+ * memory, skills and deliverables all point at it, so changing the value would
+ * orphan the head that answers first in every business that already exists.
+ * Renaming it here costs nothing; renaming it in the column would cost a data
+ * migration across six tables to fix a word nobody sees.
+ */
+export const ORCHESTRATOR_ID = "ceo";
 
 /**
  * Sentinel owner for a skill that belongs to the whole company rather than one
@@ -273,15 +283,15 @@ Route these away only if they are asked for, in one line, then drop it. Never br
 
 /** Persona fields keyed by id, used to backfill databases seeded before personas existed. */
 export const PERSONA_BACKFILL: Record<string, { personaName: string; persona: string }> = {
-  [CEO_ID]: { personaName: "Ruth", persona: DEFAULT_CEO_PERSONA },
+  [ORCHESTRATOR_ID]: { personaName: "Ruth", persona: DEFAULT_CEO_PERSONA },
   ...Object.fromEntries(
     SEED_DEPARTMENTS.map((d) => [d.id, { personaName: d.personaName, persona: d.persona }]),
   ),
 };
 
 export function seedDepartments(): Department[] {
-  const ceo: Department = {
-    id: CEO_ID,
+  const orchestrator: Department = {
+    id: ORCHESTRATOR_ID,
     name: "Chief of Staff",
     personaName: "Ruth",
     roleTitle: "Chief of Staff",
@@ -290,7 +300,7 @@ export function seedDepartments(): Department[] {
     skillCount: 12,
     status: "online",
     order: 0,
-    isCeo: true,
+    isOrchestrator: true,
   };
 
   const departments: Department[] = SEED_DEPARTMENTS.map((d, i) => ({
@@ -305,7 +315,7 @@ export function seedDepartments(): Department[] {
     order: i + 1,
   }));
 
-  return [ceo, ...departments];
+  return [orchestrator, ...departments];
 }
 
 export const DEFAULT_ACCOUNT: UserAccount = {
@@ -484,7 +494,7 @@ export const DEPARTMENT_ACCENTS = [
  * sequence never look alike.
  */
 const SEEDED_ACCENTS: Record<string, string> = {
-  [CEO_ID]: "amber",
+  [ORCHESTRATOR_ID]: "amber",
   marketing: "rose",
   social: "cyan",
   design: "violet",

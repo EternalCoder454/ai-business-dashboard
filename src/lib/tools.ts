@@ -1,4 +1,4 @@
-import { CEO_ID, COMPANY_ID } from "./seed";
+import { ORCHESTRATOR_ID, COMPANY_ID } from "./seed";
 import type { WebSearchMode } from "./types";
 
 /**
@@ -162,7 +162,7 @@ export const BUILT_IN_TOOLS: ToolDefinition[] = [
       "Start a project to group work that spans departments. Use when a piece of work is clearly bigger than one conversation.",
     // Operations owns how work is organised, and the Chief of Staff sets what
     // is being worked on. Nobody else should be filing the company's work.
-    departments: ["operations", CEO_ID],
+    departments: ["operations", ORCHESTRATOR_ID],
     schema: {
       type: "object",
       properties: {

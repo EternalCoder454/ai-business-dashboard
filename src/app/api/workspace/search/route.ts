@@ -113,7 +113,7 @@ export async function GET(request: Request) {
         subtitle: `${row.role === "user" ? "You" : (row.departmentName ?? "Reply")} · in conversation`,
         snippet: snippet(row.content, query),
         // The helper, not a hand-built path: the lead's conversations live at
-        // /ceo rather than /dept/ceo, and a link built here by hand got that
+        // /orchestrator rather than /dept/orchestrator, and a link built here by hand got that
         // wrong for exactly the thread people search for most.
         href: conversationHref(row.departmentId, row.conversationId),
         score: 3,
