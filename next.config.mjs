@@ -82,6 +82,12 @@ const nextConfig = {
        * and anybody with the old link still lands somewhere it is.
        */
       { source: "/information", destination: "/", permanent: false },
+      /*
+       * Briefings sat directly under Tasks in the navigation and asked the same
+       * question: what is owed, and when. The only difference is whether it
+       * comes round again, which is a tab rather than a screen.
+       */
+      { source: "/briefings", destination: "/tasks", permanent: false },
 
       /*
        * The paths now match the words on the screen.

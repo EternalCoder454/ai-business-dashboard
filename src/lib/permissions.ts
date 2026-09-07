@@ -52,7 +52,6 @@ const AREA_KEYS = new Set<string>(AREAS.map((area) => area.key));
 export const AREA_HREF: Partial<Record<Area, string>> = {
   meetings: "/meetings",
   messages: "/inbox",
-  briefings: "/briefings",
   tasks: "/tasks",
   projects: "/projects",
   library: "/library",

@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
+import { SchedulesTab } from "@/components/SchedulesTab";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { useMemo, useState } from "react";
 import {
@@ -12,6 +13,7 @@ import {
   Field,
   FolderIcon,
   PlusIcon,
+  ScheduleIcon,
   Select,
   TextArea,
   TextInput,
@@ -79,9 +81,25 @@ export default function TasksPage() {
     createTask,
     updateTask,
     deleteTask,
+    can,
   } = useStore();
 
+  /*
+   * The schedules tab only appears for somebody allowed to open it. The area
+   * still exists with no screen at the end of it for exactly this reason: an
+   * administrator who denied briefings should not find them on Tasks instead.
+   */
+  const canSchedules = can("briefings");
+
   const [filter, setFilter] = useState<string>("all");
+  const [tab, setTab] = useState<"tasks" | "schedules">("tasks");
+  /*
+   * Reported up from the tab itself rather than fetched twice. The schedules
+   * tab already reads them to draw its own list, and asking a second time on
+   * every visit to Tasks would double the cost of a screen most people open
+   * for the board.
+   */
+  const [unreadBriefings, setUnreadBriefings] = useState(0);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   /*
@@ -163,14 +181,14 @@ export default function TasksPage() {
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader
         eyebrow="Work"
-        title="Tasks"
+        title={tab === "tasks" ? "Tasks" : "Schedules"}
         /* Nothing rather than a space. The blank held the line so the header
            did not change height when the counts arrived, which cost nothing
            while the title was above it. With the title gone on a phone it was
            the only thing in the header, so an empty band sat under the top bar
            with a lone button in the corner. */
         description={
-          ready && open > 0
+          tab === "tasks" && ready && open > 0
             ? `${open} open${overdue ? `, ${overdue} overdue` : ""}`
             : undefined
         }
@@ -178,18 +196,53 @@ export default function TasksPage() {
           /* A plus on a phone. The page is called Tasks and the button is the
              only one on it, so the word was answering a question nobody could
              have. Same shape as the one on Meetings. */
-          <Button
-            icon={<PlusIcon className="h-4 w-4" />}
-            aria-label="New task"
-            className="px-2 medium:px-3"
-            onClick={() => openNew()}
-          >
-            <span className="hidden medium:inline">New task</span>
-          </Button>
+          tab === "tasks" ? (
+            <Button
+              icon={<PlusIcon className="h-4 w-4" />}
+              aria-label="New task"
+              className="px-2 medium:px-3"
+              onClick={() => openNew()}
+            >
+              <span className="hidden medium:inline">New task</span>
+            </Button>
+          ) : undefined
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto page-x py-5">
+      {/*
+        * Two tabs rather than two screens.
+        *
+        * Both answer the same question, what is owed and when, and the only
+        * difference is whether it comes round again. Briefings was its own
+        * entry in the navigation directly under Tasks, which read as two
+        * places to look for the same thing.
+        */}
+      {canSchedules ? (
+        <div className="flex flex-none items-center gap-2 border-b border-outline-variant px-4 py-3 sm:px-6">
+          {(["tasks", "schedules"] as const).map((key) => (
+            <Chip key={key} selected={tab === key} onClick={() => setTab(key)}>
+              <span className="flex items-center gap-1.5">
+                {key === "tasks" ? (
+                  <CheckIcon className="h-4 w-4" />
+                ) : (
+                  <ScheduleIcon className="h-4 w-4" />
+                )}
+                {key === "tasks" ? "Tasks" : "Schedules"}
+                {key === "schedules" && unreadBriefings > 0 ? (
+                  <span className="md-label-sm rounded-full bg-primary px-1.5 text-on-primary">
+                    {unreadBriefings}
+                  </span>
+                ) : null}
+              </span>
+            </Chip>
+          ))}
+        </div>
+      ) : null}
+
+      {tab === "schedules" ? (
+        <SchedulesTab onUnread={setUnreadBriefings} />
+      ) : (
+            <div className="min-h-0 flex-1 overflow-y-auto page-x py-5">
         <div className="filter-row mb-5">
           <Chip selected={filter === "all"} onClick={() => setFilter("all")}>
             Everything
@@ -376,6 +429,7 @@ export default function TasksPage() {
           </div>
         )}
       </div>
+      )}
 
       <Dialog
         open={Boolean(draft)}

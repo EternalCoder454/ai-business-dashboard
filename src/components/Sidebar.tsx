@@ -81,14 +81,6 @@ export const WORK_LINKS: NavLink[] = [
     icon: <MailIcon className="h-5 w-5" />,
   },
   {
-    href: "/briefings",
-    label: "Briefings",
-    short: "Briefs",
-    // A clock, because what makes a briefing a briefing is that it arrives on
-    // a rhythm rather than that a model wrote it.
-    icon: <ScheduleIcon className="h-5 w-5" />,
-  },
-  {
     href: "/tasks",
     label: "Tasks",
     short: "Tasks",

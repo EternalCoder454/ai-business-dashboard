@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PageHeader } from "@/components/PageHeader";
 import { Markdown } from "@/components/Markdown";
 import {
   Button,
@@ -74,7 +73,16 @@ const BLANK: Draft = {
  * Check, are rhythms that nothing was running, so they happened twice and then
  * never.
  */
-export default function BriefingsPage() {
+/**
+ * Everything this business has put on a rhythm, and what those rhythms produced.
+ *
+ * A tab rather than a screen. It used to be its own entry in the navigation
+ * called Briefings, next to Tasks, and the two were the same question asked
+ * twice: what is owed, and when. Tasks are the ones a person does once and
+ * schedules are the ones that come round again, so they belong on one page with
+ * a tab each rather than on two.
+ */
+export function SchedulesTab({ onUnread }: { onUnread?: (n: number) => void }) {
   const { departments, ceo, settings } = useStore();
   const heads = ceo ? [ceo, ...departments] : departments;
 
@@ -145,21 +153,23 @@ export default function BriefingsPage() {
 
   const nameOf = (id: string) => heads.find((h) => h.id === id)?.name ?? id;
   const unread = briefings.filter((b) => !b.read).length;
+  // Reported upward so the tab beside this one can show the count, which is
+  // what the sidebar badge used to do before this stopped being a screen.
+  useEffect(() => {
+    onUnread?.(unread);
+  }, [unread, onUnread]);
 
   return (
     <>
-      <PageHeader
-        eyebrow={settings.companyName}
-        title="Briefings"
-        actions={
-          canEdit ? (
-            <Button onClick={() => setDraft({ ...BLANK, departmentId: heads[0]?.id ?? "" })}>
-              <PlusIcon className="h-4 w-4" />
-              New schedule
-            </Button>
-          ) : undefined
-        }
-      />
+      {canEdit ? (
+        <div className="flex flex-none justify-end px-4 pt-4 sm:px-6">
+          <Button onClick={() => setDraft({ ...BLANK, departmentId: heads[0]?.id ?? "" })}>
+            <PlusIcon className="h-4 w-4" />
+            New schedule
+          </Button>
+        </div>
+      ) : null}
+
 
       {/* The cap is for a list of cards. An empty state is the whole area. */}
       <div
