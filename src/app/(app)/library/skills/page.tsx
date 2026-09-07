@@ -204,7 +204,7 @@ function SkillsView() {
         </Chip>
         <Chip
           selected={filter === COMPANY_ID}
-          title="Injected into every prompt"
+          title="Every head reads these"
           onClick={() => setFilter(COMPANY_ID)}
         >
           🏢 Company · {countFor(COMPANY_ID)}

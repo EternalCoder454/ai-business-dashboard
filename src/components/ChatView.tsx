@@ -1159,7 +1159,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             href={`/library/skills?dept=${encodeURIComponent(departmentId)}`}
             className="hidden medium:block"
           >
-            <Chip tone="primary" title="SKILL.md playbooks followed here">
+            <Chip tone="primary" title="Playbooks this head follows">
               <SparkIcon className="h-3.5 w-3.5" />
               {skillsFor(departmentId).length} skills
             </Chip>

@@ -44,18 +44,21 @@ export interface SearchCorpus {
 
 const PAGES: { title: string; subtitle: string; href: string }[] = [
   { title: "Inbox", subtitle: "Direct messages with colleagues", href: "/inbox" },
-  { title: "Internal Wiki", subtitle: "How this works and what not to do", href: "/wiki" },
+  { title: "Wiki", subtitle: "Your own pages about your own business", href: "/wiki" },
   { title: "Dashboard", subtitle: "The numbers, what is open, and who to ask", href: "/" },
-  { title: "Tasks", subtitle: "What is outstanding, by state", href: "/tasks" },
+  { title: "Tasks", subtitle: "What is outstanding, and what runs on a schedule", href: "/tasks" },
   { title: "Chief of Staff", subtitle: "Talk to Ruth", href: "/orchestrator" },
   { title: "Meetings", subtitle: "Put one question to every head at once", href: "/meetings" },
   { title: "Projects", subtitle: "Work grouped across departments", href: "/projects" },
   { title: "Library", subtitle: "Files, deliverables, and skills", href: "/library" },
-  { title: "Skills", subtitle: "SKILL.md playbooks", href: "/library/skills" },
+  { title: "Skills", subtitle: "Playbooks the heads follow", href: "/library/skills" },
   { title: "Deliverables", subtitle: "Everything produced", href: "/library/deliverables" },
-  { title: "Company Profile", subtitle: "Shared context for every head", href: "/profile" },
+  { title: "Company Profile", subtitle: "What every head knows about your business", href: "/profile" },
   { title: "Account", subtitle: "Your name, role, and timezone", href: "/account" },
-  { title: "Settings", subtitle: "API key, model, departments, data", href: "/settings" },
+  { title: "Settings", subtitle: "Keys, model, departments, backups", href: "/settings" },
+  { title: "Management", subtitle: "People, roles and internal messages", href: "/manage" },
+  { title: "Documentation", subtitle: "The manual for the panel", href: "/documentation" },
+  { title: "Changelog", subtitle: "What changed, and when", href: "/changelog" },
 ];
 
 /**

@@ -116,8 +116,8 @@ export default function MessagesPage() {
         <div className="px-4 py-6 medium:px-6 expanded:px-8">
           <EmptyState
             icon="✉️"
-            title="Inbox requires a hosted workspace"
-            description="Messages require a hosted workspace."
+            title="No inbox here"
+            description="Messages need an account. Sign in to use them."
           />
         </div>
       </div>
