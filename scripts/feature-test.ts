@@ -75,7 +75,7 @@ async function main() {
       { table: "departments", action: "upsert", rows: seedDepartments() },
       { table: "skills", action: "upsert", rows: seedSkills() },
       { table: "wikiPages", action: "upsert", rows: seedWikiPages() },
-    ] as never);
+    ] as never, true);
     space = await loadWorkspace(ws, OWNER);
     check("seeding gives it department heads", space.departments.length > 0, `${space.departments.length}`);
     check("one of them is the chief of staff", space.departments.some((d) => d.isOrchestrator));
@@ -88,7 +88,7 @@ async function main() {
         { id: "ft-1", title: "Write the launch note", notes: "", status: "todo", departmentId: "company", order: 0 },
         { id: "ft-2", title: "Book the venue", notes: "", status: "todo", departmentId: "marketing", order: 1 },
       ] },
-    ] as never);
+    ] as never, true);
     space = await loadWorkspace(ws, OWNER);
     check("two tasks were added", space.tasks.length === 2, `${space.tasks.length}`);
 
@@ -96,11 +96,11 @@ async function main() {
       { table: "tasks", action: "upsert", rows: [
         { id: "ft-2", title: "Book the venue", notes: "", status: "doing", departmentId: "marketing", order: 1 },
       ] },
-    ] as never);
+    ] as never, true);
     space = await loadWorkspace(ws, OWNER);
     check("a task moves to ongoing", space.tasks.find((x) => x.id === "ft-2")?.status === "doing");
 
-    await applyMutations(ws, OWNER, [{ table: "tasks", action: "delete", ids: ["ft-1"] }] as never);
+    await applyMutations(ws, OWNER, [{ table: "tasks", action: "delete", ids: ["ft-1"] }] as never, true);
     space = await loadWorkspace(ws, OWNER);
     check("a task can be deleted", space.tasks.length === 1, `${space.tasks.length}`);
 
@@ -109,7 +109,7 @@ async function main() {
       { table: "projects", action: "upsert", rows: [{ id: "ft-p", name: "Spring launch", summary: "The one", status: "active", updatedAt: Date.now() }] },
       { table: "deliverables", action: "upsert", rows: [{ id: "ft-d", title: "Positioning note", body: "We sell calm.", departmentId: "marketing", status: "backlog" }] },
       { table: "memory", action: "upsert", rows: [{ id: "ft-m", kind: "decision", label: "Price at 9.99", detail: "Round numbers read as guesses.", departmentId: "company", occurredAt: Date.now() }] },
-    ] as never);
+    ] as never, true);
     space = await loadWorkspace(ws, OWNER);
     check("a project is saved", space.projects.some((p) => p.name === "Spring launch"));
     check("a deliverable is saved", space.deliverables.some((d) => d.title === "Positioning note"));
@@ -122,7 +122,7 @@ async function main() {
     await applyMutations(ws, OWNER, [
       { table: "wikiPages", action: "upsert", rows: [{ id: "ft-w", title: "How we answer", body: "Plainly.", order: 0, updatedAt: Date.now() }] },
       { table: "profile", action: "upsert", row: { mission: "Make small businesses feel staffed." } },
-    ] as never);
+    ] as never, true);
     space = await loadWorkspace(ws, OWNER);
     check("a wiki page is saved", space.wikiPages.some((p) => p.title === "How we answer"));
     check("the company profile is saved", space.profile.mission?.includes("staffed") === true);
@@ -242,7 +242,7 @@ async function main() {
       { table: "tasks", action: "upsert", rows: [
         { id: "ft-2", title: "Book the venue", notes: "", status: "done", departmentId: "marketing", order: 1, completedAt: Date.now() },
       ] },
-    ] as never);
+    ] as never, true);
     check("an unapproved addon does not run", (await recentRuns(ws)).length === 0, `${(await recentRuns(ws)).length}`);
 
     const live = await approveAddon(ws, made.addon.id, OWNER);
@@ -254,12 +254,12 @@ async function main() {
       { table: "tasks", action: "upsert", rows: [
         { id: "ft-3", title: "Ship the pricing page", notes: "", status: "todo", departmentId: "marketing", order: 2 },
       ] },
-    ] as never);
+    ] as never, true);
     await applyMutations(ws, OWNER, [
       { table: "tasks", action: "upsert", rows: [
         { id: "ft-3", title: "Ship the pricing page", notes: "", status: "done", departmentId: "marketing", order: 2, completedAt: Date.now() },
       ] },
-    ] as never);
+    ] as never, true);
 
     const runs = await recentRuns(ws);
     check("completing a task wakes it", runs.length === 1, `${runs.length}`);
@@ -287,12 +287,12 @@ async function main() {
       { table: "tasks", action: "upsert", rows: [
         { id: "ft-4", title: "Not marketing", notes: "", status: "todo", departmentId: "finance", order: 3 },
       ] },
-    ] as never);
+    ] as never, true);
     await applyMutations(ws, OWNER, [
       { table: "tasks", action: "upsert", rows: [
         { id: "ft-4", title: "Not marketing", notes: "", status: "done", departmentId: "finance", order: 3, completedAt: Date.now() },
       ] },
-    ] as never);
+    ] as never, true);
     const after = await recentRuns(ws);
     const skipped = after.find((r) => r.ran === false);
     check("a task in another department is skipped rather than run", Boolean(skipped), `${after.length} runs`);
@@ -305,12 +305,12 @@ async function main() {
       { table: "tasks", action: "upsert", rows: [
         { id: "ft-5", title: "While paused", notes: "", status: "todo", departmentId: "marketing", order: 4 },
       ] },
-    ] as never);
+    ] as never, true);
     await applyMutations(ws, OWNER, [
       { table: "tasks", action: "upsert", rows: [
         { id: "ft-5", title: "While paused", notes: "", status: "done", departmentId: "marketing", order: 4, completedAt: Date.now() },
       ] },
-    ] as never);
+    ] as never, true);
     check("a paused addon does not run", (await recentRuns(ws)).length === before);
 
     check("it is listed for its business", (await addonsFor(ws)).length === 1);
@@ -322,7 +322,7 @@ async function main() {
       { table: "tasks", action: "upsert", rows: [
         { id: "ft-6", title: "Just sitting here", notes: "", status: "todo", departmentId: "marketing", order: 5 },
       ] },
-    ] as never);
+    ] as never, true);
     check("creating one does not fire it", (await recentRuns(ws)).length === quiet);
 
     // Saving an already done task again must not re-fire: completion is a
@@ -332,7 +332,7 @@ async function main() {
       { table: "tasks", action: "upsert", rows: [
         { id: "ft-3", title: "Ship the pricing page", notes: "edited", status: "done", departmentId: "marketing", order: 2, completedAt: Date.now() },
       ] },
-    ] as never);
+    ] as never, true);
     check("re-saving a done task does not fire it again", (await recentRuns(ws)).length === settled,
       `${(await recentRuns(ws)).length} vs ${settled}`);
 

@@ -34,7 +34,7 @@ async function wipe(email: string) {
   await applyMutations(email, email, [
     { table: "conversations", action: "delete", ids: current.conversations.map((c) => c.id) },
     { table: "departments", action: "delete", ids: current.departments.map((d) => d.id) },
-  ]);
+  ], true);
 }
 
 async function seed(email: string, title: string, body: string, withUsage = false) {
@@ -84,7 +84,7 @@ async function seed(email: string, title: string, body: string, withUsage = fals
         },
       ],
     },
-  ]);
+  ], true);
 }
 
 async function main() {
@@ -168,7 +168,7 @@ async function main() {
         },
       ],
     },
-  ]);
+  ], true);
   const afterEmpty = await listConversationsFor(ONE);
   check("still one conversation", afterEmpty.length === 1, String(afterEmpty.length));
   console.log("\nusage is recorded per message and totalled per person");

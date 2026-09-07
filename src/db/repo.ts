@@ -541,6 +541,14 @@ export async function applyMutations(
   workspaceId: string,
   email: string,
   ops: MutationOp[],
+  /**
+   * Whether the person saving runs this business.
+   *
+   * Only the settings branch reads it, to drop the workspace-wide fields for
+   * anybody else. Required rather than optional on purpose: a caller that
+   * forgets it should not quietly get the permissive answer.
+   */
+  isAdmin: boolean,
 ): Promise<void> {
   const db = requireDb();
   const now = new Date();
@@ -1233,7 +1241,7 @@ export async function applyMutations(
         case "settings": {
           // The allow list and the clearing rule are in lib/settingsWrite, so
           // they can be tested without a database.
-          const sent = writableSettings(op.row as Record<string, unknown>);
+          const sent = writableSettings(op.row as Record<string, unknown>, isAdmin);
 
           const values = { workspaceId, ...sent, updatedAt: now };
 

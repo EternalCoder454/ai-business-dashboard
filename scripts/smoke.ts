@@ -38,7 +38,7 @@ async function wipe() {
     { table: "files", action: "delete", ids: current.files.map((f) => f.id) },
     { table: "meetings", action: "delete", ids: current.meetings.map((r) => r.id) },
     { table: "projects", action: "delete", ids: current.projects.map((p) => p.id) },
-  ]);
+  ], true);
 }
 
 async function main() {
@@ -71,7 +71,7 @@ async function main() {
       action: "upsert",
       row: { model: "claude-sonnet-5", companyName: "Eterneon" },
     },
-  ]);
+  ], true);
 
   const seeded = await loadWorkspace(USER, USER);
   check("departments round trip", seeded.departments.length === 8, `${seeded.departments.length}`);
@@ -127,7 +127,7 @@ async function main() {
       },
     ],
   };
-  await applyMutations(USER, USER, [{ table: "conversations", action: "upsert", rows: [conversation] }]);
+  await applyMutations(USER, USER, [{ table: "conversations", action: "upsert", rows: [conversation] }], true);
 
   const withConv = await loadWorkspace(USER, USER);
   const loaded = withConv.conversations.find((c) => c.id === "conv_smoke");
@@ -184,7 +184,7 @@ async function main() {
         },
       ],
     },
-  ]);
+  ], true);
   const appended = await loadWorkspace(USER, USER);
   const appendedCount = appended.conversations.find((c) => c.id === "conv_smoke")?.messageCount;
   check("three messages, not five", appendedCount === 3, String(appendedCount));
@@ -218,7 +218,7 @@ async function main() {
         },
       ],
     },
-  ]);
+  ], true);
   const rooms = await loadWorkspace(USER, USER);
   const room = rooms.meetings.find((r) => r.id === "room_smoke");
   check("run stored", Boolean(room));
@@ -247,7 +247,7 @@ async function main() {
         },
       ],
     },
-  ]);
+  ], true);
   const withFile = await loadWorkspace(USER, USER);
   const file = withFile.files.find((f) => f.id === "file_smoke");
   check("library file stored", Boolean(file));
@@ -272,7 +272,7 @@ async function main() {
         },
       ],
     },
-  ]);
+  ], true);
 
   // The fixture has no deliverable of its own, and a check that passes because
   // there was nothing to check is worse than no check at all.
@@ -292,7 +292,7 @@ async function main() {
         },
       ],
     },
-  ]);
+  ], true);
 
   // File work from more than one department under the one project, which is
   // the whole reason projects exist.
@@ -313,7 +313,7 @@ async function main() {
       action: "upsert",
       rows: beforeFiling.files.map((row) => ({ ...row, projectId: "proj_smoke" })),
     },
-  ]);
+  ], true);
 
   const filed = await loadWorkspace(USER, USER);
   const project = filed.projects.find((p) => p.id === "proj_smoke");
@@ -332,7 +332,7 @@ async function main() {
   const conversationCount = filed.conversations.length;
   const deliverableCount = filed.deliverables.length;
   const fileCount = filed.files.length;
-  await applyMutations(USER, USER, [{ table: "projects", action: "delete", ids: ["proj_smoke"] }]);
+  await applyMutations(USER, USER, [{ table: "projects", action: "delete", ids: ["proj_smoke"] }], true);
   const released = await loadWorkspace(USER, USER);
   check("project gone", !released.projects.some((p) => p.id === "proj_smoke"));
   check(
@@ -389,7 +389,7 @@ async function main() {
           },
         ],
       },
-    ]);
+    ], true);
 
     const back = await loadWorkspace(USER, USER);
     check("both entries came back", back.memory.length === 2, `${back.memory.length}`);
@@ -407,7 +407,7 @@ async function main() {
 
     await applyMutations(USER, USER, [
       { table: "memory", action: "delete", ids: ["mem_smoke_1", "mem_smoke_2"] },
-    ]);
+    ], true);
     check("and they delete", (await loadWorkspace(USER, USER)).memory.length === 0);
   }
 
@@ -432,7 +432,7 @@ async function main() {
           },
         ],
       },
-    ]);
+    ], true);
 
     const back = await loadWorkspace(USER, USER);
     const task = back.tasks.find((row) => row.id === "task_smoke_1");
@@ -445,7 +445,7 @@ async function main() {
     check("hand ordering survived, negatives included", task?.order === -3);
     check("nothing invented a completedAt", task?.completedAt === undefined);
 
-    await applyMutations(USER, USER, [{ table: "tasks", action: "delete", ids: ["task_smoke_1"] }]);
+    await applyMutations(USER, USER, [{ table: "tasks", action: "delete", ids: ["task_smoke_1"] }], true);
     check("and it deletes", (await loadWorkspace(USER, USER)).tasks.length === 0);
   }
 
@@ -473,7 +473,7 @@ async function main() {
           },
         ],
       },
-    ]);
+    ], true);
 
     const back = await loadWorkspace(USER, USER);
     const file = back.files.find((row) => row.id === "file_payload_1");
@@ -498,7 +498,7 @@ async function main() {
       .limit(1);
     check("the bytes are still in the database", row?.data.length === data.length);
 
-    await applyMutations(USER, USER, [{ table: "files", action: "delete", ids: ["file_payload_1"] }]);
+    await applyMutations(USER, USER, [{ table: "files", action: "delete", ids: ["file_payload_1"] }], true);
     const after = await loadWorkspace(USER, USER);
     check(
       "and it deletes",
@@ -524,7 +524,7 @@ async function main() {
 
   await applyMutations(USER, USER, [
     { table: "conversations", action: "delete", ids: ["conv_smoke"] },
-  ]);
+  ], true);
 
   const attachmentsLeft = await requireDb()
     .select({ id: schema.files.id })
@@ -539,7 +539,7 @@ async function main() {
   check("a Library upload is untouched by that", uploads.length >= 0);
 
   console.log("\ndeleting a head takes its conversations with it");
-  await applyMutations(USER, USER, [{ table: "departments", action: "delete", ids: ["design"] }]);
+  await applyMutations(USER, USER, [{ table: "departments", action: "delete", ids: ["design"] }], true);
   const afterDelete = await loadWorkspace(USER, USER);
   check("department gone", !afterDelete.departments.some((d) => d.id === "design"));
   check(

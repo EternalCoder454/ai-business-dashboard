@@ -54,19 +54,19 @@ void (async () => {
     }));
     const conversation = { id: "c1", departmentId: "d1", title: "Thread", messages };
 
-    await applyMutations(WS, EMAIL, [{ table: "conversations", action: "upsert", rows: [conversation] } as never]);
+    await applyMutations(WS, EMAIL, [{ table: "conversations", action: "upsert", rows: [conversation] } as never], true);
     const first = await xmin();
     ok("eight messages written", Object.keys(first).length === 8, `${Object.keys(first).length}`);
 
     console.log("\nsaving the same thread again");
-    await applyMutations(WS, EMAIL, [{ table: "conversations", action: "upsert", rows: [conversation] } as never]);
+    await applyMutations(WS, EMAIL, [{ table: "conversations", action: "upsert", rows: [conversation] } as never], true);
     const second = await xmin();
     const rewritten = Object.keys(first).filter((id) => first[id] !== second[id]);
     ok("no row was rewritten", rewritten.length === 0, rewritten.join(",") || "none");
 
     console.log("\nadding a ninth, the way a reply does");
     const grown = { ...conversation, messages: [...messages, { id: "m8", role: "user", content: "line 8", timestamp: 2000, attachments: [] }] };
-    await applyMutations(WS, EMAIL, [{ table: "conversations", action: "upsert", rows: [grown] } as never]);
+    await applyMutations(WS, EMAIL, [{ table: "conversations", action: "upsert", rows: [grown] } as never], true);
     const third = await xmin();
     const touched = Object.keys(second).filter((id) => second[id] !== third[id]);
     ok("the eight before it were left alone", touched.length === 0, touched.join(",") || "none");
@@ -74,7 +74,7 @@ void (async () => {
 
     console.log("\nediting one still saves");
     const edited = { ...grown, messages: grown.messages.map((m) => m.id === "m3" ? { ...m, content: "changed" } : m) };
-    await applyMutations(WS, EMAIL, [{ table: "conversations", action: "upsert", rows: [edited] } as never]);
+    await applyMutations(WS, EMAIL, [{ table: "conversations", action: "upsert", rows: [edited] } as never], true);
     const fourth = await xmin();
     ok("the edited row was rewritten", third["m3"] !== fourth["m3"]);
     const others = Object.keys(third).filter((id) => id !== "m3" && third[id] !== fourth[id]);

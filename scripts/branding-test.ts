@@ -20,7 +20,7 @@ function check(label: string, condition: boolean, detail = "") {
 
 console.log("removing a logo");
 {
-  const sent = writableSettings({ companyLogoUrl: null });
+  const sent = writableSettings({ companyLogoUrl: null }, true);
   check("null reaches the column", sent.companyLogoUrl === null, String(sent.companyLogoUrl));
   check("and it is the only field written", Object.keys(sent).length === 1);
 
@@ -30,13 +30,13 @@ console.log("removing a logo");
     unknown
   >;
   check("undefined does not survive JSON", !("companyLogoUrl" in overWire));
-  check("so it writes nothing", Object.keys(writableSettings(overWire)).length === 0);
+  check("so it writes nothing", Object.keys(writableSettings(overWire, true)).length === 0);
 }
 
 console.log("\nsetting a logo");
 {
   const url = "data:image/png;base64,abc";
-  check("a data URL is written", writableSettings({ companyLogoUrl: url }).companyLogoUrl === url);
+  check("a data URL is written", writableSettings({ companyLogoUrl: url }, true).companyLogoUrl === url);
 }
 
 console.log("\nnothing else can be cleared");
@@ -45,7 +45,7 @@ console.log("\nnothing else can be cleared");
   // always has a value for, so it is a bug on the way in rather than a wish.
   for (const field of WRITABLE_SETTINGS) {
     if (field === "companyLogoUrl") continue;
-    const sent = writableSettings({ [field]: null });
+    const sent = writableSettings({ [field]: null }, true);
     if (Object.keys(sent).length !== 0) {
       check(`${field} refuses null`, false, JSON.stringify(sent));
     }
@@ -56,7 +56,7 @@ console.log("\nnothing else can be cleared");
 console.log("\na partial save leaves the rest alone");
 {
   // This is the line that once turned a theme change into a rename.
-  const sent = writableSettings({ theme: "dark" });
+  const sent = writableSettings({ theme: "dark" }, true);
   check("only theme is written", Object.keys(sent).join(",") === "theme", Object.keys(sent).join(","));
 }
 
@@ -69,7 +69,7 @@ console.log("\nthe row cannot choose what it writes into");
     openaiKey: "sk-live",
     googleKey: "sk-live",
     companyName: "Acme",
-  });
+  }, true);
   check("the workspace cannot be redirected", !("workspaceId" in sent));
   check("an id cannot be forced", !("id" in sent));
   // /api/workspace/keys is the only writer, because it encrypts on the way in.
@@ -79,7 +79,7 @@ console.log("\nthe row cannot choose what it writes into");
 
 console.log("\nwrong types are refused rather than stored");
 {
-  const sent = writableSettings({ companyName: 42, companyMark: { a: 1 }, theme: ["dark"] });
+  const sent = writableSettings({ companyName: 42, companyMark: { a: 1 }, theme: ["dark"] }, true);
   check("nothing that is not a string is written", Object.keys(sent).length === 0, JSON.stringify(sent));
 }
 
@@ -101,32 +101,32 @@ console.log("\na numeric setting is written, and only within its bounds");
    * saved, said nothing, and read back unchanged. This is that filter being
    * asked about the case that broke it.
    */
-  check("a whole number is written", writableSettings({ monthlyBudget: 25 }).monthlyBudget === 25);
+  check("a whole number is written", writableSettings({ monthlyBudget: 25 }, true).monthlyBudget === 25);
   check(
     "a numeric string is taken too, since a form sends one",
-    writableSettings({ monthlyBudget: "25" }).monthlyBudget === 25,
+    writableSettings({ monthlyBudget: "25" }, true).monthlyBudget === 25,
   );
   check(
     "zero is a value, not an absence",
-    writableSettings({ monthlyBudget: 0 }).monthlyBudget === 0,
+    writableSettings({ monthlyBudget: 0 }, true).monthlyBudget === 0,
   );
   check(
     "a fraction is rounded rather than refused",
-    writableSettings({ monthlyBudget: 25.4 }).monthlyBudget === 25,
+    writableSettings({ monthlyBudget: 25.4 }, true).monthlyBudget === 25,
   );
 
   // Discarded rather than clamped: a budget nobody typed is not a budget.
   for (const bad of [-1, Number.NaN, Number.POSITIVE_INFINITY, 10_000_000, "abc"]) {
     check(
       `refused: ${String(bad)}`,
-      !("monthlyBudget" in writableSettings({ monthlyBudget: bad })),
+      !("monthlyBudget" in writableSettings({ monthlyBudget: bad }, true)),
     );
   }
 
   // The exception is one named field, not a loosening of the rule.
   check(
     "a number still cannot reach a text column",
-    !("companyName" in writableSettings({ companyName: 42 })),
+    !("companyName" in writableSettings({ companyName: 42 }, true)),
   );
 }
 

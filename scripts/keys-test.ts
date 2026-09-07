@@ -100,7 +100,7 @@ async function main() {
       action: "upsert",
       row: { companyName: "Key Test", anthropicKey: "sk-ant-ATTACKER" },
     } as never,
-  ]);
+  ], true);
   check("the real key survived", (await workspaceKey(WS, "anthropic")) === ANTHROPIC);
   clean("and the snapshot after it", await loadWorkspace(WS, WHO));
 

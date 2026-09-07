@@ -21,7 +21,7 @@ async function wipe() {
   await applyMutations(USER, USER, [
     { table: "conversations", action: "delete", ids: current.conversations.map((c) => c.id) },
     { table: "files", action: "delete", ids: current.files.map((f) => f.id) },
-  ]);
+  ], true);
 }
 
 function weigh(label: string, workspace: unknown) {
@@ -54,7 +54,7 @@ async function main() {
         updatedAt: Date.now(),
       })),
     },
-  ]);
+  ], true);
 
   const loaded = await loadWorkspace(USER, USER);
   const withFiles = weigh(`after ${screenshots} one-megabyte screenshots`, loaded);

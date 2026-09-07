@@ -48,7 +48,17 @@ export default function SettingsPage() {
     createDepartment,
     updateDepartment,
     deleteDepartment,
+    workspaceRole,
   } = useStore();
+
+  /*
+   * The company's name, its mark and its subtitle are on every screen and on
+   * the invitation emails, so they belong to whoever runs the business rather
+   * than to whoever happens to be looking at Settings. Hidden here and refused
+   * by the server, because a hidden field is not a permission: see
+   * ADMIN_ONLY_SETTINGS.
+   */
+  const isAdmin = workspaceRole === "admin";
 
   /*
    * The four text fields, each saving once you stop rather than once per key.
@@ -315,20 +325,22 @@ export default function SettingsPage() {
 
           <Card>
             <h2 className="md-title-lg mb-5">Company</h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Company name">
-                <TextInput
-                  value={companyName.value}
-                  onChange={(event) => companyName.onChange(event.target.value)}
-                />
-              </Field>
-              <Field label="Subtitle">
-                <TextInput
-                  value={companySubtitle.value}
-                  onChange={(event) => companySubtitle.onChange(event.target.value)}
-                />
-              </Field>
-            </div>
+            {isAdmin ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Company name">
+                  <TextInput
+                    value={companyName.value}
+                    onChange={(event) => companyName.onChange(event.target.value)}
+                  />
+                </Field>
+                <Field label="Subtitle">
+                  <TextInput
+                    value={companySubtitle.value}
+                    onChange={(event) => companySubtitle.onChange(event.target.value)}
+                  />
+                </Field>
+              </div>
+            ) : null}
 
             <div className="mt-5">
               <p className="md-label mb-2 text-on-variant">Theme</p>

@@ -36,6 +36,30 @@ export const WRITABLE_SETTINGS = [
   "wikiSubtitle",
 ] as const;
 
+/**
+ * Settings that belong to the business rather than to the person changing them.
+ *
+ * Everything here is seen by everybody: the company's name and mark are on
+ * every screen and on the invitation emails, the writing rules are appended to
+ * every head's prompt and beat any instruction that disagrees with them, and
+ * the budget is a spending control. A member could rewrite all of it, which is
+ * the kind of permission nobody notices is missing until somebody uses it.
+ *
+ * Refused on the server rather than only hidden on the screen, because a hidden
+ * field is not a permission. The Settings page hides them too, so a member is
+ * not shown a control that silently does nothing.
+ */
+export const ADMIN_ONLY_SETTINGS = new Set<string>([
+  "companyName",
+  "companySubtitle",
+  "companyMark",
+  "companyLogoUrl",
+  "wikiTitle",
+  "wikiSubtitle",
+  "writingRules",
+  "monthlyBudget",
+]);
+
 /** The fields that may be set back to empty rather than only changed. */
 const CLEARABLE = new Set<string>(["companyLogoUrl"]);
 
@@ -64,12 +88,19 @@ const NUMERIC: Record<string, number> = {
  * every other column here is a string the interface always has a value for, and
  * a null arriving in one of them is a bug rather than an intention.
  */
-export function writableSettings(row: Record<string, unknown>): Record<string, unknown> {
+export function writableSettings(
+  row: Record<string, unknown>,
+  /** Anything in ADMIN_ONLY_SETTINGS is dropped for anybody else. */
+  isAdmin: boolean,
+): Record<string, unknown> {
   const sent: Record<string, unknown> = {};
 
   for (const field of WRITABLE_SETTINGS) {
     const value = row[field];
     if (value === undefined) continue;
+    // Dropped rather than refused: the rest of the same save is legitimate,
+    // and failing all of it would lose a change the person was allowed to make.
+    if (!isAdmin && ADMIN_ONLY_SETTINGS.has(field)) continue;
     if (value === null) {
       if (CLEARABLE.has(field)) sent[field] = null;
       continue;

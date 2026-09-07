@@ -194,7 +194,7 @@ export async function POST(request: Request) {
     // One transaction for the batch, so a failure halfway cannot leave a
     // conversation saved with none of its messages.
     await track("workspace.save", owner.workspaceId, () =>
-      applyMutations(owner.workspaceId, owner.email, ops),
+      applyMutations(owner.workspaceId, owner.email, ops, owner.role === "admin"),
     );
     return Response.json({ applied: ops.length });
   } catch (error) {

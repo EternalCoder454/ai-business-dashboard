@@ -700,12 +700,44 @@ export function StoreProvider({
    * but the indirection stays useful: it is still the single place where "what
    * the screen shows" is assembled from "what the server said".
    */
+  /**
+   * What the inline script in the root layout already put on <html>.
+   *
+   * Read once through a lazy initialiser rather than in an effect, because an
+   * effect runs after the first paint and the whole point is to agree with the
+   * document before anything is drawn. Empty on the server, where there is no
+   * localStorage and the markup carries the default anyway.
+   */
+  const [storedTheme] = useState<Settings["theme"] | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const value = window.localStorage.getItem("eterneon-theme");
+      return value === "light" || value === "dark" ? value : null;
+    } catch {
+      return null;
+    }
+  });
+
   const settings: Settings = useMemo(() => {
     // The server's answer sits between the shipped defaults and the workspace
     // proper, so the name on screen is right from the first frame instead of
     // reading "Your Company" until the fetch lands.
     const base = {
       ...DEFAULT_SETTINGS,
+      /*
+       * The theme this browser last used, until the workspace says otherwise.
+       *
+       * This is the frame of dark that flashed on a light workspace. The script
+       * in the root layout reads the same value and applies it before anything
+       * is painted, correctly. Then the store mounted, and until the snapshot
+       * arrived a second later `settings.theme` was still the shipped default
+       * of dark, so the effect below dutifully wrote dark back over it and then
+       * corrected itself when the fetch landed.
+       *
+       * Reading the same mirror here means the two agree from the first render,
+       * and the effect writes the value that is already on the element.
+       */
+      ...(storedTheme ? { theme: storedTheme } : {}),
       ...(initialBranding
         ? { companyName: initialBranding.name, companyMark: initialBranding.mark }
         : {}),
@@ -715,7 +747,7 @@ export function StoreProvider({
     // this browser once read. Overlaying unconditionally is what lets an empty
     // key mean cleared rather than merely absent.
     return credentialsReady ? { ...base, ...credentials } : base;
-  }, [remote?.settings, credentials, credentialsReady, initialBranding]);
+  }, [remote?.settings, credentials, credentialsReady, initialBranding, storedTheme]);
 
   /**
    * Google fills in what the person has not set for themselves.

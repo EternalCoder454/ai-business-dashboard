@@ -51,10 +51,10 @@ async function main() {
 
   await applyMutations(THEIRS, THEIRS, [
     { table: "settings", action: "upsert", row: { companyName: "Their Business" } },
-  ]);
+  ], true);
   await applyMutations(MINE, MINE, [
     { table: "settings", action: "upsert", row: { companyName: "My Business" } },
-  ]);
+  ], true);
 
   // The attack: my session, their workspace id in the body.
   await applyMutations(MINE, MINE, [
@@ -63,7 +63,7 @@ async function main() {
       action: "upsert",
       row: { workspaceId: THEIRS, companyName: "Taken Over" },
     } as never,
-  ]);
+  ], true);
 
   const theirs = await settingsFor(THEIRS);
   const mine = await settingsFor(MINE);
@@ -77,7 +77,7 @@ async function main() {
       action: "upsert",
       row: { workspaceId: "", companyName: "Still Mine" },
     } as never,
-  ]);
+  ], true);
   check("no row was written to the empty scope", (await settingsFor("")) === null);
   check("mine took the change", (await settingsFor(MINE))?.companyName === "Still Mine");
   console.log("\na partial save changes only what it sent");
@@ -93,10 +93,10 @@ async function main() {
    */
   await applyMutations(MINE, MINE, [
     { table: "settings", action: "upsert", row: { companyName: "Real Name", writingRules: "House style" } },
-  ]);
+  ], true);
   await applyMutations(MINE, MINE, [
     { table: "settings", action: "upsert", row: { theme: "light" } },
-  ]);
+  ], true);
   const afterTheme = await settingsFor(MINE);
   check("the theme changed", afterTheme?.theme === "light", afterTheme?.theme);
   check("the name survived", afterTheme?.companyName === "Real Name", afterTheme?.companyName);
@@ -111,7 +111,7 @@ async function main() {
   // And a name that is sent still renames the business, which is the feature.
   await applyMutations(MINE, MINE, [
     { table: "settings", action: "upsert", row: { companyName: "Renamed Properly" } },
-  ]);
+  ], true);
   const [renamed] = await requireDb()
     .select({ name: t.workspaces.name })
     .from(t.workspaces)
@@ -130,20 +130,20 @@ async function main() {
       action: "upsert",
       row: { companyName: "Still Mine", anthropicKey: "sk-attacker" },
     } as never,
-  ]);
+  ], true);
   check("the key survived the save", (await settingsFor(MINE))?.anthropicKey === "sk-real-key");
 
   console.log("\nthe same holds for the company profile");
   await applyMutations(THEIRS, THEIRS, [
     { table: "profile", action: "upsert", row: { mission: "Theirs" } } as never,
-  ]);
+  ], true);
   await applyMutations(MINE, MINE, [
     {
       table: "profile",
       action: "upsert",
       row: { workspaceId: THEIRS, mission: "Overwritten" },
     } as never,
-  ]);
+  ], true);
   check(
     "their mission is untouched",
     (await loadWorkspace(THEIRS, THEIRS)).profile.mission === "Theirs",
