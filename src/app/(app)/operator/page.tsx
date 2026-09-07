@@ -290,7 +290,7 @@ export default function AdminPage() {
             key={key}
             selected={tab === key}
             title={TAB_LABEL[key]}
-            aria-label={TAB_LABEL[key]}
+            ariaLabel={TAB_LABEL[key]}
             onClick={() => {
               setTab(key);
               setPerson(undefined);

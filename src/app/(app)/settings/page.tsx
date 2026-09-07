@@ -2,7 +2,7 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { CompanyProfilePanel } from "@/components/settings/CompanyProfilePanel";
 import { IntegrationsPanel } from "@/components/settings/IntegrationsPanel";
 import { StorageCard } from "@/components/StorageCard";
@@ -14,9 +14,15 @@ import { CompanyMark } from "@/components/CompanyMark";
 import { ACCEPTED_IMAGE_TYPES, fileToAvatar } from "@/lib/images";
 import { useEffect, useRef, useState } from "react";
 import {
+  ArchiveIcon,
+  BuildingIcon,
   Button,
   Card,
   Chip,
+  DocIcon,
+  PuzzleIcon,
+  SparkIcon,
+  UsersIcon,
   Dialog,
   DownloadIcon,
   EditIcon,
@@ -53,6 +59,23 @@ const TAB_LABEL: Record<TabKey, string> = {
   models: "Models and keys",
   integrations: "Integrations",
   data: "Data",
+};
+
+/**
+ * One icon per tab, the way the Operator screen does it.
+ *
+ * Not decoration: below medium only the tab you are on says its name, so on a
+ * phone the icon is the whole of what the other five are. Each one is the same
+ * icon that already means that thing elsewhere in the panel, so a person who
+ * has seen Integrations in the account menu meets the same puzzle piece here.
+ */
+const TAB_ICON: Record<TabKey, ReactNode> = {
+  company: <BuildingIcon className="h-4 w-4" />,
+  profile: <DocIcon className="h-4 w-4" />,
+  heads: <UsersIcon className="h-4 w-4" />,
+  models: <SparkIcon className="h-4 w-4" />,
+  integrations: <PuzzleIcon className="h-4 w-4" />,
+  data: <ArchiveIcon className="h-4 w-4" />,
 };
 
 /** Anything that is not a tab is the first one, rather than a blank screen. */
@@ -230,9 +253,23 @@ function SettingsBody() {
           <Chip
             key={key}
             selected={tab === key}
+            title={TAB_LABEL[key]}
+            ariaLabel={TAB_LABEL[key]}
             onClick={() => router.replace(`/settings?tab=${key}`, { scroll: false })}
           >
-            {TAB_LABEL[key]}
+            <span className="flex items-center gap-1.5">
+              {TAB_ICON[key]}
+              {/*
+                * On a phone only the selected tab says its name, which is the
+                * rule the Operator tabs already follow. A row of six unlabelled
+                * icons is a guess with no hover to resolve it, and six labels is
+                * the squeeze this avoids. The one you are on is the one that
+                * needs naming.
+                */}
+              <span className={cx(tab === key ? "inline" : "hidden medium:inline")}>
+                {TAB_LABEL[key]}
+              </span>
+            </span>
           </Chip>
         ))}
       </div>
