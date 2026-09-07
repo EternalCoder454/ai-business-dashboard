@@ -15,6 +15,7 @@ import { buildCompanyContext, hasProfileContent } from "@/lib/prompts";
 import { COMPANY_ID, SHARED_OPERATING_RULES } from "@/lib/seed";
 import { buildSkillsBlock } from "@/lib/skills";
 import { useStore } from "@/lib/store";
+import { SpendCard } from "@/components/SpendCard";
 
 /** Characters per token, close enough for a proportion bar. */
 const CPT = 3.7;
@@ -130,6 +131,10 @@ export default function InformationPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 medium:px-6 expanded:px-8">
         <div className="measure flex flex-col gap-5">
+          {/* First, because it is the one figure on this page somebody came
+              looking for rather than found. */}
+          <SpendCard />
+
           {/* ------------------------------------------------ caching */}
           <Card>
             <h2 className="md-title-lg mb-1">Caching</h2>

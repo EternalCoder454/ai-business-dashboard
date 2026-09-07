@@ -28,6 +28,7 @@ export const WRITABLE_SETTINGS = [
   "roomBrevity",
   "companyMark",
   "webSearch",
+  "monthlyBudget",
   "companyLogoUrl",
   "sidebarSide",
   "searchShortcut",
@@ -37,6 +38,23 @@ export const WRITABLE_SETTINGS = [
 
 /** The fields that may be set back to empty rather than only changed. */
 const CLEARABLE = new Set<string>(["companyLogoUrl"]);
+
+/**
+ * The ones that are a number rather than a string, and their ceiling.
+ *
+ * Named one at a time rather than by loosening the type check for everything.
+ * Every other column here is text, and a rule that accepted any number would
+ * let one into a text column where it would read back as something nobody
+ * wrote. The first numeric setting was silently dropped by exactly this filter:
+ * it wrote and the field read back as it was, with nothing anywhere saying why.
+ *
+ * The ceiling is not a policy about how much anybody may spend. It is a guard
+ * against a typo becoming a budget of a hundred million, which would read as
+ * "no budget" while claiming to be one.
+ */
+const NUMERIC: Record<string, number> = {
+  monthlyBudget: 1_000_000,
+};
 
 /**
  * The subset of a sent row that may actually be written.
@@ -54,6 +72,15 @@ export function writableSettings(row: Record<string, unknown>): Record<string, u
     if (value === undefined) continue;
     if (value === null) {
       if (CLEARABLE.has(field)) sent[field] = null;
+      continue;
+    }
+    if (field in NUMERIC) {
+      // Whole, positive, and inside the ceiling. Anything else is discarded
+      // rather than clamped: a budget somebody did not type is not a budget.
+      const asNumber = typeof value === "number" ? value : Number(value);
+      if (Number.isFinite(asNumber) && asNumber >= 0 && asNumber <= NUMERIC[field]) {
+        sent[field] = Math.round(asNumber);
+      }
       continue;
     }
     if (typeof value === "string") sent[field] = value;

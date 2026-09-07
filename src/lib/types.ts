@@ -495,6 +495,16 @@ export interface Settings {
    */
   webSearch?: WebSearchMode;
   /**
+   * What this business is willing to spend on models in a month, in dollars.
+   *
+   * Zero means no budget, not a budget of nothing. Nothing is ever blocked by
+   * it: the panel is bring-your-own-key, so the spending happens on the
+   * customer's own account, and cutting their heads off mid month would be the
+   * panel deciding something it has no business deciding. It is a line to
+   * notice crossing, which is what an owner actually wants from it.
+   */
+  monthlyBudget?: number;
+  /**
    * A data URL, which replaces the letters when set.
    *
    * Null rather than only undefined, because the column is nullable and null is

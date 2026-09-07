@@ -306,6 +306,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
         roomBrevity: t.settings.roomBrevity,
         companyMark: t.settings.companyMark,
         webSearch: t.settings.webSearch,
+        monthlyBudget: t.settings.monthlyBudget,
         companyLogoUrl: t.settings.companyLogoUrl,
         sidebarSide: t.settings.sidebarSide,
         searchShortcut: t.settings.searchShortcut,
@@ -508,6 +509,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
         settingsRow[0]?.webSearch === "native" || settingsRow[0]?.webSearch === "perplexity"
           ? settingsRow[0].webSearch
           : "off",
+      monthlyBudget: settingsRow[0]?.monthlyBudget ?? 0,
       companyLogoUrl: settingsRow[0]?.companyLogoUrl ?? undefined,
       sidebarSide: (settingsRow[0]?.sidebarSide ?? "left") as Settings["sidebarSide"],
       searchShortcut: (settingsRow[0]?.searchShortcut ?? "slash") as Settings["searchShortcut"],

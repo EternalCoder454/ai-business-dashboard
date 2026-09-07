@@ -93,5 +93,42 @@ console.log("\nwhich image a tab and a mark should show");
   check("whitespace means letters", logoOrNothing("   \n ") === "");
 }
 
+console.log("\na numeric setting is written, and only within its bounds");
+{
+  /*
+   * Every setting was text until a budget arrived, and the filter wrote only
+   * strings. A number therefore vanished on the way to the database: the field
+   * saved, said nothing, and read back unchanged. This is that filter being
+   * asked about the case that broke it.
+   */
+  check("a whole number is written", writableSettings({ monthlyBudget: 25 }).monthlyBudget === 25);
+  check(
+    "a numeric string is taken too, since a form sends one",
+    writableSettings({ monthlyBudget: "25" }).monthlyBudget === 25,
+  );
+  check(
+    "zero is a value, not an absence",
+    writableSettings({ monthlyBudget: 0 }).monthlyBudget === 0,
+  );
+  check(
+    "a fraction is rounded rather than refused",
+    writableSettings({ monthlyBudget: 25.4 }).monthlyBudget === 25,
+  );
+
+  // Discarded rather than clamped: a budget nobody typed is not a budget.
+  for (const bad of [-1, Number.NaN, Number.POSITIVE_INFINITY, 10_000_000, "abc"]) {
+    check(
+      `refused: ${String(bad)}`,
+      !("monthlyBudget" in writableSettings({ monthlyBudget: bad })),
+    );
+  }
+
+  // The exception is one named field, not a loosening of the rule.
+  check(
+    "a number still cannot reach a text column",
+    !("companyName" in writableSettings({ companyName: 42 })),
+  );
+}
+
 console.log(failures === 0 ? "\nall checks passed" : `\n${failures} failed`);
 process.exit(failures === 0 ? 0 : 1);

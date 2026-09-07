@@ -389,6 +389,12 @@ export const settings = pgTable("settings", {
    * offers, which needs no second key.
    */
   webSearch: text("web_search").notNull().default("off"),
+  /*
+   * A monthly ceiling on model spend, in whole dollars. Zero means none set,
+   * which is what every business has until somebody decides otherwise: a panel
+   * that invented a budget would be making a decision about somebody's money.
+   */
+  monthlyBudget: integer("monthly_budget").notNull().default(0),
   /**
    * Perplexity, which is not a provider a department can run on.
    *
