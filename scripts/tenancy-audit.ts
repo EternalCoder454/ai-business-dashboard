@@ -56,6 +56,10 @@ const SCOPED = [
  * is something nobody has thought about, which the audit says out loud.
  */
 const UNFENCED: Record<string, string> = {
+  feedbackFiles:
+    "attached to a piece of feedback, which is addressed to whoever runs the " +
+    "deployment rather than owned by the business that sent it; read only on " +
+    "the operator screen and deleted with the note",
   workspaces: "the list of businesses itself; the operator screen reads it",
   access: "keyed by address, and the thing that decides which workspace anybody gets",
   accounts: "identity follows the person, not the business they are currently in",

@@ -577,6 +577,34 @@ export const taskComments = pgTable(
   ],
 );
 
+/**
+ * A screenshot or a short clip attached to a piece of feedback.
+ *
+ * Not workspace scoped, deliberately, which is why it is not in the backup or
+ * the tenancy lists. Feedback is addressed to whoever runs the deployment
+ * rather than owned by the business that sent it: it is read on the operator
+ * screen across every customer, and it is deleted when the note is.
+ *
+ * Bytes in the row rather than in the blob store. The store's upload token is
+ * scoped to a workspace prefix and its rows are the Library's, so putting these
+ * there would leave files nothing tracks in a place they do not belong. These
+ * are small, capped, few, and short lived.
+ */
+export const feedbackFiles = pgTable(
+  "feedback_files",
+  {
+    id: text("id").primaryKey(),
+    feedbackId: text("feedback_id").notNull(),
+    name: text("name").notNull().default(""),
+    mediaType: text("media_type").notNull(),
+    size: integer("size").notNull().default(0),
+    /** base64, the way a browser hands it over. */
+    data: text("data").notNull(),
+    createdAt: created(),
+  },
+  (table) => [index("feedback_files_idx").on(table.feedbackId)],
+);
+
 export const wikiPages = pgTable(
   "wiki_pages",
   {

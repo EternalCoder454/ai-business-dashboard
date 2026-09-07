@@ -53,7 +53,25 @@ export const adminDeleteBody = z.object({
   confirm: z.string().trim().max(320).optional(),
 });
 
-export const feedbackBody = z.object({ body: mediumText });
+export const feedbackBody = z.object({
+  body: mediumText,
+  /*
+   * Screenshots and short clips. Checked again by checkAttachments, which is
+   * the one that decides: this only keeps a shape out of the route that every
+   * reader below would otherwise have to defend against.
+   */
+  files: z
+    .array(
+      z.object({
+        name: z.string().max(300),
+        mediaType: z.string().max(100),
+        size: z.number().int().nonnegative(),
+        data: z.string(),
+      }),
+    )
+    .max(5)
+    .optional(),
+});
 
 export const feedbackPatchBody = z.object({
   id,

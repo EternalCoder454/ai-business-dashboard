@@ -1,10 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Button, Card, Chip, EmptyState, SparkIcon, cx } from "./ui";
+import { Button, Card, Chip, EmptyState, SparkIcon, cx, Dialog} from "./ui";
 import { formatExactTime } from "@/lib/routes";
 
+interface FeedbackFile {
+  id: string;
+  name: string;
+  mediaType: string;
+  size: number;
+}
+
 interface FeedbackRow {
+  files?: FeedbackFile[];
   id: string;
   workspaceName: string;
   email: string;
@@ -26,6 +34,7 @@ export function FeedbackTab() {
   const [rows, setRows] = useState<FeedbackRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
+  const [viewing, setViewing] = useState<FeedbackFile | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -134,11 +143,73 @@ export function FeedbackTab() {
                   thoughts, and flattening them loses the second one. */}
               <p className="md-body whitespace-pre-wrap [overflow-wrap:anywhere]">{row.body}</p>
 
+              {/*
+                * What they attached, played and shown here rather than
+                * downloaded and opened somewhere else.
+                *
+                * Native img and video and nothing more. A player library would
+                * be several times the weight of this whole screen to gain
+                * controls the browser already draws, and these are short clips
+                * on an internal page rather than a media product.
+                *
+                * Pictures open larger on click, because a screenshot of a
+                * screen shrunk into a card is a screenshot of nothing.
+                */}
+              {row.files?.length ? (
+                <ul className="mt-3 grid grid-cols-2 gap-2 medium:grid-cols-3">
+                  {row.files.map((file) => (
+                    <li key={file.id}>
+                      {file.mediaType.startsWith("video/") ? (
+                        <video
+                          controls
+                          preload="metadata"
+                          className="w-full rounded-xl bg-highest"
+                          src={`/api/feedback/file/${file.id}`}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setViewing(file)}
+                          aria-label={`Open ${file.name || "the picture"}`}
+                          className="md-state block w-full overflow-hidden rounded-xl bg-highest"
+                        >
+                          <img
+                            src={`/api/feedback/file/${file.id}`}
+                            alt={file.name}
+                            loading="lazy"
+                            className="h-28 w-full object-cover"
+                          />
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+
               <p className="md-label-sm mt-2 text-on-variant/75">{row.email}</p>
             </Card>
           </li>
         ))}
       </ul>
+      {/* One picture, as large as the window allows. Nothing about this is a
+          gallery: there is a next and a previous only if somebody asks for
+          them, and so far nobody has needed one. */}
+      <Dialog
+        open={Boolean(viewing)}
+        title={viewing?.name || "Attachment"}
+        onClose={() => setViewing(null)}
+        width="max-w-4xl"
+      >
+        {viewing ? (
+          <img
+            src={`/api/feedback/file/${viewing.id}`}
+            alt={viewing.name}
+            className="max-h-[70vh] w-full rounded-xl object-contain"
+          />
+        ) : null}
+      </Dialog>
+
     </div>
   );
 }

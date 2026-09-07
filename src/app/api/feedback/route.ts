@@ -1,6 +1,6 @@
 import { feedbackBody, feedbackDeleteBody, feedbackPatchBody } from "@/lib/schemas";
 import { randomUUID } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
@@ -8,6 +8,8 @@ import { membershipFor } from "@/db/tenancy";
 import { readJson } from "@/lib/guard";
 import { withinRate } from "@/lib/rateLimit";
 import { isOperator } from "@/lib/admin";
+import { checkAttachments, MAX_FEEDBACK_TOTAL_BYTES } from "@/lib/feedbackFiles";
+import { optimiseImage } from "@/lib/optimiseImage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,10 +47,23 @@ export async function POST(request: Request) {
     );
   }
 
-  const parsed = await readJson(request, feedbackBody, MAX_BODY + 1_000);
+  /*
+   * Room for the note and the attachments, which travel as base64 and are
+   * therefore a third larger again than the bytes they represent.
+   */
+  const parsed = await readJson(
+    request,
+    feedbackBody,
+    MAX_BODY + Math.ceil((MAX_FEEDBACK_TOTAL_BYTES * 4) / 3) + 100_000,
+  );
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: parsed.status });
 
   const body = parsed.body.body?.trim() ?? "";
+  const attachments = parsed.body.files ?? [];
+
+  // The same rule the dialog shows, applied where it counts.
+  const refused = checkAttachments(attachments);
+  if (refused) return Response.json({ error: refused }, { status: 400 });
   if (!body) return Response.json({ error: "Nothing written." }, { status: 400 });
   if (body.length > MAX_BODY) {
     return Response.json(
@@ -75,14 +90,43 @@ export async function POST(request: Request) {
       .where(eq(t.accounts.userEmail, who.email))
       .limit(1);
 
+    const feedbackId = randomUUID();
     await db.insert(t.feedback).values({
-      id: randomUUID(),
+      id: feedbackId,
       workspaceId: membership.workspaceId,
       workspaceName: workspace?.name ?? "",
       email: who.email,
       displayName: account?.displayName ?? "",
       body,
     });
+
+    if (attachments.length) {
+      await db.insert(t.feedbackFiles).values(
+        await Promise.all(
+          attachments.map(async (file) => {
+            /*
+             * Losslessly re-encoded where that wins, which for a screenshot is
+             * most of its size. A .png of a screen is about a tenth as large as
+             * lossless WebP and pixel for pixel the same picture; a photograph
+             * or a clip is left exactly as it arrived. See optimiseImage.
+             */
+            const raw = Buffer.from(file.data, "base64");
+            const optimised = file.mediaType.startsWith("image/")
+              ? await optimiseImage(raw, file.mediaType)
+              : { bytes: raw, mediaType: file.mediaType };
+
+            return {
+              id: randomUUID(),
+              feedbackId,
+              name: file.name.slice(0, 300),
+              mediaType: optimised.mediaType,
+              size: optimised.bytes.length,
+              data: optimised.bytes.toString("base64"),
+            };
+          }),
+        ),
+      );
+    }
 
     return Response.json({ ok: true });
   } catch (error) {
@@ -100,14 +144,42 @@ export async function GET() {
   }
 
   try {
-    const rows = await requireDb()
+    const db = requireDb();
+    const rows = await db
       .select()
       .from(t.feedback)
       .orderBy(desc(t.feedback.createdAt))
       .limit(200);
 
+    /*
+     * What is attached, never the bytes. A list of two hundred notes each
+     * carrying a video would be tens of megabytes to draw a screen that shows
+     * none of it until something is opened; the player fetches one at a time
+     * from the route beside this one.
+     */
+    const files = rows.length
+      ? await db
+          .select({
+            id: t.feedbackFiles.id,
+            feedbackId: t.feedbackFiles.feedbackId,
+            name: t.feedbackFiles.name,
+            mediaType: t.feedbackFiles.mediaType,
+            size: t.feedbackFiles.size,
+          })
+          .from(t.feedbackFiles)
+          .where(
+            inArray(
+              t.feedbackFiles.feedbackId,
+              rows.map((row) => row.id),
+            ),
+          )
+      : [];
+
     return Response.json({
       feedback: rows.map((row) => ({
+        files: files
+          .filter((file) => file.feedbackId === row.id)
+          .map(({ id, name, mediaType, size }) => ({ id, name, mediaType, size })),
         id: row.id,
         workspaceName: row.workspaceName,
         email: row.email,
@@ -148,7 +220,11 @@ export async function DELETE(request: Request) {
   if (!id) return Response.json({ error: "Nothing named." }, { status: 400 });
 
   try {
-    await requireDb().delete(t.feedback).where(eq(t.feedback.id, id));
+    const db = requireDb();
+    // The files first: an attachment whose note is gone is one nothing can
+    // reach and nothing will ever clean up.
+    await db.delete(t.feedbackFiles).where(eq(t.feedbackFiles.feedbackId, id));
+    await db.delete(t.feedback).where(eq(t.feedback.id, id));
     return Response.json({ ok: true });
   } catch (error) {
     console.error("[api/feedback] delete", error);
