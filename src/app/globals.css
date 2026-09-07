@@ -35,11 +35,16 @@
   --md-secondary-container: #364a4e;
   --md-on-secondary-container: #d1e2e6;
 
-  /* Semantics share one saturation and one value, so they read as a set
-     rather than three colours that arrived separately. */
+  /* Semantics share one saturation, but not one value, and the difference
+     matters more than it looks. They used to share both, which meant hue was
+     doing all of the work of telling them apart: measured, the three sat
+     within two points of lightness of each other in the light theme, and once
+     hue collapses for a red-green deficiency an error and a success were the
+     same colour. Error is now decisively darker than success in both themes,
+     because that is the pair nobody may confuse. See colourblind-test. */
   --md-success: #73dea5;
   --md-warning: #debe73;
-  --md-error: #e0857b;
+  --md-error: #d97066;
   --md-on-error: #400d07;
   --md-error-container: #71261e;
   --md-on-error-container: #f6cfcb;
@@ -121,11 +126,16 @@
   --md-secondary-container: #d7e7ea;
   --md-on-secondary-container: #103941;
 
-  /* Semantics share one saturation and one value, so they read as a set
-     rather than three colours that arrived separately. */
+  /* Semantics share one saturation, but not one value, and the difference
+     matters more than it looks. They used to share both, which meant hue was
+     doing all of the work of telling them apart: measured, the three sat
+     within two points of lightness of each other in the light theme, and once
+     hue collapses for a red-green deficiency an error and a success were the
+     same colour. Error is now decisively darker than success in both themes,
+     because that is the pair nobody may confuse. See colourblind-test. */
   --md-success: #177242;
   --md-warning: #855a0f;
-  --md-error: #af2b1d;
+  --md-error: #7d1810;
   --md-on-error: #ffffff;
   --md-error-container: #fad5d1;
   --md-on-error-container: #4e140e;
@@ -846,6 +856,18 @@ table,
   height: 8px;
   border-radius: 9999px;
   flex: none;
+}
+
+/*
+ * Busy is a ring rather than a disc.
+ *
+ * The redundant cue for anybody who cannot separate the green from the amber.
+ * A 2px border on an 8px dot leaves a 4px hole, which is the smallest opening
+ * that still reads as one at this size.
+ */
+.status-dot-ring {
+  background: transparent !important;
+  border: 2px solid currentColor;
 }
 
 .status-dot::after {

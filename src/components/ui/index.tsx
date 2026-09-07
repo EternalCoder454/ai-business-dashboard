@@ -236,8 +236,29 @@ export function StatusDot({
       // Compact windows drop the words beside it, so the dot has to answer for
       // itself when someone presses and holds.
       title={STATUS_LABEL[status]}
-      className={animate && status === "online" ? "status-dot" : "status-dot [&::after]:hidden"}
-      style={{ background: STATUS_COLOR[status] }}
+      /*
+       * Shape as well as colour, because colour alone is not a signal.
+       *
+       * These were three discs that differed only in hue, and the pair that
+       * carries the most meaning was green against amber: the red-green axis,
+       * which about one man in twelve cannot read. At 8px, with no text beside
+       * it in the sidebar, that made the difference between a head being ready
+       * and a head being mid reply invisible to them.
+       *
+       * Online is filled and pulses, busy is a ring, offline is filled and
+       * grey. Two of the three differ by fill, all three differ by more than
+       * hue, and the label is still on the hover and the accessibility tree.
+       */
+      className={cx(
+        "status-dot",
+        status === "busy" && "status-dot-ring",
+        !(animate && status === "online") && "[&::after]:hidden",
+      )}
+      style={
+        status === "busy"
+          ? { borderColor: STATUS_COLOR[status] }
+          : { background: STATUS_COLOR[status] }
+      }
     />
   );
 }
