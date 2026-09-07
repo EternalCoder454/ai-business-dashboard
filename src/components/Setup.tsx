@@ -75,6 +75,11 @@ export function Setup() {
         href: "/",
       },
       {
+        title: "Your account",
+        body: "Your name, your role, when you are available and how you like answers written. Every head reads this before it replies, so the answer is written for you rather than for anybody.",
+        href: "/account",
+      },
+      {
         title: "Your heads",
         body: "Open one below and ask it something, the way you would ask a colleague. Each keeps its own conversations, so Finance and Legal never get mixed up.",
         href: "/orchestrator",

@@ -65,6 +65,7 @@ import {
   cx,
 } from "./ui";
 import { Markdown } from "./Markdown";
+import { splitOffers } from "@/lib/offers";
 import { EFFORT_ORDER, supportsEffort } from "@/lib/providers";
 import { createRipple } from "./ui/ripple";
 import { appendSpoken, useDictation } from "@/lib/dictation";
@@ -846,8 +847,13 @@ export function ChatView({ departmentId }: { departmentId: string }) {
    * well this file compiles, not about whether it is correct.
    */
   // eslint-disable-next-line react-hooks/preserve-manual-memoization -- see above
-  const send = useCallback(async () => {
-    const text = draft.trim();
+  const send = useCallback(async (override?: string) => {
+    /*
+     * The override is how a suggestion button sends. It behaves exactly as
+     * though the text had been typed into the composer and sent, attachments
+     * included, because that is what somebody pressing it has asked for.
+     */
+    const text = (override ?? draft).trim();
     if ((!text && pending.length === 0) || isStreaming || !department) return;
 
     let conversation = active;
@@ -1242,6 +1248,8 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               onRegenerate={() => void regenerate(message.id)}
               onEdit={(text) => void editAndResend(message.id, text)}
               onDelete={() => void removeExchange(message.id)}
+              last={message.id === messages[messages.length - 1]?.id}
+              onSuggest={(text) => void send(text)}
               onDecideTool={async (callId, approve) => {
                 const call = message.toolCalls?.find((entry) => entry.id === callId);
                 if (!call || call.state !== "pending" || !active) return;
@@ -1765,6 +1773,8 @@ function MessageBubble({
   onRegenerate,
   onEdit,
   onDelete,
+  last,
+  onSuggest,
 }: {
   message: Message;
   onSaveDeliverable: () => Promise<void>;
@@ -1775,11 +1785,27 @@ function MessageBubble({
   onRegenerate: () => void;
   onEdit: (text: string) => void;
   onDelete: () => void;
+  /** The end of the thread, which is the only place an offer is still open. */
+  last: boolean;
+  onSuggest: (text: string) => void;
 }) {
   const entered = useEnter();
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+
+  /*
+   * Only at the end of the thread, and only once it has stopped moving. An
+   * offer from six replies ago has been answered by everything since, and a
+   * half streamed sentence is not yet an offer.
+   */
+  const offered = useMemo(
+    () =>
+      last && !busy && message.role === "assistant" && !message.error
+        ? splitOffers(message.content)
+        : { body: message.content, offers: [] },
+    [last, busy, message.role, message.error, message.content],
+  );
 
   if (message.role === "user") {
     return (
@@ -1911,14 +1937,38 @@ function MessageBubble({
       {/* No bubble for a turn that only asked for a tool. An empty rounded box
           above the search it started is the panel drawing a reply that does not
           exist; the card underneath is the whole of what happened. */}
-      {message.content.trim() ? (
+      {offered.body.trim() ? (
         <div
           className={cx(
             "rounded-3xl rounded-bl-lg px-5 py-4 shadow-e1",
             message.error ? "bg-error-container text-on-error-container" : "bg-container",
           )}
         >
-          <Markdown>{message.content}</Markdown>
+          <Markdown>{offered.body}</Markdown>
+        </div>
+      ) : null}
+
+      {/*
+        * What the head offered to do next, as the thing that does it.
+        *
+        * Every reply ends on one of these and acting on it used to mean typing
+        * back the sentence the head had just written. The wording is turned
+        * around into an instruction on the way out, so pressing one sends
+        * "Draft the email to the supplier." rather than the head's own
+        * question handed back to it.
+        */}
+      {offered.offers.length ? (
+        <div className="mt-1 flex flex-wrap gap-2">
+          {offered.offers.map((offer) => (
+            <button
+              key={offer}
+              type="button"
+              onClick={() => onSuggest(offer)}
+              className="md-label-lg max-w-full truncate rounded-full border border-outline-variant bg-surface px-4 py-2 text-left text-primary transition-colors hover:bg-primary-container hover:text-on-primary-container focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              {offer.replace(/\.$/, "")}
+            </button>
+          ))}
         </div>
       ) : null}
 
