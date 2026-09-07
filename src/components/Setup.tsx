@@ -76,37 +76,37 @@ export function Setup() {
       },
       {
         title: "Your heads",
-        body: "Open one below and ask it something, the way you would ask a colleague. Each keeps its own conversations, so Finance never gets mixed up with Legal.",
+        body: "Open one below and ask it something, the way you would ask a colleague. Each keeps its own conversations, so Finance and Legal never get mixed up.",
         href: "/orchestrator",
       },
       {
         title: "Meetings",
-        body: `Put one question to every head at once and read the answers side by side, with ${who} pulling them together. Use it for decisions that cross departments, like "should we raise prices" or "what would it take to hire someone".`,
+        body: `Ask every head the same question and read the answers side by side. ${who} pulls them together at the end. Good for decisions that cross departments: should we raise prices, what would it take to hire somebody.`,
         href: "/meetings",
       },
       {
         title: "The Library",
-        body: "Upload your real documents here, a price list, a contract, last month's numbers, and the heads answer from them instead of guessing what a business like yours probably charges. Their finished work is kept here too, and exports as Word, Markdown or text.",
+        body: "Upload your real documents: a price list, a contract, last month's numbers. The heads answer from those instead of guessing what a business like yours probably charges. Their finished work is kept here too, and exports as Word, Markdown or text.",
         href: "/library",
       },
       {
         title: "Tasks and schedules",
-        body: "The board is what is outstanding, one card per job, moved across as it gets done. The tab beside it, Schedules, is where you set a question to be asked every week, so the answer is waiting on Monday rather than something you have to remember to ask for.",
+        body: "The board is what is outstanding, one card per job. Move a card across as it gets done. The tab beside it is Schedules, for a question you want asked every week: the answer is waiting on Monday instead of being something you remember to ask for.",
         href: "/tasks",
       },
       {
         title: "The Company Profile",
-        body: "Everything the heads know about the business. While it is empty they answer like a search engine.",
+        body: "What the heads know about your business. Fill it in and the advice is about you. Leave it empty and they answer like any other chatbot.",
         href: "/profile",
       },
       {
         title: settings.wikiTitle || "Internal Wiki",
-        body: "How this business works, for whoever joins next. An administrator can rewrite every page.",
+        body: "Your own pages, about how this business works, for whoever joins next. An administrator can rewrite any of them.",
         href: "/wiki",
       },
       {
         title: "Settings",
-        body: "The panel runs on your own API key. Settings also holds the heads, the theme and the writing rules.",
+        body: "The panel runs on your own API key, which is added here. Settings also holds the heads, the theme and the house writing rules.",
         href: "/settings",
         adminOnly: true,
       },
@@ -154,15 +154,21 @@ export function Setup() {
          * use. WriteError above has the same note for the same reason, about
          * the navigation bar.
          */
-        "safe-bottom safe-pb-3 safe-x safe-px-3 flex flex-none justify-center border-t border-outline-variant bg-low pt-3",
+        /*
+         * Darker than the page, with a lift above it, so it reads as a thing
+         * sitting on the screen rather than as more screen. Flat and the same
+         * colour as everything else, it was easy to scroll straight past the
+         * one part of the app that is talking to you.
+         */
+        "safe-bottom safe-pb-3 safe-x safe-px-3 flex flex-none justify-center border-t border-outline bg-highest pt-3 shadow-[0_-10px_28px_-14px_rgba(0,0,0,0.5)]",
       )}
     >
-      <Card className="measure-read w-full" elevated={false}>
-        <p className="md-label-sm text-on-variant">
+            <div className="measure-read w-full">
+        <p className="md-label-sm text-on-variant/70">
           {step + 1} of {slides.length}
         </p>
         <h1 className="md-title mt-1">{current.title}</h1>
-        <p className="md-body mt-1.5 text-on-variant">{current.body}</p>
+        <p className="md-body mt-1.5 text-on-surface">{current.body}</p>
 
         {step === 1 && heads.length > 0 ? (
           <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
@@ -245,7 +251,7 @@ export function Setup() {
             Skip
           </Button>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
