@@ -25,7 +25,7 @@ import { seedWikiPages } from "../src/lib/seedWiki";
 import { grantAccess } from "../src/db/access";
 import { applyMutations, loadWorkspace } from "../src/db/repo";
 import { approveAddon, addonsFor, createAddon, recentRuns, setAddonState } from "../src/db/addons";
-import { listColleagues, listThread, listThreads, markThreadRead, sendMessage, unreadTotal } from "../src/db/messages";
+import { listColleagues, listThread, listThreads, markThreadRead, sendMessage, unreadIn } from "../src/db/messages";
 import { search } from "../src/lib/search";
 import { allowsArea, allowsHead, type Permissions } from "../src/lib/permissions";
 import { scrubLinks } from "../src/lib/links";
@@ -130,8 +130,8 @@ async function main() {
     section("the inbox");
     const sent = await sendMessage(ws, OWNER, MATE, "Morning, are we still on for Thursday?", "ft-dm-1");
     check("a message sends", Boolean(sent?.id), sent?.id);
-    check("the recipient has one unread", (await unreadTotal(ws, MATE)) === 1, String(await unreadTotal(ws, MATE)));
-    check("the sender has none", (await unreadTotal(ws, OWNER)) === 0);
+    check("the recipient has one unread", (unreadIn(await listThreads(ws, MATE))) === 1, String(unreadIn(await listThreads(ws, MATE))));
+    check("the sender has none", (unreadIn(await listThreads(ws, OWNER))) === 0);
 
     const threads = await listThreads(ws, MATE);
     check("it appears in their threads", threads.length === 1, `${threads.length}`);
@@ -139,7 +139,7 @@ async function main() {
     check("the body arrived intact", thread.some((m) => m.body.includes("Thursday")));
 
     await markThreadRead(ws, MATE, OWNER);
-    check("reading it clears the unread count", (await unreadTotal(ws, MATE)) === 0);
+    check("reading it clears the unread count", (unreadIn(await listThreads(ws, MATE))) === 0);
 
     const mates = await listColleagues(ws, OWNER);
     check("the directory lists the colleague", mates.some((c) => c.email === MATE), mates.map((c) => c.email).join());

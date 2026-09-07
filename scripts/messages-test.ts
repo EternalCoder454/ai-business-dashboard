@@ -16,7 +16,7 @@ import {
   markThreadRead,
   sendMessage,
   threadKeyFor,
-  unreadTotal,
+  unreadIn,
 } from "../src/db/messages";
 
 const ADA = "ada@example.invalid";
@@ -57,16 +57,16 @@ async function main() {
   check("the reply is in the middle", fromAda[1].fromEmail === BEN);
 
   console.log("\nunread counts only what was addressed to you");
-  check("ben has one unread from ada", (await unreadTotal(WS, BEN)) === 2, String(await unreadTotal(WS, BEN)));
-  check("ada has one unread from ben", (await unreadTotal(WS, ADA)) === 1, String(await unreadTotal(WS, ADA)));
+  check("ben has one unread from ada", (unreadIn(await listThreads(WS, BEN))) === 2, String(unreadIn(await listThreads(WS, BEN))));
+  check("ada has one unread from ben", (unreadIn(await listThreads(WS, ADA))) === 1, String(unreadIn(await listThreads(WS, ADA))));
 
   console.log("\nreading a thread marks only the incoming half");
   await markThreadRead(WS, BEN, ADA);
-  check("ben is caught up", (await unreadTotal(WS, BEN)) === 0);
+  check("ben is caught up", (unreadIn(await listThreads(WS, BEN))) === 0);
   check(
     "ada is not marked read on ben's behalf",
-    (await unreadTotal(WS, ADA)) === 1,
-    String(await unreadTotal(WS, ADA)),
+    (unreadIn(await listThreads(WS, ADA))) === 1,
+    String(unreadIn(await listThreads(WS, ADA))),
   );
 
   console.log("\na third person sees none of it");
@@ -126,8 +126,8 @@ async function main() {
     String(thereThread.length),
   );
 
-  const hereUnread = await unreadTotal(WS, BEN);
-  const thereUnread = await unreadTotal(OTHER_WS, BEN);
+  const hereUnread = unreadIn(await listThreads(WS, BEN));
+  const thereUnread = unreadIn(await listThreads(OTHER_WS, BEN));
   check("unread is counted per business", thereUnread === 1, String(thereUnread));
   check("and the other business is unaffected", hereUnread !== thereUnread + 1);
 

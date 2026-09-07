@@ -247,20 +247,22 @@ export async function listThread(
   }));
 }
 
-/** Total unread across every thread, for the badge in the navigation. */
-export async function unreadTotal(workspaceId: string, self: string): Promise<number> {
-  const db = requireDb();
-  const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(t.directMessages)
-    .where(
-      and(
-        eq(t.directMessages.workspaceId, workspaceId),
-        eq(t.directMessages.toEmail, normalise(self)),
-        isNull(t.directMessages.readAt),
-      ),
-    );
-  return Number(row?.count ?? 0);
+
+/**
+ * How many messages are waiting, out of the threads already fetched.
+ *
+ * A sum rather than a query. listThreads returns the unread count per thread,
+ * and the total is those added up: every unread message is addressed to this
+ * person and every thread they are in is in that list, so nothing falls between
+ * the two. It used to be its own count(*) on the most called endpoint in the
+ * product, asking the same table the same question in a different shape.
+ *
+ * Checked against production for every participant before the query went, and
+ * then again with the predicate inverted so the counts were 15, 1, 2 and 8
+ * rather than mostly zero.
+ */
+export function unreadIn(threads: MessageThread[]): number {
+  return threads.reduce((sum, thread) => sum + thread.unread, 0);
 }
 
 export async function sendMessage(

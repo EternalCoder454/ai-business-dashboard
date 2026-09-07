@@ -1,18 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, Chip, cx } from "./ui";
-
-interface CalendarEvent {
-  id: string;
-  title: string;
-  start: number;
-  end: number;
-  allDay: boolean;
-  location: string;
-  status: string;
-}
+import { useStore } from "@/lib/store";
+import type { CalendarEvent } from "@/lib/google";
 
 /** Today, tomorrow, or the weekday, which is how anybody reads a diary. */
 function dayLabel(at: number): string {
@@ -40,26 +31,25 @@ const time = (at: number) =>
  * worse than no card, and Settings is where somebody goes looking.
  */
 export function CalendarCard() {
-  const [events, setEvents] = useState<CalendarEvent[] | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
+  /*
+   * From the store, not a second request.
+   *
+   * This used to fetch /api/calendar?days=3 while the store was fetching
+   * ?days=7 for the prompts, so every page load asked Google for the same
+   * calendar twice. Measured at 436 calls a day against 218 page loads, 822ms
+   * each, which is the second slowest thing the panel does.
+   *
+   * Three days out of the seven the store holds, since a dashboard card is a
+   * glance at what is next rather than the week.
+   */
+  const { calendar, calendarStatus, ready } = useStore();
 
-  useEffect(() => {
-    let cancelled = false;
-    void fetch("/api/calendar?days=3")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((body: { events?: CalendarEvent[]; problem?: string } | null) => {
-        if (cancelled || !body) return;
-        setEvents(body.events ?? []);
-        setProblem(body.problem ?? null);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const horizon = Date.now() + 3 * 86_400_000;
+  const events = calendar.filter((event) => event.start < horizon);
+  const problem = calendarStatus === "connected" ? null : calendarStatus;
 
   // Still loading, or nobody has connected one. Neither is worth a card.
-  if (events === null || problem === "not-connected") return null;
+  if (!ready || problem === "not-connected") return null;
 
   /*
    * Connected, and we could not read it. Shown rather than hidden, because

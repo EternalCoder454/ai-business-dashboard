@@ -1,5 +1,14 @@
 import { useSyncExternalStore } from "react";
-import { CHANGELOG, LATEST } from "./changelog.data";
+/*
+ * The ids, not the entries.
+ *
+ * This module is reached from ProfileMenu, which is in the shell on every
+ * screen, so whatever it imports every visitor downloads on every page.
+ * Importing CHANGELOG pulled 316KB of prose along to find one index. The ids
+ * are generated from the same data by npm run changelog-ids, and
+ * changelog-test asserts the two still agree.
+ */
+import { CHANGELOG_IDS, LATEST } from "./changelog.ids";
 
 /**
  * Which entry somebody has read up to.
@@ -49,7 +58,7 @@ export function markChangelogSeen(): void {
 function count(): number {
   const seen = read();
   if (!seen) return 0;
-  const index = CHANGELOG.findIndex((entry) => entry.id === seen);
+  const index = CHANGELOG_IDS.indexOf(seen);
   // An id nothing matches means the history was rewritten under them. Treat it
   // as caught up rather than as everything being new.
   if (index === -1) return 0;

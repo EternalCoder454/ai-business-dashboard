@@ -6,11 +6,11 @@ import {
   listColleagues,
   listThread,
   listThreads,
+  unreadIn,
   markThreadRead,
   seenThrough,
   sendMessage,
   touchPresence,
-  unreadTotal,
 } from "@/db/messages";
 import { readJson } from "@/lib/guard";
 import { withinRate } from "@/lib/rateLimit";
@@ -134,16 +134,16 @@ export async function GET(request: Request) {
     // request per person per minute for the same fact.
     void touchPresence(sender.email);
 
-    const [threads, people, unread] = await track(
-      "messages.overview",
-      workspace.workspaceId,
-      () =>
-        Promise.all([
-          listThreads(workspace.workspaceId, sender.email),
-          listColleagues(workspace.workspaceId, sender.email),
-          unreadTotal(workspace.workspaceId, sender.email),
-        ]),
+    const [threads, people] = await track("messages.overview", workspace.workspaceId, () =>
+      Promise.all([
+        listThreads(workspace.workspaceId, sender.email),
+        listColleagues(workspace.workspaceId, sender.email),
+      ]),
     );
+
+    // Summed from what came back rather than counted again. See unreadIn.
+    const unread = unreadIn(threads);
+
     return Response.json({ threads, people, unread, self: sender.email });
   } catch (error) {
     console.error("[api/messages] read", error);
