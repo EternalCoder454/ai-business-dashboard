@@ -76,7 +76,7 @@ export function SpendCard() {
   return (
     <Card>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h2 className="md-title-lg">Spend this month</h2>
+        <h2 className="md-title-lg">Spent this month</h2>
         {over ? <Chip tone="error">Over budget</Chip> : null}
         {near ? <Chip tone="warning">Near budget</Chip> : null}
       </div>

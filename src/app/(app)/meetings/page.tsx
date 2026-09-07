@@ -4,6 +4,7 @@ import { hasKeyFor } from "@/lib/hasKey";
 import Link from "next/link";
 import { DepartmentAvatar } from "@/components/DepartmentAvatar";
 import { MeetingList } from "@/components/MeetingList";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Markdown } from "@/components/Markdown";
 import {
@@ -64,7 +65,15 @@ export default function MeetingsPage() {
   const [question, setQuestion] = useState("");
   const [synthesize, setSynthesize] = useState(true);
   const [live, setLive] = useState<Meeting | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
+  /*
+   * Which meeting is open, seeded from the address.
+   *
+   * It was local state only, so every link to a meeting landed on the list of
+   * them and left you to find the one you had just clicked. The dashboard links
+   * straight to one now, and so can anything else worth linking from.
+   */
+  const wanted = useSearchParams().get("meeting");
+  const [openId, setOpenId] = useState<string | null>(wanted);
   // Explicit "starting a fresh room" state. Without it, clearing the selection
   // just falls back to the newest thread and the empty room never shows.
   const [composingNew, setComposingNew] = useState(false);
@@ -119,6 +128,17 @@ export default function MeetingsPage() {
     if (openId) return meetings.find((r) => r.id === openId);
     return held.length > 0 ? undefined : meetings[0];
   }, [live, composingNew, openId, meetings, held.length]);
+
+  /*
+   * A second link to a different meeting, arriving while this page is already
+   * open. Without this the address changes and the screen does not.
+   */
+  useEffect(() => {
+    if (wanted) {
+      setOpenId(wanted);
+      setComposingNew(false);
+    }
+  }, [wanted]);
 
   const departmentOf = useCallback(
     (id: string) => allDepartments.find((d) => d.id === id),

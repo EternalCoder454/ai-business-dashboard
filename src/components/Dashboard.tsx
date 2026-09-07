@@ -6,7 +6,7 @@ import { SpendCard } from "./SpendCard";
 import { ContextCard } from "./ContextCard";
 import { StorageCard } from "./StorageCard";
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode, useEffect} from "react";
 import {
   CheckIcon,
   ChevronIcon,
@@ -143,17 +143,20 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
   const threads = conversations.filter((c) => c.messageCount > 0).length;
 
   return (
-    <div className="page-x space-y-5 py-5">
+    <div className="page-x space-y-8 py-6">
 
       {/* The business's own numbers lead, because they are the only thing here
           this app did not make up about itself. */}
-      <section>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="md-label-sm text-on-variant">Key figures</h2>
+      <Band
+        id="figures"
+        title="Key figures"
+        what="Numbers you record yourself, like revenue or headcount. Use the same label each month and the readings stack into a trend."
+        action={
           <Link href="/library/memory" className="md-label-sm text-primary">
             {figures.length ? "Add reading" : "Add figure"}
           </Link>
-        </div>
+        }
+      >
         {figures.length > 0 ? (
           <div className="grid grid-cols-1 gap-3 medium:grid-cols-2 expanded:grid-cols-4">
             {figures.map(({ label, latest, previous }) => (
@@ -175,17 +178,20 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
             <p className="md-body text-on-variant">No figures recorded.</p>
           </div>
         )}
-      </section>
+      </Band>
 
       {/* What is owed, and when. The heads used to sit here as a grid of cards,
           which was the sidebar again in a second typeface. */}
-      <section>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="md-label-sm text-on-variant">Tasks</h2>
+      <Band
+        id="tasks"
+        title="Tasks"
+        what="Everything outstanding, counted by when it is due. A head can propose one and you approve it."
+        action={
           <Link href="/tasks" className="md-label-sm text-primary">
             View all tasks
           </Link>
-        </div>
+        }
+      >
         <div className="grid grid-cols-2 gap-3 medium:grid-cols-4">
           <Count label="Overdue" value={due.overdue} tone={due.overdue > 0 ? "bad" : undefined} />
           <Count label="Due this week" value={due.week} />
@@ -208,14 +214,20 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
             {deliverables.length} saved
           </span>
         </div>
-      </section>
+      </Band>
 
-      <div className="grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-3">
-        {/* First, and only when there is one. "What should I focus on" is
-            usually answered by "you have four hours of meetings". */}
-        <CalendarCard />
+      <Band
+        id="activity"
+        title="Activity"
+        what="The most recent thing in each part of the panel, with a link to the rest of it."
+      >
+        <div className="grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-3">
+          {/* First, and only when there is one. "What should I focus on" is
+              usually answered by "you have four hours of meetings". */}
+          <CalendarCard />
         <PaneList
           title="Open tasks"
+          what="Jobs that are not done yet, oldest due date first."
           icon={<CheckIcon className="h-3.5 w-3.5" />}
           href="/tasks"
           empty="No open tasks."
@@ -233,6 +245,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
 
         <PaneList
           title="Decisions"
+          what="Things the business has settled, which every head reads before answering so you are not asked to explain them again."
           icon={<SparkIcon className="h-3.5 w-3.5" />}
           href="/library/memory"
           empty="No decisions recorded."
@@ -246,6 +259,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
 
         <PaneList
           title="Deliverables"
+          what="Finished work a head produced and you chose to keep: reports, drafts, plans. Exports as Word, Markdown or text."
           icon={<DocIcon className="h-3.5 w-3.5" />}
           href="/library/deliverables"
           empty="No deliverables saved."
@@ -259,6 +273,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
 
         <PaneList
           title="Recent conversations"
+          what="The last few threads you had with a head. Each keeps its own history."
           icon={<ChevronIcon className="h-3.5 w-3.5" />}
           href="/orchestrator"
           empty="No conversations."
@@ -274,12 +289,15 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
 
         <PaneList
           title="Meetings"
+          what="One question put to every head at once, for decisions that cross departments."
           icon={<UsersIcon className="h-3.5 w-3.5" />}
           href="/meetings"
           empty="No threads."
           items={recentMeetings.map((run) => ({
             key: run.id,
-            href: "/meetings",
+            // The meeting, not the page of meetings. Clicking one landed on the
+            // list and left you to find the thing you had just clicked.
+            href: `/meetings?meeting=${encodeURIComponent(run.id)}`,
             primary: run.title,
             secondary: `${run.rounds} ${
               run.rounds === 1 ? "question" : "questions"
@@ -289,6 +307,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
 
         <PaneList
           title="Projects"
+          what="A name to group related tasks and conversations under, when several things are running at once."
           icon={<FolderIcon className="h-3.5 w-3.5" />}
           href="/projects"
           empty="No projects."
@@ -298,8 +317,9 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
             primary: project.name,
             secondary: `${project.status} · ${formatExactTime(project.updatedAt)}`,
           }))}
-        />
-      </div>
+          />
+        </div>
+      </Band>
 
       {/*
         * What the panel costs and what it is holding, which used to be a screen
@@ -311,14 +331,17 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
         * spend has not had that decision quietly undone by the merge.
         */}
       {can("information") ? (
-        <section>
-          <h2 className="mb-3 md-label-sm text-on-variant">System</h2>
+        <Band
+          id="system"
+          title="System"
+          what="What the heads cost to run this month, what each of them is sent before you type anything, and how much room the workspace is using."
+        >
           <div className="grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-3">
             <SpendCard />
             <ContextCard />
             <StorageCard />
           </div>
-        </section>
+        </Band>
       ) : null}
     </div>
   );
@@ -352,31 +375,156 @@ function Count({
   );
 }
 
+/**
+ * One band of the dashboard, with a heading you can fold away.
+ *
+ * The panes used to sit under no heading at all, in one run with the rest, so
+ * seven cards of different things read as a single wall. A name over each band
+ * and more air between them is most of the fix; being able to collapse the
+ * bands you do not use is the rest, because a dashboard is looked at every day
+ * and everybody uses a different half of it.
+ *
+ * The choice is kept per person in this browser, which is the right scope: it
+ * is a preference about a screen, not a fact about the business, and it should
+ * not follow somebody onto a colleague's machine.
+ */
+function Band({
+  id,
+  title,
+  what,
+  action,
+  children,
+}: {
+  id: string;
+  title: string;
+  what?: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  const key = `eterneon:dash:${id}`;
+  const [open, setOpen] = useState(true);
+
+  // Read after mount rather than during render, so the server and the first
+  // paint agree and nothing flashes open before folding shut.
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(key) === "closed") setOpen(false);
+    } catch {
+      // Blocked storage means it simply stays open, which is the default.
+    }
+  }, [key]);
+
+  const toggle = () => {
+    setOpen((was) => {
+      const next = !was;
+      try {
+        window.localStorage.setItem(key, next ? "open" : "closed");
+      } catch {
+        // The section still folds for this visit.
+      }
+      return next;
+    });
+  };
+
+  return (
+    <section>
+      <div className="mb-3 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          className="md-state -ml-1 flex min-w-0 items-center gap-1.5 rounded-lg px-1 py-0.5"
+        >
+          <ChevronIcon
+            className={cx(
+              "h-3.5 w-3.5 flex-none text-on-variant transition-transform",
+              open ? "rotate-90" : "",
+            )}
+          />
+          <h2 className="md-label-sm truncate text-on-variant">{title}</h2>
+        </button>
+        {what ? <Hint what={what} /> : null}
+        <div className="ml-auto flex flex-none items-center gap-2">{action}</div>
+      </div>
+      {open ? children : null}
+    </section>
+  );
+}
+
+/**
+ * A question mark that says what a section is, when asked.
+ *
+ * On demand rather than printed under every heading. A line of explanation
+ * beside each one is clutter on the ninety nine visits where you already know,
+ * and the panel deliberately does not do that. But a section called
+ * Deliverables tells you nothing at all until one exists in it, and by then you
+ * did not need telling, so the explanation has to be reachable and out of the
+ * way at the same time.
+ *
+ * Click rather than hover alone. title text does nothing on a phone, which is
+ * where somebody is most likely to be looking at a screen they do not know.
+ */
+function Hint({ what }: { what: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <span className="relative flex-none">
+      <button
+        type="button"
+        aria-label={open ? "Hide what this is" : "What is this"}
+        aria-expanded={open}
+        title={what}
+        onClick={() => setOpen((value) => !value)}
+        className={cx(
+          "md-state grid h-5 w-5 place-items-center rounded-full text-[0.6875rem] font-medium",
+          open ? "bg-primary text-on-primary" : "bg-highest text-on-variant",
+        )}
+      >
+        ?
+      </button>
+      {open ? (
+        <span
+          role="note"
+          className="md-label-sm absolute right-0 top-6 z-20 w-56 rounded-xl bg-inverse-surface px-3 py-2 text-inverse-on-surface shadow-e3"
+        >
+          {what}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function PaneList({
   title,
   icon,
   href,
   empty,
   items,
+  what,
 }: {
   title: string;
   icon: ReactNode;
   href: string;
   empty: string;
   items: { key: string; href: string; primary: string; secondary: string }[];
+  /** What this section is, behind a question mark. See Hint. */
+  what?: string;
 }) {
   return (
     <section className="rounded-2xl bg-container p-4 shadow-e1">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 className="md-label-sm flex items-center gap-1.5 text-on-variant">
+        <h2 className="md-label-sm flex min-w-0 items-center gap-1.5 text-on-variant">
           {icon}
-          {title}
+          <span className="truncate">{title}</span>
         </h2>
-        {items.length > 0 ? (
-          <Link href={href} className="md-label-sm text-primary">
-            All
-          </Link>
-        ) : null}
+        <div className="flex flex-none items-center gap-2">
+          {items.length > 0 ? (
+            <Link href={href} className="md-label-sm text-primary">
+              All
+            </Link>
+          ) : null}
+          {what ? <Hint what={what} /> : null}
+        </div>
       </div>
 
       {items.length === 0 ? (
