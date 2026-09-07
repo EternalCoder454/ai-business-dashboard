@@ -4,6 +4,7 @@ import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
 import { forgetBlobs } from "./blobs";
+import { optimiseImage } from "@/lib/optimiseImage";
 import type { MutationOp, Workspace } from "@/lib/workspace";
 import type {
   Meeting,
@@ -38,7 +39,12 @@ const ms = (value: Date) => value.getTime();
  * this app's own route, which checks the workspace first, so a blob URL it
  * never receives is one it cannot leak.
  */
-type FileRow = Omit<typeof t.files.$inferSelect, "data" | "blobUrl">;
+type FileRow = Omit<
+  typeof t.files.$inferSelect,
+  // Bytes, where they are kept, and what they were before we re-encoded them.
+  // The last is only ever read by the download, which reads the row directly.
+  "data" | "blobUrl" | "originalMediaType"
+>;
 
 function toAttachment(row: FileRow): Attachment {
   return {
@@ -759,15 +765,45 @@ export async function applyMutations(
             // Attachments are files first, so a message only ever stores ids.
             for (const message of row.messages) {
               for (const attachment of message.attachments ?? []) {
+                /*
+                 * Losslessly re-encoded on the way in, when that wins.
+                 *
+                 * Only reachable when the bytes came through this server, which
+                 * is the path a deployment without a blob store uses. With
+                 * Vercel Blob the browser uploads straight to the store and
+                 * these never pass through here at all, so nothing to do.
+                 *
+                 * A screenshot is about a tenth the size as lossless WebP and
+                 * pixel for pixel the same picture; a photograph is left alone,
+                 * because JPEG has already discarded what makes it expensive
+                 * and lossless cannot discard anything. See optimiseImage.
+                 */
+                let stored = attachment.data ?? "";
+                let storedType = attachment.mediaType;
+                let originalType: string | null = null;
+
+                if (stored && attachment.mediaType.startsWith("image/")) {
+                  const optimised = await optimiseImage(
+                    Buffer.from(stored, "base64"),
+                    attachment.mediaType,
+                  );
+                  if (optimised.savedBytes > 0) {
+                    stored = optimised.bytes.toString("base64");
+                    storedType = optimised.mediaType;
+                    originalType = optimised.originalMediaType;
+                  }
+                }
+
                 const fileValues = {
                   id: attachment.id,
                   workspaceId,
                   kind: attachment.kind,
-                  mediaType: attachment.mediaType,
+                  mediaType: storedType,
+                  originalMediaType: originalType,
                   name: attachment.name,
                   // Empty only when the client never had the bytes, which means
                   // the row already exists; the insert below leaves it alone.
-                  data: attachment.data ?? "",
+                  data: stored,
                   blobUrl: attachment.blobUrl ?? "",
                   textContent: attachment.text ?? null,
                   width: attachment.width,

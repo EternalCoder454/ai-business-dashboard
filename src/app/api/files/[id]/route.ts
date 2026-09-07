@@ -5,6 +5,7 @@ import { membershipFor } from "@/db/tenancy";
 import * as t from "@/db/schema";
 import { get } from "@vercel/blob";
 import { requireSession } from "@/lib/guard";
+import { toOriginalFormat } from "@/lib/optimiseImage";
 
 export const runtime = "nodejs";
 
@@ -109,12 +110,27 @@ export async function GET(
     );
   }
 
-  return new Response(new Uint8Array(bytes), {
+  /*
+   * Back to what was uploaded, when it is being downloaded rather than shown.
+   *
+   * A screenshot is kept as lossless WebP because that is a tenth of the room a
+   * PNG takes for the same pixels. Every browser renders WebP, so the inline
+   * case wants the stored bytes as they are. Somebody saving the file wants
+   * back what they put in, and the pixels are identical either way because
+   * nothing lossy happened on the way in.
+   */
+  const wantsFile = request.nextUrl.searchParams.get("download") !== null;
+  const served =
+    wantsFile && row.originalMediaType
+      ? await toOriginalFormat(bytes, row.mediaType, row.originalMediaType)
+      : { bytes, mediaType: row.mediaType };
+
+  return new Response(new Uint8Array(served.bytes), {
     headers: {
-      "Content-Type": row.mediaType,
-      "Content-Length": String(bytes.length),
+      "Content-Type": served.mediaType,
+      "Content-Length": String(served.bytes.length),
       "Cache-Control": FOUND,
-      "Content-Disposition": `inline; filename="${encodeURIComponent(row.name)}"`,
+      "Content-Disposition": `${wantsFile ? "attachment" : "inline"}; filename="${encodeURIComponent(row.name)}"`,
       // Never let a stored file be interpreted as something else.
       "X-Content-Type-Options": "nosniff",
     },

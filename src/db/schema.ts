@@ -221,6 +221,15 @@ export const files = pgTable(
     workspaceId: workspace(),
     kind: text("kind").notNull(),
     mediaType: text("media_type").notNull(),
+    /*
+     * What it was uploaded as, when that is not what is stored.
+     *
+     * A screenshot arrives as a PNG and is kept as lossless WebP, which is the
+     * same picture in about a tenth of the room. Null means the two are the
+     * same and nothing was re-encoded, which is every file uploaded before this
+     * and every photograph after it.
+     */
+    originalMediaType: text("original_media_type"),
     name: text("name").notNull(),
     /**
      * Where the bytes live, when they live outside the database.
