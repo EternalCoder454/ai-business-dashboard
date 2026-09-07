@@ -66,6 +66,15 @@ import {
 } from "./ui";
 import { Markdown } from "./Markdown";
 import { splitOffers } from "@/lib/offers";
+import {
+  findMentions,
+  matchMentions,
+  mentionUnderCursor,
+  tokenFor,
+  type Mentionable,
+  type Mention,
+} from "@/lib/mentions";
+import { resolveMentions } from "@/lib/mentionContext";
 import { EFFORT_ORDER, supportsEffort } from "@/lib/providers";
 import { createRipple } from "./ui/ripple";
 import { appendSpoken, useDictation } from "@/lib/dictation";
@@ -252,6 +261,15 @@ function splitForCapture(content: string): { label: string; detail: string; revi
 
 const MAX_COMPOSER_HEIGHT = 220;
 
+/**
+ * How far back an @ keeps being read.
+ *
+ * A name typed twenty messages ago has stopped being the subject, and
+ * fetching it on every turn until the thread ends is how a conversation gets
+ * expensive without anybody choosing it.
+ */
+const MENTION_LOOKBACK = 3;
+
 /** Grows the composer with its content, up to a cap, then lets it scroll. */
 function autoGrow(el: HTMLTextAreaElement) {
   el.style.height = "auto";
@@ -332,6 +350,52 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   const requestedId = searchParams.get("c");
 
   /*
+   * What an @ can name, in the order the parser resolves ties.
+   *
+   * Heads first, because a head and a project sharing a name almost always
+   * means the head. Neither this head nor this conversation is on the list:
+   * naming what you are already talking to is the one reference that cannot
+   * tell it anything it does not have.
+   *
+   * Personal heads are left out here as well as at the point of reading. A
+   * suggestion listing something that will be refused is a menu that lies.
+   */
+  const mentionable = useMemo<Mentionable[]>(() => {
+    const heads = store.allDepartments
+      .filter((entry) => !entry.personal && entry.id !== departmentId && canOpenHead(entry.id))
+      .map((entry) => ({
+        kind: "department" as const,
+        id: entry.id,
+        label: entry.name,
+        detail: entry.personaName || entry.roleTitle,
+      }));
+
+    const list = projects.map((entry) => ({
+      kind: "project" as const,
+      id: entry.id,
+      label: entry.name,
+      detail: entry.status,
+    }));
+
+    const threads = store.conversations
+      .filter(
+        (entry) =>
+          entry.messageCount > 0 &&
+          entry.id !== requestedId &&
+          canOpenHead(entry.departmentId),
+      )
+      .slice(0, 40)
+      .map((entry) => ({
+        kind: "conversation" as const,
+        id: entry.id,
+        label: entry.title,
+        detail: store.allDepartments.find((d) => d.id === entry.departmentId)?.name,
+      }));
+
+    return [...heads, ...list, ...threads];
+  }, [store.allDepartments, store.conversations, projects, canOpenHead, requestedId, departmentId]);
+
+  /*
    * What the department opens to. `?c=<id>` is that conversation, `?c=new` is
    * a blank one, and nothing at all means the list, unless there is nothing to
    * list. Deliberately never the newest thread, which leaves no way to start a
@@ -364,7 +428,6 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     // A conversation that exists but has nothing in it yet is the one a blank
     // chat already made, so reuse it rather than leaving empties behind.
     return started.length > 0 ? undefined : conversations[0];
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- as below
   }, [conversations, started.length, requestedId]);
 
   const [draft, setDraft] = useState("");
@@ -374,6 +437,14 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   const [pending, setPending] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  /*
+   * The @ menu: where the token being typed starts, what has been typed of it,
+   * and which row the arrow keys are on. Null when the cursor is not inside a
+   * token, which is almost always.
+   */
+  const [mention, setMention] = useState<{ query: string; from: number } | null>(null);
+  const [mentionRow, setMentionRow] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
   /**
    * A decision being captured out of a reply.
@@ -538,6 +609,65 @@ export function ChatView({ departmentId }: { departmentId: string }) {
    * streaming, tool handling and error recovery three times over is how the
    * three quietly stop behaving the same.
    */
+  /**
+   * The thread as the model sees it, with whatever was named read in.
+   *
+   * Resolved once and attached to the turn being sent, rather than to each
+   * message that named something. Two reasons, and they point the same way. A
+   * reference is read when it is used, so a follow-up gets the thread as it is
+   * now rather than a copy taken three replies ago. And attaching it to every
+   * message that ever carried an @ would re-send somebody else's conversation
+   * on every turn for the rest of this one, which is the token bill this panel
+   * has spent a month cutting down.
+   */
+  const withMentions = useCallback(
+    async (history: Message[]) => {
+      const turns = (await Promise.all(history.map(toTurns))).flat();
+
+      const recent = history.filter((message) => message.role === "user").slice(-MENTION_LOOKBACK);
+      const named = new Map<string, Mention>();
+      for (const message of recent) {
+        for (const mention of findMentions(message.content, mentionable)) {
+          if (!named.has(mention.id)) named.set(mention.id, mention);
+        }
+      }
+      if (named.size === 0) return turns;
+
+      const block = await resolveMentions([...named.values()], store);
+      if (!block) return turns;
+
+      /*
+       * Onto the last user turn rather than as a turn of its own. Two user
+       * messages in a row is accepted by some providers and merged by others,
+       * and this has to behave the same on all four.
+       *
+       * Never the turn carrying a tool result, which is a user turn only
+       * because that is the side the API wants results from. A tool_result has
+       * to be the first thing after the tool_use that asked for it, so putting
+       * anything in front of it is a 400 and the reply never happens. Found by
+       * sending one: the head answered, called a tool, and the next request
+       * came back rejected.
+       */
+      for (let index = turns.length - 1; index >= 0; index--) {
+        const turn = turns[index];
+        if (turn.role !== "user") continue;
+        if (Array.isArray(turn.content) && turn.content.some((part) => part.type === "tool_result")) {
+          continue;
+        }
+        turns[index] =
+          typeof turn.content === "string"
+            ? { ...turn, content: `${block}
+
+${turn.content}` }
+            : { ...turn, content: [{ type: "text", text: block }, ...turn.content] };
+        break;
+      }
+
+      return turns;
+    },
+    [mentionable, store],
+  );
+
   const generate = useCallback(
     async (
       conversation: Conversation,
@@ -590,7 +720,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
             searchMode,
             projects,
           ),
-          messages: (await Promise.all(history.map(toTurns))).flat(),
+          messages: await withMentions(history),
           // A department pointed at its own model wins; otherwise the
           // workspace default, which is what every department has until one is
           // changed.
@@ -830,6 +960,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
       projects,
       searchMode,
       store,
+      withMentions,
     ],
   );
 
@@ -913,6 +1044,43 @@ export function ChatView({ departmentId }: { departmentId: string }) {
     router,
     generate,
   ]);
+
+  /** What the @ menu is offering right now. Empty closes it. */
+  const mentionRows = useMemo(
+    () => (mention ? matchMentions(mention.query, mentionable) : []),
+    [mention, mentionable],
+  );
+
+  /*
+   * Puts the name in the draft and the cursor after it.
+   *
+   * The token replaces what was typed rather than being appended to it, so
+   * typing "@fin" and picking Finance leaves "@Finance " and not "@fin@Finance".
+   * A trailing space, because the next thing anybody types is a word.
+   */
+  const pickMention = useCallback(
+    (item: Mentionable) => {
+      if (!mention) return;
+      const field = inputRef.current;
+      const cursor = field?.selectionStart ?? mention.from + mention.query.length;
+      const token = `${tokenFor(item)} `;
+      const next = `${draft.slice(0, mention.from)}${token}${draft.slice(cursor)}`;
+
+      setDraft(next);
+      setMention(null);
+      setMentionRow(0);
+
+      // After the state has landed, or the caret is placed in the old text.
+      requestAnimationFrame(() => {
+        if (!field) return;
+        const at = mention.from + token.length;
+        field.focus();
+        field.setSelectionRange(at, at);
+        autoGrow(field);
+      });
+    },
+    [draft, mention],
+  );
 
   /*
    * Ask the same question again.
@@ -1309,7 +1477,50 @@ export function ChatView({ departmentId }: { departmentId: string }) {
           dragging ? "border-primary bg-primary-container/20" : "border-outline-variant",
         )}
       >
-        <div className="mx-auto max-w-3xl">
+        <div className="relative mx-auto max-w-3xl">
+          {/*
+            * What an @ can name, over the composer rather than under it.
+            *
+            * The composer sits at the bottom of the screen, so a list that
+            * opened downwards would open off it. onMouseDown rather than
+            * onClick: the field loses focus on mouse down, and a menu that
+            * closed on blur before the click landed is one that cannot be
+            * clicked.
+            */}
+          {mention && mentionRows.length ? (
+            <ul
+              role="listbox"
+              aria-label="Mention"
+              className="absolute bottom-full left-0 z-20 mb-2 w-full max-w-sm overflow-hidden rounded-2xl border border-outline-variant bg-lowest py-1 shadow-e3"
+            >
+              {mentionRows.map((item, index) => (
+                <li key={`${item.kind}:${item.id}`}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={index === mentionRow}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      pickMention(item);
+                    }}
+                    onMouseEnter={() => setMentionRow(index)}
+                    className={cx(
+                      "flex w-full items-center gap-2 px-3 py-2 text-left transition-colors",
+                      index === mentionRow ? "bg-primary-container text-on-primary-container" : "",
+                    )}
+                  >
+                    <span className="md-body min-w-0 flex-1 truncate">{item.label}</span>
+                    {item.detail ? (
+                      <span className="md-label-sm flex-none truncate opacity-70">
+                        {item.detail}
+                      </span>
+                    ) : null}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
           {pending.length > 0 ? (
             <ul className="mb-2.5 flex flex-wrap items-end gap-2">
               {pending.map((attachment) => (
@@ -1408,8 +1619,46 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               onChange={(event) => {
                 setDraft(event.target.value);
                 autoGrow(event.target);
+                const at = mentionUnderCursor(event.target.value, event.target.selectionStart ?? 0);
+                setMention(at);
+                setMentionRow(0);
               }}
+              /*
+               * Clicking or arrowing out of a token closes the menu, which
+               * selectionchange is the only event that reports. Without it the
+               * menu stays open over a cursor that has left, and Enter then
+               * inserts a name into the middle of a different sentence.
+               */
+              onSelect={(event) => {
+                const field = event.currentTarget;
+                setMention(mentionUnderCursor(field.value, field.selectionStart ?? 0));
+              }}
+              onBlur={() => setMention(null)}
               onKeyDown={(event) => {
+                /*
+                 * The menu takes these first. Enter picks a name rather than
+                 * sending, which is the whole reason it is worth opening: a
+                 * menu you have to reach for the mouse to use is slower than
+                 * typing the name out.
+                 */
+                if (mention && mentionRows.length) {
+                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    const step = event.key === "ArrowDown" ? 1 : mentionRows.length - 1;
+                    setMentionRow((row) => (row + step) % mentionRows.length);
+                    return;
+                  }
+                  if (event.key === "Enter" || event.key === "Tab") {
+                    event.preventDefault();
+                    pickMention(mentionRows[mentionRow] ?? mentionRows[0]);
+                    return;
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    setMention(null);
+                    return;
+                  }
+                }
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   void send();

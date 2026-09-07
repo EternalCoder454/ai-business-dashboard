@@ -92,9 +92,6 @@ export function splitOffers(reply: string): Split {
   const paragraphs = body.split(/\n\s*\n/);
   const last = paragraphs[paragraphs.length - 1] ?? "";
 
-  // The offer is the whole closing paragraph or it is left where it is. A
-  // paragraph that ends on an offer after three sentences of substance is one
-  // where removing the last sentence would leave the answer looking cut off.
   if (!last.trim() || MARKUP.test(last) || last.includes("\n")) return unchanged;
 
   const sentences = last
@@ -102,12 +99,24 @@ export function splitOffers(reply: string): Split {
     .split(/(?<=[.?!])\s+/)
     .filter(Boolean);
 
+  /*
+   * Taken from the end backwards, stopping at the first sentence that is not
+   * an offer.
+   *
+   * The closing paragraph is usually not all offer. "That is a question for
+   * Theo, he would know whether it is settings or hardware. Want me to log it
+   * as a task?" is the ordinary shape, and a rule that wanted the whole
+   * paragraph left the most common ending there is untouched. Working
+   * backwards keeps the sentence that says something and takes the one that
+   * asks.
+   */
   const offers: string[] = [];
-  for (const sentence of sentences) {
-    const instruction = offerIn(sentence);
-    // One sentence that is not an offer and the paragraph stays whole.
-    if (!instruction) return unchanged;
-    if (!offers.includes(instruction)) offers.push(instruction);
+  let cut = sentences.length;
+  for (let index = sentences.length - 1; index >= 0; index--) {
+    const instruction = offerIn(sentences[index]);
+    if (!instruction) break;
+    if (!offers.includes(instruction)) offers.unshift(instruction);
+    cut = index;
   }
 
   if (offers.length === 0) return unchanged;
@@ -116,7 +125,10 @@ export function splitOffers(reply: string): Split {
    * A reply that is nothing but its offer keeps it. Removing it would leave an
    * empty bubble above a button, and the question is the whole message.
    */
-  const rest = paragraphs.slice(0, -1).join("\n\n").trimEnd();
+  const rest = [...paragraphs.slice(0, -1), sentences.slice(0, cut).join(" ")]
+    .filter((part) => part.trim())
+    .join("\n\n")
+    .trimEnd();
   if (!rest) return unchanged;
 
   return { body: rest, offers: offers.slice(0, MAX_OFFERS) };

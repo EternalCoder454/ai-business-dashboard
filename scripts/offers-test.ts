@@ -82,8 +82,8 @@ console.log("\nwhen it is not sure, it changes nothing");
   kept("a plain answer", "The invoice is due on the 14th.");
   kept("a question that is not an offer",
     "You have two suppliers.\n\nWhich of them did you use last time?");
-  kept("a closing paragraph that also says something",
-    "The margin is thin.\n\nThat is before shipping, which you have not counted yet. Want me to add it?");
+  kept("a question that is not an offer, at the end of a paragraph",
+    "The margin is thin.\n\nThat is before shipping. Which supplier did you use?");
   kept("an offer inside a bullet list",
     "Options:\n\n- Raise the price\n- Want me to model that?");
   kept("a reply that is only its offer", "Want me to draft the email?");
@@ -91,6 +91,20 @@ console.log("\nwhen it is not sure, it changes nothing");
     "Try this:\n\n```sql\nselect * from orders\n\nWant me to run it?");
   kept("an offer running to a paragraph",
     `The numbers are in.\n\nWant me to ${"go through each line of the ledger and then ".repeat(6)}write it up?`);
+}
+
+console.log("\nthe sentence before the offer stays where it is");
+{
+  /*
+   * The ordinary ending, and the one the first version of this missed. A rule
+   * that wanted the whole closing paragraph to be offers left it alone, and
+   * this shape is most of them. Found in a real reply sitting in the panel.
+   */
+  pulled(
+    "The mic is echoing.\n\nThat is a question for Theo, he would know whether it is settings or hardware. Want me to log it as a task?",
+    "The mic is echoing.\n\nThat is a question for Theo, he would know whether it is settings or hardware.",
+    ["Log it as a task."],
+  );
 }
 
 console.log("\nand a finished code block is still read");
