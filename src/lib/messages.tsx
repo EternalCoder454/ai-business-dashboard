@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Colleague, DirectMessage, MessageThread } from "./types";
+import { digestOf, nextInterval } from "./pollInterval";
 
 /**
  * Messages are polled rather than pushed.
@@ -22,8 +23,13 @@ import type { Colleague, DirectMessage, MessageThread } from "./types";
  * has no infrastructure behind it at all.
  */
 
-/** Overview refresh, which drives the unread badge everywhere in the app. */
-const OVERVIEW_MS = 25_000;
+/*
+ * The overview interval is no longer a constant. It starts at 25 seconds and
+ * stretches to two minutes while the answer keeps coming back identical, which
+ * is what it does all day for somebody with the panel open in a tab. See
+ * pollInterval: this endpoint was 55% of all server time and almost none of
+ * that was the query.
+ */
 
 /** An open thread, where a reply should land while you are still looking. */
 const THREAD_MS = 4_000;
@@ -53,6 +59,15 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
   const [threads, setThreads] = useState<MessageThread[]>(NO_THREADS);
   const [people, setPeople] = useState<Colleague[]>(NO_PEOPLE);
   const [unread, setUnread] = useState(0);
+
+  /*
+   * How many polls in a row have returned the same inbox, and what that inbox
+   * was. Refs rather than state: nothing on screen depends on them, and putting
+   * them in state would re-render every consumer of this context on each poll
+   * to change a number nobody draws.
+   */
+  const quiet = useRef(0);
+  const digest = useRef("");
 
   const refresh = useCallback(async () => {
     try {
@@ -85,6 +100,18 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
       setPeople(body.people ?? NO_PEOPLE);
       setUnread(body.unread ?? 0);
       setSelf(body.self);
+
+      /*
+       * Whether that was worth asking for. An identical answer widens the next
+       * wait; anything different puts it straight back to responsive, so a
+       * conversation never has to wait out a backoff earned while it was quiet.
+       */
+      const shape = digestOf(body);
+      if (shape === digest.current) quiet.current += 1;
+      else {
+        quiet.current = 0;
+        digest.current = shape;
+      }
     } catch {
       // A failed poll is not worth surfacing; the next one is 25 seconds away.
     } finally {
@@ -97,19 +124,42 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
     // poll for and no answer that would change it.
     if (!enabled) return;
 
-    void refresh();
+    /*
+     * A chain of timeouts rather than an interval, because the wait between
+     * polls is no longer the same twice running.
+     */
+    let timer = 0;
+    let stopped = false;
 
-    const tick = () => {
-      // Nothing is watching a hidden tab, so nothing needs fetching for it.
-      if (document.visibilityState === "visible") void refresh();
+    const schedule = () => {
+      if (stopped) return;
+      timer = window.setTimeout(run, nextInterval(quiet.current));
     };
-    const timer = window.setInterval(tick, OVERVIEW_MS);
-    // Coming back to the tab should feel current immediately.
-    document.addEventListener("visibilitychange", tick);
+
+    const run = async () => {
+      // Nothing is watching a hidden tab, so nothing needs fetching for it.
+      // Still rescheduled, so the chain survives rather than needing an event
+      // to restart it.
+      if (document.visibilityState === "visible") await refresh();
+      schedule();
+    };
+
+    void refresh().then(schedule);
+
+    // Coming back to the tab should feel current immediately, and should not
+    // have to serve out a backoff earned while nobody was looking.
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      quiet.current = 0;
+      window.clearTimeout(timer);
+      void refresh().then(schedule);
+    };
+    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", tick);
+      stopped = true;
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [refresh, enabled]);
 
