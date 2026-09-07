@@ -98,7 +98,7 @@ export function FeedbackTab() {
   }
 
   return (
-    <div className="measure flex flex-col gap-4">
+    <div className="measure-full flex flex-col gap-4">
       {done > 0 ? (
         <div className="filter-row">
           <Chip selected={!showDone} onClick={() => setShowDone(false)}>

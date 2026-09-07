@@ -246,17 +246,32 @@ export function TelemetryTab() {
             </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[34rem] border-collapse">
+          {/*
+            * Fits the card rather than scrolling sideways inside it.
+            *
+            * It was a 34rem minimum in a box that scrolled horizontally, and
+            * the widest thing in it was the last error, which carries whatever
+            * a provider felt like returning. `truncate` cannot help there: it
+            * sets white-space to nowrap, and a table cell sizes to its content,
+            * so the longer the message the wider the table. Measured, one error
+            * pushed this 907px past the card.
+            *
+            * table-fixed makes the columns the layout rather than the content,
+            * so a cell can be told to clip and will. The message is also cut in
+            * the data, below, because a column that only survives by clipping is
+            * one bad string away from being unreadable anyway.
+            */}
+          <div>
+            <table className="w-full table-fixed border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant text-left">
                   <Th>Operation</Th>
-                  <Th align="right">Calls</Th>
-                  <Th align="right">Errors</Th>
-                  <Th align="right">Refused</Th>
-                  <Th align="right">Average</Th>
-                  <Th align="right">Slowest</Th>
-                  <Th align="right">Over 1s</Th>
+                  <Th align="right" width="w-16">Calls</Th>
+                  <Th align="right" width="w-16">Errors</Th>
+                  <Th align="right" width="w-20">Refused</Th>
+                  <Th align="right" width="w-20">Average</Th>
+                  <Th align="right" width="w-20">Slowest</Th>
+                  <Th align="right" width="w-16">Over 1s</Th>
                 </tr>
               </thead>
               <tbody>
@@ -271,12 +286,16 @@ export function TelemetryTab() {
                         <span className="md-label-sm ml-2 text-on-variant/70">browser</span>
                       ) : null}
                       {row.lastErrorKind ? (
-                        <span className="md-label-sm mt-0.5 block truncate text-error">
-                          {row.lastErrorKind}
-                          {row.lastErrorNote ? `: ${row.lastErrorNote}` : ""}
-                          {row.lastErrorAt
-                            ? ` · ${formatExactTime(row.lastErrorAt)}`
-                            : ""}
+                        <span
+                          // The whole message on the hover, for the one time
+                          // somebody needs the rest of it.
+                          title={`${row.lastErrorKind}${row.lastErrorNote ? `: ${row.lastErrorNote}` : ""}`}
+                          className="md-label-sm mt-0.5 block truncate text-error"
+                        >
+                          {clip(
+                            `${row.lastErrorKind}${row.lastErrorNote ? `: ${row.lastErrorNote}` : ""}`,
+                          )}
+                          {row.lastErrorAt ? ` · ${formatExactTime(row.lastErrorAt)}` : ""}
                         </span>
                       ) : null}
                     </Td>
@@ -310,12 +329,32 @@ function Figure({ label, value, tone }: { label: string; value: string; tone?: "
   );
 }
 
-function Th({ children, align }: { children: React.ReactNode; align?: "right" }) {
+/**
+ * How much of an error message is worth putting in a table.
+ *
+ * Enough to recognise which one it is, and no more. The provider decides how
+ * long these are and a stack trace in a cell is not a diagnostic, it is a
+ * layout problem: the full text is on the hover and in the logs.
+ */
+const clip = (text: string, max = 90) =>
+  text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
+
+function Th({
+  children,
+  align,
+  width,
+}: {
+  children: React.ReactNode;
+  align?: "right";
+  /** Fixed columns need one, or the browser divides the width evenly. */
+  width?: string;
+}) {
   return (
     <th
       className={cx(
         "md-label-sm pb-2 font-normal text-on-variant",
         align === "right" ? "text-right" : "text-left",
+        width,
       )}
     >
       {children}
@@ -335,7 +374,8 @@ function Td({
   return (
     <td
       className={cx(
-        "md-body py-2 align-top",
+        // min-w-0 so a fixed column may actually clip what is in it.
+        "md-body min-w-0 py-2 align-top",
         align === "right" ? "text-right tabular-nums" : "min-w-0",
         tone === "bad" && "text-error",
       )}

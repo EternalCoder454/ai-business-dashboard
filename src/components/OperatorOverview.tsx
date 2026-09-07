@@ -169,30 +169,35 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
 
       <Card>
         <h2 className="md-title-lg mb-1">Tokens</h2>
-        <p className="md-body mb-4 text-on-variant">
-Since usage tracking began. Each business spends on its own key.
+        <p className="md-label-sm mb-4 text-on-variant/75">
+          Since tracking began. Each business spends on its own key.
         </p>
-        <dl className="grid grid-cols-1 gap-3 medium:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-3 medium:grid-cols-5">
           {(
             [
-              ["Input, new", u.input],
-              ["Input, cached", u.cacheRead],
-              ["Cache writes", u.cacheWrite],
-              ["Output", u.output],
+              ["Input, new", compact(u.input)],
+              ["Input, cached", compact(u.cacheRead)],
+              ["Cache writes", compact(u.cacheWrite)],
+              ["Output", compact(u.output)],
+              [
+                "From cache",
+                totalIn > 0 ? `${Math.round((u.cacheRead / totalIn) * 100)}%` : "0%",
+              ],
             ] as const
           ).map(([label, value]) => (
             <div key={label}>
               <dt className="md-label-sm text-on-variant">{label}</dt>
-              <dd className="md-title mt-0.5">{compact(value)}</dd>
+              <dd className="md-title mt-0.5 tabular-nums">{value}</dd>
             </div>
           ))}
         </dl>
-        {totalIn > 0 ? (
-          <p className="md-label-sm mt-4 text-on-variant/75">
-            {Math.round((u.cacheRead / totalIn) * 100)}% of input tokens served from
-            cache, at roughly a tenth of the price.
-          </p>
-        ) : null}
+        {/*
+          * The cache share as a figure beside the others, not a sentence under
+          * them. It read "52% of input tokens served from cache, at roughly a
+          * tenth of the price", which is a paragraph explaining arithmetic to
+          * the one person on the deployment who already knows what a cache read
+          * costs. The number is the whole of what it was saying.
+          */}
       </Card>
     </div>
   );

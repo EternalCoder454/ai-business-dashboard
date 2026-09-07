@@ -232,14 +232,21 @@ export default function AdminPage() {
             * types the URL is not doing anything wrong and should not be shown
             * something that looks like an alarm going off.
             */}
-          <div className="measure rounded-2xl border border-error/40 bg-error-container/10 p-8 text-center">
+          <div className="measure mx-auto rounded-2xl border border-error/40 bg-error-container/10 p-8 text-center">
             <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-error-container/30 text-error">
               <ShieldIcon className="h-7 w-7" />
             </div>
             <h2 className="md-title-lg text-error">Restricted</h2>
-            <p className="md-body mt-2 text-on-variant">
-              This screen reads across every business on the deployment. It is
-              limited to the addresses in OPERATOR_EMAILS.
+            {/* Not a lecture about what the screen does. Somebody who reached
+                this is not the audience for an explanation of the deployment,
+                and telling them what is behind the door is the one thing this
+                page should not do. */}
+            <p className="md-body mx-auto mt-2 text-on-variant">
+              Are you sure you are supposed to be here? Contact{" "}
+              <a href="mailto:hello@eterneon.net" className="text-primary underline">
+                Eterneon
+              </a>{" "}
+              if you are.
             </p>
             <Link href="/" className="md-label mt-5 inline-block text-primary underline">
               Back to the dashboard
@@ -605,12 +612,14 @@ function AccessTab({
         */}
       <Card>
         <h2 className="md-title-lg mb-1">Operators</h2>
-        <p className="md-body mb-4 text-on-variant">
-          Set as OPERATOR_EMAILS. An operator runs this deployment: they can
-          read any workspace and delete one. Being an administrator of your own
-          business is a different thing, granted per workspace, and gives none
-          of this. Changing the list needs a redeploy, which is deliberate:
-          nothing the app does should be able to grant it.
+        {/*
+          * One line. The paragraph that was here explained what an operator is,
+          * how it differs from an administrator, and why the list needs a
+          * redeploy, on a screen only an operator can open. Whoever is reading
+          * this set the variable.
+          */}
+        <p className="md-label-sm mb-4 text-on-variant/75">
+          OPERATOR_EMAILS, set at deploy.
         </p>
         <ul className="flex flex-col gap-1.5">
           {access.allowed.map((email) => (

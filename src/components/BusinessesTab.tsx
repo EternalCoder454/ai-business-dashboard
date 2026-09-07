@@ -86,7 +86,7 @@ export function BusinessesTab({
   };
 
   return (
-    <div className="measure flex flex-col gap-5">
+    <div className="measure-full flex flex-col gap-5">
       <Card>
         <h2 className="md-title-lg mb-4">New business</h2>
 

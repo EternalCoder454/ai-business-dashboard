@@ -293,7 +293,7 @@ export function ReportsTab({
   const visible = showClosed ? rows : open;
 
   return (
-    <div className="measure flex flex-col gap-4">
+    <div className="measure-full flex flex-col gap-4">
       <Card>
         <div className="flex flex-wrap items-start gap-3">
           <ReportIcon className="mt-0.5 h-5 w-5 flex-none text-on-variant" />

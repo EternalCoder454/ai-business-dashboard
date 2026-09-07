@@ -371,7 +371,16 @@ export async function overview(): Promise<AdminOverview> {
   const accounts = await db.select({ n: count }).from(t.accounts);
 
   const now = Date.now();
-  const day = now - 86_400_000;
+  /*
+   * Snapped to the hour, because telemetry is stored in hourly buckets.
+   *
+   * Comparing a bucket's start against a mid-hour timestamp drops whatever part
+   * of the oldest hour falls before it, so this screen and the Health tab were
+   * counting different windows and disagreeing about the same metric: 127
+   * errors read as 1.84% here and 1.61% there, off the same rows. The tab
+   * already snaps, so this is the one that was wrong.
+   */
+  const day = Math.floor((now - 86_400_000) / 3_600_000) * 3_600_000;
   const week = now - 7 * 86_400_000;
   const month = now - 30 * 86_400_000;
 

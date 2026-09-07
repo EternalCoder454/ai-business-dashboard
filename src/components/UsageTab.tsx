@@ -100,32 +100,35 @@ export function UsageTab() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 medium:grid-cols-4">
+      <div className="grid grid-cols-3 gap-3">
+        {/*
+          * Gone quiet is not here any more. It is the same fact as Active read
+          * backwards, out of the same pair of numbers, and the Overview already
+          * carries it as an alert, which is where a business worth chasing
+          * belongs. A tile that only ever restates the tile beside it is a tile
+          * to remove.
+          */}
         <Figure label="Businesses" value={String(totals.businesses)} />
         <Figure label="Active" value={String(totals.active)} />
-        <Figure
-          label="Gone quiet"
-          value={String(totals.quiet)}
-          tone={totals.quiet > 0 ? "bad" : undefined}
-        />
         <Figure label="People signed in" value={`${totals.people} of ${totals.seats}`} />
       </div>
 
       <Card>
-        <div className="overflow-x-auto">
-          {/* Every column carries its own side padding, so the columns need
-              the width to sit apart rather than sharing an edge. */}
-          <table className="w-full min-w-[52rem] border-collapse">
+        {/* Fits the card rather than scrolling sideways inside it, for the
+            reason the Health table gives: a column that sizes to its content
+            is a column one long string away from a horizontal scrollbar. */}
+        <div>
+          <table className="w-full table-fixed border-collapse">
             <thead>
               <tr className="border-b border-outline-variant text-left">
                 <Th>Business</Th>
-                <Th align="right">Seats</Th>
-                <Th align="right">Signed in</Th>
-                <Th align="right">Messages</Th>
-                <Th align="right">Conversations</Th>
-                <Th align="right">Deliverables</Th>
-                <Th align="right">Briefings</Th>
-                <Th align="right">Last active</Th>
+                <Th align="right" width="w-14">Seats</Th>
+                <Th align="right" width="w-20">Signed in</Th>
+                <Th align="right" width="w-20">Messages</Th>
+                <Th align="right" width="w-24">Conversations</Th>
+                <Th align="right" width="w-24">Deliverables</Th>
+                <Th align="right" width="w-20">Briefings</Th>
+                <Th align="right" width="w-28">Last active</Th>
               </tr>
             </thead>
             <tbody>
@@ -179,12 +182,22 @@ function Figure({ label, value, tone }: { label: string; value: string; tone?: "
   );
 }
 
-function Th({ children, align }: { children: React.ReactNode; align?: "right" }) {
+function Th({
+  children,
+  align,
+  width,
+}: {
+  children: React.ReactNode;
+  align?: "right";
+  /** Fixed columns need one, or the browser divides the width evenly. */
+  width?: string;
+}) {
   return (
     <th
       className={cx(
         "md-label-sm whitespace-nowrap px-3 pb-2 font-normal text-on-variant first:pl-0 last:pr-0",
         align === "right" ? "text-right" : "text-left",
+        width,
       )}
     >
       {children}
@@ -204,7 +217,8 @@ function Td({
   return (
     <td
       className={cx(
-        "md-body px-3 py-2 align-top first:pl-0 last:pr-0",
+        // min-w-0 so a fixed column may actually clip what is in it.
+        "md-body min-w-0 px-3 py-2 align-top first:pl-0 last:pr-0",
         align === "right" ? "whitespace-nowrap text-right tabular-nums" : "min-w-0",
         tone === "bad" && "text-error",
       )}

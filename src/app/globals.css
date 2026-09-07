@@ -595,7 +595,10 @@ table,
 .measure p.md-label-sm,
 .measure-wide p.md-body,
 .measure-wide p.md-label,
-.measure-wide p.md-label-sm {
+.measure-wide p.md-label-sm,
+.measure-full p.md-body,
+.measure-full p.md-label,
+.measure-full p.md-label-sm {
   max-width: 68ch;
 }
 
@@ -684,6 +687,19 @@ table,
 .measure-wide {
   width: 100%;
   max-width: 76rem;
+}
+
+/*
+ * No cap at all, for screens where the width is the point.
+ *
+ * The Operator tabs are tables and queues read by one person who runs the
+ * deployment, and .measure held them to 64rem: on a wide monitor the Conduct
+ * review sat in the left two thirds with the rest of the screen empty beside
+ * it. Prose inside still caps itself below, because a line of text is readable
+ * at a length that has nothing to do with how wide a table wants to be.
+ */
+.measure-full {
+  width: 100%;
 }
 
 @media (min-width: 1200px) {
