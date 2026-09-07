@@ -9,6 +9,10 @@
  * Run against a scratch workspace of its own, since it writes messages with
  * token counts on them and then reads the money back out.
  *
+ * Not part of `npm test`, for the same reason message-churn-test is not: it
+ * needs a real database and CI has no credentials for one. Adding it to the
+ * suite broke the build immediately, which is the convention announcing itself.
+ *
  *   npm run budget-test
  */
 import { eq, sql } from "drizzle-orm";
