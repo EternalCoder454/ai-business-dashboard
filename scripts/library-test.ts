@@ -207,6 +207,8 @@ console.log("\nthe catalogue groups by project, when there are any");
     text: "some contents",
     departmentId: COMPANY_ID,
     projectId,
+    width: 0,
+    height: 0,
     createdAt: now,
     updatedAt: now,
   });

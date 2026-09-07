@@ -55,6 +55,7 @@ import {
   Chip,
   Dialog,
   Field,
+  MicIcon,
   SendIcon,
   SparkIcon,
   StatusDot,
@@ -65,6 +66,7 @@ import {
 } from "./ui";
 import { Markdown } from "./Markdown";
 import { createRipple } from "./ui/ripple";
+import { appendSpoken, useDictation } from "@/lib/dictation";
 
 
 /**
@@ -384,6 +386,22 @@ export function ChatView({ departmentId }: { departmentId: string }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const stickToBottom = useRef(true);
+
+  /*
+   * Speaking into the composer.
+   *
+   * Each settled phrase is appended rather than replacing the box, since
+   * somebody may have typed half the question before deciding to say the rest.
+   * The functional update matters: phrases arrive while the closure that
+   * started the dictation is still holding whatever the draft was then.
+   */
+  const dictation = useDictation((said) => {
+    setDraft((current) => appendSpoken(current, said));
+    // The field grows as the words land, the same as typing into it does.
+    requestAnimationFrame(() => {
+      if (inputRef.current) autoGrow(inputRef.current);
+    });
+  });
   /*
    * generate, so it can call itself after a read without naming itself in its
    * own dependency list, which is not a thing a useCallback can do.
@@ -1352,6 +1370,32 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               }}
               className="md-body md-composer-field max-h-[220px] w-full resize-none bg-transparent text-on-surface placeholder:text-on-variant/70 focus:outline-none"
             />
+            {/*
+             * Only where the browser can do it, and never while a reply is
+             * streaming: the composer is for the next question, and dictating
+             * into it over the top of an answer arriving is two things at once.
+             */}
+            {dictation.supported && !isStreaming ? (
+              <button
+                type="button"
+                onClick={(event) => {
+                  createRipple(event);
+                  if (dictation.listening) dictation.stop();
+                  else dictation.start();
+                }}
+                aria-pressed={dictation.listening}
+                aria-label={dictation.listening ? "Stop dictating" : "Dictate"}
+                title="Speak instead of typing. Your browser does the listening, and on Chrome the audio is sent to Google to be recognised."
+                className={cx(
+                  "md-state md-target grid h-10 w-10 flex-none place-items-center rounded-full transition-colors",
+                  dictation.listening
+                    ? "bg-error-container text-on-error-container"
+                    : "text-on-variant",
+                )}
+              >
+                <MicIcon className="h-5 w-5" />
+              </button>
+            ) : null}
             {isStreaming ? (
               <Button
                 variant="outlined"
@@ -1378,6 +1422,26 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               </button>
             )}
           </div>
+          {/*
+           * While dictating, this line says what is being heard instead of what
+           * the model costs. It is the same row rather than a new one on
+           * purpose: a strip that appears and pushes the composer up the screen
+           * is the last thing anybody wants while holding a phone and talking.
+           *
+           * Interim words in the recogniser's own case, uncorrected. They are
+           * about to be replaced by the settled phrase, and tidying something
+           * that is going to change reads as the panel arguing with itself.
+           */}
+          {dictation.listening || dictation.error ? (
+            <p
+              className={cx(
+                "md-label-sm mt-2 truncate text-center",
+                dictation.error ? "text-error" : "text-on-variant/70",
+              )}
+            >
+              {dictation.error ?? (dictation.interim.trim() || "Listening…")}
+            </p>
+          ) : (
           <p className="md-label-sm mt-2 text-center text-on-variant/70">
             <span className="hidden medium:inline">
               Enter to send · Shift+Enter for a new line ·{" "}
@@ -1398,6 +1462,7 @@ export function ChatView({ departmentId }: { departmentId: string }) {
               </>
             ) : null}
           </p>
+          )}
 
           <HeadProfile
             department={department}

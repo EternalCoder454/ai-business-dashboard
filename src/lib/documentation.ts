@@ -121,7 +121,7 @@ You can lower it by pointing individual heads at a cheaper model. A head that mo
 
 **Start a new conversation** for a new subject. Keep going in the same one when you are still on the same subject, because the head can see everything said earlier in that conversation and the answers get better as it goes.
 
-**Attach a file** with the paperclip. Images, PDFs, Word documents, spreadsheets exported as CSV, and plain text all work, up to about 14 MB each. Anything you attach is also saved to the Library so you do not have to send it twice.
+**Add a file** with the plus at the left of the box. Images, PDFs, Word documents, spreadsheets exported as CSV, and plain text all work, up to about 14 MB each. Anything you attach is also saved to the Library so you do not have to send it twice.
 
 **What a head knows when it answers you:**
 
@@ -135,7 +135,11 @@ You can lower it by pointing individual heads at a cheaper model. A head that mo
 
 **What it never knows:** your API key, anyone else's private files, and anything belonging to another business you are a member of.
 
-**When a head wants to do something**, such as add a task or record a decision, it asks first. A card appears with exactly what it proposes. Nothing happens until you press Approve. Dismiss is always safe.`,
+**Speak instead of typing** with the microphone, next to send. It appears only in browsers that can do it, which today means Chrome, Edge and Safari but not Firefox. Your words are added to whatever is already in the box, so you can type half a question and say the rest. The listening is done by the browser rather than by the panel, and in Chrome that means the audio is sent to Google to be recognised, so it is worth knowing before dictating anything you would not put in a search box.
+
+**When a head wants to change something**, such as adding a task or recording a decision, it asks first. A card appears with exactly what it proposes and nothing happens until you press Approve. Dismiss is always safe.
+
+**When it only wants to read something**, such as searching the web or opening a document you already gave it, it just does it and shows you what it found. Stopping mid answer to approve a lookup would only interrupt a question you had already asked.`,
       },
       {
         id: "tasks-projects",
