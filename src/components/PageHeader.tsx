@@ -51,30 +51,56 @@ export function PageHeader({
   return (
     <header
       className={cx(
-        "flex flex-none flex-wrap items-start justify-between gap-x-3 gap-y-3",
-        "medium:border-b medium:border-outline-variant medium:px-6 medium:py-6 expanded:px-8",
-        quiet ? "p-0" : "border-b border-outline-variant px-4 py-4",
+        "flex flex-none flex-wrap items-center justify-between gap-x-3 gap-y-2",
+        /*
+          * Three rows of chrome became one.
+          *
+          * This was 105px on a 860px screen, an eighth of it, before a page had
+          * said anything: 48 of padding, a line naming the section that the
+          * navigation is already highlighting, and a 28px heading. On the
+          * dashboard the heading was the company name, which is also the first
+          * thing in the sidebar, so the top of the screen said where you were
+          * twice and who you were twice.
+          *
+          * The section label sits on the heading's line now instead of above
+          * it, and the padding is a third of what it was. It comes to about 60.
+          */
+        "medium:border-b medium:border-outline-variant medium:px-6 medium:py-3 expanded:px-8",
+        quiet ? "p-0" : "border-b border-outline-variant px-4 py-3",
       )}
     >
       {/* A basis rather than a fixed width: the heading and the actions share
           a line while both fit, and the actions drop to their own line once
           they do not. 10rem is about where a title starts looking cramped. */}
       <div className="min-w-0 flex-1 basis-40">
-        {/* The group this page belongs to, which the top app bar does not say.
-            Compact has no room for a second line above the heading. */}
-        {eyebrow ? (
-          <p className="md-label-sm mb-1 hidden text-primary medium:block">{eyebrow}</p>
-        ) : null}
-        {/*
-          * Announced on a phone, not drawn, when the bar has already said it.
-          *
-          * The bar is the one that stays, because it belongs to the shell and
-          * is on every screen; but a page still needs a heading to navigate by,
-          * so the h1 goes on being an h1 and only stops taking up room.
-          */}
-        <h1 className={cx("md-headline", repeated && "sr-only medium:not-sr-only")}>{title}</h1>
+        <div className="flex min-w-0 items-baseline gap-2">
+          {/* The group this page belongs to, which the top app bar does not
+              say. Beside the heading rather than over it: it is three words of
+              context and it was costing a whole row. Compact has no room for
+              it at all. */}
+          {eyebrow ? (
+            <span className="md-label-sm hidden flex-none text-primary medium:block">
+              {eyebrow}
+            </span>
+          ) : null}
+          {/*
+            * Announced on a phone, not drawn, when the bar has already said it.
+            *
+            * The bar is the one that stays, because it belongs to the shell and
+            * is on every screen; but a page still needs a heading to navigate
+            * by, so the h1 goes on being an h1 and only stops taking up room.
+            */}
+          <h1
+            className={cx(
+              "md-title-lg min-w-0 truncate",
+              repeated && "sr-only medium:not-sr-only",
+            )}
+          >
+            {title}
+          </h1>
+        </div>
         {description ? (
-          <p className="md-body mt-1.5 text-on-variant">{description}</p>
+          <p className="md-body mt-1 text-on-variant">{description}</p>
         ) : null}
       </div>
       {/* Wraps rather than overflows. A phone is not wide enough to hold two

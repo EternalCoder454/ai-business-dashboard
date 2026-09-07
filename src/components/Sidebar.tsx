@@ -192,30 +192,40 @@ export function Sidebar({
   });
 
   /*
-   * The width fit-content gave it, taken once and then kept.
+   * A pixel width, taken at the moment of folding and only then.
    *
-   * A column sized to its contents cannot be animated shut: no browser will
-   * transition from an intrinsic size to a number, so the first attempt at this
-   * measured the width at the moment of folding and set both in the same
-   * breath. React batched them, the element never rendered at 252px, and it
-   * went from fit-content to zero in a single frame. Measured: 252, 0, and
-   * nothing in between.
+   * A column sized to its contents cannot be animated shut, because no browser
+   * will transition from an intrinsic size to a number. The obvious answer is
+   * to measure it and keep the number, and that answer was wrong in a way that
+   * took a screenshot from somebody else's machine to see: measured on mount,
+   * before the workspace had loaded, it pinned the column to the width of a
+   * menu that was still four rows and a "Loading…". The departments arrived
+   * afterwards into a column already too narrow for them, and "Social Media"
+   * came out as "Social Me...". It never looked wrong here, because the data
+   * was always already cached.
    *
-   * So the measurement happens on the way in instead. The first paint is still
-   * content-sized, this reads what that came to, and every paint after it is a
-   * number, which folds and unfolds like any other pane. The consequence worth
-   * knowing is that the column stops re-fitting itself to a department renamed
-   * later, which is the same thing that happens the moment anybody drags it.
+   * So nothing is pinned while the menu is simply sitting there. It stays
+   * fit-content, re-fitting whatever it holds, and a width is taken only when
+   * somebody folds it: measure, let that paint, then fold. Two frames rather
+   * than one, because React batches a measurement and a fold set together and
+   * the element would never render at the width it is supposed to leave from.
    */
-  const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
-  useEffect(() => {
-    if (stored.width !== undefined || folded || naturalWidth !== null) return;
-    const measured = paneRef.current?.getBoundingClientRect().width;
-    if (measured) setNaturalWidth(Math.max(208, Math.round(measured)));
-  }, [stored.width, folded, naturalWidth, paneRef]);
+  const [foldFrom, setFoldFrom] = useState<number | null>(null);
 
-  /** What it is when open: dragged if it has been, otherwise what it measured. */
-  const openWidth = stored.width ?? naturalWidth;
+  const fold = () => {
+    const measured = paneRef.current?.getBoundingClientRect().width;
+    if (!measured) {
+      setPaneHidden("nav", true);
+      return;
+    }
+    setFoldFrom(Math.round(measured));
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setPaneHidden("nav", true));
+    });
+  };
+
+  /** What it is when open: dragged if it has been, else the last fold's width. */
+  const openWidth = stored.width ?? foldFrom;
 
   return (
     <aside
@@ -297,7 +307,7 @@ export function Sidebar({
           {/* Folds to the icon rail rather than to a bare strip, which is what
               makes this pane different from the lists: every destination stays
               one click away instead of none. The control is the same one. */}
-          <PaneFoldButton id="nav" label="the navigation" />
+          <PaneFoldButton id="nav" label="the navigation" onFold={fold} />
         </>
       ) : null}
     </aside>
@@ -567,12 +577,30 @@ export function SidebarContent({
                       active={pathname === "/orchestrator"}
                       onNavigate={onNavigate}
                     >
+                      {/*
+                        * The name of the job, like every row under it.
+                        *
+                        * This used to carry the persona and the role title
+                        * together, "Ruth" beside "CHIEF OF STAFF", and the role
+                        * was the half that could not shrink. So the name took
+                        * the whole squeeze and the row read "R  CHIEF OF STAFF":
+                        * the least useful text at full width, the most useful
+                        * cut to one letter.
+                        *
+                        * Its siblings all say what a head is for rather than
+                        * what it is called, and the face already says who. The
+                        * persona is on the hover and on the page itself.
+                        */}
                       <DepartmentAvatar department={orchestrator} size={20} />
-                      <span className="md-body min-w-0 flex-1 truncate font-medium">
-                        {orchestrator.personaName || orchestrator.name}
-                      </span>
-                      <span className="md-label-sm flex-none text-on-variant/60">
-                        {orchestrator.roleTitle}
+                      <span
+                        title={
+                          orchestrator.personaName
+                            ? `${orchestrator.personaName}, ${orchestrator.roleTitle}`
+                            : orchestrator.roleTitle
+                        }
+                        className="md-body min-w-0 flex-1 truncate font-medium"
+                      >
+                        {orchestrator.name}
                       </span>
                       <StatusDot status={statusOf(orchestrator.id)} />
                     </NavRow>

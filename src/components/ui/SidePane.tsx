@@ -306,28 +306,26 @@ export function SidePane({
 export function PaneFoldButton({
   id,
   label,
-  beforeFold,
+  onFold,
 }: {
   id: string;
   label: string;
   /**
-   * Run before the pane folds, to settle anything the fold needs settled.
+   * How this pane folds, when simply setting the flag is not enough.
    *
-   * The navigation uses it to write down how wide it currently is. Its default
-   * width is fit-content, and no browser will animate from an intrinsic size to
-   * a number, so without a measurement taken at this moment the fold has
-   * nothing to travel from and simply happens.
+   * The navigation needs it. Its width is fit-content, no browser will animate
+   * from an intrinsic size to a number, and measuring in the same breath as
+   * folding does not help because React batches the two and the element never
+   * renders at the measured width. So it takes the measurement, waits for it to
+   * be painted, and only then folds.
    */
-  beforeFold?: () => void;
+  onFold?: () => void;
 }) {
   return (
     <div className="absolute bottom-2 right-2 z-10">
       <button
         type="button"
-        onClick={() => {
-          beforeFold?.();
-          setPaneHidden(id, true);
-        }}
+        onClick={() => (onFold ? onFold() : setPaneHidden(id, true))}
         aria-label={`Hide ${label}`}
         title={`Hide ${label}`}
         /*
