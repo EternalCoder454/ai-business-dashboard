@@ -6,7 +6,7 @@ import { createRipple } from "./ui/ripple";
 import type { WebSearchMode } from "@/lib/types";
 
 /** The settings that open a panel of their own rather than sitting in the list. */
-type SubmenuId = "search" | "effort";
+type SubmenuId = "search" | "effort" | "brevity";
 
 /**
  * The one control at the left of the composer, and everything it can add.
@@ -30,6 +30,8 @@ export function ComposerMenu({
   libraryCount,
   search,
   effort,
+  brevity,
+  synthesis,
 }: {
   onAddFiles?: () => void;
   onFromLibrary?: () => void;
@@ -64,6 +66,20 @@ export function ComposerMenu({
     levels: { id: string; label: string; hint: string }[];
     onPick: (effort: string) => void;
   };
+  /**
+   * How long each head's answer runs, in a meeting.
+   *
+   * Meetings had these as chips under the composer while the chat had the same
+   * kind of choice inside this menu, so the two composers disagreed about where
+   * the settings live. They are one control now.
+   */
+  brevity?: {
+    current: string;
+    levels: { id: string; label: string; detail: string }[];
+    onPick: (id: string) => void;
+  };
+  /** Whether the orchestrator reads across the room at the end. */
+  synthesis?: { on: boolean; label: string; detail: string; onToggle: () => void };
 }) {
   const [open, setOpen] = useState(false);
   /** Which settings panel is open beside the menu, if any. */
@@ -179,6 +195,21 @@ export function ComposerMenu({
     });
   }
 
+  if (brevity && brevity.levels.length > 1) {
+    groups.push({
+      id: "brevity",
+      label: "Reply length",
+      value:
+        brevity.levels.find((level) => level.id === brevity.current)?.label ?? brevity.current,
+      choices: brevity.levels.map((level) => ({
+        id: level.id,
+        label: level.label,
+        detail: level.detail,
+      })),
+      onPick: brevity.onPick,
+    });
+  }
+
   if (effort && effort.levels.length > 1) {
     groups.push({
       id: "effort",
@@ -192,6 +223,21 @@ export function ComposerMenu({
       })),
       onPick: effort.onPick,
     });
+  }
+
+  if (synthesis) {
+    rows.push(
+      <MenuRow
+        key="synthesis"
+        icon={<SparkIcon className="h-4 w-4" />}
+        label={synthesis.label}
+        detail={synthesis.detail}
+        checked={synthesis.on}
+        toggle
+        // Stays open, so the tick is visible where it was pressed.
+        onClick={synthesis.onToggle}
+      />,
+    );
   }
 
   if (rows.length === 0 && groups.length === 0) return null;
@@ -276,7 +322,11 @@ export function ComposerMenu({
                   label={choice.label}
                   detail={choice.detail}
                   checked={
-                    (active.id === "search" ? search?.mode : effort?.current) === choice.id
+                    (active.id === "search"
+                      ? search?.mode
+                      : active.id === "brevity"
+                        ? brevity?.current
+                        : effort?.current) === choice.id
                   }
                   // Stays open. Somebody who has just changed how a head answers
                   // may want to see that it took, and closing hides the answer.
@@ -310,6 +360,7 @@ function MenuRow({
   label,
   detail,
   checked,
+  toggle,
   opensPanel,
   highlighted,
   onClick,
@@ -319,6 +370,13 @@ function MenuRow({
   detail: string;
   /** Present only on a row that is a switch rather than an action. */
   checked?: boolean;
+  /**
+   * A switch that stands alone rather than one of a set.
+   *
+   * Only the role differs, and it is the difference between a screen reader
+   * saying "one of three, selected" about something that is simply on.
+   */
+  toggle?: boolean;
   /** A row that opens a panel beside this one rather than doing something. */
   opensPanel?: boolean;
   /** That panel is the one currently open. */
@@ -328,7 +386,9 @@ function MenuRow({
   return (
     <button
       type="button"
-      role={checked === undefined ? "menuitem" : "menuitemradio"}
+      role={
+        checked === undefined ? "menuitem" : toggle ? "menuitemcheckbox" : "menuitemradio"
+      }
       aria-checked={checked}
       aria-haspopup={opensPanel ? "menu" : undefined}
       aria-expanded={opensPanel ? highlighted : undefined}

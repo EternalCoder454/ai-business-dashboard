@@ -23,6 +23,7 @@ import {
   cx,
 } from "@/components/ui";
 import { ProfileMenu } from "@/components/ProfileMenu";
+import { ComposerMenu } from "@/components/ComposerMenu";
 import { createRipple } from "@/components/ui/ripple";
 import { ROOM_BUDGET, runMeetingRound, runUsage } from "@/lib/meetings";
 import { deriveConversationTitle } from "@/lib/prompts";
@@ -456,6 +457,121 @@ function MeetingsBody() {
           </div>
         </div>
 
+        {/*
+          * The composer, inside the transcript rather than under the whole page.
+          *
+          * It was a sibling of the row that holds the transcript and the roster,
+          * so it spanned both, and measure-read centres itself, which centred it
+          * in the pair of them. With the roster open at xlarge that put the box
+          * half a sidebar to the right of the thing it belongs to: off centre
+          * under a feed that was centred correctly beside it.
+          */}
+        <div className="flex-none border-t border-outline-variant px-4 medium:px-6 py-4">
+          <div className="measure-read">
+            {running && currentRound ? (
+              <Progress
+                answered={answeredCount}
+                total={currentRound.responses.length}
+                waiting={currentRound.responses
+                  .filter((r) => r.pending)
+                  .map((r) => departmentOf(r.departmentId)?.personaName ?? "")
+                  .filter(Boolean)}
+              />
+            ) : null}
+
+            <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-lowest py-2 pl-2 pr-2 transition-colors focus-within:border-primary">
+              <ComposerMenu
+                libraryCount={0}
+                brevity={{
+                  current: settings.roomBrevity ?? "tight",
+                  levels: [
+                    {
+                      id: "tight",
+                      label: "Tight",
+                      detail: `${ROOM_BUDGET.tight} words each`,
+                    },
+                    {
+                      id: "standard",
+                      label: "Standard",
+                      detail: `${ROOM_BUDGET.standard} words each`,
+                    },
+                  ],
+                  onPick: (id) =>
+                    void updateSettings({ roomBrevity: id as "tight" | "standard" }),
+                }}
+                synthesis={{
+                  on: synthesize,
+                  label: `${orchestrator?.personaName ?? "The orchestrator"} reads across the room`,
+                  detail: "A round up once everyone has answered",
+                  onToggle: () => setSynthesize((value) => !value),
+                }}
+              />
+              <textarea
+                ref={inputRef}
+                value={question}
+                rows={1}
+                placeholder={
+                  thread && !running ? "Ask a follow up…" : "Ask the room…"
+                }
+                onChange={(event) => {
+                  setQuestion(event.target.value);
+                  const el = event.target;
+                  el.style.height = "auto";
+                  el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    void ask(false);
+                  }
+                }}
+                className="md-body md-composer-field max-h-[200px] w-full min-w-0 resize-none bg-transparent text-on-surface placeholder:text-on-variant/70 focus:outline-none"
+              />
+              {running ? (
+                <Button
+                  variant="outlined"
+                  className="md-target flex-none"
+                  onClick={() => abortRef.current?.abort()}
+                >
+                  Stop
+                </Button>
+              ) : (
+                <Button
+                  className="md-target flex-none"
+                  disabled={!question.trim() || asking.length === 0}
+                  onClick={() => void ask(false)}
+                >
+                  {thread
+                    ? "Ask again"
+                    : asking.length === departments.length
+                      ? "Ask everyone"
+                      : `Ask ${asking.length}`}
+                </Button>
+              )}
+            </div>
+
+            <div className="filter-row mt-2.5">
+              {/* Reply length and the round up moved into the plus beside
+                  the box, where the chat keeps the same kind of choice. What is
+                  left on this row is the state of the room rather than a
+                  setting: whether it can answer at all. */}
+              {ready &&
+              !hasKeyFor(settings.model, {
+                serverKeys,
+                workspaceKeys,
+                browserKey: settings.apiKey,
+              }) ? (
+                <span className="md-label text-warning">
+                  No API key yet. Add one in{" "}
+                  <Link href="/settings" className="underline">
+                    Settings
+                  </Link>
+                  .
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </div>
         </div>
 
         {/* Who is in the room. Keeps the cast visible without scrolling, and
@@ -563,99 +679,6 @@ function MeetingsBody() {
         </aside>
       </div>
 
-      {/* Composer */}
-      <div className="flex-none border-t border-outline-variant px-4 medium:px-6 py-4">
-        <div className="measure-read">
-          {running && currentRound ? (
-            <Progress
-              answered={answeredCount}
-              total={currentRound.responses.length}
-              waiting={currentRound.responses
-                .filter((r) => r.pending)
-                .map((r) => departmentOf(r.departmentId)?.personaName ?? "")
-                .filter(Boolean)}
-            />
-          ) : null}
-
-          <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-lowest py-2 pl-4 pr-2 transition-colors focus-within:border-primary">
-            <textarea
-              ref={inputRef}
-              value={question}
-              rows={1}
-              placeholder={
-                thread && !running ? "Ask a follow up…" : "Ask the room…"
-              }
-              onChange={(event) => {
-                setQuestion(event.target.value);
-                const el = event.target;
-                el.style.height = "auto";
-                el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  void ask(false);
-                }
-              }}
-              className="md-body md-composer-field max-h-[200px] w-full min-w-0 resize-none bg-transparent text-on-surface placeholder:text-on-variant/70 focus:outline-none"
-            />
-            {running ? (
-              <Button
-                variant="outlined"
-                className="md-target flex-none"
-                onClick={() => abortRef.current?.abort()}
-              >
-                Stop
-              </Button>
-            ) : (
-              <Button
-                className="md-target flex-none"
-                disabled={!question.trim() || asking.length === 0}
-                onClick={() => void ask(false)}
-              >
-                {thread
-                  ? "Ask again"
-                  : asking.length === departments.length
-                    ? "Ask everyone"
-                    : `Ask ${asking.length}`}
-              </Button>
-            )}
-          </div>
-
-          <div className="filter-row mt-2.5">
-            <Chip
-              selected={settings.roomBrevity !== "standard"}
-              title="Length of each reply."
-              onClick={() =>
-                void updateSettings({
-                  roomBrevity: settings.roomBrevity === "standard" ? "tight" : "standard",
-                })
-              }
-            >
-              {settings.roomBrevity === "standard" ? "Standard" : "Tight"} ·{" "}
-              {ROOM_BUDGET[settings.roomBrevity ?? "tight"]} words each
-            </Chip>
-            <Chip selected={synthesize} onClick={() => setSynthesize((value) => !value)}>
-              {synthesize ? <CheckIcon className="h-3.5 w-3.5" /> : null}
-              {orchestrator?.personaName ?? "Orchestrator"} reads across the room
-            </Chip>
-            {ready &&
-            !hasKeyFor(settings.model, {
-              serverKeys,
-              workspaceKeys,
-              browserKey: settings.apiKey,
-            }) ? (
-              <span className="md-label text-warning">
-                No API key yet. Add one in{" "}
-                <Link href="/settings" className="underline">
-                  Settings
-                </Link>
-                .
-              </span>
-            ) : null}
-          </div>
-        </div>
-      </div>
       </div>
     </div>
   );
