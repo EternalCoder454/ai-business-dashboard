@@ -249,6 +249,7 @@ export function SidebarContent({
     workspaceKeys,
     canOpenPath,
     canOpenHead,
+    orchestrator,
   } = useStore();
   const { unread } = useMessages();
 
@@ -409,13 +410,40 @@ export function SidebarContent({
                       active={isActive(pathname, link.href)}
                       onNavigate={onNavigate}
                     >
+                      {/*
+                        * The orchestrator gets its own face rather than a
+                        * briefcase.
+                        *
+                        * It sat in this list looking exactly like Dashboard and
+                        * Meetings, which are screens, when it is a person and
+                        * the first one anybody should talk to. An avatar in a
+                        * row of glyphs is enough on its own: it reads as
+                        * somebody rather than somewhere, and it is the same
+                        * face as in the heads below, so the two connect.
+                        */}
                       <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
-                        {link.icon}
+                        {link.href === "/orchestrator" && orchestrator ? (
+                          <DepartmentAvatar department={orchestrator} size={18} />
+                        ) : (
+                          link.icon
+                        )}
                         {link.href === "/inbox" ? (
                           <NavBadge count={unread} label={`${unread} unread messages`} />
                         ) : null}
                       </span>
-                      <span className="md-body truncate">{link.label}</span>
+                      <span
+                        className={cx(
+                          "md-body min-w-0 flex-1 truncate",
+                          link.href === "/orchestrator" ? "font-medium" : "",
+                        )}
+                      >
+                        {link.label}
+                      </span>
+                      {link.href === "/orchestrator" && orchestrator?.personaName ? (
+                        <span className="md-label-sm flex-none text-on-variant/60">
+                          {orchestrator.personaName}
+                        </span>
+                      ) : null}
                     </NavRow>
                   </li>
                 ))}

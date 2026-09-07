@@ -115,6 +115,73 @@ export async function runTool(
       return parts.join("\n");
     }
 
+    case "read_department": {
+      const asked = text("department").toLowerCase();
+      if (!asked) return "Name the department to read.";
+
+      /*
+       * Only heads this person could open themselves.
+       *
+       * Two exclusions, for two different reasons. A personal head is theirs
+       * alone and sits outside the org chart by design, so it is never
+       * readable from here whoever is asking. And a member whose permissions
+       * deny a department must not reach it through the orchestrator either:
+       * the tool runs on their behalf, so it gets their access and not more.
+       */
+      const readable = store.allDepartments.filter(
+        (department) =>
+          !department.personal &&
+          !department.isOrchestrator &&
+          store.canOpenHead(department.id),
+      );
+
+      const found =
+        readable.find((department) => department.id.toLowerCase() === asked) ??
+        readable.find((department) => department.name.toLowerCase() === asked) ??
+        readable.find((department) => (department.personaName ?? "").toLowerCase() === asked) ??
+        readable.find((department) => department.name.toLowerCase().includes(asked));
+
+      if (!found) {
+        return `No department called "${text("department")}" that you can read. There is ${
+          readable.map((department) => department.name).join(", ") || "nothing"
+        }.`;
+      }
+
+      const threads = store
+        .conversationsFor(found.id)
+        .filter((conversation) => conversation.messageCount > 0)
+        .slice(0, 3);
+
+      if (threads.length === 0) return `${found.name} has had no conversations yet.`;
+
+      /*
+       * The last few exchanges of each, not the whole history. This lands in a
+       * prompt that is already carrying the profile, the memory and the tasks,
+       * and a year of somebody else's chat would push out the question being
+       * asked. Three threads, eight messages each, trimmed.
+       */
+      const parts: string[] = [];
+      for (const conversation of threads) {
+        const messages = await store.openConversation(conversation.id);
+        const recent = messages.slice(-8);
+        if (recent.length === 0) continue;
+        parts.push(
+          `--- ${found.name}: ${conversation.title} ---\n` +
+            recent
+              .map((message) => {
+                const who = message.role === "user" ? "Owner" : found.personaName || found.name;
+                const body = message.content.trim().replace(/\s+/g, " ");
+                return `${who}: ${body.length > 700 ? `${body.slice(0, 700)}…` : body}`;
+              })
+              .join("\n"),
+        );
+      }
+
+      return parts.length
+        ? parts.join("\n\n")
+        : `${found.name} has had no conversations yet.`;
+    }
+
     case "read_deliverable": {
       const wanted = text("title");
       const found = findDeliverable(store.deliverables, departmentId, wanted);

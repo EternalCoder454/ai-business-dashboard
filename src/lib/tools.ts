@@ -345,6 +345,43 @@ export const BUILT_IN_TOOLS: ToolDefinition[] = [
     summarise: (input) => `Open ${input.url}`,
   },
   {
+    name: "read_department",
+    description:
+      "Read what another head has recently been asked and what it answered. Use this " +
+      "before summarising across the business, or when a question depends on work that " +
+      "belongs to somebody else: you are the one head who can. Give the department's " +
+      "name, for example Marketing or Finance.",
+    schema: {
+      type: "object",
+      properties: {
+        department: str("The department to read, by name, for example Marketing."),
+      },
+      required: ["department"],
+    },
+    /*
+     * A read, so it happens without stopping to ask.
+     *
+     * The distinction the whole tool list is built on: reading something the
+     * person could open themselves is not a thing to interrupt them for, and
+     * writing is. This reads conversations inside their own workspace that
+     * they can already open, so approving it would only add a click to a
+     * question they had just asked.
+     */
+    writes: false,
+    /*
+     * The orchestrator alone.
+     *
+     * Every other head answers in its own area and should not be reading its
+     * colleagues' conversations to do it. This one is asked to judge across all
+     * of them, and could not: asked to summarise the business it said it had no
+     * visibility into each department's work unless it had come up already,
+     * which was true and made the head that exists to see across everything the
+     * one head that could not.
+     */
+    departments: [ORCHESTRATOR_ID],
+    summarise: (input) => `Read ${input.department}'s conversations`,
+  },
+  {
     name: "read_deliverable",
     description:
       "Read back something you produced earlier, in full. Do this before revising one, " +

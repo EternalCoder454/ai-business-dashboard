@@ -89,6 +89,14 @@ console.log("the registry is well formed");
     // nothing is written, and stopping to approve a page the person just named
     // is asking them to confirm what they have already asked for.
     fetch_url: "reads a public page, changes nothing",
+    /*
+     * Reads conversations inside this workspace that the person asking can
+     * already open, and only for the orchestrator, which is the one head whose
+     * job is to judge across the others. runTool filters to departments the
+     * caller may open and never touches a personal one, so this cannot reach
+     * anything they could not read themselves.
+     */
+    read_department: "reads other heads' threads in this workspace, changes nothing",
   };
 
   const readOnly = BUILT_IN_TOOLS.filter((t) => !t.writes);
