@@ -19,6 +19,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * the documentation.
  */
 
+/**
+ * Whether the microphone appears in the composer.
+ *
+ * Off. The recogniser works and the joining is tested, but the browser's own
+ * accuracy was not good enough to put in front of a customer, so the control is
+ * not drawn and nothing asks for a microphone.
+ *
+ * The code stays rather than being deleted, because what was hard here was
+ * never the button: it was learning that results is cumulative and that a
+ * phrase comes back after it settles. Deleting that and rediscovering it later
+ * is the expensive way round.
+ *
+ * Turning it on is this line, and headers-test will then require the
+ * Permissions-Policy to allow the microphone again, so the two cannot drift
+ * apart the way they did the first time.
+ */
+export const DICTATION_ENABLED = false;
+
 /*
  * Minimal shapes for an API the DOM types do not carry. Only what is used, so
  * this does not become a second, worse copy of a specification.
@@ -151,8 +169,9 @@ export function useDictation(onText: (text: string) => void): Dictation {
   const delivered = useRef(-1);
 
   // After mount, because the API is on window and the server has no window.
+  // Gated here rather than at the button, so one flag hides every use of it.
   useEffect(() => {
-    setSupported(constructorFor() !== null);
+    setSupported(DICTATION_ENABLED && constructorFor() !== null);
   }, []);
 
   const stop = useCallback(() => {

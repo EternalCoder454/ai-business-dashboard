@@ -112,18 +112,19 @@ const nextConfig = {
       /*
        * Nothing here uses any of these, so nothing here should be able to ask.
        *
-       * Except the microphone, which the composer now uses for dictation. It is
-       * (self) rather than (): same origin only, so the panel may ask and
-       * anything it ever embeds may not. This line said () and the comment
-       * above it said nothing uses these, and both were true right up until
-       * dictation shipped, at which point the button appeared, asked, and was
-       * refused by the site it was part of.
+       * The microphone included, while DICTATION_ENABLED is false. It was
+       * briefly (self) for dictation, and this line is the reason that feature
+       * was broken on arrival: it said () above a comment claiming nothing used
+       * these, which was true when written and false the moment the microphone
+       * button shipped. headers-test now asserts the two agree in both
+       * directions, so turning dictation on without opening this fails the
+       * build rather than the customer.
        */
       {
         key: "Permissions-Policy",
         value: [
           "camera=()",
-          "microphone=(self)",
+          "microphone=()",
           "geolocation=()",
           "payment=()",
           "usb=()",

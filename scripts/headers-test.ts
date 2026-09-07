@@ -15,6 +15,7 @@
  *   npm run headers-test
  */
 import config from "../next.config.mjs";
+import { DICTATION_ENABLED } from "../src/lib/dictation";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = ""): void {
@@ -30,16 +31,31 @@ void (async () => {
   const valueOf = (key: string) =>
     all.find((header) => header.key.toLowerCase() === key.toLowerCase())?.value ?? "";
 
-  console.log("\nthe permissions policy allows the microphone and nothing else");
+  console.log("\nthe permissions policy agrees with what the panel actually uses");
   {
     const policy = valueOf("Permissions-Policy");
     check("there is one at all", policy.length > 0);
+
+    /*
+     * Both directions, which is the whole point of this check.
+     *
+     * Dictation shipped asking for a microphone this header denied, so the
+     * feature was broken on arrival and the message blamed the browser. The
+     * mirror of that is a permission left open for a feature nobody can
+     * reach: a smaller problem, and still one worth not having. So the flag
+     * and the header have to say the same thing, and changing one without
+     * the other fails here rather than in front of somebody.
+     */
+    const microphone =
+      policy.split(", ").find((part) => part.startsWith("microphone")) ?? "absent";
     check(
-      "the microphone is allowed to this origin",
-      policy.includes("microphone=(self)"),
-      policy.split(", ").find((part) => part.startsWith("microphone")) ?? "absent",
+      DICTATION_ENABLED
+        ? "dictation is on, so the microphone is allowed to this origin"
+        : "dictation is off, so the microphone is denied",
+      microphone === (DICTATION_ENABLED ? "microphone=(self)" : "microphone=()"),
+      microphone,
     );
-    check("and not to anything embedded", !policy.includes("microphone=*"));
+    check("and never to anything embedded", !policy.includes("microphone=*"));
 
     /*
      * Everything else stays shut. The point of naming them is that opening one

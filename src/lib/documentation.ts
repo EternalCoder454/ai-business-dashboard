@@ -135,8 +135,6 @@ You can lower it by pointing individual heads at a cheaper model. A head that mo
 
 **What it never knows:** your API key, anyone else's private files, and anything belonging to another business you are a member of.
 
-**Speak instead of typing** with the microphone, next to send. It appears only in browsers that can do it, which today means Chrome, Edge and Safari but not Firefox. Your words are added to whatever is already in the box, so you can type half a question and say the rest. The listening is done by the browser rather than by the panel, and in Chrome that means the audio is sent to Google to be recognised, so it is worth knowing before dictating anything you would not put in a search box.
-
 **When a head wants to change something**, such as adding a task or recording a decision, it asks first. A card appears with exactly what it proposes and nothing happens until you press Approve. Dismiss is always safe.
 
 **When it only wants to read something**, such as searching the web or opening a document you already gave it, it just does it and shows you what it found. Stopping mid answer to approve a lookup would only interrupt a question you had already asked.`,
