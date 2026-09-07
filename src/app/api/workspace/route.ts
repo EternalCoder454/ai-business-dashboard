@@ -1,5 +1,5 @@
 import { auth, authEnabled } from "@/auth";
-import { databaseEnabled } from "@/db/client";
+import { databaseEnabled , readAgainIfDropped } from "@/db/client";
 import { applyMutations, loadWorkspace, type MutationOp } from "@/db/repo";
 // The compiler-checked list, so it cannot fall behind MutationOp the way a
 // hand-written copy of it here did.
@@ -94,7 +94,7 @@ export async function GET() {
   try {
     return Response.json(
       await track("workspace.load", owner.workspaceId, () =>
-        loadWorkspace(owner.workspaceId, owner.email),
+        readAgainIfDropped(() => loadWorkspace(owner.workspaceId, owner.email)),
       ),
     );
   } catch (error) {

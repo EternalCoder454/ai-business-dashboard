@@ -81,3 +81,49 @@ export function requireDb() {
   if (!db) throw new Error("DATABASE_URL is not set, so there is nothing to query.");
   return db;
 }
+
+/**
+ * Runs a read again once if the connection dropped under it.
+ *
+ * Reads only, and deliberately so: a write retried is a write that may have
+ * landed twice.
+ *
+ * The panel holds one socket per invocation and lets the platform's pooler do
+ * the pooling, which is right for short serverless calls and has one
+ * consequence. When that socket goes, every query travelling on it goes with
+ * it, together. Measured over a day on production: workspace.load failed 30 of
+ * 49 times in one hour, spend.month 18 of 26 in the same hour, and
+ * messages.overview 5 of 988 across the day. Three unrelated queries, failing
+ * in the same buckets, all of which run perfectly when asked again. That is not
+ * three bugs, it is one connection.
+ *
+ * A retry does not make the drop stop happening. It stops the drop reaching
+ * somebody as "the workspace came back empty", which is what it was doing.
+ */
+export async function readAgainIfDropped<T>(read: () => Promise<T>): Promise<T> {
+  try {
+    return await read();
+  } catch (error) {
+    if (!dropped(error)) throw error;
+    // One retry, immediately: postgres.js has already thrown the dead socket
+    // away and the next call opens a new one.
+    return read();
+  }
+}
+
+/**
+ * Whether a failure is the connection rather than the query.
+ *
+ * Matched on the codes postgres.js and the driver raise for a socket that went,
+ * rather than on anything the database said about the SQL. A syntax error or a
+ * constraint violation is a real answer and must not be asked twice.
+ */
+function dropped(error: unknown): boolean {
+  const code = (error as { code?: string })?.code;
+  if (code && ["CONNECTION_CLOSED", "CONNECTION_ENDED", "CONNECT_TIMEOUT", "ECONNRESET", "EPIPE", "ETIMEDOUT"].includes(code)) {
+    return true;
+  }
+  // Drizzle wraps the driver's error, so the cause carries the code.
+  const cause = (error as { cause?: unknown })?.cause;
+  return cause !== undefined && cause !== error && dropped(cause);
+}
