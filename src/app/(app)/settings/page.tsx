@@ -1,6 +1,11 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { CompanyProfilePanel } from "@/components/settings/CompanyProfilePanel";
+import { IntegrationsPanel } from "@/components/settings/IntegrationsPanel";
+import { StorageCard } from "@/components/StorageCard";
 import { BackupsCard } from "@/components/BackupsCard";
 import { ProviderKey } from "@/components/ProviderKey";
 import { MODELS, PROVIDERS, modelsFor } from "@/lib/providers";
@@ -36,7 +41,26 @@ function modelLabel(id: string): string {
   return MODELS.find((model) => model.id === id)?.label ?? id;
 }
 
-export default function SettingsPage() {
+
+/** The tabs, in the order somebody sets a business up. */
+const TABS = ["company", "profile", "heads", "models", "integrations", "data"] as const;
+type TabKey = (typeof TABS)[number];
+
+const TAB_LABEL: Record<TabKey, string> = {
+  company: "Company",
+  profile: "Company profile",
+  heads: "Heads",
+  models: "Models and keys",
+  integrations: "Integrations",
+  data: "Data",
+};
+
+/** Anything that is not a tab is the first one, rather than a blank screen. */
+function tabFrom(asked: string | null): TabKey {
+  return TABS.includes(asked as TabKey) ? (asked as TabKey) : "company";
+}
+
+function SettingsBody() {
   const {
     settings,
     companyTheme,
@@ -173,99 +197,96 @@ export default function SettingsPage() {
     }
   };
 
+  /*
+   * Six cards became six tabs, and two screens came in with them.
+   *
+   * Settings was one column about three thousand pixels tall: the keys, the
+   * look of the panel, the business's name, the heads, the writing rules and
+   * the data tools, one after another. The Company Profile and the Integrations
+   * keys were screens of their own, reached from the account menu. Three places
+   * to configure one business, and the longest of them had to be scrolled to
+   * find out what was on it.
+   *
+   * The tab is in the address, so a link to a tab is a link to a tab, the back
+   * button walks the tabs rather than leaving, and /profile and /integrations
+   * still lead where they always did.
+   */
+  const tab = tabFrom(useSearchParams().get("tab"));
+  const router = useRouter();
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <PageHeader
-        eyebrow="Configuration"
-        title="Settings"
-      />
+      <PageHeader eyebrow="Configuration" title="Settings" />
+
+      {/* The row the Operator screen uses, for the reason it uses it: on a
+          phone it moves under a thumb rather than crushing every label. */}
+      <div
+        className={cx(
+          "flex flex-none items-center gap-2 border-b border-outline-variant page-x py-3",
+          "overflow-x-auto [scrollbar-width:none] [&>*]:flex-none [&::-webkit-scrollbar]:hidden",
+        )}
+      >
+        {TABS.map((key) => (
+          <Chip
+            key={key}
+            selected={tab === key}
+            onClick={() => router.replace(`/settings?tab=${key}`, { scroll: false })}
+          >
+            {TAB_LABEL[key]}
+          </Chip>
+        ))}
+      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 expanded:px-8 py-6">
-        <div className="measure-wide grid grid-cols-1 items-start gap-5 expanded:grid-cols-2">
-          <Card className="expanded:col-span-2">
-            <h2 className="md-title-lg mb-1">API</h2>
-            <p className="md-body mb-5 text-on-variant">
-              The default every department uses. One can be pointed elsewhere below.
-            </p>
-
-            <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {/* The hint goes under the field rather than into the option
-                  text. A select cannot ellipsis, so a long option is simply
-                  cut off, and on a phone that cut lands mid-sentence. */}
-              <Field
-                label="Default model"
-                hint={MODELS.find((model) => model.id === settings.model)?.hint}
-              >
-                <Select
-                  value={settings.model}
-                  onChange={(event) => void updateSettings({ model: event.target.value })}
-                >
-                  {PROVIDERS.map((provider) => (
-                    <optgroup key={provider.id} label={provider.label}>
-                      {modelsFor(provider.id).map((model) => (
-                        <option key={model.id} value={model.id}>
-                          {model.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </Select>
-              </Field>
-              <Field
-                label="Reasoning effort"
-                hint={EFFORT_OPTIONS.find((option) => option.id === settings.effort)?.hint}
-              >
-                <Select
-                  value={settings.effort}
-                  onChange={(event) =>
-                    void updateSettings({ effort: event.target.value as Effort })
-                  }
-                >
-                  {EFFORT_OPTIONS.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              {/*
-                * The ceiling, for whoever pays the bill.
-                *
-                * Effort is one click from the composer now, so somebody can put
-                * Max on "what is our phone number" without meaning anything by
-                * it. Anything above this comes back as this rather than as an
-                * error, since refusing the message would punish somebody for a
-                * setting they did not know existed.
-                */}
-              {isAdmin ? (
-                <Field label="Highest effort anyone may use">
-                  <Select
-                    value={settings.maxEffort ?? ""}
-                    onChange={(event) =>
-                      void updateSettings({
-                        maxEffort: event.target.value as Effort | "",
-                      })
-                    }
-                  >
-                    <option value="">No limit</option>
-                    {EFFORT_OPTIONS.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label} and below
-                      </option>
-                    ))}
-                  </Select>
+        <div className="measure-wide flex flex-col gap-5">
+          {tab === "company" ? (
+            <>
+          <Card>
+            <h2 className="md-title-lg mb-5">Company</h2>
+            {isAdmin ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Company name">
+                  <TextInput
+                    value={companyName.value}
+                    onChange={(event) => companyName.onChange(event.target.value)}
+                  />
                 </Field>
-              ) : null}
-            </div>
+                <Field label="Subtitle">
+                  <TextInput
+                    value={companySubtitle.value}
+                    onChange={(event) => companySubtitle.onChange(event.target.value)}
+                  />
+                </Field>
+              </div>
+            ) : null}
 
-            <ul className="flex flex-col gap-3">
-              {PROVIDERS.map((provider) => (
-                <ProviderKey key={provider.id} provider={provider} />
-              ))}
-            </ul>
+            {/*
+              * What the business opens as, which is not what anybody has to
+              * read in.
+               *
+               * This was one workspace setting anybody could change, so one
+               * person preferring light moved the whole company into light.
+               * It is the starting point now, and each person overrides it for
+               * their own browser from the account menu, where they will
+               * actually look for it.
+               */}
+            {isAdmin ? (
+              <div className="mt-5">
+                <p className="md-label mb-2 text-on-variant">Default theme</p>
+                <div className="flex gap-2">
+                  {(["dark", "light"] as ThemeMode[]).map((mode) => (
+                    <Chip
+                      key={mode}
+                      selected={companyTheme === mode}
+                      onClick={() => void updateSettings({ theme: mode })}
+                    >
+                      {mode === "dark" ? "Dark" : "Light"}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </Card>
-
-          {/* ------------------------------------------------ appearance */}
           <Card>
             <h2 className="md-title-lg mb-1">Appearance</h2>
 
@@ -352,54 +373,13 @@ export default function SettingsPage() {
               </Field>
             </div>
           </Card>
+            </>
+          ) : null}
 
-          <Card>
-            <h2 className="md-title-lg mb-5">Company</h2>
-            {isAdmin ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Company name">
-                  <TextInput
-                    value={companyName.value}
-                    onChange={(event) => companyName.onChange(event.target.value)}
-                  />
-                </Field>
-                <Field label="Subtitle">
-                  <TextInput
-                    value={companySubtitle.value}
-                    onChange={(event) => companySubtitle.onChange(event.target.value)}
-                  />
-                </Field>
-              </div>
-            ) : null}
+          {tab === "profile" ? <CompanyProfilePanel /> : null}
 
-            {/*
-              * What the business opens as, which is not what anybody has to
-              * read in.
-               *
-               * This was one workspace setting anybody could change, so one
-               * person preferring light moved the whole company into light.
-               * It is the starting point now, and each person overrides it for
-               * their own browser from the account menu, where they will
-               * actually look for it.
-               */}
-            {isAdmin ? (
-              <div className="mt-5">
-                <p className="md-label mb-2 text-on-variant">Default theme</p>
-                <div className="flex gap-2">
-                  {(["dark", "light"] as ThemeMode[]).map((mode) => (
-                    <Chip
-                      key={mode}
-                      selected={companyTheme === mode}
-                      onClick={() => void updateSettings({ theme: mode })}
-                    >
-                      {mode === "dark" ? "Dark" : "Light"}
-                    </Chip>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </Card>
-
+          {tab === "heads" ? (
+            <>
           <Card className="expanded:self-stretch">
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
@@ -474,7 +454,6 @@ export default function SettingsPage() {
               ))}
             </ul>
           </Card>
-
           <Card className="expanded:flex expanded:flex-col expanded:self-stretch">
             <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
               <h2 className="md-title-lg">House writing rules</h2>
@@ -521,7 +500,96 @@ export default function SettingsPage() {
               ref={rulesRef}
             />
           </Card>
+            </>
+          ) : null}
 
+          {tab === "models" ?           <Card className="expanded:col-span-2">
+            <h2 className="md-title-lg mb-1">API</h2>
+            <p className="md-body mb-5 text-on-variant">
+              The default every department uses. One can be pointed elsewhere below.
+            </p>
+
+            <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* The hint goes under the field rather than into the option
+                  text. A select cannot ellipsis, so a long option is simply
+                  cut off, and on a phone that cut lands mid-sentence. */}
+              <Field
+                label="Default model"
+                hint={MODELS.find((model) => model.id === settings.model)?.hint}
+              >
+                <Select
+                  value={settings.model}
+                  onChange={(event) => void updateSettings({ model: event.target.value })}
+                >
+                  {PROVIDERS.map((provider) => (
+                    <optgroup key={provider.id} label={provider.label}>
+                      {modelsFor(provider.id).map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label="Reasoning effort"
+                hint={EFFORT_OPTIONS.find((option) => option.id === settings.effort)?.hint}
+              >
+                <Select
+                  value={settings.effort}
+                  onChange={(event) =>
+                    void updateSettings({ effort: event.target.value as Effort })
+                  }
+                >
+                  {EFFORT_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              {/*
+                * The ceiling, for whoever pays the bill.
+                *
+                * Effort is one click from the composer now, so somebody can put
+                * Max on "what is our phone number" without meaning anything by
+                * it. Anything above this comes back as this rather than as an
+                * error, since refusing the message would punish somebody for a
+                * setting they did not know existed.
+                */}
+              {isAdmin ? (
+                <Field label="Highest effort anyone may use">
+                  <Select
+                    value={settings.maxEffort ?? ""}
+                    onChange={(event) =>
+                      void updateSettings({
+                        maxEffort: event.target.value as Effort | "",
+                      })
+                    }
+                  >
+                    <option value="">No limit</option>
+                    {EFFORT_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label} and below
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null}
+            </div>
+
+            <ul className="flex flex-col gap-3">
+              {PROVIDERS.map((provider) => (
+                <ProviderKey key={provider.id} provider={provider} />
+              ))}
+            </ul>
+          </Card> : null}
+
+          {tab === "integrations" ? <IntegrationsPanel /> : null}
+
+          {tab === "data" ? (
+            <>
           <Card>
             <h2 className="md-title-lg mb-1">Data</h2>
 
@@ -552,8 +620,12 @@ export default function SettingsPage() {
             ) : null}
           </Card>
           <BackupsCard />
+              <StorageCard />
+            </>
+          ) : null}
         </div>
       </div>
+
 
       <Dialog
         open={Boolean(draft)}
@@ -805,5 +877,19 @@ export default function SettingsPage() {
       </Dialog>
 
     </div>
+  );
+}
+
+/**
+ * Wrapped, because reading the address needs a boundary above it.
+ *
+ * useSearchParams makes a route impossible to prerender unless it sits inside
+ * Suspense. Tasks and Meetings have the same wrapper for the same reason.
+ */
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={null}>
+      <SettingsBody />
+    </Suspense>
   );
 }

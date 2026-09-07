@@ -9,7 +9,6 @@ import {
   BuildingIcon,
   DocIcon,
   GearIcon,
-  PuzzleIcon,
   ShieldIcon,
   SparkIcon,
   CheckIcon,
@@ -37,10 +36,15 @@ import type { ThemeMode } from "@/lib/types";
  * dashboard, which put a standing list of chores on the first thing you see
  * every morning; a count on the avatar is visible from every page instead.
  */
+/*
+ * Shorter by two, because two of them are tabs of Settings now.
+ *
+ * Company profile and Integrations were rows here, next to Settings, which
+ * meant one business was configured from three places and the menu spent three
+ * lines saying so. One row leads to all of it.
+ */
 const LINKS = [
-  { href: "/profile", label: "Company profile", icon: <BuildingIcon className="h-4 w-4" /> },
   { href: "/settings", label: "Settings", icon: <GearIcon className="h-4 w-4" /> },
-  { href: "/integrations", label: "Integrations", icon: <PuzzleIcon className="h-4 w-4" /> },
   { href: "/wiki", label: "Internal wiki", icon: <BookIcon className="h-4 w-4" /> },
   /*
    * Directly under the wiki, because both are reading and somebody looking for
