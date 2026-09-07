@@ -76,6 +76,14 @@ const nextConfig = {
       { source: "/onboarding", destination: "/wiki", permanent: false },
 
       /*
+       * Information was three cards nobody navigated to: the spend, what each
+       * head is sent, and what the workspace is holding. They are a section of
+       * the dashboard now, behind the same permission, so the screen is gone
+       * and anybody with the old link still lands somewhere it is.
+       */
+      { source: "/information", destination: "/", permanent: false },
+
+      /*
        * The paths now match the words on the screen.
        *
        * Five of them did not: you clicked Meetings and landed on /all-hands,

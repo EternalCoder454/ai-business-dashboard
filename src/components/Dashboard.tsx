@@ -1,6 +1,9 @@
 "use client";
 
 import { CalendarCard } from "./CalendarCard";
+import { SpendCard } from "./SpendCard";
+import { ContextCard } from "./ContextCard";
+import { StorageCard } from "./StorageCard";
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import {
@@ -44,6 +47,7 @@ export function Dashboard() {
     skills,
     profile,
     settings,
+    can,
   } = useStore();
 
   const nameOf = (id: string) =>
@@ -272,6 +276,26 @@ export function Dashboard() {
           }))}
         />
       </div>
+
+      {/*
+        * What the panel costs and what it is holding, which used to be a screen
+        * of its own called Information.
+        *
+        * Folded in here because it was three cards nobody navigated to. Last on
+        * the page and behind the same permission that screen was, so an
+        * administrator who had already decided somebody should not see the
+        * spend has not had that decision quietly undone by the merge.
+        */}
+      {can("information") ? (
+        <section>
+          <h2 className="mb-3 md-label-sm text-on-variant">System</h2>
+          <div className="grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-3">
+            <SpendCard />
+            <ContextCard />
+            <StorageCard />
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

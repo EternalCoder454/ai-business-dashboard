@@ -56,7 +56,6 @@ export const AREA_HREF: Partial<Record<Area, string>> = {
   tasks: "/tasks",
   projects: "/projects",
   library: "/library",
-  information: "/information",
   profile: "/profile",
   wiki: "/wiki",
 };

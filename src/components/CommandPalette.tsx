@@ -254,7 +254,6 @@ function ResultIcon({ kind, href }: { kind: ResultKind; href: string }) {
       ["/projects", <FolderIcon key="projects" className={className} />],
       ["/library/skills", <SparkIcon key="skills" className={className} />],
       ["/library", <DocIcon key="library" className={className} />],
-      ["/information", <SparkIcon key="info" className={className} />],
       ["/profile", <BuildingIcon key="profile" className={className} />],
       ["/account", <PersonIcon key="account" className={className} />],
       ["/settings", <GearIcon key="settings" className={className} />],

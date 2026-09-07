@@ -51,7 +51,6 @@ export const ROUTE_TITLES: [string, string][] = [
   ["/library/skills", "Skills"],
   ["/library/deliverables", "Deliverables"],
   ["/library", "Library"],
-  ["/information", "Information"],
   ["/profile", "Company Profile"],
   ["/account", "Account"],
   ["/settings", "Settings"],

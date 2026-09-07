@@ -112,12 +112,6 @@ export const WORKSPACE_LINKS: NavLink[] = [
     short: "Library",
     icon: <DocIcon className="h-5 w-5" />,
   },
-  {
-    href: "/information",
-    label: "Information",
-    short: "Info",
-    icon: <SparkIcon className="h-5 w-5" />,
-  },
 ];
 
 /** Setup: opened when something needs changing, not day to day. */
