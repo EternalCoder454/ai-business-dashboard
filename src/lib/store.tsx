@@ -34,6 +34,7 @@ import {
   type Workspace,
   type WorkspaceStatus,
 } from "./workspace";
+import { createWriteQueue, type WriteQueue } from "@/lib/writeQueue";
 import {
   CEO_ID,
   COMPANY_ID,
@@ -744,52 +745,80 @@ export function StoreProvider({
 
   const [writeError, setWriteError] = useState<string | null>(null);
 
+  /*
+   * What to do when a batch fails, kept current rather than captured.
+   *
+   * The queue below is built once and outlives every render, so anything it
+   * holds is from whichever render happened to create it. Reading through a ref
+   * that an effect keeps up to date means the failure path always uses the
+   * latest commitRemote instead of a stale one.
+   */
+  const onWriteFailure = useRef<(error: unknown) => Promise<void>>(async () => {});
+  useEffect(() => {
+    onWriteFailure.current = async (error: unknown) => {
+      console.error("[workspace] write failed, reloading", error);
+      // What the user experiences as work disappearing. Worth knowing about
+      // without waiting for somebody to write in about it.
+      report({
+        operation: "client.write",
+        ok: false,
+        errorKind: error instanceof Error ? error.name : "WriteFailed",
+        errorNote: error instanceof Error ? error.message : String(error),
+      });
+      setWriteError(
+        error instanceof Error && error.message
+          ? error.message
+          : "That change could not be saved.",
+      );
+      /*
+       * Safe to trust precisely because the queue drops whatever was still
+       * waiting before calling this, so nothing is in flight to be overwritten.
+       */
+      const fresh = await fetch("/api/workspace")
+        .then((r) => (r.ok ? (r.json() as Promise<Workspace>) : null))
+        .catch(() => null);
+      if (fresh) commitRemote(fresh);
+    };
+  });
+
+  /** One sender, draining in order. See writeQueue for why this exists. */
+  const queue = useRef<WriteQueue<MutationOp> | null>(null);
+
   /**
-   * Sends one change to the account and applies it locally at once, so the
-   * interface never waits on a round trip. A failed write refetches rather than
-   * leaving the screen showing something the database refused, and says so.
+   * Applies one change locally at once, so the interface never waits on a round
+   * trip, and queues it to be sent in the order it was made.
    */
   const push = useCallback(
     async (op: MutationOp) => {
       // Applied against the ref rather than through a functional update, so a
       // second write in the same tick sees the first one.
       commitRemote(remoteRef.current ? applyOp(remoteRef.current, op) : remoteRef.current);
-      try {
-        const response = await fetch("/api/workspace", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ops: [op] }),
-        });
-        if (!response.ok) {
-          // The server says why. Carrying that through is the difference
-          // between "could not save" and "that file is too large to upload".
-          const said = await response
-            .json()
-            .then((body: { error?: string }) => body?.error)
-            .catch(() => undefined);
-          throw new Error(said || `The server refused the change (${response.status}).`);
-        }
-        setWriteError(null);
-      } catch (error) {
-        console.error("[workspace] write failed, reloading", error);
-        // What the user experiences as work disappearing. Worth knowing about
-        // without waiting for somebody to write in about it.
-        report({
-          operation: "client.write",
-          ok: false,
-          errorKind: error instanceof Error ? error.name : "WriteFailed",
-          errorNote: error instanceof Error ? error.message : String(error),
-        });
-        setWriteError(
-          error instanceof Error && error.message
-            ? error.message
-            : "That change could not be saved.",
-        );
-        const fresh = await fetch("/api/workspace")
-          .then((r) => (r.ok ? (r.json() as Promise<Workspace>) : null))
-          .catch(() => null);
-        if (fresh) commitRemote(fresh);
-      }
+      /*
+       * Built on the first write rather than during a render, so nothing reads
+       * a ref while React is rendering. There is only ever one, and the first
+       * write cannot happen before the component that makes it exists.
+       */
+      queue.current ??= createWriteQueue<MutationOp>({
+        send: async (batch) => {
+          const response = await fetch("/api/workspace", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ops: batch }),
+          });
+          if (!response.ok) {
+            // The server says why. Carrying that through is the difference
+            // between "could not save" and "that file is too large to upload".
+            const said = await response
+              .json()
+              .then((body: { error?: string }) => body?.error)
+              .catch(() => undefined);
+            throw new Error(said || `The server refused the change (${response.status}).`);
+          }
+        },
+        onSuccess: () => setWriteError(null),
+        onFailure: (error) => onWriteFailure.current(error),
+      });
+      await queue.current.push(op);
     },
     [commitRemote],
   );

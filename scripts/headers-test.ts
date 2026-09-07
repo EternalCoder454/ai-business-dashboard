@@ -14,6 +14,7 @@
  *
  *   npm run headers-test
  */
+import { readFileSync } from "node:fs";
 import config from "../next.config.mjs";
 import { DICTATION_ENABLED } from "../src/lib/dictation";
 
@@ -73,6 +74,79 @@ void (async () => {
     check("no sniffing", valueOf("X-Content-Type-Options") === "nosniff");
     check("no framing", valueOf("X-Frame-Options") === "DENY");
     check("a referrer policy", valueOf("Referrer-Policy").length > 0);
+  }
+
+  /*
+   * A rule in headers() replaces a route handler's Cache-Control rather than
+   * merging with it, which is not obvious and was costing a fetch per image per
+   * page. /api/files/[id] asked for a year of immutable caching, the blanket
+   * no-store on /api overrode it, and every avatar was downloaded again on
+   * every screen for as long as that was true.
+   *
+   * Restating the value in the config would have swapped that for a worse bug,
+   * since a rule cannot vary by status and a missing file answers 404, so the
+   * fix is an exclusion plus a header on every path out of the route. Both
+   * halves are load bearing and neither is visible from the other file, which
+   * is what this checks.
+   */
+  console.log("\nthe file route keeps its own caching, and nothing else lost no-store");
+  {
+    const groups = (await (config as { headers: () => Promise<unknown[]> }).headers()) as {
+      source: string;
+      headers: { key: string; value: string }[];
+    }[];
+
+    check(
+      "the blanket rule excludes the file route",
+      groups.some(
+        (group) =>
+          group.source.startsWith("/api/") &&
+          group.source.includes("(?!files/)") &&
+          group.headers.some((h) => h.key === "Cache-Control" && h.value.includes("no-store")),
+      ),
+      groups.map((group) => group.source).join(" "),
+    );
+
+    check(
+      "and nothing puts a Cache-Control back on it",
+      !groups.some(
+        (group) =>
+          group.source.startsWith("/api/files") &&
+          group.headers.some((header) => header.key === "Cache-Control"),
+      ),
+    );
+
+    check(
+      "while the file route still says noindex like the rest of the API",
+      groups.some(
+        (group) =>
+          group.source.startsWith("/api/files") &&
+          group.headers.some((header) => header.key === "X-Robots-Tag"),
+      ),
+    );
+
+    /*
+     * The route has to answer every path itself, because nothing upstream does
+     * it now. Counting them is crude and it is the property that matters: a
+     * return added later without a header is a response with no caching rule at
+     * all, which is how the last one of these went unnoticed.
+     */
+    const route = readFileSync("src/app/api/files/[id]/route.ts", "utf8");
+    const returns = route.match(/return (new Response|Response[.]json)/g)?.length ?? 0;
+    const headed = route.match(/"Cache-Control": (FOUND|NOT_FOUND)/g)?.length ?? 0;
+    check(
+      "every path out of the file route names a Cache-Control",
+      returns > 0 && returns === headed,
+      `${headed} named for ${returns} returns`,
+    );
+    check(
+      "the bytes are cached for a year",
+      route.includes('const FOUND = "private, max-age=31536000, immutable"'),
+    );
+    check(
+      "and a miss is not cached at all",
+      route.includes('const NOT_FOUND = "no-store, max-age=0"'),
+    );
   }
 
   console.log(failures === 0 ? "\nall checks passed" : `\n${failures} FAILURES ABOVE`);

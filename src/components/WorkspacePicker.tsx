@@ -22,6 +22,27 @@ export function WorkspacePicker() {
   const [found, setFound] = useState<Found[] | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /*
+   * What is in the box, which is not the same thing as what is saved.
+   *
+   * This field wrote to the workspace on every keystroke, so pasting an id
+   * saved twenty-eight partial ids on the way to the real one. A half typed
+   * workspace id is not a state worth storing, and the value only means
+   * anything once somebody has finished entering it.
+   *
+   * Undefined while untouched so the saved value shows through, including one
+   * that arrives from elsewhere, and the moment it is edited the box is the
+   * one holding the text.
+   */
+  const [typed, setTyped] = useState<string | undefined>(undefined);
+  const shown = typed ?? settings.workspaceId;
+
+  /** Saves what is in the box, if it says something different. */
+  const commit = () => {
+    const value = shown.trim();
+    setTyped(undefined);
+    if (value !== settings.workspaceId) void updateSettings({ workspaceId: value });
+  };
 
   const lookup = async () => {
     setBusy(true);
@@ -56,11 +77,16 @@ export function WorkspacePicker() {
       hint="Only needed for an identity-linked key, which refuses any request that does not name the workspace it acts in. Ordinary keys ignore this."
     >
       <TextInput
-        value={settings.workspaceId}
+        value={shown}
         autoComplete="off"
         spellCheck={false}
         placeholder="wrkspc_… (leave blank for an ordinary key)"
-        onChange={(event) => void updateSettings({ workspaceId: event.target.value.trim() })}
+        onChange={(event) => setTyped(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") commit();
+          if (event.key === "Escape") setTyped(undefined);
+        }}
       />
 
       <div className="mt-2 flex flex-wrap items-center gap-2">

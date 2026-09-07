@@ -150,14 +150,34 @@ const nextConfig = {
 
     return [
       { source: "/:path*", headers },
-      // The API answers with data, never with a document. Saying so stops a
-      // browser rendering a stray response as a page.
+      /*
+       * The API answers with data, never with a document. Saying so stops a
+       * browser rendering a stray response as a page.
+       *
+       * Every path except one file's bytes. A rule here does not merge with the
+       * Cache-Control a route handler sets, it replaces it, which was silently
+       * costing every page load: /api/files/[id] asks for
+       * `private, max-age=31536000, immutable` because a file's bytes never
+       * change, and the browser received `no-store` regardless, so every avatar
+       * and every image in the library was fetched again on every screen.
+       *
+       * Restating the value here would have fixed that and cached a 404 for a
+       * year, because a rule cannot vary by status and a missing avatar answers
+       * 404. So that route is excluded and sets its own header on every path it
+       * can return through. headers-test asserts both halves: that the excluded
+       * route still says no-store where it must, and that nothing else lost it.
+       */
       {
-        source: "/api/:path*",
+        source: "/api/:path((?!files/).*)",
         headers: [
           { key: "Cache-Control", value: "no-store, max-age=0" },
           { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
+      },
+      // Everything the rule above would have covered, except Cache-Control.
+      {
+        source: "/api/files/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       },
     ];
   },

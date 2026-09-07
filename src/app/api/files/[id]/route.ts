@@ -9,6 +9,20 @@ import { requireSession } from "@/lib/guard";
 export const runtime = "nodejs";
 
 /**
+ * A file's bytes never change: an edit makes a new row with a new id.
+ *
+ * Private, because this is one account's file and a shared cache must not hold
+ * it. next.config deliberately excludes this route from the blanket no-store it
+ * puts on /api, because a rule there replaces whatever a handler sets and
+ * cannot vary by status, which would have cached a missing file's 404 for a
+ * year. So every path out of this route names its own, and headers-test checks
+ * that the exclusion and these two still agree.
+ */
+const FOUND = "private, max-age=31536000, immutable";
+/** Anything that is not the bytes: an error now must not answer for a year. */
+const NOT_FOUND = "no-store, max-age=0";
+
+/**
  * One file's bytes.
  *
  * The workspace snapshot carries every file's metadata and none of its bytes,
@@ -26,11 +40,17 @@ export async function GET(
 ) {
   const session = await requireSession();
   if (!session.ok) {
-    return Response.json({ error: session.error }, { status: session.status });
+    return Response.json(
+      { error: session.error },
+      { status: session.status, headers: { "Cache-Control": NOT_FOUND } },
+    );
   }
   if (!databaseEnabled || !session.email) {
     // A local workspace keeps its bytes in the browser, so nothing should ask.
-    return Response.json({ error: "No hosted workspace." }, { status: 404 });
+    return Response.json(
+      { error: "No hosted workspace." },
+      { status: 404, headers: { "Cache-Control": NOT_FOUND } },
+    );
   }
 
   const { id } = await context.params;
@@ -41,7 +61,12 @@ export async function GET(
    * is already reachable by everyone in it.
    */
   const mine = await membershipFor(session.email);
-  if (!mine) return Response.json({ error: "Not found." }, { status: 404 });
+  if (!mine) {
+    return Response.json(
+      { error: "Not found." },
+      { status: 404, headers: { "Cache-Control": NOT_FOUND } },
+    );
+  }
 
   const [row] = await requireDb()
     .select()
@@ -49,7 +74,12 @@ export async function GET(
     .where(and(eq(t.files.workspaceId, mine.workspaceId), eq(t.files.id, id)))
     .limit(1);
 
-  if (!row) return Response.json({ error: "Not found." }, { status: 404 });
+  if (!row) {
+    return Response.json(
+      { error: "Not found." },
+      { status: 404, headers: { "Cache-Control": NOT_FOUND } },
+    );
+  }
 
   /*
    * The bytes, from wherever this row keeps them: newer rows point at the blob
@@ -61,7 +91,12 @@ export async function GET(
    * around the tenancy check a few lines above.
    */
   const bytes = await load(row);
-  if (!bytes) return Response.json({ error: "Not found." }, { status: 404 });
+  if (!bytes) {
+    return Response.json(
+      { error: "Not found." },
+      { status: 404, headers: { "Cache-Control": NOT_FOUND } },
+    );
+  }
 
   if (request.nextUrl.searchParams.get("json")) {
     return Response.json(
@@ -70,8 +105,7 @@ export async function GET(
         data: Buffer.from(bytes).toString("base64"),
         text: row.textContent ?? undefined,
       },
-      // Private: this is one account's file, and a shared cache must not hold it.
-      { headers: { "Cache-Control": "private, max-age=31536000, immutable" } },
+      { headers: { "Cache-Control": FOUND } },
     );
   }
 
@@ -79,8 +113,7 @@ export async function GET(
     headers: {
       "Content-Type": row.mediaType,
       "Content-Length": String(bytes.length),
-      // A file's bytes never change: an edit makes a new row with a new id.
-      "Cache-Control": "private, max-age=31536000, immutable",
+      "Cache-Control": FOUND,
       "Content-Disposition": `inline; filename="${encodeURIComponent(row.name)}"`,
       // Never let a stored file be interpreted as something else.
       "X-Content-Type-Options": "nosniff",
