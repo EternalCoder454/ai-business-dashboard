@@ -36,6 +36,7 @@ import { SearchIcon } from "./CommandPalette";
 import { createRipple } from "./ui/ripple";
 import { PaneFoldButton, PaneResizeHandle, usePaneResize } from "./ui/SidePane";
 import { setPaneHidden } from "@/lib/paneLayout";
+import { useLayoutMode } from "@/lib/layoutMode";
 
 
 export interface NavLink {
@@ -99,6 +100,88 @@ export const WORK_LINKS: NavLink[] = [
     label: "Library",
     short: "Library",
     icon: <DocIcon className="h-5 w-5" />,
+  },
+];
+
+/**
+ * Work, arranged the way it was before three merges moved things around.
+ *
+ * Chief of Staff is a destination in this list rather than the head of the
+ * Departments section, Briefings is its own row rather than a tab of Tasks,
+ * and the Library is not here at all: it belongs to Reference, with
+ * Information.
+ *
+ * Only the arrangement is old. Every part of how any of it is drawn is the
+ * current build, which is the whole point of the setting: two people said the
+ * presentation had got better and the arrangement had got worse, and there is
+ * no reason those have to be the same decision.
+ */
+export const LEGACY_WORK_LINKS: NavLink[] = [
+  {
+    href: "/",
+    label: "Dashboard",
+    short: "Home",
+    icon: <DashboardIcon className="h-5 w-5" />,
+  },
+  {
+    href: "/orchestrator",
+    label: "Chief of Staff",
+    short: "Chief",
+    icon: <BriefcaseIcon className="h-5 w-5" />,
+  },
+  {
+    href: "/meetings",
+    label: "Meetings",
+    short: "Meetings",
+    icon: <UsersIcon className="h-5 w-5" />,
+  },
+  {
+    href: "/inbox",
+    label: "Inbox",
+    short: "Inbox",
+    icon: <MailIcon className="h-5 w-5" />,
+  },
+  {
+    /*
+     * The tab, named the way the tab is named.
+     *
+     * This row was Briefings on the old layout, and the screen it opens has
+     * been called Schedules since the merge. Keeping the old word here would
+     * mean clicking Briefings and arriving somewhere headed Schedules, which is
+     * the layout being nostalgic at the cost of being wrong.
+     */
+    href: "/tasks?tab=schedules",
+    label: "Schedules",
+    short: "Schedules",
+    icon: <ScheduleIcon className="h-5 w-5" />,
+  },
+  {
+    href: "/tasks",
+    label: "Tasks",
+    short: "Tasks",
+    icon: <ChecklistIcon className="h-5 w-5" />,
+  },
+  {
+    href: "/projects",
+    label: "Projects",
+    short: "Projects",
+    icon: <FolderIcon className="h-5 w-5" />,
+  },
+];
+
+/** Reference, which the current layout does not have. */
+export const LEGACY_REFERENCE_LINKS: NavLink[] = [
+  {
+    href: "/library",
+    label: "Library",
+    short: "Library",
+    icon: <DocIcon className="h-5 w-5" />,
+  },
+  {
+    href: "/information",
+    label: "Information",
+    short: "Info",
+    icon: <SparkIcon className="h-5 w-5" />,
   },
 ];
 
@@ -389,6 +472,13 @@ export function SidebarContent({
   );
 
 
+  /*
+   * Which arrangement this browser has asked for. See layoutMode: the visuals
+   * are the same either way and only the placement differs.
+   */
+  const legacy = useLayoutMode() === "legacy";
+  const workLinks = legacy ? LEGACY_WORK_LINKS : WORK_LINKS;
+
   const [subtitle, setSubtitle] = useState(settings.companySubtitle);
 
   useEffect(() => {
@@ -534,7 +624,7 @@ export function SidebarContent({
       content: (
         <>
               <ul className="mb-5 space-y-0.5">
-                {WORK_LINKS.filter((link) => canOpenPath(link.href)).map((link) => (
+                {workLinks.filter((link) => canOpenPath(link.href)).map((link) => (
                   <li key={link.href}>
                     <NavRow
                       href={link.href}
@@ -570,7 +660,7 @@ export function SidebarContent({
                   * person, it is the first one anybody should talk to, and once
                   * it had a face it stopped belonging beside a set of pages.
                   */}
-                {orchestrator && canOpenHead(orchestrator.id) ? (
+                {legacy ? null : orchestrator && canOpenHead(orchestrator.id) ? (
                   <li>
                     <NavRow
                       href="/orchestrator"
@@ -660,6 +750,40 @@ export function SidebarContent({
      * No recent conversations here: a department opens to its own list, so
      * this would be the same threads in a narrower column.
      */
+    /*
+     * Reference, on the legacy layout only.
+     *
+     * It held Library and Information, and it dissolved when Information
+     * became a band on the dashboard and left it with one row. Both are back
+     * here together, which is the arrangement that made the group worth having.
+     */
+    ...(legacy
+      ? {
+          reference: {
+            label: "Reference",
+            content: (
+              <ul className="mb-5 space-y-0.5">
+                {LEGACY_REFERENCE_LINKS.filter((link) => canOpenPath(link.href)).map(
+                  (link) => (
+                    <li key={link.href}>
+                      <NavRow
+                        href={link.href}
+                        active={isActive(pathname, link.href)}
+                        onNavigate={onNavigate}
+                      >
+                        <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
+                          {link.icon}
+                        </span>
+                        <span className="md-body truncate">{link.label}</span>
+                      </NavRow>
+                    </li>
+                  ),
+                )}
+              </ul>
+            ),
+          },
+        }
+      : {}),
         }}
       />
 

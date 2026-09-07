@@ -23,6 +23,8 @@ import {
 import { createRipple } from "@/components/ui/ripple";
 import { formatExactTime } from "@/lib/routes";
 import { COMPANY_ID, departmentAccent, projectAccent, PROJECT_ACCENTS} from "@/lib/seed";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { TASK_STATUSES, type Task, type TaskStatus } from "@/lib/types";
 
@@ -86,7 +88,7 @@ function shortName(email: string): string {
   return local.replace(/[._-]+/g, " ").trim() || email;
 }
 
-export default function TasksPage() {
+function TasksBody() {
   const {
     ready,
     tasks,
@@ -110,7 +112,18 @@ export default function TasksPage() {
   const canSchedules = can("briefings");
 
   const [filter, setFilter] = useState<string>("all");
-  const [tab, setTab] = useState<"tasks" | "schedules">("tasks");
+  /*
+   * Which tab, seeded from the address.
+   *
+   * Briefings was a screen of its own and is a tab here now, so /briefings and
+   * the legacy layout's own link both have to land on the tab rather than on
+   * the board beside it. Anybody denied the area still gets the board, because
+   * the tab is not rendered for them at all.
+   */
+  const wantsSchedules = useSearchParams().get("tab") === "schedules";
+  const [tab, setTab] = useState<"tasks" | "schedules">(
+    wantsSchedules && canSchedules ? "schedules" : "tasks",
+  );
   /*
    * Reported up from the tab itself rather than fetched twice. The schedules
    * tab already reads them to draw its own list, and asking a second time on
@@ -852,5 +865,21 @@ export default function TasksPage() {
         </p>
       </Dialog>
     </div>
+  );
+}
+
+/**
+ * Wrapped, because reading the address needs a boundary above it.
+ *
+ * useSearchParams makes a route impossible to prerender unless it sits inside
+ * Suspense, and without this the build fails on this page alone, at the very
+ * end, with a stack that names none of it. Meetings has the same wrapper for
+ * the same reason.
+ */
+export default function TasksPage() {
+  return (
+    <Suspense fallback={null}>
+      <TasksBody />
+    </Suspense>
   );
 }

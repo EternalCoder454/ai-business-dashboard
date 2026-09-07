@@ -21,6 +21,7 @@ import { figureSeries } from "@/lib/memory";
 import { hasProfileContent } from "@/lib/prompts";
 import { conversationHref, formatExactTime } from "@/lib/routes";
 import { useStore } from "@/lib/store";
+import { useLayoutMode } from "@/lib/layoutMode";
 
 /**
  * The landing page.
@@ -50,6 +51,13 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
     settings,
     can,
   } = useStore();
+
+  /*
+   * The legacy layout keeps Information as a screen of its own, so the band
+   * that replaced it does not also appear here. The same three cards in two
+   * places on one arrangement is worse than either arrangement alone.
+   */
+  const legacy = useLayoutMode() === "legacy";
 
   const nameOf = (id: string) =>
     allDepartments.find((d) => d.id === id)?.personaName ??
@@ -352,7 +360,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
         * administrator who had already decided somebody should not see the
         * spend has not had that decision quietly undone by the merge.
         */}
-      {can("information") ? (
+      {can("information") && !legacy ? (
         <Band
           id="system"
           title="System"

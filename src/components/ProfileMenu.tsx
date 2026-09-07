@@ -22,6 +22,7 @@ import { useNotifications } from "@/lib/notifications";
 import { baselineChangelog, useUnseenChangelog } from "@/lib/changelogSeen";
 import { useStore } from "@/lib/store";
 import { setThemeChoice, useThemeChoice } from "@/lib/themeChoice";
+import { setLayoutMode, useLayoutMode, type LayoutMode } from "@/lib/layoutMode";
 import type { ThemeMode } from "@/lib/types";
 
 /**
@@ -69,6 +70,7 @@ const ADMIN = {
 export function ProfileMenu() {
   const { account, isOperator, workspaceRole, accountEmail, canOpenPath, settings } = useStore();
   const themeChoice = useThemeChoice();
+  const layout = useLayoutMode();
   const [open, setOpen] = useState(false);
 
   /*
@@ -371,6 +373,55 @@ export function ProfileMenu() {
                   className={cx(
                     "md-state md-label flex-1 rounded-full border px-2 py-1.5 transition-colors",
                     themeChoice === option.value
+                      ? "border-primary bg-primary-container text-on-primary-container"
+                      : "border-outline-variant text-on-variant hover:text-on-surface",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/*
+            * Where things live, as opposed to how they look.
+            *
+            * Three merges moved things around over a few days, and the people
+            * using it every day said the presentation had improved and the
+            * arrangement had got worse. There is no reason those have to be one
+            * decision, so they are not: both settings here draw the same panel,
+            * with the same type and the same columns, and differ only in where
+            * the destinations sit.
+            *
+            * Legacy is Chief of Staff in Work, Briefings as its own row, and
+            * Reference back with the Library and Information in it.
+            */}
+          <div className="border-t border-outline-variant px-4 py-3">
+            <p className="md-label mb-2 text-on-variant">Layout</p>
+            <div className="flex gap-1.5" role="radiogroup" aria-label="Layout">
+              {(
+                [
+                  { value: "modern" as LayoutMode, label: "Modern" },
+                  { value: "legacy" as LayoutMode, label: "Legacy" },
+                ]
+              ).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={layout === option.value}
+                  onClick={(event) => {
+                    createRipple(event);
+                    setLayoutMode(option.value);
+                  }}
+                  title={
+                    option.value === "legacy"
+                      ? "Chief of Staff in Work, Briefings on its own, and a Reference group"
+                      : "Chief of Staff leading the heads, Briefings as a tab of Tasks"
+                  }
+                  className={cx(
+                    "md-state md-label flex-1 rounded-full border px-2 py-1.5 transition-colors",
+                    layout === option.value
                       ? "border-primary bg-primary-container text-on-primary-container"
                       : "border-outline-variant text-on-variant hover:text-on-surface",
                   )}

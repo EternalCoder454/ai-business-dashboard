@@ -76,18 +76,17 @@ const nextConfig = {
       { source: "/onboarding", destination: "/wiki", permanent: false },
 
       /*
-       * Information was three cards nobody navigated to: the spend, what each
-       * head is sent, and what the workspace is holding. They are a section of
-       * the dashboard now, behind the same permission, so the screen is gone
-       * and anybody with the old link still lands somewhere it is.
+       * Information is a screen again, for anybody on the legacy layout, so
+       * there is nothing here to redirect. It was folded into the dashboard as
+       * the System band and that band is still the default; the page renders
+       * the same three cards behind the same permission.
        */
-      { source: "/information", destination: "/", permanent: false },
       /*
        * Briefings sat directly under Tasks in the navigation and asked the same
        * question: what is owed, and when. The only difference is whether it
        * comes round again, which is a tab rather than a screen.
        */
-      { source: "/briefings", destination: "/tasks", permanent: false },
+      { source: "/briefings", destination: "/tasks?tab=schedules", permanent: false },
 
       /*
        * The paths now match the words on the screen.
