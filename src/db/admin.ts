@@ -532,6 +532,8 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
     );
     await tx.delete(t.files).where(eq(t.files.workspaceId, owner));
     await tx.delete(t.skills).where(eq(t.skills.workspaceId, owner));
+    // Comments before the tasks they hang off.
+    await tx.delete(t.taskComments).where(eq(t.taskComments.workspaceId, owner));
     await tx.delete(t.tasks).where(eq(t.tasks.workspaceId, owner));
     await tx.delete(t.wikiPages).where(eq(t.wikiPages.workspaceId, owner));
     await tx.delete(t.memory).where(eq(t.memory.workspaceId, owner));

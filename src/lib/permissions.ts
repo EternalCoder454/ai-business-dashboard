@@ -69,7 +69,7 @@ export const AREA_HREF: Partial<Record<Area, string>> = {
  */
 export const AREA_TABLES: Partial<Record<Area, string[]>> = {
   meetings: ["meetings"],
-  tasks: ["tasks"],
+  tasks: ["tasks", "taskComments"],
   projects: ["projects"],
   library: ["deliverables", "files"],
   profile: ["profile"],

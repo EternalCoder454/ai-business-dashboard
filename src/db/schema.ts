@@ -490,6 +490,18 @@ export const tasks = pgTable(
     sortOrder: integer("sort_order").notNull().default(0),
     sourceConversationId: text("source_conversation_id"),
     completedAt: bigint("completed_at", { mode: "number" }),
+    /** One of PROJECT_ACCENTS, or empty for the plain card. */
+    accent: text("accent").notNull().default(""),
+    /*
+     * Who is doing it, and who asked for it.
+     *
+     * The department says which part of the business a task belongs to, which
+     * is not the same question as which person picked it up. A board where
+     * everything is filed under Marketing and nothing says who is on it is a
+     * board two people can both start the same job from.
+     */
+    assignedTo: text("assigned_to"),
+    createdBy: text("created_by"),
     createdAt: created(),
     updatedAt: updated(),
   },
@@ -538,6 +550,30 @@ export const backups = pgTable(
   (table) => [
     primaryKey({ columns: [table.workspaceId, table.id] }),
     index("backups_ws_idx").on(table.workspaceId, table.createdAt),
+  ],
+);
+
+/**
+ * What people said about one task.
+ *
+ * Its own table rather than a column on the task, because a comment has an
+ * author and a time of its own and a task has any number of them. Kept small on
+ * purpose: this is for "waiting on the supplier" and "done, invoice sent",
+ * which is what stops two people asking each other the same question.
+ */
+export const taskComments = pgTable(
+  "task_comments",
+  {
+    id: text("id").notNull(),
+    workspaceId: workspace(),
+    taskId: text("task_id").notNull(),
+    authorEmail: text("author_email").notNull().default(""),
+    body: text("body").notNull().default(""),
+    createdAt: created(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workspaceId, table.id] }),
+    index("task_comments_task_idx").on(table.workspaceId, table.taskId, table.createdAt),
   ],
 );
 

@@ -9,6 +9,7 @@ import type {
   MemoryEntry,
   Project,
   Task,
+  TaskComment,
   WikiPage,
   Settings,
   Skill,
@@ -45,6 +46,7 @@ export interface Workspace {
   files: LibraryFile[];
   memory: MemoryEntry[];
   tasks: Task[];
+  taskComments: TaskComment[];
   wikiPages: WikiPage[];
   meetings: Meeting[];
   profile: CompanyProfile;
@@ -71,6 +73,8 @@ export type MutationOp =
   | { table: "deliverables"; action: "delete"; ids: string[] }
   | { table: "files"; action: "upsert"; rows: LibraryFile[] }
   | { table: "files"; action: "delete"; ids: string[] }
+  | { table: "taskComments"; action: "upsert"; rows: TaskComment[] }
+  | { table: "taskComments"; action: "delete"; ids: string[] }
   | { table: "meetings"; action: "upsert"; rows: Meeting[] }
   | { table: "meetings"; action: "delete"; ids: string[] }
   | { table: "profile"; action: "upsert"; row: CompanyProfile }
@@ -97,6 +101,7 @@ const WRITABLE: Record<MutationOp["table"], true> = {
   deliverables: true,
   files: true,
   meetings: true,
+  taskComments: true,
   profile: true,
   settings: true,
   account: true,
@@ -126,6 +131,7 @@ export function emptyWorkspace(
     departments: [],
     projects: [],
     conversations: [],
+    taskComments: [],
     skills: [],
     deliverables: [],
     files: [],
@@ -262,6 +268,17 @@ export function applyOp(workspace: Workspace, op: MutationOp): Workspace {
           op.action === "upsert"
             ? upsertBy(workspace.files, op.rows).sort((a, b) => b.updatedAt - a.updatedAt)
             : workspace.files.filter((row) => !op.ids.includes(row.id)),
+      };
+
+    case "taskComments":
+      return {
+        ...workspace,
+        taskComments:
+          op.action === "upsert"
+            ? upsertBy(workspace.taskComments, op.rows).sort(
+                (a, b) => a.createdAt - b.createdAt,
+              )
+            : workspace.taskComments.filter((row) => !op.ids.includes(row.id)),
       };
 
     case "meetings":

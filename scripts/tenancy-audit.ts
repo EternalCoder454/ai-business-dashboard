@@ -31,6 +31,7 @@ const SCOPED = [
   "meetings",
   "meetingRounds",
   "tasks",
+  "taskComments",
   "wikiPages",
   "memory",
   "profiles",

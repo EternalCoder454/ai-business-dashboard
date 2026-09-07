@@ -21,7 +21,8 @@ import {
   cx,
 } from "@/components/ui";
 import { createRipple } from "@/components/ui/ripple";
-import { COMPANY_ID } from "@/lib/seed";
+import { formatExactTime } from "@/lib/routes";
+import { COMPANY_ID, departmentAccent, projectAccent, PROJECT_ACCENTS} from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import { TASK_STATUSES, type Task, type TaskStatus } from "@/lib/types";
 
@@ -40,6 +41,8 @@ interface Draft {
   projectId: string;
   /** yyyy-mm-dd, which is what a date input speaks. Empty means no date. */
   dueOn: string;
+  /** One of PROJECT_ACCENTS, or empty for the ordinary card. */
+  accent: string;
 }
 
 function toInputDate(ms: number | undefined): string {
@@ -72,6 +75,17 @@ function dueLabel(
   };
 }
 
+/**
+ * A name out of an email address, for a line that says who is on something.
+ *
+ * The whole address is too long for a card and says nothing the first part does
+ * not. Dots and underscores become spaces so "jane.doe" reads as a name.
+ */
+function shortName(email: string): string {
+  const local = email.split("@")[0] ?? email;
+  return local.replace(/[._-]+/g, " ").trim() || email;
+}
+
 export default function TasksPage() {
   const {
     ready,
@@ -81,6 +95,10 @@ export default function TasksPage() {
     createTask,
     updateTask,
     deleteTask,
+    taskComments,
+    commentOnTask,
+    deleteTaskComment,
+    accountEmail,
     can,
   } = useStore();
 
@@ -100,6 +118,9 @@ export default function TasksPage() {
    * for the board.
    */
   const [unreadBriefings, setUnreadBriefings] = useState(0);
+  /** The task being read, which is not the same as the one being edited. */
+  const [reading, setReading] = useState<Task | null>(null);
+  const [comment, setComment] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   /*
@@ -143,6 +164,7 @@ export default function TasksPage() {
       status,
       departmentId: filter.startsWith("proj:") || filter === "all" ? COMPANY_ID : filter,
       projectId: filter.startsWith("proj:") ? filter.slice(5) : "",
+      accent: "",
       dueOn: "",
     });
 
@@ -154,6 +176,7 @@ export default function TasksPage() {
       status: task.status,
       departmentId: task.departmentId,
       projectId: task.projectId ?? "",
+      accent: task.accent ?? "",
       dueOn: toInputDate(task.dueAt),
     });
 
@@ -166,6 +189,7 @@ export default function TasksPage() {
       departmentId: draft.departmentId,
       projectId: draft.projectId || undefined,
       dueAt: fromInputDate(draft.dueOn),
+      accent: draft.accent,
     };
     if (draft.id) await updateTask(draft.id, fields);
     else await createTask(fields);
@@ -243,6 +267,15 @@ export default function TasksPage() {
         <SchedulesTab onUnread={setUnreadBriefings} />
       ) : (
             <div className="min-h-0 flex-1 overflow-y-auto page-x py-5">
+        {/*
+          * Three kinds of filter, told apart by colour rather than by reading.
+          *
+          * Everything, a department and a project were the same grey pill in
+          * one long row, so the only way to know what you were filtering by was
+          * to recognise the word. Each department already has an accent and so
+          * does each project, and both are used elsewhere, so the row now says
+          * which kind of thing each pill is before you read it.
+          */}
         <div className="filter-row mb-5">
           <Chip selected={filter === "all"} onClick={() => setFilter("all")}>
             Everything
@@ -253,7 +286,14 @@ export default function TasksPage() {
               selected={filter === department.id}
               onClick={() => setFilter(department.id)}
             >
-              {department.personaName || department.name}
+              <span className="flex items-center gap-1.5">
+                <span
+                  aria-hidden
+                  className="h-2 w-2 flex-none rounded-full"
+                  style={{ background: departmentAccent(department.id).dot }}
+                />
+                {department.personaName || department.name}
+              </span>
             </Chip>
           ))}
           {projects.map((project) => (
@@ -262,7 +302,16 @@ export default function TasksPage() {
               selected={filter === `proj:${project.id}`}
               onClick={() => setFilter(`proj:${project.id}`)}
             >
-              {project.name}
+              <span className="flex items-center gap-1.5">
+                {/* A square for a project, a circle for a head. Colour alone
+                    would not survive being colour blind, and the shape does. */}
+                <span
+                  aria-hidden
+                  className="h-2 w-2 flex-none rounded-[2px]"
+                  style={{ background: projectAccent(project.accent).dot }}
+                />
+                {project.name}
+              </span>
             </Chip>
           ))}
         </div>
@@ -319,6 +368,11 @@ export default function TasksPage() {
                   <ul className="space-y-2">
                     {items.map((task) => {
                       const department = departmentOf(task.departmentId);
+                      const project = task.projectId
+                        ? projects.find((row) => row.id === task.projectId)
+                        : undefined;
+                      const comments = taskComments.filter((c) => c.taskId === task.id).length;
+                      const tint = task.accent ? projectAccent(task.accent).soft : undefined;
                       const due = task.dueAt ? dueLabel(task.dueAt, now) : null;
                       return (
                         <li key={task.id}>
@@ -326,8 +380,12 @@ export default function TasksPage() {
                             draggable
                             onDragStart={() => setDragging(task.id)}
                             onDragEnd={() => setDragging(null)}
+                            style={tint ? { background: tint } : undefined}
                             className={cx(
-                              "rounded-xl border border-outline-variant bg-container p-3",
+                              "rounded-xl border border-outline-variant p-3",
+                              // The tint is a style, so the class is only the
+                              // fallback for a card with no colour set.
+                              tint ? "" : "bg-container",
                               dragging === task.id && "opacity-40",
                               task.status === "done" && "opacity-70",
                             )}
@@ -362,7 +420,11 @@ export default function TasksPage() {
                                 </span>
                               </button>
                               <button
-                                onClick={() => openExisting(task)}
+                                // Opens it to read, not to edit. Editing is a
+                                // button inside that view: the common reason to
+                                // click a card is to look at it properly, and
+                                // landing in a form makes that the rare case.
+                                onClick={() => setReading(task)}
                                 className="min-w-0 flex-1 text-left"
                               >
                                 <span
@@ -394,7 +456,14 @@ export default function TasksPage() {
                               </button>
                             </div>
 
-                            <div className="mt-2 flex flex-wrap items-center gap-2 pl-6">
+                            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 pl-6">
+                              {/*
+                                * Where this task lives, which the board could
+                                * not say. On Everything every card looked the
+                                * same, so a task you wanted to get back to gave
+                                * you no way to find it again. The head was
+                                * already here; the project was not.
+                                */}
                               {department ? (
                                 <span className="md-label-sm flex items-center gap-1.5 text-on-variant/75">
                                   <DepartmentAvatar department={department} size={16} />
@@ -403,6 +472,16 @@ export default function TasksPage() {
                               ) : (
                                 <span className="md-label-sm text-on-variant/60">Unassigned</span>
                               )}
+                              {project ? (
+                                <span className="md-label-sm flex items-center gap-1.5 text-on-variant/75">
+                                  <span
+                                    aria-hidden
+                                    className="h-2 w-2 flex-none rounded-[2px]"
+                                    style={{ background: projectAccent(project.accent).dot }}
+                                  />
+                                  {project.name}
+                                </span>
+                              ) : null}
                               {due && task.status !== "done" ? (
                                 <span
                                   className={cx(
@@ -415,6 +494,18 @@ export default function TasksPage() {
                                   )}
                                 >
                                   {due.text}
+                                </span>
+                              ) : null}
+                              {comments > 0 ? (
+                                <span className="md-label-sm text-on-variant/60">
+                                  {comments} {comments === 1 ? "comment" : "comments"}
+                                </span>
+                              ) : null}
+                              {/* Who picked it up, so two people do not both
+                                  start the same job. */}
+                              {task.assignedTo ? (
+                                <span className="md-label-sm ml-auto truncate text-primary">
+                                  {shortName(task.assignedTo)}
                                 </span>
                               ) : null}
                             </div>
@@ -430,6 +521,184 @@ export default function TasksPage() {
         )}
       </div>
       )}
+
+      {/*
+        * Reading a task, which is what clicking one now does.
+        *
+        * It used to open the edit form, so the ordinary act of looking at
+        * something properly put you in a set of inputs. Most of the time
+        * somebody clicks a card to read the note, see who is on it and catch up
+        * on what has been said, and only sometimes to change it, so editing is
+        * a button in here rather than the thing that happens first.
+        */}
+      <Dialog
+        open={Boolean(reading)}
+        title={reading?.title ?? ""}
+        onClose={() => {
+          setReading(null);
+          setComment("");
+        }}
+        footer={
+          reading ? (
+            <>
+              <Button
+                variant="text"
+                onClick={() => {
+                  setReading(null);
+                  setComment("");
+                }}
+              >
+                Close
+              </Button>
+              <Button
+                onClick={() => {
+                  const task = reading;
+                  setReading(null);
+                  setComment("");
+                  openExisting(task);
+                }}
+              >
+                Edit
+              </Button>
+            </>
+          ) : undefined
+        }
+      >
+        {reading ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip
+                selected
+                onClick={() =>
+                  void updateTask(reading.id, {
+                    status: reading.status === "done" ? "todo" : "done",
+                  })
+                }
+              >
+                {COLUMN_LABEL[reading.status]}
+              </Chip>
+              {(() => {
+                const department = departmentOf(reading.departmentId);
+                return department ? (
+                  <span className="md-label-sm flex items-center gap-1.5 text-on-variant">
+                    <DepartmentAvatar department={department} size={18} />
+                    {department.personaName || department.name}
+                  </span>
+                ) : null;
+              })()}
+              {reading.projectId
+                ? (() => {
+                    const project = projects.find((row) => row.id === reading.projectId);
+                    return project ? (
+                      <span className="md-label-sm flex items-center gap-1.5 text-on-variant">
+                        <span
+                          aria-hidden
+                          className="h-2 w-2 rounded-[2px]"
+                          style={{ background: projectAccent(project.accent).dot }}
+                        />
+                        {project.name}
+                      </span>
+                    ) : null;
+                  })()
+                : null}
+            </div>
+
+            {reading.notes ? (
+              <p className="md-body whitespace-pre-wrap text-on-surface">{reading.notes}</p>
+            ) : (
+              <p className="md-body text-on-variant">No notes.</p>
+            )}
+
+            <dl className="flex flex-col gap-1.5">
+              {reading.createdBy ? (
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="md-label-sm text-on-variant">Added by</dt>
+                  <dd className="md-body-sm">{shortName(reading.createdBy)}</dd>
+                </div>
+              ) : null}
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="md-label-sm text-on-variant">Working on it</dt>
+                <dd className="md-body-sm flex items-center gap-2">
+                  {reading.assignedTo ? shortName(reading.assignedTo) : "Nobody yet"}
+                  {/*
+                    * Claiming, which is the whole point of the line. A board
+                    * that says which department a job belongs to still lets two
+                    * people start it at once, because nothing on it says who
+                    * already has.
+                    */}
+                  <Button
+                    size="sm"
+                    variant="text"
+                    onClick={() =>
+                      void updateTask(reading.id, {
+                        assignedTo:
+                          reading.assignedTo === accountEmail ? undefined : (accountEmail ?? undefined),
+                      })
+                    }
+                  >
+                    {reading.assignedTo === accountEmail ? "Hand it back" : "I am on it"}
+                  </Button>
+                </dd>
+              </div>
+              {reading.dueAt ? (
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="md-label-sm text-on-variant">Due</dt>
+                  <dd className="md-body-sm">{formatExactTime(reading.dueAt)}</dd>
+                </div>
+              ) : null}
+            </dl>
+
+            <div>
+              <h3 className="md-label mb-2 text-on-variant">Comments</h3>
+              <ul className="mb-3 flex flex-col gap-2">
+                {taskComments
+                  .filter((row) => row.taskId === reading.id)
+                  .map((row) => (
+                    <li key={row.id} className="rounded-xl bg-high px-3 py-2">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="md-label-sm truncate text-on-variant">
+                          {shortName(row.authorEmail)}
+                        </span>
+                        <span className="md-label-sm flex-none text-on-variant/60">
+                          {formatExactTime(row.createdAt)}
+                        </span>
+                      </div>
+                      <p className="md-body-sm mt-0.5 whitespace-pre-wrap">{row.body}</p>
+                      {row.authorEmail === accountEmail ? (
+                        <button
+                          type="button"
+                          onClick={() => void deleteTaskComment(row.id)}
+                          className="md-label-sm mt-1 text-on-variant/70 underline"
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                    </li>
+                  ))}
+              </ul>
+
+              <div className="flex items-end gap-2">
+                <TextArea
+                  value={comment}
+                  rows={2}
+                  placeholder="Add a comment"
+                  className="flex-1"
+                  onChange={(event) => setComment(event.target.value)}
+                />
+                <Button
+                  disabled={!comment.trim()}
+                  onClick={async () => {
+                    await commentOnTask(reading.id, comment);
+                    setComment("");
+                  }}
+                >
+                  Post
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </Dialog>
 
       <Dialog
         open={Boolean(draft)}
@@ -462,6 +731,40 @@ export default function TasksPage() {
                 value={draft.notes}
                 onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
               />
+            </Field>
+            <Field label="Colour">
+              {/*
+                * The same six the projects use, so a board does not gain a
+                * second palette nobody can match to anything. None is the
+                * default and stays the ordinary card, because a board where
+                * every card is coloured tells you nothing.
+                */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="No colour"
+                  aria-pressed={!draft.accent}
+                  onClick={() => setDraft({ ...draft, accent: "" })}
+                  className={cx(
+                    "md-state h-7 w-7 rounded-full border-2 bg-container",
+                    draft.accent ? "border-outline-variant" : "border-primary",
+                  )}
+                />
+                {PROJECT_ACCENTS.map((accent) => (
+                  <button
+                    key={accent.key}
+                    type="button"
+                    aria-label={accent.label}
+                    aria-pressed={draft.accent === accent.key}
+                    onClick={() => setDraft({ ...draft, accent: accent.key })}
+                    style={{ background: accent.dot }}
+                    className={cx(
+                      "md-state h-7 w-7 rounded-full border-2",
+                      draft.accent === accent.key ? "border-primary" : "border-transparent",
+                    )}
+                  />
+                ))}
+              </div>
             </Field>
             <div className="grid grid-cols-1 gap-4 medium:grid-cols-2">
               <Field label="Department">

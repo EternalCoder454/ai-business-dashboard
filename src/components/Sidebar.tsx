@@ -63,12 +63,6 @@ export const WORK_LINKS: NavLink[] = [
     icon: <DashboardIcon className="h-5 w-5" />,
   },
   {
-    href: "/orchestrator",
-    label: "Chief of Staff",
-    short: "Staff",
-    icon: <BriefcaseIcon className="h-5 w-5" />,
-  },
-  {
     href: "/meetings",
     label: "Meetings",
     short: "Meetings",
@@ -410,40 +404,13 @@ export function SidebarContent({
                       active={isActive(pathname, link.href)}
                       onNavigate={onNavigate}
                     >
-                      {/*
-                        * The orchestrator gets its own face rather than a
-                        * briefcase.
-                        *
-                        * It sat in this list looking exactly like Dashboard and
-                        * Meetings, which are screens, when it is a person and
-                        * the first one anybody should talk to. An avatar in a
-                        * row of glyphs is enough on its own: it reads as
-                        * somebody rather than somewhere, and it is the same
-                        * face as in the heads below, so the two connect.
-                        */}
                       <span className="relative text-on-variant [&>svg]:h-4 [&>svg]:w-4">
-                        {link.href === "/orchestrator" && orchestrator ? (
-                          <DepartmentAvatar department={orchestrator} size={18} />
-                        ) : (
-                          link.icon
-                        )}
+                        {link.icon}
                         {link.href === "/inbox" ? (
                           <NavBadge count={unread} label={`${unread} unread messages`} />
                         ) : null}
                       </span>
-                      <span
-                        className={cx(
-                          "md-body min-w-0 flex-1 truncate",
-                          link.href === "/orchestrator" ? "font-medium" : "",
-                        )}
-                      >
-                        {link.label}
-                      </span>
-                      {link.href === "/orchestrator" && orchestrator?.personaName ? (
-                        <span className="md-label-sm flex-none text-on-variant/60">
-                          {orchestrator.personaName}
-                        </span>
-                      ) : null}
+                      <span className="md-body truncate">{link.label}</span>
                     </NavRow>
                   </li>
                 ))}
@@ -480,6 +447,33 @@ export function SidebarContent({
       content: (
         <>
               <ul className="mb-5 space-y-0.5">
+                {/*
+                  * The orchestrator leads the heads rather than sitting in Work
+                  * with the screens.
+                  *
+                  * It was in that list because it is a destination, and it read
+                  * as one: a row identical to Dashboard and Meetings. It is a
+                  * person, it is the first one anybody should talk to, and once
+                  * it had a face it stopped belonging beside a set of pages.
+                  */}
+                {orchestrator && canOpenHead(orchestrator.id) ? (
+                  <li>
+                    <NavRow
+                      href="/orchestrator"
+                      active={pathname === "/orchestrator"}
+                      onNavigate={onNavigate}
+                    >
+                      <DepartmentAvatar department={orchestrator} size={20} />
+                      <span className="md-body min-w-0 flex-1 truncate font-medium">
+                        {orchestrator.personaName || orchestrator.name}
+                      </span>
+                      <span className="md-label-sm flex-none text-on-variant/60">
+                        {orchestrator.roleTitle}
+                      </span>
+                      <StatusDot status={statusOf(orchestrator.id)} />
+                    </NavRow>
+                  </li>
+                ) : null}
                 {!ready && visibleHeads.length === 0 ? (
                   <li className="md-body px-3 py-2 text-on-variant/75">Loading…</li>
                 ) : null}

@@ -62,6 +62,7 @@ import type {
   MemoryEntry,
   MemoryKind,
   Task,
+  TaskComment,
   TaskStatus,
   WikiPage,
   Message,
@@ -160,6 +161,10 @@ export interface StoreValue {
   createTask: (input: Partial<Task> & { title: string }) => Promise<Task>;
   updateTask: (id: string, patch: Partial<Task>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
+  /** Everything anybody has said about a task, oldest first. */
+  taskComments: TaskComment[];
+  commentOnTask: (taskId: string, body: string) => Promise<void>;
+  deleteTaskComment: (id: string) => Promise<void>;
   /** One head's slice of it, plus everything company-wide. Live entries only. */
   memoryFor: (departmentId: string) => MemoryEntry[];
   saveMemory: (input: Partial<MemoryEntry> & { kind: MemoryKind; label: string }) => Promise<MemoryEntry>;
@@ -811,6 +816,7 @@ export function StoreProvider({
   const skillList = remote?.skills ?? NONE;
   const fileList = remote?.files ?? NONE;
   const runList = remote?.meetings ?? NONE;
+  const taskCommentList = remote?.taskComments ?? NONE;
 
   const [writeError, setWriteError] = useState<string | null>(null);
 
@@ -1508,9 +1514,38 @@ export function StoreProvider({
           createdAt: input.createdAt ?? now,
           updatedAt: now,
           completedAt: input.completedAt,
+          accent: input.accent,
+          assignedTo: input.assignedTo,
+          createdBy: signedInEmail || undefined,
         };
         await push({ table: "tasks", action: "upsert", rows: [task] });
         return task;
+      },
+
+      taskComments: taskCommentList,
+
+      commentOnTask: async (taskId, body) => {
+        const text = body.trim();
+        if (!text) return;
+        await push({
+          table: "taskComments",
+          action: "upsert",
+          rows: [
+            {
+              id: newId("cmt"),
+              taskId,
+              // The server stamps whoever is saving over this, so a hand
+              // written request cannot put somebody else's name on a comment.
+              authorEmail: signedInEmail ?? "",
+              body: text,
+              createdAt: Date.now(),
+            },
+          ],
+        });
+      },
+
+      deleteTaskComment: async (id) => {
+        await push({ table: "taskComments", action: "delete", ids: [id] });
       },
 
       updateTask: async (id, patch) => {
@@ -1606,6 +1641,7 @@ export function StoreProvider({
     skillList,
     fileList,
     runList,
+    taskCommentList,
     profile,
     settings,
     account,

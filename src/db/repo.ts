@@ -212,6 +212,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
     deliverableRows,
     memoryRows,
     taskRows,
+    taskCommentRows,
     wikiRows,
     fileRows,
     runRows,
@@ -260,6 +261,17 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       .orderBy(desc(t.deliverables.updatedAt)),
     db.select().from(t.memory).where(eq(t.memory.workspaceId, workspaceId)).orderBy(desc(t.memory.occurredAt)),
     db.select().from(t.tasks).where(eq(t.tasks.workspaceId, workspaceId)).orderBy(asc(t.tasks.sortOrder)),
+    /*
+     * Comments come with the snapshot rather than on demand. They are a line or
+     * two each and a board has a handful, so one more query in a fan out that
+     * already pipelines costs nothing, and a comment count on a card that had
+     * to be fetched per card would not be worth having.
+     */
+    db
+      .select()
+      .from(t.taskComments)
+      .where(eq(t.taskComments.workspaceId, workspaceId))
+      .orderBy(asc(t.taskComments.createdAt)),
     db.select().from(t.wikiPages).where(eq(t.wikiPages.workspaceId, workspaceId)).orderBy(asc(t.wikiPages.sortOrder)),
     /*
      * Every column except `data`, which is the base64 of the file itself.
@@ -432,8 +444,19 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       order: row.sortOrder,
       sourceConversationId: row.sourceConversationId ?? undefined,
       completedAt: row.completedAt ?? undefined,
+      accent: row.accent || undefined,
+      assignedTo: row.assignedTo ?? undefined,
+      createdBy: row.createdBy ?? undefined,
       createdAt: ms(row.createdAt),
       updatedAt: ms(row.updatedAt),
+    })),
+
+    taskComments: taskCommentRows.map((row) => ({
+      id: row.id,
+      taskId: row.taskId,
+      authorEmail: row.authorEmail,
+      body: row.body,
+      createdAt: ms(row.createdAt),
     })),
 
     memory: memoryRows.map((row) => ({
@@ -965,6 +988,42 @@ export async function applyMutations(
           break;
         }
 
+        case "taskComments": {
+          if (op.action === "delete") {
+            if (op.ids.length) {
+              await tx
+                .delete(t.taskComments)
+                .where(
+                  and(
+                    eq(t.taskComments.workspaceId, workspaceId),
+                    inArray(t.taskComments.id, op.ids),
+                  ),
+                );
+            }
+            break;
+          }
+          for (const row of op.rows) {
+            const values = {
+              id: row.id,
+              workspaceId,
+              taskId: row.taskId,
+              // Whoever is saving, always. A comment nobody can be asked about
+              // is not worth having, and the client does not get to claim
+              // somebody else wrote one.
+              authorEmail: email,
+              body: row.body,
+            };
+            await tx
+              .insert(t.taskComments)
+              .values(values)
+              .onConflictDoUpdate({
+                target: [t.taskComments.workspaceId, t.taskComments.id],
+                set: { body: row.body },
+              });
+          }
+          break;
+        }
+
         case "wikiPages": {
           if (op.action === "delete") {
             if (op.ids.length) {
@@ -1065,6 +1124,11 @@ export async function applyMutations(
               sortOrder: row.order,
               sourceConversationId: row.sourceConversationId ?? null,
               completedAt: row.completedAt ?? null,
+              accent: row.accent ?? "",
+              assignedTo: row.assignedTo ?? null,
+              // Set once, on the row that creates it. A later save from anybody
+              // else must not restamp whose task it was.
+              createdBy: row.createdBy ?? (previous === undefined ? email : null),
               updatedAt: now,
             };
             await tx

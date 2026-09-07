@@ -396,6 +396,27 @@ export interface Task {
   createdAt: number;
   updatedAt: number;
   completedAt?: number;
+  /** One of PROJECT_ACCENTS, or empty for the plain card. */
+  accent?: string;
+  /**
+   * Who picked it up, and who asked for it.
+   *
+   * The department says which part of the business a task belongs to, which is
+   * a different question from which person is doing it. Without this a board
+   * where everything is filed under Marketing is one two people can both start
+   * the same job from.
+   */
+  assignedTo?: string;
+  createdBy?: string;
+}
+
+/** One thing somebody said about a task. */
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  authorEmail: string;
+  body: string;
+  createdAt: number;
 }
 
 /**

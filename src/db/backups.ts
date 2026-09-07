@@ -44,6 +44,7 @@ export const BACKED_UP = [
   ["meetingRounds", t.meetingRounds],
   ["memory", t.memory],
   ["tasks", t.tasks],
+  ["taskComments", t.taskComments],
   ["wikiPages", t.wikiPages],
   ["directMessages", t.directMessages],
   ["briefings", t.briefings],
