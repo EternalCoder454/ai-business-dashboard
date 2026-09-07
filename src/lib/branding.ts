@@ -1,8 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { databaseEnabled, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
-import { OPERATOR_EMAILS } from "./admin";
-import { ACTIVE_WORKSPACE_FIRST, membershipFor } from "@/db/tenancy";
+import { ACTIVE_WORKSPACE_FIRST } from "@/db/tenancy";
 
 export interface Branding {
   name: string;
@@ -13,12 +12,11 @@ export interface Branding {
 }
 
 /**
- * What a deployment shows before anybody has branded it.
+ * What the product is called, wherever it is speaking as itself.
  *
- * The product's own name rather than a placeholder, because this is what the
- * link card and the icon fall back to, and those are the deployment's rather
- * than any one business's. A new workspace still starts at "Your Company",
- * which is a different thing in a different place.
+ * The link card, the favicon, the sign-in page and the invitation emails are
+ * the deployment's own voice, not any one business's, and every one of them is
+ * seen by people who are not signed in and may not be a customer at all.
  */
 export const FALLBACK_BRANDING: Branding = {
   name: "Eterneon Panel",
@@ -27,46 +25,37 @@ export const FALLBACK_BRANDING: Branding = {
 };
 
 /**
- * The branding for the icons and the link preview card.
+ * The branding for the icons, the link preview card and the invitation emails.
  *
- * Those are rendered for crawlers and browsers with no session, so there is no
- * account to read settings from, and no single "the workspace" either: settings
- * are stored per account. The deployment's owner is the first address in
- * OPERATOR_EMAILS, so their branding stands for the deployment.
+ * This used to read the operator's own workspace, on the reasoning that the
+ * person running the deployment owned it and their branding therefore stood for
+ * it. That was true of a deployment holding one business and stopped being true
+ * the moment it held several, in a way nobody would notice from the inside:
+ * pasting the address into Discord produced a card titled with whatever the
+ * operator's first workspace happened to be called, so a link to the product
+ * announced one customer's company name to whoever it was shared with, and the
+ * invitation emails every other business sent were signed with it too. Renaming
+ * that workspace renamed the product.
  *
- * Never throws. A missing database, an owner who has not signed in, or a
- * database that is briefly down all fall back to the shipped defaults, because
- * an icon is not worth failing a request over.
+ * It is the product's own name now, overridable by environment for anybody
+ * self-hosting who wants their own. A deployment level setting belongs to
+ * whoever runs the deployment, which is what an environment variable is, and
+ * not to whichever workspace row happens to be read first.
+ *
+ * The signed-in panel is unaffected: a person looking at their own workspace
+ * sees their own company through loadViewerBranding and WorkspaceFavicon, which
+ * is where a business's own branding belongs.
  */
 export async function loadBranding(): Promise<Branding> {
-  const owner = OPERATOR_EMAILS[0];
-  if (!databaseEnabled || !owner) return FALLBACK_BRANDING;
+  const name = process.env.PANEL_NAME?.trim();
+  const mark = process.env.PANEL_MARK?.trim();
+  const logo = process.env.PANEL_LOGO_URL?.trim();
 
-  try {
-    // The icon and the link card are the deployment's own, and a deployment
-    // now holds many businesses, so this is deliberately the operator's
-    // workspace rather than whichever one the visitor might belong to.
-    const operator = await membershipFor(owner);
-    if (!operator) return FALLBACK_BRANDING;
-    const [row] = await requireDb()
-      .select({
-        name: t.settings.companyName,
-        mark: t.settings.companyMark,
-        logo: t.settings.companyLogoUrl,
-      })
-      .from(t.settings)
-      .where(eq(t.settings.workspaceId, operator.workspaceId))
-      .limit(1);
-
-    if (!row) return FALLBACK_BRANDING;
-    return {
-      name: row.name?.trim() || FALLBACK_BRANDING.name,
-      mark: row.mark?.trim().slice(0, 2).toUpperCase() || FALLBACK_BRANDING.mark,
-      logo: row.logo ?? null,
-    };
-  } catch {
-    return FALLBACK_BRANDING;
-  }
+  return {
+    name: name || FALLBACK_BRANDING.name,
+    mark: (mark || FALLBACK_BRANDING.mark).slice(0, 2).toUpperCase(),
+    logo: logo || null,
+  };
 }
 
 /**
