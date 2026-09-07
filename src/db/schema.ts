@@ -42,6 +42,14 @@ export const departments = pgTable(
     workspaceId: workspace(),
     name: text("name").notNull(),
     avatarUrl: text("avatar_url"),
+    /**
+     * The colour chosen for this head, or empty for the one it is given.
+     *
+     * Empty rather than null so the column is never a third state: a head has
+     * a colour either way, and this only says whether somebody picked it. The
+     * fallback still assigns one, so nothing has to be backfilled.
+     */
+    accent: text("accent").notNull().default(""),
     personal: boolean("personal").notNull().default(false),
     personaName: text("persona_name").notNull().default(""),
     roleTitle: text("role_title").notNull(),

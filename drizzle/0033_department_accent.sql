@@ -1,0 +1,1 @@
+ALTER TABLE "departments" ADD COLUMN IF NOT EXISTS "accent" text NOT NULL DEFAULT '';

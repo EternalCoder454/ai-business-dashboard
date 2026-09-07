@@ -712,7 +712,7 @@ function Opening({
             size={40}
             title={`${department.personaName}, ${department.roleTitle}`}
             className="shadow-e1 ring-2"
-            ringColor={departmentAccent(department.id).dot}
+            ringColor={departmentAccent(department.id, department.accent).dot}
           />
         ))}
       </div>
@@ -744,7 +744,7 @@ function HeadMessage({
   }, [response.content]);
 
   const collapsed = overflowing && !expanded;
-  const accent = departmentAccent(response.departmentId);
+  const accent = departmentAccent(response.departmentId, department?.accent);
 
   return (
     <div id={`msg-${response.departmentId}`} ref={entered} className="group flex gap-3">

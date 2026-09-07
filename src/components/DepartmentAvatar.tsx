@@ -35,7 +35,7 @@ export function DepartmentAvatar({
   ringColor,
   className,
 }: {
-  department: Pick<Department, "name" | "personaName" | "avatarUrl"> & { id?: string };
+  department: Pick<Department, "name" | "personaName" | "avatarUrl" | "accent"> & { id?: string };
   size?: number;
   /** Draws a presence dot on the corner, which saves a line of text per row. */
   status?: DepartmentStatus;
@@ -50,7 +50,18 @@ export function DepartmentAvatar({
    * loose fields for something that does not exist yet, and a colour picked for
    * a draft would change the moment it was saved under a real id.
    */
-  const accent = department.id ? departmentAccent(department.id) : null;
+  /*
+   * A colour somebody picked counts even before the head has an id.
+   *
+   * The id is what the automatic assignment hashes, so a head being created has
+   * nothing to hash and used to fall through to the neutral background. That
+   * was fine until the colour became a choice: picking one in the new
+   * department dialog changed the swatch and left the picture beside it grey.
+   */
+  const accent =
+    department.id || department.accent
+      ? departmentAccent(department.id ?? "", department.accent)
+      : null;
 
   const shared = cx("flex-none rounded-full object-cover", className);
   const style = {

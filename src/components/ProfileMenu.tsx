@@ -243,8 +243,29 @@ export function ProfileMenu() {
         <div
           role="menu"
           className={cx(
-            "absolute right-0 top-12 z-50 w-72 overflow-hidden rounded-2xl",
+            "absolute right-0 top-12 z-50 w-72 rounded-2xl",
             "border border-outline-variant bg-container shadow-e3",
+            /*
+             * Never taller than the screen it is on.
+             *
+             * It was a fixed panel with overflow hidden and no ceiling, so it
+             * simply grew: measured on a 375x812 phone it came to 839px, which
+             * put Management and Sign out below the bottom of the window with
+             * no way to reach them. Nothing was broken on the way in, it had
+             * just been added to until it stopped fitting, and the Appearance
+             * and Layout rows I put here are two of the things that added to it.
+             *
+             * dvh rather than vh because a phone browser's own chrome is part
+             * of vh and not part of what you can see.
+             */
+            /*
+             * Underscores, because Tailwind turns them into the spaces that
+             * calc() requires: calc(100dvh-5rem) is not arithmetic, it is a
+             * syntax error, and an invalid declaration is dropped in silence.
+             * The class was on the element and the computed max-height was
+             * none.
+             */
+            "max-h-[calc(100dvh_-_5rem)] overflow-y-auto overscroll-contain",
           )}
         >
           {/* The name is the way into the account page, so the menu does not

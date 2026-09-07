@@ -303,7 +303,7 @@ function TasksBody() {
                 <span
                   aria-hidden
                   className="h-2 w-2 flex-none rounded-full"
-                  style={{ background: departmentAccent(department.id).dot }}
+                  style={{ background: departmentAccent(department.id, department.accent).dot }}
                 />
                 {department.personaName || department.name}
               </span>

@@ -517,7 +517,19 @@ const SEEDED_ACCENTS: Record<string, string> = {
  * it falls back to hashing the id: still stable, and still the same for
  * everyone looking at the workspace, but it can collide with a seeded head.
  */
-export function departmentAccent(departmentId: string) {
+export function departmentAccent(departmentId: string, chosen?: string) {
+  /*
+   * What somebody picked, before anything this file decided for them.
+   *
+   * Checked against the palette rather than trusted, so a key from an older
+   * release, or a value typed into a request by hand, falls through to the
+   * assignment instead of colouring a head with nothing.
+   */
+  if (chosen) {
+    const picked = DEPARTMENT_ACCENTS.find((accent) => accent.key === chosen);
+    if (picked) return picked;
+  }
+
   const assigned = SEEDED_ACCENTS[departmentId];
   if (assigned) {
     const match = DEPARTMENT_ACCENTS.find((accent) => accent.key === assigned);

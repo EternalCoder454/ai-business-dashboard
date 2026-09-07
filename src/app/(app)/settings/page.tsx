@@ -24,7 +24,7 @@ import {
   TrashIcon,
   cx,
 } from "@/components/ui";
-import { EFFORT_OPTIONS, WRITING_RULES } from "@/lib/seed";
+import { DEPARTMENT_ACCENTS, EFFORT_OPTIONS, WRITING_RULES, departmentAccent } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import { useTypedField } from "@/lib/useTypedField";
 import type { Department, DepartmentStatus, Effort, SearchShortcut, SidebarSide, ThemeMode } from "@/lib/types";
@@ -136,6 +136,7 @@ export default function SettingsPage() {
         persona: draft.persona ?? "",
         systemPrompt: draft.systemPrompt ?? "",
         model: draft.model,
+        accent: draft.accent ?? "",
         status: draft.status ?? "online",
       });
     }
@@ -579,6 +580,7 @@ export default function SettingsPage() {
                   name: draft.name ?? "",
                   personaName: draft.personaName ?? "",
                   avatarUrl: draft.avatarUrl,
+                  accent: draft.accent,
                 }}
                 size={64}
               />
@@ -623,6 +625,54 @@ export default function SettingsPage() {
                   }}
                 />
               </div>
+
+              {/*
+                * The colour, next to the picture, because they are the same
+                * decision: what this head looks like everywhere it appears.
+                *
+                * Only shown while there is no picture. An uploaded photograph
+                * is the head's face and the accent is not drawn over it, so
+                * offering the choice there would be offering a control with
+                * nothing to change.
+                *
+                * The first swatch is the colour the panel would give it, which
+                * is what every head had before this and is still the default.
+                */}
+              {draft.avatarUrl ? null : (
+                <div className="flex w-full flex-wrap items-center gap-1.5">
+                  <span className="md-label-sm mr-1 text-on-variant">Colour</span>
+                  {[{ key: "", label: "Automatic" }, ...DEPARTMENT_ACCENTS].map((option) => {
+                    const chosen = (draft.accent ?? "") === option.key;
+                    const shown = departmentAccent(draft.id ?? "", option.key || undefined);
+                    return (
+                      <button
+                        key={option.key || "auto"}
+                        type="button"
+                        aria-label={option.label}
+                        aria-pressed={chosen}
+                        title={option.label}
+                        onClick={() => setDraft({ ...draft, accent: option.key })}
+                        className={cx(
+                          "md-state grid h-7 w-7 place-items-center rounded-full border-2 transition-colors",
+                          chosen ? "border-on-surface" : "border-transparent",
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className="h-4 w-4 rounded-full"
+                          style={{ background: shown.dot }}
+                        />
+                        {/* The automatic one says so, since a swatch alone
+                            cannot tell you it is a default rather than a
+                            colour somebody picked. */}
+                        {option.key === "" ? (
+                          <span className="sr-only">Automatic</span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {avatarError ? (

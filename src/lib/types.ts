@@ -175,6 +175,13 @@ export interface Department {
   /** A data URL when one has been uploaded; initials stand in until then. */
   avatarUrl?: string;
   /**
+   * A key from DEPARTMENT_ACCENTS, when somebody has chosen one.
+   *
+   * Empty or absent means the colour this head is given, which is what every
+   * head that existed before this had and still has.
+   */
+  accent?: string;
+  /**
    * Yours rather than the company's. A personal workspace sits outside the org
    * chart and stays out of All Hands, since asking a coach for a campaign plan
    * is not a question anyone means to ask.
