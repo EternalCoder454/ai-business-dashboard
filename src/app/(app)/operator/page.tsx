@@ -19,7 +19,6 @@ import {
   EmptyState,
   FeedbackIcon,
   Field,
-  PersonIcon,
   PolicyIcon,
   PulseIcon,
   ShieldIcon,
@@ -94,6 +93,17 @@ interface Thread {
  * that say how it is behaving, the two that are lists of people, and access,
  * which is opened deliberately or not at all.
  */
+/*
+ * Clients is gone, into Businesses.
+ *
+ * They were the same list twice. Businesses created a workspace and renamed,
+ * deleted and invited into one; Clients listed the same workspaces with their
+ * usage and opened one to read it. Two tabs over one set of rows, so the
+ * question "what do I do about this business" started with working out which
+ * of the two tabs the verb lived on. The Clients tab's own empty state said
+ * "Create one on the Businesses tab and it appears here", which is the code
+ * admitting it.
+ */
 const TABS = [
   "overview",
   "reports",
@@ -101,7 +111,6 @@ const TABS = [
   "health",
   "usage",
   "businesses",
-  "clients",
   "access",
 ] as const;
 
@@ -110,7 +119,6 @@ type Tab = (typeof TABS)[number];
 const TAB_LABEL: Record<Tab, string> = {
   businesses: "Businesses",
   overview: "Overview",
-  clients: "Clients",
   reports: "Reports",
   feedback: "Feedback",
   health: "Health",
@@ -127,7 +135,6 @@ const TAB_LABEL: Record<Tab, string> = {
 const TAB_ICON: Record<Tab, ReactNode> = {
   businesses: <BuildingIcon className="h-4 w-4" />,
   overview: <DashboardIcon className="h-4 w-4" />,
-  clients: <PersonIcon className="h-4 w-4" />,
   reports: <PolicyIcon className="h-4 w-4" />,
   feedback: <FeedbackIcon className="h-4 w-4" />,
   health: <PulseIcon className="h-4 w-4" />,
@@ -309,13 +316,7 @@ export default function AdminPage() {
       <div className="min-h-0 flex-1 overflow-y-auto page-x py-6">
         {error ? <p className="md-label mb-4 text-error">{error}</p> : null}
 
-        {tab === "businesses" ? (
-          <BusinessesTab
-            workspaces={workspaces}
-            emailReady={emailReady}
-            onChanged={(next) => setWorkspaces(next)}
-          />
-        ) : null}
+
 
         {tab === "reports" ? <ReportsTab /> : null}
 
@@ -325,13 +326,22 @@ export default function AdminPage() {
 
         {tab === "feedback" ? <FeedbackTab /> : null}
 
-        {tab === "overview" ? <OperatorOverview overview={overview} /> : null}
+        {tab === "overview" ? (
+          <OperatorOverview
+            overview={overview}
+            onOpen={(next) => {
+              setTab(next);
+              setPerson(undefined);
+              setThread(null);
+            }}
+          />
+        ) : null}
 
         {tab === "access" ? (
           <AccessTab access={access} people={people ?? []} />
         ) : null}
 
-        {tab === "clients" ? (
+        {tab === "businesses" ? (
           person ? (
             <PersonDetail
               person={person}
@@ -348,10 +358,27 @@ export default function AdminPage() {
               onCloseThread={() => setThread(null)}
             />
           ) : (
-            <PeopleTable
-              people={people}
-              accountEmail={accountEmail}
-              onOpen={openPerson}
+            /*
+             * One list of businesses, carrying both what you can do to one and
+             * what it has been doing. Clients was the second half of this on a
+             * tab of its own.
+             */
+            <BusinessesTab
+              workspaces={workspaces}
+              emailReady={emailReady}
+              onChanged={(next) => setWorkspaces(next)}
+              stats={
+                new Map(
+                  (people ?? []).map((row) => [
+                    row.workspaceId,
+                    { conversations: row.conversations, output: row.usage.output },
+                  ]),
+                )
+              }
+              onOpen={(workspaceId) => {
+                const found = (people ?? []).find((row) => row.workspaceId === workspaceId);
+                if (found) openPerson(found);
+              }}
             />
           )
         ) : null}
@@ -371,65 +398,6 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   );
 }
 
-function PeopleTable({
-  people,
-  accountEmail,
-  onOpen,
-}: {
-  people: Person[] | null;
-  accountEmail?: string;
-  onOpen: (person: Person) => void;
-}) {
-  const staggered = useStaggeredList();
-  if (people === null) return null;
-  if (people.length === 0) {
-    return (
-      <EmptyState
-        icon={<BuildingIcon className="h-8 w-8" />}
-        title="No clients yet"
-        description="Create one on the Businesses tab and it appears here."
-      />
-    );
-  }
-
-  return (
-    <ul ref={staggered} className="measure flex flex-col gap-2">
-      {people.map((row) => (
-        <li key={row.workspaceId}>
-          <button
-            type="button"
-            onClick={(event) => {
-              createRipple(event);
-              onOpen(row);
-            }}
-            className="md-state md-press flex w-full items-center gap-4 rounded-2xl bg-container px-4 py-3 text-left shadow-e1 transition-shadow hover:shadow-e2"
-          >
-            <span className="min-w-0 flex-1">
-              <span className="md-title block truncate">
-                {row.name || row.workspaceId}
-              </span>
-              <span className="md-label-sm block truncate text-on-variant">
-                {row.people ?? 0} {row.people === 1 ? "person" : "people"}
-                {row.createdAt ? ` · since ${formatExactTime(row.createdAt)}` : ""}
-              </span>
-            </span>
-
-            <span className="hidden flex-none text-right medium:block">
-              <span className="md-label block">{row.conversations} conversations</span>
-              <span className="md-label-sm block text-on-variant/75">
-                {compact(row.usage.output)} output tokens
-              </span>
-            </span>
-
-            <span className="md-label-sm w-20 flex-none text-right text-on-variant/75">
-              {row.lastActive ? formatExactTime(row.lastActive) : "never"}
-            </span>
-          </button>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 /**
  * Whether somebody is in the panel right now.

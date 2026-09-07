@@ -30,14 +30,34 @@ export interface WorkspaceRow {
  * first member are one action, because a workspace nobody can open is not a
  * thing anyone means to make.
  */
+const compact = (n: number) =>
+  n >= 1_000_000
+    ? `${(n / 1_000_000).toFixed(1)}M`
+    : n >= 1_000
+      ? `${(n / 1_000).toFixed(1)}k`
+      : String(n);
+
 export function BusinessesTab({
   workspaces,
   emailReady,
   onChanged,
+  stats,
+  onOpen,
 }: {
   workspaces: WorkspaceRow[] | null;
   emailReady: boolean;
   onChanged: (next: WorkspaceRow[]) => void;
+  /**
+   * What each business has actually done, keyed by workspace.
+   *
+   * This tab used to be the actions and a second tab called Clients was the
+   * numbers, over the same list of workspaces. Both are here now, so deciding
+   * what to do about a business and seeing what it has been doing are one
+   * screen rather than two.
+   */
+  stats?: Map<string, { conversations: number; output: number }>;
+  /** Opens a business's own conversations. Absent means no drilling in. */
+  onOpen?: (workspaceId: string) => void;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -168,8 +188,20 @@ export function BusinessesTab({
                       {formatExactTime(workspace.createdAt)}
                       {workspace.note ? ` · ${workspace.note}` : ""}
                     </p>
+                    {/* What it has done, on the row that says what it is. */}
+                    {stats?.get(workspace.id) ? (
+                      <p className="md-label-sm mt-0.5 text-on-variant/75 tabular-nums">
+                        {stats.get(workspace.id)!.conversations} conversations ·{" "}
+                        {compact(stats.get(workspace.id)!.output)} output tokens
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    {onOpen ? (
+                      <Button size="sm" variant="outlined" onClick={() => onOpen(workspace.id)}>
+                        Open
+                      </Button>
+                    ) : null}
                     <Button
                       size="sm"
                       variant="outlined"

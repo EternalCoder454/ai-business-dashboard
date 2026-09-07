@@ -1,6 +1,7 @@
 "use client";
 
-import { Card, cx } from "./ui";
+import { Card, ChevronIcon, cx } from "./ui";
+import { createRipple } from "./ui/ripple";
 import { formatExactTime } from "@/lib/routes";
 import { useNow } from "@/lib/useNow";
 import type { AdminOverview } from "@/db/admin";
@@ -42,7 +43,21 @@ const bytes = (n: number) =>
 /** The cron is daily, so a bit past a day is a missed night, not a slow clock. */
 const CRON_OVERDUE_MS = 26 * 60 * 60 * 1000;
 
-export function OperatorOverview({ overview }: { overview: AdminOverview | null }) {
+export function OperatorOverview({
+  overview,
+  onOpen,
+}: {
+  overview: AdminOverview | null;
+  /**
+   * Opens the tab that explains a number.
+   *
+   * The screen said "2 of 4 businesses inactive" and stopped there, so the
+   * answer to every alert on it was to read the alert, work out which of the
+   * other seven tabs it came from, and go there. An alert that names a problem
+   * and cannot show it is a notification, not a dashboard.
+   */
+  onOpen: (tab: "reports" | "feedback" | "health" | "businesses") => void;
+}) {
   const now = useNow();
 
   // Below the hook, because a hook after a return is not called on every
@@ -81,6 +96,7 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
                     ? `${waiting.urgentReports} high severity.`
                     : "None high severity."
                 }
+                onOpen={() => onOpen("reports")}
               />
             ) : null}
 
@@ -89,6 +105,7 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
                 tone="warn"
                 title={`${waiting.feedback} unread feedback`}
                 body="Awaiting review."
+                onOpen={() => onOpen("feedback")}
               />
             ) : null}
 
@@ -101,6 +118,7 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
                     ? `Last run ${formatExactTime(waiting.cronAt)}. Briefings and reports depend on it.`
                     : "Never run. Briefings and reports depend on it."
                 }
+                onOpen={() => onOpen("health")}
               />
             ) : null}
 
@@ -109,6 +127,7 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
                 tone="warn"
                 title={`${quiet} of ${businesses.total} businesses inactive`}
                 body="No activity in 30 days."
+                onOpen={() => onOpen("businesses")}
               />
             ) : null}
           </div>
@@ -204,22 +223,49 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
 }
 
 /** One thing waiting, with a stripe so the queue reads at a glance. */
+/**
+ * One thing that is wrong, and the way to it.
+ *
+ * A button rather than a card, because every one of these is about something on
+ * another tab and the whole of an operator's job here is to go and look. It was
+ * a card that said what was wrong and left you to work out where.
+ */
 function Alert({
   tone,
   title,
   body,
+  onOpen,
 }: {
   tone: "bad" | "warn";
   title: string;
   body: string;
+  onOpen: () => void;
 }) {
   return (
-    <Card className={cx("border-l-4", tone === "bad" ? "border-l-error" : "border-l-warning")}>
-      <p className={cx("md-title", tone === "bad" ? "text-error" : "text-warning")}>
-        {title}
-      </p>
-      <p className="md-body mt-1 text-on-variant">{body}</p>
-    </Card>
+    <button
+      type="button"
+      onClick={(event) => {
+        createRipple(event);
+        onOpen();
+      }}
+      className={cx(
+        "md-state md-press w-full rounded-2xl border-l-4 bg-container p-5 text-left shadow-e1",
+        "transition-shadow hover:shadow-e2",
+        tone === "bad" ? "border-l-error" : "border-l-warning",
+      )}
+    >
+      <span className="flex items-start gap-2">
+        <span className="min-w-0 flex-1">
+          <span className={cx("md-title block", tone === "bad" ? "text-error" : "text-warning")}>
+            {title}
+          </span>
+          <span className="md-body mt-1 block text-on-variant">{body}</span>
+        </span>
+        {/* Points where pressing it goes, which is the half a card could not
+            say. */}
+        <ChevronIcon aria-hidden className="mt-0.5 h-4 w-4 flex-none text-on-variant/60" />
+      </span>
+    </button>
   );
 }
 
