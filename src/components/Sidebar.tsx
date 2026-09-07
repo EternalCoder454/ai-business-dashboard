@@ -37,6 +37,7 @@ import { createRipple } from "./ui/ripple";
 import { PaneFoldButton, PaneResizeHandle, usePaneResize } from "./ui/SidePane";
 import { setPaneHidden } from "@/lib/paneLayout";
 
+
 export interface NavLink {
   href: string;
   label: string;
@@ -190,6 +191,32 @@ export function Sidebar({
     maxWidth: 400,
   });
 
+  /*
+   * The width fit-content gave it, taken once and then kept.
+   *
+   * A column sized to its contents cannot be animated shut: no browser will
+   * transition from an intrinsic size to a number, so the first attempt at this
+   * measured the width at the moment of folding and set both in the same
+   * breath. React batched them, the element never rendered at 252px, and it
+   * went from fit-content to zero in a single frame. Measured: 252, 0, and
+   * nothing in between.
+   *
+   * So the measurement happens on the way in instead. The first paint is still
+   * content-sized, this reads what that came to, and every paint after it is a
+   * number, which folds and unfolds like any other pane. The consequence worth
+   * knowing is that the column stops re-fitting itself to a department renamed
+   * later, which is the same thing that happens the moment anybody drags it.
+   */
+  const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
+  useEffect(() => {
+    if (stored.width !== undefined || folded || naturalWidth !== null) return;
+    const measured = paneRef.current?.getBoundingClientRect().width;
+    if (measured) setNaturalWidth(Math.max(208, Math.round(measured)));
+  }, [stored.width, folded, naturalWidth, paneRef]);
+
+  /** What it is when open: dragged if it has been, otherwise what it measured. */
+  const openWidth = stored.width ?? naturalWidth;
+
   return (
     <aside
       ref={paneRef}
@@ -215,14 +242,44 @@ export function Sidebar({
          * good guess about what the column needs and says nothing about what
          * the person wants to spend on it.
          */
-        "hidden h-full min-w-[13rem] max-w-[25rem] flex-none flex-col",
-        stored.width === undefined && "w-fit",
-        "relative border-r border-outline-variant bg-low",
-        !folded && "large:flex",
+        "hidden h-full flex-none flex-col large:flex",
+        "relative overflow-hidden bg-low",
+        /*
+         * Folded is width zero rather than display none, so there is something
+         * for a transition to run on. The rail beside it grows from zero at the
+         * same time and by the same amount, which is what keeps the page from
+         * jumping outwards by 80px on the way closed.
+         */
+        /*
+         * The floor lives on the contents, not on the column.
+         *
+         * min-width on the thing being animated clamps the animation too: on
+         * the way open it jumped straight to 208px and eased the last 44,
+         * because the minimum applied the instant it stopped being folded.
+         * The drag already refuses to go below 208 in clampWidth, so this is
+         * only here to keep the first content-sized paint from squeezing the
+         * search field, which is a job for the contents.
+         */
+        folded ? "w-0 border-r-0" : "max-w-[25rem] border-r border-outline-variant",
+        // Only until the measurement lands, one frame in.
+        !folded && openWidth === null && "w-fit",
+        !dragging && "motion-safe:transition-[width] motion-safe:duration-200 ease-out",
       )}
-      style={wide && stored.width !== undefined ? { width } : undefined}
+      style={
+        folded ? { width: 0 } : openWidth !== null ? { width: openWidth } : undefined
+      }
     >
-      <SidebarContent onOpenSearch={onOpenSearch} />
+      {/*
+        * The contents keep the width they had, inside something that clips
+        * them. Left to reflow, the whole menu re-wraps through every width
+        * between here and nothing on the way closed.
+        */}
+      <div
+        className="flex min-h-0 min-w-[13rem] flex-1 flex-col"
+        style={openWidth ? { width: openWidth } : undefined}
+      >
+        <SidebarContent onOpenSearch={onOpenSearch} />
+      </div>
 
       {wide && !folded ? (
         <>

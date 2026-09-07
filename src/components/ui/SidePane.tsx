@@ -215,20 +215,20 @@ export function SidePane({
 
   const hidden = wide && Boolean(stored.hidden);
 
-  if (hidden) {
-    return (
-      <div
-        className={cx(
-          "hidden flex-none flex-col items-center border-r border-outline-variant bg-low",
-          breakpoint === "large" ? "large:flex" : "expanded:flex",
-        )}
-        style={{ width: FOLDED }}
-      >
-        <PaneUnfoldButton id={id} label={label} />
-      </div>
-    );
-  }
-
+  /*
+   * One element whose width changes, rather than two that swap.
+   *
+   * Folding used to return a different element entirely, so there was nothing
+   * for a transition to run on: the pane was 320px wide and then it was 28,
+   * with no frames in between. Keeping one element and moving its width is what
+   * makes the fold something you can watch, and watching it is what tells you
+   * the list went somewhere rather than closed.
+   *
+   * The contents keep their full width inside a wrapper that clips them. Left
+   * to reflow, four hundred milliseconds of a conversation list re-wrapping
+   * every title through every width between 320 and 28 is not an animation, it
+   * is a seizure.
+   */
   return (
     <div
       ref={paneRef}
@@ -237,19 +237,39 @@ export function SidePane({
         breakpoint === "large"
           ? "large:flex large:flex-none large:border-r large:border-outline-variant"
           : "expanded:flex expanded:flex-none expanded:border-r expanded:border-outline-variant",
+        // Never while dragging: an edge that eases towards the pointer instead
+        // of following it feels like the window is stuck, not like it is smooth.
+        wide && !dragging && "motion-safe:transition-[width] motion-safe:duration-200 ease-out",
+        hidden && "bg-low",
         className,
       )}
-      style={wide ? { width, flex: "none" } : undefined}
+      style={wide ? { width: hidden ? FOLDED : width, flex: "none" } : undefined}
     >
-      {scroll ? (
-        <div className={cx("min-h-0 flex-1 overflow-y-auto", contentClassName)}>
-          {children}
+      <div
+        className={cx(
+          "flex min-h-0 w-full flex-1 flex-col overflow-hidden",
+          hidden && "pointer-events-none opacity-0 motion-safe:transition-opacity",
+        )}
+      >
+        <div
+          className="flex min-h-0 flex-1 flex-col"
+          // The width it has when open, held through the fold so the contents
+          // slide out of view rather than being squeezed through it.
+          style={wide ? { width } : undefined}
+        >
+          {scroll ? (
+            <div className={cx("min-h-0 flex-1 overflow-y-auto", contentClassName)}>
+              {children}
+            </div>
+          ) : (
+            children
+          )}
         </div>
-      ) : (
-        children
-      )}
+      </div>
 
-      {wide ? (
+      {wide && hidden ? <PaneUnfoldButton id={id} label={label} folded /> : null}
+
+      {wide && !hidden ? (
         <>
           <PaneResizeHandle
             id={id}
@@ -283,12 +303,31 @@ export function SidePane({
  * `absolute` on the same element loses silently. The button then sat eight
  * pixels outside the pane it was folding.
  */
-export function PaneFoldButton({ id, label }: { id: string; label: string }) {
+export function PaneFoldButton({
+  id,
+  label,
+  beforeFold,
+}: {
+  id: string;
+  label: string;
+  /**
+   * Run before the pane folds, to settle anything the fold needs settled.
+   *
+   * The navigation uses it to write down how wide it currently is. Its default
+   * width is fit-content, and no browser will animate from an intrinsic size to
+   * a number, so without a measurement taken at this moment the fold has
+   * nothing to travel from and simply happens.
+   */
+  beforeFold?: () => void;
+}) {
   return (
     <div className="absolute bottom-2 right-2 z-10">
       <button
         type="button"
-        onClick={() => setPaneHidden(id, true)}
+        onClick={() => {
+          beforeFold?.();
+          setPaneHidden(id, true);
+        }}
         aria-label={`Hide ${label}`}
         title={`Hide ${label}`}
         /*
@@ -309,10 +348,17 @@ export function PaneUnfoldButton({
   id,
   label,
   className,
+  folded,
 }: {
   id: string;
   label: string;
   className?: string;
+  /**
+   * Sitting on a pane that has folded to a rail, rather than in a column of
+   * its own. It is positioned rather than laid out, because the pane it is on
+   * still holds its contents at full width underneath, clipped.
+   */
+  folded?: boolean;
 }) {
   return (
     <button
@@ -322,7 +368,8 @@ export function PaneUnfoldButton({
       title={`Show ${label}`}
       className={cx(
         "md-state grid place-items-center text-on-variant transition-colors hover:text-on-surface",
-        className ?? "h-10 w-full flex-none",
+        folded && "absolute inset-x-0 top-0 z-10 h-10",
+        className ?? (folded ? "" : "h-10 w-full flex-none"),
       )}
     >
       <ChevronRight className="h-4 w-4" />

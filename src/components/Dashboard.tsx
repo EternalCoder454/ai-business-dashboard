@@ -221,7 +221,29 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
         title="Activity"
         what="The most recent thing in each part of the panel, with a link to the rest of it."
       >
-        <div className="grid grid-cols-1 gap-4 medium:grid-cols-2 large:grid-cols-3">
+        {/*
+          * Columns rather than a grid, so a card is as tall as what is in it.
+          *
+          * A grid gives every cell in a row the height of the tallest one, and
+          * these seven cards are nothing like the same height: Decisions says
+          * "No decisions recorded." and was drawn as tall as five open tasks
+          * beside it, Deliverables the same next to four conversations, and
+          * Projects sat alone on a third row that was otherwise empty. Most of
+          * this band was blank, and System was pushed off the bottom of the
+          * screen by space that held nothing.
+          *
+          * The trade is reading order: columns fill downwards, so the cards run
+          * top-to-bottom then left-to-right rather than across. These are seven
+          * independent panels rather than a sequence, so there is no order to
+          * lose, and it is what every masonry dashboard does for the same
+          * reason.
+          */}
+        <div
+          className={cx(
+            "columns-1 gap-4 medium:columns-2 large:columns-3",
+            "[&>*]:mb-4 [&>*]:break-inside-avoid",
+          )}
+        >
           {/* First, and only when there is one. "What should I focus on" is
               usually answered by "you have four hours of meetings". */}
           <CalendarCard />

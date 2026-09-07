@@ -385,7 +385,16 @@ function NavigationRail({
          * rather than that something is silently missing from it.
          */
         "overflow-y-auto rail-scroll border-r border-outline-variant bg-low py-3 medium:flex",
-        folded ? "large:flex" : "large:hidden",
+        /*
+         * At large this grows out of nothing as the drawer closes, rather than
+         * appearing at full width the instant it does. Width rather than
+         * display, because display cannot be transitioned and the two have to
+         * move together or the page lurches sideways by the width of this.
+         *
+         * Below large it is the navigation itself and is always here.
+         */
+        "large:flex motion-safe:transition-[width] motion-safe:duration-200 ease-out",
+        folded ? "large:w-20 large:border-r" : "large:w-0 large:border-r-0",
       )}
     >
       {/* Two controls in one slot, because what the top of the rail does
