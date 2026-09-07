@@ -1,4 +1,5 @@
 import { writableSettings } from "@/lib/settingsWrite";
+import { forgetBudget } from "./budget";
 import { fireTaskEvents, type TaskEvent } from "@/lib/addons/runner";
 import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { requireDb } from "./client";
@@ -1313,6 +1314,14 @@ export async function applyMutations(
             .insert(t.settings)
             .values(values)
             .onConflictDoUpdate({ target: t.settings.workspaceId, set: values });
+
+          /*
+           * The budget guard counts once a minute and reuses the answer, so a
+           * ceiling that has just stopped everything would go on stopping it
+           * for up to a minute after being raised. Forgetting the count here
+           * makes the new number the one in force from the next message.
+           */
+          if (sent.monthlyBudget !== undefined) forgetBudget(workspaceId);
 
           // The company name and the business name are the same fact, so
           // renaming the panel renames the business. Only when a name was

@@ -14,6 +14,7 @@ import {
   type Provider,
 } from "@/lib/providers";
 import { effortCeiling } from "@/db/tenancy";
+import { budgetState } from "@/db/budget";
 import { droppedAttachments, streamDeepSeek, streamGemini, streamOpenAi } from "@/lib/serverProviders";
 import type { ChatRequestBody, ChatStreamEvent, WireContent } from "@/lib/types";
 
@@ -174,6 +175,32 @@ export async function POST(request: NextRequest) {
    */
   const ceiling = tenantId ? await effortCeiling(tenantId) : "";
   const effort = clampEffort(body.effort, ceiling);
+
+  /*
+   * The monthly budget, which now stops rather than only warning.
+   *
+   * It was a number that was observed and never enforced, on the reasoning
+   * that the money is the customer's own and stopping their heads mid month
+   * would be the panel deciding about somebody else's spending. That had the
+   * customer the wrong way round: setting the ceiling is the business deciding
+   * about its own money, and a ceiling that is only ever watched is not one.
+   *
+   * Here rather than in the browser, because a browser is not what decides
+   * whether a request is sent. Zero, which is what every workspace has until
+   * somebody types a number, costs nothing to check.
+   */
+  if (tenantId) {
+    const budget = await budgetState(tenantId);
+    if (budget.exceeded) {
+      return Response.json(
+        {
+          error:
+            `This month's budget of $${budget.limit} has been reached. An administrator can raise it in Settings.`,
+        },
+        { status: 402 },
+      );
+    }
+  }
   const fromWorkspace =
     serverKey || !tenantId ? "" : await workspaceKey(tenantId, provider);
   const apiKey = serverKey || fromWorkspace || request.headers.get(info.header)?.trim();

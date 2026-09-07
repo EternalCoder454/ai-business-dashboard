@@ -137,18 +137,29 @@ export function SpendCard() {
         </>
       )}
 
-      {admin ? (
-        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-outline-variant pt-4">
-          <label className="md-label text-on-variant" htmlFor="monthly-budget">
-            Monthly budget
-          </label>
-          <span className="md-body text-on-variant">$</span>
+      {/*
+        * Shown to everybody who can see the spend, changed only by an
+        * administrator.
+        *
+        * It used to be hidden outright from anybody else, which meant a member
+        * watching the figure climb had no way of knowing what it was climbing
+        * towards, and no way of knowing why their heads would stop when it got
+        * there. Reading a ceiling and setting one are different permissions.
+        */}
+      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-outline-variant pt-4">
+        <label className="md-label text-on-variant" htmlFor="monthly-budget">
+          Monthly budget
+        </label>
+        <span className="md-body text-on-variant">$</span>
+        {admin ? (
           <input
             id="monthly-budget"
             inputMode="numeric"
             size={1}
             value={budget}
-            placeholder="none"
+            // Zero rather than "none", because zero is what it is: the number
+            // the column holds, and the number that means no limit.
+            placeholder="0"
             onChange={(event) => setBudget(event.target.value.replace(/[^0-9]/g, ""))}
             onBlur={() => {
               const next = Number(budget) || 0;
@@ -158,18 +169,22 @@ export function SpendCard() {
               if (event.key === "Enter") event.currentTarget.blur();
             }}
             className={cx(
-              "md-body w-20 rounded-lg border border-outline-variant bg-transparent px-2 py-1",
+              "md-body w-20 rounded-lg border border-outline-variant bg-transparent px-2 py-1 tabular-nums",
               "text-on-surface transition-colors focus:border-primary focus:outline-none",
             )}
           />
-          {/* Nothing is ever blocked by it. The spending happens on the
-              customer's own key, so stopping their heads mid month would be the
-              panel deciding something about somebody else's money. */}
-          <span className="md-body-sm text-on-variant/75">
-            Warns when passed. Nothing stops.
-          </span>
-        </div>
-      ) : null}
+        ) : (
+          <span className="md-body tabular-nums text-on-surface">{limit || 0}</span>
+        )}
+        {/*
+          * What it does, which changed. It stops replies now rather than
+          * watching them, and a spending control that has started refusing work
+          * has to say so where it is set.
+          */}
+        <span className="md-body-sm text-on-variant/75">
+          {limit > 0 ? "Replies stop when this is reached." : "No limit while this is 0."}
+        </span>
+      </div>
     </Card>
   );
 }
