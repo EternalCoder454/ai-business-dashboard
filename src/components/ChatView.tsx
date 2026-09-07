@@ -1057,30 +1057,38 @@ ${turn.content}` }
    * The token replaces what was typed rather than being appended to it, so
    * typing "@fin" and picking Finance leaves "@Finance " and not "@fin@Finance".
    * A trailing space, because the next thing anybody types is a word.
+   *
+   * Not memoized, deliberately. It is only ever called from an inline handler,
+   * so nothing downstream compares it, and a useCallback here was one the
+   * compiler refused to keep: it wants the state setters in the list, and a
+   * dependency list nobody can write correctly is worse than none. The compiler
+   * memoizes the component itself, which is the whole point of it.
    */
-  const pickMention = useCallback(
-    (item: Mentionable) => {
-      if (!mention) return;
+  const pickMention = (item: Mentionable) => {
+    if (!mention) return;
+    const token = `${tokenFor(item)} `;
+    const cursor = inputRef.current?.selectionStart ?? mention.from + mention.query.length;
+    /* Where the caret belongs once the new text is in: after the name. */
+    const caret = mention.from + token.length;
+
+    setDraft(`${draft.slice(0, mention.from)}${token}${draft.slice(cursor)}`);
+    setMention(null);
+    setMentionRow(0);
+
+    /*
+     * After the state has landed, or the caret is placed in the old text. The
+     * field is read again in here rather than captured outside, which is also
+     * the more correct of the two: what is focused is whatever is on screen by
+     * then.
+     */
+    requestAnimationFrame(() => {
       const field = inputRef.current;
-      const cursor = field?.selectionStart ?? mention.from + mention.query.length;
-      const token = `${tokenFor(item)} `;
-      const next = `${draft.slice(0, mention.from)}${token}${draft.slice(cursor)}`;
-
-      setDraft(next);
-      setMention(null);
-      setMentionRow(0);
-
-      // After the state has landed, or the caret is placed in the old text.
-      requestAnimationFrame(() => {
-        if (!field) return;
-        const at = mention.from + token.length;
-        field.focus();
-        field.setSelectionRange(at, at);
-        autoGrow(field);
-      });
-    },
-    [draft, mention],
-  );
+      if (!field) return;
+      field.focus();
+      field.setSelectionRange(caret, caret);
+      autoGrow(field);
+    });
+  };
 
   /*
    * Ask the same question again.
