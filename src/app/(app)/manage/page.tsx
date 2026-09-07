@@ -24,7 +24,7 @@ import { ReportsTab } from "@/components/ReportsTab";
 import { MessageReview } from "@/components/MessageReview";
 import { useStore } from "@/lib/store";
 import { AREAS, unrestricted, type Area, type Permissions } from "@/lib/permissions";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 
 interface Member {
   email: string;
@@ -560,13 +560,13 @@ function PersonPane({
               <dt className="md-label text-on-variant">Last signed in</dt>
               <dd className="md-body">
                 {member.lastSignedInAt
-                  ? formatRelativeTime(member.lastSignedInAt)
+                  ? formatExactTime(member.lastSignedInAt)
                   : "Never"}
               </dd>
             </div>
             <div className="flex flex-wrap items-baseline justify-between gap-x-4">
               <dt className="md-label text-on-variant">Added</dt>
-              <dd className="md-body">{formatRelativeTime(member.createdAt)}</dd>
+              <dd className="md-body">{formatExactTime(member.createdAt)}</dd>
             </div>
             {member.invitedBy ? (
               <div className="flex flex-wrap items-baseline justify-between gap-x-4">

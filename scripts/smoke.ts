@@ -63,6 +63,7 @@ async function main() {
         competitors: "",
         constraints: "",
         goals: "",
+        businessNotes: "", marketNotes: "", directionNotes: "", factsNotes: "",
       },
     },
     {

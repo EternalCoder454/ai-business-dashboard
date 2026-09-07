@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, Chip, EmptyState, ReportIcon, cx } from "./ui";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 import { useNow } from "@/lib/useNow";
 
 interface Row {
@@ -196,7 +196,7 @@ export function TelemetryTab() {
           <h3 className="md-title">Scheduled work</h3>
           <span className={cx("md-label", tickLate ? "text-error" : "text-on-variant")}>
             {tick
-              ? `Last run ${formatRelativeTime(tick.lastBucket)}`
+              ? `Last run ${formatExactTime(tick.lastBucket)}`
               : `No run in the last ${hours >= 48 ? `${Math.round(hours / 24)} days` : `${hours} hours`}`}
           </span>
         </div>
@@ -275,7 +275,7 @@ export function TelemetryTab() {
                           {row.lastErrorKind}
                           {row.lastErrorNote ? `: ${row.lastErrorNote}` : ""}
                           {row.lastErrorAt
-                            ? ` · ${formatRelativeTime(row.lastErrorAt)}`
+                            ? ` · ${formatExactTime(row.lastErrorAt)}`
                             : ""}
                         </span>
                       ) : null}

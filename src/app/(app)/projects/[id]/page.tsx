@@ -19,7 +19,7 @@ import {
   TrashIcon,
   cx,
 } from "@/components/ui";
-import { conversationHref, formatRelativeTime } from "@/lib/routes";
+import { conversationHref, formatExactTime } from "@/lib/routes";
 import { projectAccent } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import type { Conversation, Deliverable, Department, LibraryFile } from "@/lib/types";
@@ -138,7 +138,7 @@ export default function ProjectPage() {
             {project.dueOn ? <Chip tone="warning">Due {project.dueOn}</Chip> : null}
             <Chip>{byDepartment.length} department{byDepartment.length === 1 ? "" : "s"}</Chip>
             <span className="md-label-sm text-on-variant/75">
-              Updated {formatRelativeTime(project.updatedAt)}
+              Updated {formatExactTime(project.updatedAt)}
             </span>
           </div>
 
@@ -184,7 +184,7 @@ export default function ProjectPage() {
                         <span className="md-label-sm text-on-variant/75">
                           {conversation.messageCount} message
                           {conversation.messageCount === 1 ? "" : "s"} ·{" "}
-                          {formatRelativeTime(conversation.updatedAt)}
+                          {formatExactTime(conversation.updatedAt)}
                         </span>
                       </Link>
                       <button

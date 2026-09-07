@@ -24,7 +24,7 @@ import { ProfileMenu } from "@/components/ProfileMenu";
 import { createRipple } from "@/components/ui/ripple";
 import { ROOM_BUDGET, runMeetingRound, runUsage } from "@/lib/meetings";
 import { deriveConversationTitle } from "@/lib/prompts";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 import { departmentAccent } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import type { MeetingResponse, Meeting, Department } from "@/lib/types";

@@ -18,7 +18,7 @@ import {
 import { AddonsSection } from "@/components/AddonsSection";
 import { NativeAddons } from "@/components/NativeAddons";
 import { useStore } from "@/lib/store";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 
 interface KeyRow {
   id: string;
@@ -168,12 +168,12 @@ export default function IntegrationsPage() {
                           <code>
                             {key.prefix}…{key.last4}
                           </code>{" "}
-                          · made {formatRelativeTime(key.createdAt)} by {key.createdBy}
+                          · made {formatExactTime(key.createdAt)} by {key.createdBy}
                         </p>
                       </div>
                       <span className="md-label-sm text-on-variant/75">
                         {key.lastUsedAt
-                          ? `Used ${formatRelativeTime(key.lastUsedAt)}`
+                          ? `Used ${formatExactTime(key.lastUsedAt)}`
                           : "Never used"}
                       </span>
                       <Button

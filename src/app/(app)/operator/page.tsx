@@ -29,7 +29,7 @@ import {
   cx,
 } from "@/components/ui";
 import { createRipple } from "@/components/ui/ripple";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 import { useStore } from "@/lib/store";
 import type { Message } from "@/lib/types";
 import type {
@@ -403,7 +403,7 @@ function PeopleTable({
               </span>
               <span className="md-label-sm block truncate text-on-variant">
                 {row.people ?? 0} {row.people === 1 ? "person" : "people"}
-                {row.createdAt ? ` · since ${formatRelativeTime(row.createdAt)}` : ""}
+                {row.createdAt ? ` · since ${formatExactTime(row.createdAt)}` : ""}
               </span>
             </span>
 
@@ -415,7 +415,7 @@ function PeopleTable({
             </span>
 
             <span className="md-label-sm w-20 flex-none text-right text-on-variant/75">
-              {row.lastActive ? formatRelativeTime(row.lastActive) : "never"}
+              {row.lastActive ? formatExactTime(row.lastActive) : "never"}
             </span>
           </button>
         </li>
@@ -495,7 +495,7 @@ function PersonDetail({
                   ? person.displayName || "Them"
                   : departments[thread.departmentId] ?? "Reply"}{" "}
                 ·{" "}
-                {formatRelativeTime(message.timestamp)}
+                {formatExactTime(message.timestamp)}
                 {message.usage ? ` · ${compact(message.usage.output)} out` : ""}
                 {message.attachments?.length ? ` · ${message.attachments[0].name}` : ""}
               </p>
@@ -571,7 +571,7 @@ function PersonDetail({
                       <span className="md-label-sm truncate text-on-variant/75">
                         {departments[head.departmentId] ?? head.departmentId} ·{" "}
                         {head.messageCount} message{head.messageCount === 1 ? "" : "s"} ·{" "}
-                        {formatRelativeTime(head.updatedAt)}
+                        {formatExactTime(head.updatedAt)}
                       </span>
                     </button>
                   </li>

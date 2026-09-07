@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, cx } from "./ui";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 import { useNow } from "@/lib/useNow";
 import type { AdminOverview } from "@/db/admin";
 
@@ -98,7 +98,7 @@ export function OperatorOverview({ overview }: { overview: AdminOverview | null 
                 title="Nightly run overdue"
                 body={
                   waiting.cronAt
-                    ? `Last run ${formatRelativeTime(waiting.cronAt)}. Briefings and reports depend on it.`
+                    ? `Last run ${formatExactTime(waiting.cronAt)}. Briefings and reports depend on it.`
                     : "Never run. Briefings and reports depend on it."
                 }
               />

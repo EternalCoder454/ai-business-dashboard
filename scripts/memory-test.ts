@@ -35,6 +35,7 @@ const EMPTY_PROFILE: CompanyProfile = {
   competitors: "",
   constraints: "",
   goals: "",
+  businessNotes: "", marketNotes: "", directionNotes: "", factsNotes: "",
 };
 
 function entry(over: Partial<MemoryEntry> & Pick<MemoryEntry, "kind" | "label">): MemoryEntry {
@@ -137,6 +138,7 @@ console.log("\nit reaches the system prompt, late enough to protect the cache");
     competitors: "",
     constraints: "",
     goals: "",
+    businessNotes: "", marketNotes: "", directionNotes: "", factsNotes: "",
   };
   const finance = seedDepartments().find((d) => d.id === "finance")!;
   const entries = [entry({ kind: "figure", label: "Wishlists", value: "1,240" })];

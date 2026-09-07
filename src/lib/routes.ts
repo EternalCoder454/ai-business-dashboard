@@ -15,6 +15,29 @@ export function conversationHref(departmentId: string, conversationId: string): 
   return `${departmentHrefById(departmentId)}?c=${encodeURIComponent(conversationId)}`;
 }
 
+/**
+ * A timestamp as a date and a time, for anything that is a record.
+ *
+ * "22d ago" is the right answer to "is this fresh", and the wrong one to
+ * "when did this happen". A piece of feedback, a report, a message in a thread
+ * and a line in an audit are all things somebody reads to find out when, and
+ * they arrive weeks after the fact, so counting backwards from now made the
+ * reader do arithmetic to reach a date that was already known.
+ *
+ * MM/DD/YYYY and a 24 hour clock, written out rather than left to the browser's
+ * locale, because two people looking at the same feedback should be reading the
+ * same string. Padded, so a column of them lines up.
+ */
+export function formatExactTime(timestamp: number): string {
+  const at = new Date(timestamp);
+  if (Number.isNaN(at.getTime())) return "";
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return (
+    `${pad(at.getMonth() + 1)}/${pad(at.getDate())}/${at.getFullYear()}` +
+    ` - ${pad(at.getHours())}:${pad(at.getMinutes())}`
+  );
+}
+
 export function formatRelativeTime(timestamp: number): string {
   const diff = Date.now() - timestamp;
   const minute = 60_000;

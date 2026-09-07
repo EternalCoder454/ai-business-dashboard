@@ -19,7 +19,7 @@ import {
   cx,
 } from "@/components/ui";
 import { useStore } from "@/lib/store";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 
 interface Schedule {
   id: string;
@@ -214,7 +214,7 @@ export function SchedulesTab({ onUnread }: { onUnread?: (n: number) => void }) {
                         </span>
                         <Chip>{nameOf(briefing.departmentId)}</Chip>
                         <span className="md-label-sm text-on-variant/75">
-                          {formatRelativeTime(briefing.createdAt)}
+                          {formatExactTime(briefing.createdAt)}
                         </span>
                       </div>
                       <p className="md-body mt-2 line-clamp-2 text-on-variant">
@@ -241,7 +241,7 @@ export function SchedulesTab({ onUnread }: { onUnread?: (n: number) => void }) {
                         <p className="md-label-sm truncate text-on-variant/75">
                           {cadenceLine(schedule)} · {nameOf(schedule.departmentId)} ·{" "}
                           {schedule.lastRunAt
-                            ? `last ran ${formatRelativeTime(schedule.lastRunAt)}`
+                            ? `last ran ${formatExactTime(schedule.lastRunAt)}`
                             : "not run yet"}
                         </p>
                       </div>

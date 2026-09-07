@@ -10,6 +10,14 @@ import type { CompanyProfile } from "@/lib/types";
 interface ProfileField {
   key: keyof CompanyProfile;
   label: string;
+  /**
+   * Free text with nothing specific being asked for.
+   *
+   * Left out of the filled count, because a profile is not incomplete for
+   * having nothing extra to add, and a counter that can never reach the end is
+   * one people stop reading.
+   */
+  optional?: boolean;
   placeholder: string;
 }
 
@@ -43,6 +51,13 @@ const GROUPS: { id: string; title: string; fields: ProfileField[] }[] = [
         label: "Where the business is",
         placeholder: "Age, headcount, rough turnover, and whether it is your main income.",
       },
+      {
+        key: "businessNotes",
+        label: "Anything else",
+        placeholder:
+          "Growth, a recent hire, a rebrand, a supplier that fell through. Anything the heads should know that the fields above do not ask about.",
+        optional: true,
+      },
     ],
   },
   {
@@ -66,6 +81,13 @@ const GROUPS: { id: string; title: string; fields: ProfileField[] }[] = [
         label: "Brand voice",
         placeholder: "How the company sounds, and what it never sounds like.",
       },
+      {
+        key: "marketNotes",
+        label: "Anything else",
+        placeholder:
+          "A shift in who is buying, a channel that stopped working, a competitor that just launched.",
+        optional: true,
+      },
     ],
   },
   {
@@ -82,6 +104,12 @@ const GROUPS: { id: string; title: string; fields: ProfileField[] }[] = [
         label: "Constraints",
         placeholder: "Budget, hours, skills, anything off the table.",
       },
+      {
+        key: "directionNotes",
+        label: "Anything else",
+        placeholder: "A decision you are still weighing, or something you have ruled out and why.",
+        optional: true,
+      },
     ],
   },
   {
@@ -94,11 +122,20 @@ const GROUPS: { id: string; title: string; fields: ProfileField[] }[] = [
         placeholder:
           "Pricing, headcount, launch dates, current numbers, tools you run on, constraints.",
       },
+      {
+        key: "factsNotes",
+        label: "Anything else",
+        placeholder: "Whatever does not fit above and a head would be worse off not knowing.",
+        optional: true,
+      },
     ],
   },
 ];
 
 const ALL_FIELDS = GROUPS.flatMap((group) => group.fields);
+
+/** The ones the counter is about: everything the screen actually asks for. */
+const ASKED_FIELDS = ALL_FIELDS.filter((field) => !field.optional);
 
 /**
  * One question and its answer.
@@ -234,7 +271,7 @@ export default function CompanyProfilePage() {
    * so a half filled profile is the difference between advice and advice about
    * this business, and nothing on the screen said which half was missing.
    */
-  const filled = ALL_FIELDS.filter((field) => local[field.key].trim()).length;
+  const filled = ASKED_FIELDS.filter((field) => local[field.key].trim()).length;
 
   const set = (key: keyof CompanyProfile) => (next: string) => {
     dirty.current = true;
@@ -251,10 +288,10 @@ export default function CompanyProfilePage() {
             <span
               className={cx(
                 "md-label",
-                filled === ALL_FIELDS.length ? "text-success" : "text-on-variant",
+                filled === ASKED_FIELDS.length ? "text-success" : "text-on-variant",
               )}
             >
-              {filled} of {ALL_FIELDS.length} filled
+              {filled} of {ASKED_FIELDS.length} filled
             </span>
             {savedAt ? (
               <span className="md-label flex items-center gap-1.5 text-success">

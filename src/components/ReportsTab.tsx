@@ -12,7 +12,7 @@ import {
   TextInput,
   cx,
 } from "./ui";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 import { labelFor } from "@/lib/conduct";
 import { useStore } from "@/lib/store";
 
@@ -311,7 +311,7 @@ export function ReportsTab({
               {enabled
                 ? "Runs on its own once a day. "
                 : "Off. This deployment has no database. "}
-              {lastRunAt ? `Last pass ${formatRelativeTime(lastRunAt)}.` : "Not run yet."}
+              {lastRunAt ? `Last pass ${formatExactTime(lastRunAt)}.` : "Not run yet."}
             </p>
           </div>
           <Button disabled={running || !enabled} onClick={() => void run()}>
@@ -450,7 +450,7 @@ export function ReportsTab({
                     <span className="md-title truncate">{row.workspaceName}</span>
                   ) : null}
                   <span className="md-label-sm text-on-variant/75">
-                    {formatRelativeTime(row.createdAt)}
+                    {formatExactTime(row.createdAt)}
                   </span>
                 </div>
 

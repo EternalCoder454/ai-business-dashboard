@@ -11,7 +11,7 @@ import {
   Field,
   TextInput,
 } from "./ui";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 
 export interface WorkspaceRow {
   id: string;
@@ -165,7 +165,7 @@ export function BusinessesTab({
                     <p className="md-label-sm text-on-variant/75">
                       {workspace.members.length}{" "}
                       {workspace.members.length === 1 ? "person" : "people"} · created{" "}
-                      {formatRelativeTime(workspace.createdAt)}
+                      {formatExactTime(workspace.createdAt)}
                       {workspace.note ? ` · ${workspace.note}` : ""}
                     </p>
                   </div>
@@ -211,7 +211,7 @@ export function BusinessesTab({
                         {member.role === "admin" ? <Chip tone="primary">Admin</Chip> : null}
                         {member.lastSignedInAt ? (
                           <span className="md-label-sm text-on-variant/75">
-                            last in {formatRelativeTime(member.lastSignedInAt)}
+                            last in {formatExactTime(member.lastSignedInAt)}
                           </span>
                         ) : (
                           <Chip tone="warning">Never signed in</Chip>

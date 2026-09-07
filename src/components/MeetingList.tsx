@@ -3,7 +3,7 @@
 import { PlusIcon, TrashIcon, UsersIcon, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
 import { ProfileMenu } from "./ProfileMenu";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 import type { Meeting } from "@/lib/types";
 
 /**
@@ -136,7 +136,7 @@ export function MeetingList({
                 </button>
                 <p className="md-label-sm mt-0.5 truncate text-on-variant/75">
                   {run.rounds.length} question{run.rounds.length === 1 ? "" : "s"} ·{" "}
-                  {formatRelativeTime(run.updatedAt)}
+                  {formatExactTime(run.updatedAt)}
                 </p>
               </div>
 

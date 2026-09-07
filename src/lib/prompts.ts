@@ -21,13 +21,19 @@ import type {
 const PROFILE_FIELDS: [keyof CompanyProfile, string][] = [
   ["mission", "Mission"],
   ["products", "What we make"],
-  ["audience", "Audience"],
   ["stage", "Where the business is"],
-  ["goals", "What we are aiming at"],
+  // Each group's free field follows the named ones it belongs with, so the
+  // block reads in the order somebody filled it in.
+  ["businessNotes", "Also about the business"],
+  ["audience", "Audience"],
   ["competitors", "Competition"],
-  ["constraints", "Constraints"],
   ["brandVoice", "Brand voice"],
+  ["marketNotes", "Also about the market"],
+  ["goals", "What we are aiming at"],
+  ["constraints", "Constraints"],
+  ["directionNotes", "Also about direction"],
   ["keyFacts", "Key facts"],
+  ["factsNotes", "Other facts"],
 ];
 
 /** True when the profile has at least one field worth injecting. */

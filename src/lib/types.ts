@@ -304,6 +304,15 @@ export interface CompanyProfile {
   constraints: string;
   /** What is being aimed at, and by when. */
   goals: string;
+  /*
+   * One free field per group on the profile screen, for what the nine named
+   * ones do not ask about: growth, a hire, a rebrand, a supplier that fell
+   * through. Every head reads them like the rest.
+   */
+  businessNotes: string;
+  marketNotes: string;
+  directionNotes: string;
+  factsNotes: string;
 }
 
 export type DeliverableStatus = "backlog" | "in-progress" | "done";

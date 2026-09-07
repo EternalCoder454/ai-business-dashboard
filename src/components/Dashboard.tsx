@@ -19,7 +19,7 @@ import {
 import { createRipple } from "./ui/ripple";
 import { figureSeries } from "@/lib/memory";
 import { hasProfileContent } from "@/lib/prompts";
-import { conversationHref, formatRelativeTime } from "@/lib/routes";
+import { conversationHref, formatExactTime } from "@/lib/routes";
 import { useStore } from "@/lib/store";
 
 /**
@@ -165,7 +165,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
                 <p className="md-label-sm mt-1 text-on-variant/75">
                   {previous
                     ? `was ${previous.value} on ${new Date(previous.occurredAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`
-                    : formatRelativeTime(latest?.occurredAt ?? 0)}
+                    : formatExactTime(latest?.occurredAt ?? 0)}
                 </p>
               </div>
             ))}
@@ -240,7 +240,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
             key: entry.id,
             href: "/library/memory",
             primary: entry.label,
-            secondary: `${nameOf(entry.departmentId)} · ${formatRelativeTime(entry.occurredAt)}`,
+            secondary: `${nameOf(entry.departmentId)} · ${formatExactTime(entry.occurredAt)}`,
           }))}
         />
 
@@ -253,7 +253,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
             key: item.id,
             href: "/library/deliverables",
             primary: item.title,
-            secondary: `${nameOf(item.departmentId)} · ${formatRelativeTime(item.updatedAt)}`,
+            secondary: `${nameOf(item.departmentId)} · ${formatExactTime(item.updatedAt)}`,
           }))}
         />
 
@@ -266,7 +266,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
             key: conversation.id,
             href: conversationHref(conversation.departmentId, conversation.id),
             primary: conversation.title,
-            secondary: `${nameOf(conversation.departmentId)} · ${formatRelativeTime(
+            secondary: `${nameOf(conversation.departmentId)} · ${formatExactTime(
               conversation.updatedAt,
             )}`,
           }))}
@@ -283,7 +283,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
             primary: run.title,
             secondary: `${run.rounds} ${
               run.rounds === 1 ? "question" : "questions"
-            } · ${formatRelativeTime(run.updatedAt)}`,
+            } · ${formatExactTime(run.updatedAt)}`,
           }))}
         />
 
@@ -296,7 +296,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
             key: project.id,
             href: `/projects/${project.id}`,
             primary: project.name,
-            secondary: `${project.status} · ${formatRelativeTime(project.updatedAt)}`,
+            secondary: `${project.status} · ${formatExactTime(project.updatedAt)}`,
           }))}
         />
       </div>

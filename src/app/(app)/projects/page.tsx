@@ -14,7 +14,7 @@ import {
   PlusIcon,
   cx,
 } from "@/components/ui";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 import { projectAccent } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import type { ProjectStatus } from "@/lib/types";
@@ -236,7 +236,7 @@ export default function ProjectsPage() {
                                 <span className="md-label-sm text-on-variant/75">No items</span>
                               ) : null}
                               <span className="md-label-sm text-on-variant/75">
-                                {formatRelativeTime(project.updatedAt)}
+                                {formatExactTime(project.updatedAt)}
                               </span>
                             </div>
                           </div>

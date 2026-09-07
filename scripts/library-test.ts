@@ -60,6 +60,7 @@ const FILES: LibraryFile[] = [
 const EMPTY_PROFILE: CompanyProfile = {
   mission: "", audience: "", brandVoice: "", keyFacts: "",
   products: "", stage: "", competitors: "", constraints: "", goals: "",
+  businessNotes: "", marketNotes: "", directionNotes: "", factsNotes: "",
 };
 
 console.log("a head sees its own documents and the company's, and nothing else");

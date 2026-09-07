@@ -349,6 +349,10 @@ export const DEFAULT_PROFILE: CompanyProfile = {
   competitors: "",
   constraints: "",
   goals: "",
+  businessNotes: "",
+  marketNotes: "",
+  directionNotes: "",
+  factsNotes: "",
 };
 
 export const DEFAULT_MODEL = "claude-sonnet-5";

@@ -30,6 +30,7 @@ const EMPTY_PROFILE: CompanyProfile = {
   competitors: "",
   constraints: "",
   goals: "",
+  businessNotes: "", marketNotes: "", directionNotes: "", factsNotes: "",
 };
 
 console.log("the registry is well formed");

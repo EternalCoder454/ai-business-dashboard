@@ -35,7 +35,7 @@ import {
   formatBytes,
 } from "@/lib/files";
 import { AttachmentError, attachmentSrc } from "@/lib/images";
-import { departmentHrefById, formatRelativeTime } from "@/lib/routes";
+import { departmentHrefById, formatExactTime } from "@/lib/routes";
 import { COMPANY_ID } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import { report } from "@/lib/telemetryClient";
@@ -572,7 +572,7 @@ function FileList({
                   {formatBytes(file.size ?? 0)}
                 </td>
                 <td className="md-label-sm hidden whitespace-nowrap px-3 py-1.5 text-on-variant expanded:table-cell">
-                  {formatRelativeTime(file.updatedAt)}
+                  {formatExactTime(file.updatedAt)}
                 </td>
                 <td className="px-3 py-1.5">
                   <div className="flex justify-end gap-0.5">
@@ -602,7 +602,7 @@ function FileList({
               <button onClick={() => onOpen(file)} className="min-w-0 flex-1 text-left">
                 <span className="md-body block truncate">{file.name}</span>
                 <span className="md-label-sm block truncate text-on-variant/75">
-                  {formatBytes(file.size ?? 0)} · {formatRelativeTime(file.updatedAt)}
+                  {formatBytes(file.size ?? 0)} · {formatExactTime(file.updatedAt)}
                 </span>
               </button>
               <IconAction label="Download" onClick={() => onDownload(file)}>
@@ -728,7 +728,7 @@ function FileCard({
           <span className="md-label-sm mt-0.5 block text-on-variant/75">
             {formatBytes(file.size ?? 0)} ·{" "}
             {estimateAttachmentTokens(file).toLocaleString()} tokens ·{" "}
-            {formatRelativeTime(file.updatedAt)}
+            {formatExactTime(file.updatedAt)}
           </span>
           {file.note ? (
             <span className="md-label-sm mt-1 block truncate text-on-variant">

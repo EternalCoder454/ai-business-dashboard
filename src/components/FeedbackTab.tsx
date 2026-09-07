@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Button, Card, Chip, EmptyState, SparkIcon, cx } from "./ui";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 
 interface FeedbackRow {
   id: string;
@@ -109,7 +109,7 @@ export function FeedbackTab() {
                 <span className="md-title">{row.displayName || row.email}</span>
                 <Chip tone="primary">{row.workspaceName || "No business"}</Chip>
                 <span className="md-label-sm text-on-variant/75">
-                  {formatRelativeTime(row.createdAt)}
+                  {formatExactTime(row.createdAt)}
                 </span>
                 <div className="ml-auto flex flex-wrap items-center gap-2">
                   <Button

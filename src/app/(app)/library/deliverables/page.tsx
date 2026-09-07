@@ -24,7 +24,7 @@ import {
 } from "@/components/ui";
 import { Markdown } from "@/components/Markdown";
 import { LibraryTabs } from "@/components/LibraryTabs";
-import { conversationHref, formatRelativeTime } from "@/lib/routes";
+import { conversationHref, formatExactTime } from "@/lib/routes";
 import { DELIVERABLE_COLUMNS, useStore } from "@/lib/store";
 import type { Deliverable, DeliverableStatus } from "@/lib/types";
 
@@ -192,7 +192,7 @@ export default function DeliverablesPage() {
                             {department?.name ?? "Unassigned"}
                           </Chip>
                           <span className="md-label-sm text-on-variant/75">
-                            {formatRelativeTime(item.updatedAt)}
+                            {formatExactTime(item.updatedAt)}
                           </span>
                         </div>
 

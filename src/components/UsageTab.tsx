@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, Chip, cx } from "./ui";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 import { useNow } from "@/lib/useNow";
 
 interface Row {
@@ -157,7 +157,7 @@ export function UsageTab() {
                     <Td align="right">{compact(row.deliverables)}</Td>
                     <Td align="right">{compact(row.briefings)}</Td>
                     <Td align="right" tone={quiet ? "bad" : undefined}>
-                      {row.lastActivityAt ? formatRelativeTime(row.lastActivityAt) : "Never"}
+                      {row.lastActivityAt ? formatExactTime(row.lastActivityAt) : "Never"}
                     </Td>
                   </tr>
                 );

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui";
 import { createRipple } from "@/components/ui/ripple";
 import { useMessages, useThread } from "@/lib/messages";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 import { useStore } from "@/lib/store";
 import {
   DELIVERY_LABEL,
@@ -188,7 +188,7 @@ export default function MessagesPage() {
                         </span>
                         {row.at > 0 ? (
                           <span className="md-label-sm ml-auto flex-none text-on-variant/75">
-                            {formatRelativeTime(row.at)}
+                            {formatExactTime(row.at)}
                           </span>
                         ) : null}
                       </span>
@@ -510,7 +510,7 @@ function MessageRow({
               {sender.displayName || message.fromEmail}
             </span>
             <span className="md-label-sm text-on-variant/70">
-              {formatRelativeTime(message.sentAt)}
+              {formatExactTime(message.sentAt)}
             </span>
           </div>
         )}
@@ -550,7 +550,7 @@ function MessageRow({
             {message.editedAt ? (
               <span
                 className="md-label-sm ml-1.5 align-baseline text-on-variant/60"
-                title={`Edited ${formatRelativeTime(message.editedAt)}`}
+                title={`Edited ${formatExactTime(message.editedAt)}`}
               >
                 edited
               </span>

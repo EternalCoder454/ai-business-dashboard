@@ -14,7 +14,7 @@ import {
 } from "@/lib/navLayout";
 import { CompanyMark } from "./CompanyMark";
 import { ORCHESTRATOR_ID } from "@/lib/seed";
-import { conversationHref, departmentHref, formatRelativeTime } from "@/lib/routes";
+import { conversationHref, departmentHref, formatExactTime } from "@/lib/routes";
 import { useMessages } from "@/lib/messages";
 import { useDepartmentStatus } from "@/lib/presence";
 import { useStore } from "@/lib/store";

@@ -7,7 +7,7 @@ import { Button, Card, Chip, Dialog, EmptyState, PuzzleIcon, TrashIcon } from "@
 // from it would ship the validator to the browser. The types are erased.
 import { TRIGGER_LABEL, describeStep } from "@/lib/addons/describe";
 import type { Recipe, TriggerName } from "@/lib/addons/recipe";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 
 /** Matches what /api/workspace/addons returns, which is db/addons' Addon. */
 interface AddonRow {
@@ -155,7 +155,7 @@ export function AddonsSection({ admin }: { admin: boolean }) {
                       ) : null}
                       <p className="md-label-sm mt-1 text-on-variant/75">
                         {TRIGGER_LABEL[addon.recipe.trigger as TriggerName]} · built by{" "}
-                        {addon.createdBy} {formatRelativeTime(addon.createdAt)}
+                        {addon.createdBy} {formatExactTime(addon.createdAt)}
                       </p>
                     </div>
                     <StateChip addon={addon} />
@@ -214,7 +214,7 @@ export function AddonsSection({ admin }: { admin: boolean }) {
                       {addon.runs === 0
                         ? "Never run"
                         : `${addon.runs} runs${failing ? `, ${addon.failures} failed` : ""}` +
-                          (addon.lastRunAt ? `, last ${formatRelativeTime(addon.lastRunAt)}` : "")}
+                          (addon.lastRunAt ? `, last ${formatExactTime(addon.lastRunAt)}` : "")}
                     </span>
                   </div>
 
@@ -401,7 +401,7 @@ function RunLog({ runs }: { runs: RunRow[] }) {
           {runs.map((run) => (
             <li key={run.id}>
               <p className="md-label-sm text-on-variant/75">
-                {formatRelativeTime(run.createdAt)}
+                {formatExactTime(run.createdAt)}
                 {run.ran ? "" : " · conditions did not match"}
               </p>
               {run.steps.map((step, index) => (

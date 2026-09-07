@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, EmptyState, MailIcon, cx } from "./ui";
 import { createRipple } from "./ui/ripple";
-import { formatRelativeTime } from "@/lib/routes";
+import { formatExactTime } from "@/lib/routes";
 
 interface ThreadSummary {
   threadKey: string;
@@ -141,7 +141,7 @@ export function MessageReview() {
                 </span>
                 <span className="md-label-sm mt-0.5 block truncate text-on-variant/75">
                   {thread.messages} message{thread.messages === 1 ? "" : "s"} ·{" "}
-                  {formatRelativeTime(thread.lastAt)}
+                  {formatExactTime(thread.lastAt)}
                 </span>
                 <span className="md-body-sm mt-1 block truncate text-on-variant/75">
                   {thread.preview}
@@ -187,7 +187,7 @@ export function MessageReview() {
                     <Card elevated={false}>
                       <p className="md-label-sm text-on-variant/75">
                         {line.fromEmail} to {line.toEmail} ·{" "}
-                        {formatRelativeTime(line.sentAt)}
+                        {formatExactTime(line.sentAt)}
                         {line.readAt ? "" : " · unread"}
                       </p>
 
@@ -204,7 +204,7 @@ export function MessageReview() {
                         */}
                       {line.deletedAt ? (
                         <p className="md-label-sm mt-1 text-error">
-                          Withdrawn {formatRelativeTime(line.deletedAt)}
+                          Withdrawn {formatExactTime(line.deletedAt)}
                           {line.deletedBy ? ` by ${line.deletedBy}` : ""}
                         </p>
                       ) : null}
@@ -224,7 +224,7 @@ export function MessageReview() {
                       {line.originalBody ? (
                         <div className="mt-2 border-l-2 border-outline-variant pl-3">
                           <p className="md-label-sm text-on-variant/75">
-                            Edited {line.editedAt ? formatRelativeTime(line.editedAt) : ""}. Sent as:
+                            Edited {line.editedAt ? formatExactTime(line.editedAt) : ""}. Sent as:
                           </p>
                           <p className="md-body-sm mt-0.5 whitespace-pre-wrap text-on-variant [overflow-wrap:anywhere]">
                             {line.originalBody}

@@ -498,6 +498,10 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       competitors: profileRow[0]?.competitors ?? "",
       constraints: profileRow[0]?.constraints ?? "",
       goals: profileRow[0]?.goals ?? "",
+      businessNotes: profileRow[0]?.businessNotes ?? "",
+      marketNotes: profileRow[0]?.marketNotes ?? "",
+      directionNotes: profileRow[0]?.directionNotes ?? "",
+      factsNotes: profileRow[0]?.factsNotes ?? "",
     },
 
     settings: {

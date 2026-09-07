@@ -7,7 +7,7 @@ import { createRipple } from "./ui/ripple";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { HeadProfile } from "./HeadProfile";
 import { ProfileMenu } from "./ProfileMenu";
-import { conversationHref, departmentHrefById, formatRelativeTime } from "@/lib/routes";
+import { conversationHref, departmentHrefById, formatExactTime } from "@/lib/routes";
 import type { Conversation, Department } from "@/lib/types";
 
 /**
@@ -172,7 +172,7 @@ export function ConversationList({
                 <p className="md-label-sm mt-0.5 truncate text-on-variant/75">
                   {conversation.messageCount} message
                   {conversation.messageCount === 1 ? "" : "s"} ·{" "}
-                  {formatRelativeTime(conversation.updatedAt)}
+                  {formatExactTime(conversation.updatedAt)}
                 </p>
               </div>
 

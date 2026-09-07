@@ -354,6 +354,19 @@ export const profiles = pgTable("profiles", {
   competitors: text("competitors").notNull().default(""),
   constraints: text("constraints").notNull().default(""),
   goals: text("goals").notNull().default(""),
+  /*
+   * One free field per group on the Company Profile screen.
+   *
+   * The named fields ask nine specific questions and a business is not nine
+   * questions. Growth, a hire, a rebrand, a supplier that fell through: all
+   * things a head should know and none of which had anywhere to go, so the
+   * choice was to leave them out or to file them under a heading they do not
+   * belong to.
+   */
+  businessNotes: text("business_notes").notNull().default(""),
+  marketNotes: text("market_notes").notNull().default(""),
+  directionNotes: text("direction_notes").notNull().default(""),
+  factsNotes: text("facts_notes").notNull().default(""),
   updatedAt: updated(),
 });
 
