@@ -14,7 +14,7 @@
  *   npm run backups-test
  */
 import { readFileSync } from "node:fs";
-import { BACKED_UP, KEEP, NOT_BACKED_UP, MAX_BACKUP_BYTES } from "../src/db/backups";
+import { BACKED_UP, KEEP, NOT_BACKED_UP, MAX_BACKUP_BYTES, REDACTED } from "../src/db/backups";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = ""): void {
@@ -112,6 +112,47 @@ console.log("\na restore inserts rows before the rows that point at them");
   check("conversations before messages", order("conversations") < order("messages"));
   check("runs before their rounds", order("allHandsRuns") < order("allHandsRounds"));
   check("departments first of all", order("departments") === 0);
+}
+
+console.log("\nno credential travels in a backup");
+{
+  /*
+   * The provider keys sit on the settings row, which is otherwise worth backing
+   * up in full: the model, the effort, the theme, the budget, the link policy.
+   * Excluding the whole table to protect five columns would mean a restore that
+   * reverted none of a workspace's settings, so the table is covered and the
+   * columns are stripped.
+   *
+   * Read from the schema rather than listed here, so a sixth provider added
+   * next year is caught by this instead of quietly ending up in every backup.
+   */
+  const schema = readFileSync("src/db/schema.ts", "utf8");
+  const settingsStart = schema.indexOf("export const settings = pgTable(");
+  const settingsBody = schema.slice(settingsStart, schema.indexOf("export const ", settingsStart + 1));
+  const keyColumns = [...settingsBody.matchAll(/^\s+([a-zA-Z]+Key):/gm)].map((m) => m[1]);
+
+  check("the schema still has key columns to protect", keyColumns.length > 0, keyColumns.join(", "));
+
+  const stripped = REDACTED.settings ?? [];
+  const exposed = keyColumns.filter((name) => !stripped.includes(name));
+  check(
+    "every one of them is stripped from the payload",
+    exposed.length === 0,
+    exposed.join(", ") || "none",
+  );
+
+  check(
+    "and the table itself is still backed up",
+    covered.includes("settings" as never),
+    "otherwise a restore would revert no settings at all",
+  );
+
+  const unknown = Object.keys(REDACTED).filter((name) => !covered.includes(name as never));
+  check(
+    "nothing is stripped from a table that is not backed up",
+    unknown.length === 0,
+    unknown.join(", ") || "none",
+  );
 }
 
 console.log("\nthe things that stop a backup growing without limit");

@@ -15,7 +15,7 @@
  *
  *   npm run backups-live
  */
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { requireDb } from "../src/db/client";
 import * as t from "../src/db/schema";
 import { createBackup, deleteBackup, listBackups, restoreBackup } from "../src/db/backups";
@@ -45,7 +45,7 @@ void (async () => {
   console.log(`\nusing a scratch workspace (${SCRATCH}, ${names.length} real ones untouched)`);
 
   const cleanup = async () => {
-    for (const table of [t.tasks, t.memory, t.wikiPages, t.departments, t.backups]) {
+    for (const table of [t.tasks, t.memory, t.wikiPages, t.departments, t.settings, t.backups]) {
       await db
         .delete(table)
         .where(eq((table as { workspaceId: typeof t.tasks.workspaceId }).workspaceId, SCRATCH));
@@ -102,6 +102,82 @@ void (async () => {
       check("and the wiki page", made.backup.counts.wikiPages === 1);
       check("and the department", made.backup.counts.departments === 1);
       check("and it has a size", made.backup.bytes > 100, `${made.backup.bytes} bytes`);
+    }
+
+    console.log("\nno backup carries a provider key, and no restore disturbs one");
+    {
+      /*
+       * The keys live on the settings row, which is otherwise worth backing up
+       * in full. Two failures were possible and both are checked here: a
+       * payload holding a live credential, and a restore reinstating a key that
+       * had been rotated since, or wiping it entirely by taking the column
+       * default.
+       */
+      const SECRET = "sk-ant-KEYTEST-backup-selftest";
+      await db.insert(t.settings).values({
+        workspaceId: SCRATCH,
+        anthropicKey: SECRET,
+        model: "claude-opus-5",
+      });
+
+      const made = await createBackup({
+        workspaceId: SCRATCH,
+        label: "With a key set",
+        kind: "manual",
+        takenBy: "self-test",
+      });
+      if ("error" in made) throw new Error(made.error);
+
+      const [stored] = await db
+        .select({ payload: t.backups.payload })
+        .from(t.backups)
+        .where(and(eq(t.backups.workspaceId, SCRATCH), eq(t.backups.id, made.backup.id)))
+        .limit(1);
+
+      check("the key is not in the payload", !stored.payload.includes(SECRET));
+      check(
+        "nor is the column that holds it",
+        !stored.payload.includes("anthropicKey"),
+        stored.payload.includes("anthropicKey") ? "found anthropicKey" : "",
+      );
+      check("but the settings row is still backed up", made.backup.counts.settings === 1);
+
+      // Rotated after the backup was taken, which is the case that matters.
+      const ROTATED = "sk-ant-KEYTEST-rotated-afterwards";
+      await db
+        .update(t.settings)
+        .set({ anthropicKey: ROTATED })
+        .where(eq(t.settings.workspaceId, SCRATCH));
+
+      const done = await restoreBackup({
+        workspaceId: SCRATCH,
+        id: made.backup.id,
+        restoredBy: "self-test",
+      });
+      check("the restore succeeded", !("error" in done), "error" in done ? done.error : "");
+
+      const [after] = await db
+        .select()
+        .from(t.settings)
+        .where(eq(t.settings.workspaceId, SCRATCH))
+        .limit(1);
+
+      check("the current key survived the restore", after?.anthropicKey === ROTATED, after?.anthropicKey);
+      check("the old one was not reinstated", after?.anthropicKey !== SECRET);
+      check("and it was not wiped to empty", (after?.anthropicKey ?? "") !== "");
+      check("while an ordinary setting did come back", after?.model === "claude-opus-5", after?.model);
+
+      /*
+       * Only the two this block made: the backup above and the safety copy the
+       * restore took. Clearing every backup in the workspace was the first
+       * version and it deleted the one the restore test further down was
+       * holding an id for, which failed there rather than here.
+       */
+      await db.delete(t.settings).where(eq(t.settings.workspaceId, SCRATCH));
+      const mine = [made.backup.id, ...("ok" in done ? [done.safety] : [])];
+      await db
+        .delete(t.backups)
+        .where(and(eq(t.backups.workspaceId, SCRATCH), inArray(t.backups.id, mine)));
     }
 
     console.log("\nthe nightly pass skips a workspace nobody touched");

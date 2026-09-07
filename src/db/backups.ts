@@ -84,6 +84,31 @@ export const NOT_BACKED_UP: Record<string, string> = {
   backups: "the backups themselves, which a restore must not replace",
 };
 
+/**
+ * Columns that are stripped out of a backed up row, and put back on restore.
+ *
+ * The provider keys live on `settings`, which is otherwise entirely worth
+ * backing up: it is the model, the effort, the theme, the budget, the link
+ * policy. Excluding the whole table to protect five columns would mean a
+ * restore that silently reverted none of a workspace's settings.
+ *
+ * So the table is covered and the five columns are not, which fixes both halves
+ * of the same bug. A backup is a copy of the workspace that gets moved around,
+ * read by an administrator and kept for weeks, and it has no business carrying
+ * a live credential. And a restore must never quietly reinstate a key that was
+ * rotated afterwards, which was exactly what would have happened: the comment
+ * beside NOT_BACKED_UP already said credentials were excluded and was wrong,
+ * because it named apiKeys, which is the developer API, and not these.
+ *
+ * On the way back in, the values that are live right now are carried forward,
+ * so a restore leaves the keys exactly as they are. Dropping the columns alone
+ * would be worse than the bug: the insert would fall back to the column default
+ * of an empty string and a restore would wipe the workspace's keys.
+ */
+export const REDACTED: Record<string, readonly string[]> = {
+  settings: ["anthropicKey", "openaiKey", "googleKey", "deepseekKey", "perplexityKey"],
+};
+
 /** What a stored payload looks like. */
 export interface BackupPayload {
   /** Bumped when the shape changes, so an old one is refused rather than half read. */
@@ -178,11 +203,20 @@ async function readAll(workspaceId: string): Promise<BackupPayload> {
    * holding every row of every table in memory at the same moment.
    */
   for (const [name, table] of BACKED_UP) {
-    const rows = await db
+    const rows = (await db
       .select()
       .from(table)
-      .where(eq((table as Scoped).workspaceId, workspaceId));
-    tables[name] = rows as Record<string, unknown>[];
+      .where(eq((table as Scoped).workspaceId, workspaceId))) as Record<string, unknown>[];
+
+    // Never let a credential into a payload. See REDACTED.
+    const strip = REDACTED[name];
+    tables[name] = strip
+      ? rows.map((row) => {
+          const copy = { ...row };
+          for (const column of strip) delete copy[column];
+          return copy;
+        })
+      : rows;
   }
 
   return { version: 1, workspaceId, takenAt: new Date().toISOString(), tables };
@@ -401,11 +435,36 @@ export async function restoreBackup(input: {
   });
   if ("error" in safety) return { error: safety.error };
 
+  /*
+   * The columns a payload deliberately does not carry, read as they are right
+   * now and put back on the way in. Read before the transaction, because inside
+   * it the rows holding them are about to be deleted.
+   *
+   * Without this a restore would insert the settings row without its keys, take
+   * the column default of an empty string, and disconnect the workspace from
+   * every model it uses. See REDACTED.
+   */
+  const carried: Record<string, Record<string, unknown>> = {};
+  for (const [name, table] of BACKED_UP) {
+    const strip = REDACTED[name];
+    if (!strip) continue;
+    const [live] = await db
+      .select()
+      .from(table)
+      .where(eq((table as Scoped).workspaceId, input.workspaceId))
+      .limit(1);
+    if (!live) continue;
+    const keep: Record<string, unknown> = {};
+    for (const column of strip) keep[column] = (live as Record<string, unknown>)[column];
+    carried[name] = keep;
+  }
+
   await db.transaction(async (tx) => {
     for (const [name, table] of BACKED_UP) {
       await tx.delete(table).where(eq((table as Scoped).workspaceId, input.workspaceId));
 
-      const rows = reviveDates(table, payload.tables[name] ?? []);
+      let rows = reviveDates(table, payload.tables[name] ?? []);
+      if (carried[name]) rows = rows.map((row) => ({ ...row, ...carried[name] }));
       if (!rows.length) continue;
 
       /*
