@@ -31,7 +31,7 @@ import { formatExactTime } from "@/lib/routes";
 import { departmentAccent } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import type { MeetingResponse, Meeting, Department } from "@/lib/types";
-import { useEnter } from "@/lib/motion";
+import { DURATION, EASE, play, useEnter, usePresence } from "@/lib/motion";
 import { SidePane } from "@/components/ui/SidePane";
 
 /**
@@ -413,47 +413,45 @@ function MeetingsBody() {
             stickToBottom.current =
               node.scrollHeight - node.scrollTop - node.clientHeight < 140;
           }}
-          className="min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 py-6"
+          className="relative min-h-0 flex-1 overflow-y-auto px-4 medium:px-6 py-6"
         >
+          <Opening open={!thread} departments={asking} />
+
           <div className="measure-read flex flex-col gap-5">
-            {!thread ? (
-              <Opening departments={asking} orchestratorName={orchestrator?.personaName} />
-            ) : (
-              thread.rounds.map((round) => (
-                <div key={round.id} className="flex flex-col gap-4">
-                  <div className="flex justify-end">
-                    <div className="max-w-[85%] rounded-3xl rounded-br-lg bg-primary-container px-4 py-3 text-on-primary-container shadow-e1">
-                      <p className="md-body whitespace-pre-wrap">{round.question}</p>
-                    </div>
+            {thread?.rounds.map((round) => (
+              <div key={round.id} className="flex flex-col gap-4">
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] rounded-3xl rounded-br-lg bg-primary-container px-4 py-3 text-on-primary-container shadow-e1">
+                    <p className="md-body whitespace-pre-wrap">{round.question}</p>
                   </div>
-
-                  {round.responses.map((response) => (
-                    <HeadMessage
-                      key={response.departmentId}
-                      response={response}
-                      department={departmentOf(response.departmentId)}
-                      onSave={async () => {
-                        await createDeliverable({
-                          title: `${
-                            departmentOf(response.departmentId)?.name ?? "Department"
-                          }: ${deriveConversationTitle(round.question)}`,
-                          body: response.content,
-                          departmentId: response.departmentId,
-                        });
-                      }}
-                    />
-                  ))}
-
-                  {round.synthesis ? (
-                    <SynthesisMessage
-                      orchestrator={orchestrator}
-                      text={round.synthesis}
-                      error={round.synthesisError}
-                    />
-                  ) : null}
                 </div>
-              ))
-            )}
+
+                {round.responses.map((response) => (
+                  <HeadMessage
+                    key={response.departmentId}
+                    response={response}
+                    department={departmentOf(response.departmentId)}
+                    onSave={async () => {
+                      await createDeliverable({
+                        title: `${
+                          departmentOf(response.departmentId)?.name ?? "Department"
+                        }: ${deriveConversationTitle(round.question)}`,
+                        body: response.content,
+                        departmentId: response.departmentId,
+                      });
+                    }}
+                  />
+                ))}
+
+                {round.synthesis ? (
+                  <SynthesisMessage
+                    orchestrator={orchestrator}
+                    text={round.synthesis}
+                    error={round.synthesisError}
+                  />
+                ) : null}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -717,29 +715,60 @@ function Progress({
   );
 }
 
-function Opening({
-  departments,
-  orchestratorName,
-}: {
-  departments: Department[];
-  orchestratorName: string | undefined;
-}) {
-  const entered = useEnter();
+/**
+ * What the room is, before anybody has asked it anything.
+ *
+ * In the middle of the transcript rather than at the top of it. It is the only
+ * thing on the page at that point, and a card pinned to the top of an empty
+ * column reads as the first item of a list that never came; centred, it reads
+ * as the state of the room, which is what it is.
+ *
+ * Out of the flow to do it, which also buys the exit. The card is not laid out
+ * with the rounds, so when the first question arrives it can fade and lift away
+ * on its own while the question is drawn underneath it, rather than taking the
+ * whole transcript up the screen with it as it goes.
+ */
+function Opening({ departments, open }: { departments: Department[]; open: boolean }) {
+  const card = useRef<HTMLDivElement | null>(null);
+
+  const render = usePresence(open, (phase) =>
+    phase === "enter"
+      ? play(
+          card.current,
+          { opacity: [0, 1], transform: ["translateY(8px) scale(0.98)", "none"] },
+          { duration: DURATION.medium, ease: EASE.decelerate },
+        )
+      : play(
+          card.current,
+          { opacity: [1, 0], transform: ["none", "translateY(-14px) scale(0.96)"] },
+          { duration: DURATION.medium, ease: EASE.accelerate },
+        ),
+  );
+
+  if (!render) return null;
+
   return (
-    <div ref={entered} className="rounded-3xl border border-outline-variant bg-container/60 px-7 py-9 text-center">
-      <div className="mb-4 flex flex-wrap justify-center gap-1.5">
-        {departments.map((department) => (
-          <DepartmentAvatar
-            key={department.id}
-            department={department}
-            size={40}
-            title={`${department.personaName}, ${department.roleTitle}`}
-            className="shadow-e1 ring-2"
-            ringColor={departmentAccent(department.id, department.accent).dot}
-          />
-        ))}
+    // The frame catches no clicks, so the composer under it stays reachable
+    // while the card is on its way out; the card itself still takes its own.
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4 py-6 medium:px-6">
+      <div
+        ref={card}
+        className="measure-read pointer-events-auto rounded-3xl border border-outline-variant bg-container/60 px-7 py-9 text-center"
+      >
+        <div className="mb-4 flex flex-wrap justify-center gap-1.5">
+          {departments.map((department) => (
+            <DepartmentAvatar
+              key={department.id}
+              department={department}
+              size={40}
+              title={`${department.personaName}, ${department.roleTitle}`}
+              className="shadow-e1 ring-2"
+              ringColor={departmentAccent(department.id, department.accent).dot}
+            />
+          ))}
+        </div>
+        <h2 className="md-title-lg">Ask every department at once</h2>
       </div>
-      <h2 className="md-title-lg">Ask every department at once</h2>
     </div>
   );
 }
