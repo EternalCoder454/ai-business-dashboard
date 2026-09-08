@@ -1,7 +1,7 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Button,
   ChevronIcon,
@@ -12,11 +12,12 @@ import {
   SendIcon,
   StatusDot,
   TextArea,
+  TextInput,
   cx,
 } from "@/components/ui";
 import { createRipple } from "@/components/ui/ripple";
 import { useMessages, useThread } from "@/lib/messages";
-import { formatExactTime } from "@/lib/routes";
+import { formatDay, formatExactTime, sameDay } from "@/lib/routes";
 import { useStore } from "@/lib/store";
 import {
   DELIVERY_LABEL,
@@ -67,6 +68,7 @@ export default function MessagesPage() {
   const staggered = useStaggeredList();
   const { ready, enabled, self, threads, people, refresh, clearUnreadFor } = useMessages();
   const [open, setOpen] = useState<string>();
+  const [query, setQuery] = useState("");
 
   const byEmail = useMemo(() => new Map(people.map((p) => [p.email, p])), [people]);
 
@@ -93,8 +95,23 @@ export default function MessagesPage() {
         lastSeen: false,
         unread: 0,
       }));
-    return [...withHistory, ...rest];
-  }, [threads, people, byEmail]);
+    const all = [...withHistory, ...rest];
+
+    /*
+     * Name, address and the last thing said.
+     *
+     * Searching the preview as well as the name is the difference between a
+     * filter and a way of finding a conversation: what somebody remembers about
+     * a thread is usually a word in it, not who it was with.
+     */
+    const needle = query.trim().toLowerCase();
+    if (!needle) return all;
+    return all.filter((row) =>
+      [row.person?.displayName, row.email, row.preview]
+        .filter(Boolean)
+        .some((field) => field!.toLowerCase().includes(needle)),
+    );
+  }, [threads, people, byEmail, query]);
 
   // Opening a thread is what marks it read, so the badge should drop at once
   // rather than at the next poll.
@@ -144,13 +161,33 @@ export default function MessagesPage() {
           scroll
           className={cx(open && "hidden expanded:flex")}
         >
+          {people.length + threads.length > 0 ? (
+            <div className="flex-none px-3 pt-3">
+              <TextInput
+                size="sm"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search messages"
+                aria-label="Search messages"
+              />
+            </div>
+          ) : null}
+
           {rows.length === 0 ? (
             <div className="px-4 py-6">
-              <EmptyState
-                icon="👤"
-                title="Nobody else yet"
-                description="Colleagues appear here once an administrator adds them."
-              />
+              {query.trim() ? (
+                <EmptyState
+                  icon="🔍"
+                  title="Nothing matches that"
+                  description="Try a name, an address, or a word somebody used."
+                />
+              ) : (
+                <EmptyState
+                  icon="👤"
+                  title="Nobody else yet"
+                  description="Colleagues appear here once an administrator adds them."
+                />
+              )}
             </div>
           ) : (
             <ul ref={staggered} className="p-2">
@@ -355,8 +392,26 @@ function Thread({
         ) : (
           <ul className="measure-read flex flex-col pb-2">
             {messages.map((message, index) => (
+              <Fragment key={message.id}>
+                {/*
+                  * The day, once, where it turns.
+                  *
+                  * A thread is a record, and a run of bubbles with only a
+                  * clock on each one answers "what time" while never
+                  * answering "which day". Today and Yesterday by name,
+                  * because those are the two a reader resolves instantly
+                  * and the two most messages fall in.
+                  */}
+                {index === 0 || !sameDay(message.sentAt, messages[index - 1].sentAt) ? (
+                  <li className="flex items-center gap-3 px-2 py-3">
+                    <span className="h-px flex-1 bg-outline-variant" />
+                    <span className="md-label-sm flex-none text-on-variant/75">
+                      {formatDay(message.sentAt)}
+                    </span>
+                    <span className="h-px flex-1 bg-outline-variant" />
+                  </li>
+                ) : null}
               <MessageRow
-                key={message.id}
                 message={message}
                 self={self}
                 previous={messages[index - 1]}
@@ -374,6 +429,7 @@ function Thread({
                       }
                 }
               />
+              </Fragment>
             ))}
           </ul>
         )}
@@ -480,7 +536,10 @@ function MessageRow({
   // A new run starts on a different sender, or after five quiet minutes.
   const runOn =
     previous?.fromEmail === message.fromEmail &&
-    message.sentAt - previous.sentAt < 5 * 60_000;
+    message.sentAt - previous.sentAt < 5 * 60_000 &&
+    // A divider has been drawn between them, so they are not one run however
+    // few minutes apart the clock says they were.
+    sameDay(message.sentAt, previous.sentAt);
   const sendingNow = message.local === "sending";
 
   /*

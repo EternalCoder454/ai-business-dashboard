@@ -15,6 +15,32 @@ export function conversationHref(departmentId: string, conversationId: string): 
   return `${departmentHrefById(departmentId)}?c=${encodeURIComponent(conversationId)}`;
 }
 
+/** Which way round a date reads. */
+export type DateOrder = "mdy" | "dmy" | "ymd";
+
+/** Twelve hours with am and pm, or twenty four. */
+export type Clock = "12" | "24";
+
+/*
+ * The style every written date uses, held here rather than passed in.
+ *
+ * formatExactTime is a plain function called from about twenty files, several
+ * of them deep inside lists. Threading a preference through all of them to
+ * reach the same answer would be worse than one module holding it, and this is
+ * display only: nothing is stored or compared in this shape.
+ *
+ * The default is what the panel always wrote, so a browser that has never
+ * chosen and the server both produce the string they produced before.
+ */
+let order: DateOrder = "mdy";
+let clock: Clock = "24";
+
+/** Called by dateChoice once the browser's preference is known. */
+export function setDateStyle(nextOrder: DateOrder, nextClock: Clock): void {
+  order = nextOrder;
+  clock = nextClock;
+}
+
 /**
  * A timestamp as a date and a time, for anything that is a record.
  *
@@ -24,17 +50,64 @@ export function conversationHref(departmentId: string, conversationId: string): 
  * they arrive weeks after the fact, so counting backwards from now made the
  * reader do arithmetic to reach a date that was already known.
  *
- * MM/DD/YYYY and a 24 hour clock, written out rather than left to the browser's
- * locale, because two people looking at the same feedback should be reading the
- * same string. Padded, so a column of them lines up.
+ * Written out rather than left to the browser's locale, because two people
+ * looking at the same record should be reading the same string, and padded so
+ * a column of them lines up. Which way round, and which clock, is the one thing
+ * that is now a choice: 09/07 is the ninth of July to most of the world and the
+ * seventh of September in the United States, and it was silently one of them.
  */
 export function formatExactTime(timestamp: number): string {
   const at = new Date(timestamp);
   if (Number.isNaN(at.getTime())) return "";
   const pad = (value: number) => String(value).padStart(2, "0");
+
+  const month = pad(at.getMonth() + 1);
+  const day = pad(at.getDate());
+  const year = at.getFullYear();
+  const date =
+    order === "dmy"
+      ? `${day}/${month}/${year}`
+      : order === "ymd"
+        ? `${year}-${month}-${day}`
+        : `${month}/${day}/${year}`;
+
+  if (clock === "24") return `${date} - ${pad(at.getHours())}:${pad(at.getMinutes())}`;
+
+  const hours = at.getHours();
+  const twelve = hours % 12 === 0 ? 12 : hours % 12;
+  return `${date} - ${twelve}:${pad(at.getMinutes())} ${hours < 12 ? "am" : "pm"}`;
+}
+
+/**
+ * Which day a thing happened on, for a divider in a run of them.
+ *
+ * Today and Yesterday by name, because those are the two a reader resolves
+ * instantly and the two most messages fall in. Anything older gets its weekday
+ * as well as its date: "Monday, 09/07" tells you it was the start of a week,
+ * which "09/07" on its own does not.
+ */
+export function formatDay(timestamp: number): string {
+  const at = new Date(timestamp);
+  if (Number.isNaN(at.getTime())) return "";
+  const midnight = (value: Date) =>
+    new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+  const days = Math.round((midnight(at) - midnight(new Date())) / 86_400_000);
+  if (days === 0) return "Today";
+  if (days === -1) return "Yesterday";
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const weekday = at.toLocaleDateString(undefined, { weekday: "long" });
+  const date = `${pad(at.getMonth() + 1)}/${pad(at.getDate())}`;
+  return days > -7 ? `${weekday}, ${date}` : `${date}/${at.getFullYear()}`;
+}
+
+/** Whether two moments fall on the same day, for deciding to draw one. */
+export function sameDay(a: number, b: number): boolean {
+  const one = new Date(a);
+  const two = new Date(b);
   return (
-    `${pad(at.getMonth() + 1)}/${pad(at.getDate())}/${at.getFullYear()}` +
-    ` - ${pad(at.getHours())}:${pad(at.getMinutes())}`
+    one.getFullYear() === two.getFullYear() &&
+    one.getMonth() === two.getMonth() &&
+    one.getDate() === two.getDate()
   );
 }
 

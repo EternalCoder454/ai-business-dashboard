@@ -1,6 +1,7 @@
 "use client";
 
 import { hasKeyFor } from "./hasKey";
+import { useMutedNotices } from "./notificationChoice";
 import { useMemo, useState } from "react";
 import { hasProfileContent } from "./prompts";
 import { useStore } from "./store";
@@ -20,6 +21,32 @@ export interface Notification {
   tone: "warning" | "info";
 }
 
+/**
+ * Every notice the panel can raise, with what it is called where somebody
+ * chooses whether to keep seeing it.
+ *
+ * Here rather than in the account settings page so the switches cannot drift
+ * from the notices: a new one added below without a name here will not compile.
+ */
+export const NOTICES = {
+  "no-key": "No API key set",
+  overdue: "Tasks overdue",
+  "no-profile": "Company profile is empty",
+  "no-memory": "Nothing recorded in memory",
+  "bare-departments": "Heads without skills",
+} as const;
+
+export type NoticeId = keyof typeof NOTICES;
+
+/**
+ * Notices that lead somewhere only an administrator can go.
+ *
+ * A member reading "No API key set" is being told to fix something on a page
+ * that answers "an administrator looks after this", which is worse than not
+ * being told: it is a chore with no way to do it.
+ */
+const ADMIN_ONLY = new Set<NoticeId>(["no-key", "no-profile", "bare-departments"]);
+
 export function useNotifications(): Notification[] {
   const {
     ready,
@@ -31,7 +58,9 @@ export function useNotifications(): Notification[] {
     settings,
     serverKeys,
     workspaceKeys,
+    workspaceRole,
   } = useStore();
+  const muted = useMutedNotices();
 
   // Taken once on mount. Reading the clock during render is not pure, and the
   // output would then depend on when React happened to run.
@@ -96,8 +125,14 @@ export function useNotifications(): Notification[] {
       });
     }
 
-    return items;
+    return items.filter(
+      (item) =>
+        !muted.includes(item.id) &&
+        (workspaceRole === "admin" || !ADMIN_ONLY.has(item.id as NoticeId)),
+    );
   }, [
+    muted,
+    workspaceRole,
     ready,
     serverKeys,
     workspaceKeys,
