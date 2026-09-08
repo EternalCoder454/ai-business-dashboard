@@ -233,8 +233,8 @@
    * touchscreen, where a soft edge reads as something you can push, and on a
    * monitor it reads as a phone app that has been stretched.
    *
-   * A tighter scale, and one that still steps. Six for anything you interact
-   * with, eight for the things those sit in, ten for a card and fourteen for a
+   * A tighter scale, and one that still steps. Four for anything you interact
+   * with, six for the things those sit in, eight for a card and eleven for a
    * dialog. Tailwind's own names, redefined, so the hundred and thirty odd
    * places already asking for rounded-lg or rounded-2xl move together and
    * nothing has to be swept.
@@ -242,10 +242,10 @@
    * rounded-full is untouched and is now for round things only: avatars,
    * status dots, the ends of a progress bar.
    */
-  --radius-lg: 6px;
-  --radius-xl: 8px;
-  --radius-2xl: 10px;
-  --radius-3xl: 14px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --radius-2xl: 8px;
+  --radius-3xl: 11px;
 }
 
 /*
