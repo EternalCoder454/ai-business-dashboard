@@ -8,6 +8,7 @@ import { DepartmentAvatar } from "./DepartmentAvatar";
 import { createRipple } from "./ui/ripple";
 import { departmentHref } from "@/lib/routes";
 import { useStore } from "@/lib/store";
+import { TOUR_KEY } from "@/lib/tour";
 
 /**
  * A short walk around the panel, once, that walks with you.
@@ -40,16 +41,6 @@ interface Slide {
   /** Only for whoever runs the business. */
   adminOnly?: boolean;
 }
-
-/**
- * Whether this browser has been through the tour.
- *
- * The key carries a version, so the tour can be shown to everybody again later
- * by bumping it rather than by hunting for who has already seen what. Exported
- * because the account settings offer a way back to it, which used to mean
- * knowing the string and clearing it by hand.
- */
-export const TOUR_KEY = "eterneon:tour-v1";
 
 export function Setup() {
   const { ready, storage, settings, departments, orchestrator, workspaceRole } = useStore();

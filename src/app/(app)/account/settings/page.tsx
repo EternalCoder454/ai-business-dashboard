@@ -2,7 +2,6 @@
 
 import { AccountTabs } from "@/components/AccountTabs";
 import { PageHeader } from "@/components/PageHeader";
-import { TOUR_KEY } from "@/components/Setup";
 import { Button, Card, Field, Select } from "@/components/ui";
 import {
   setSearchShortcutChoice,
@@ -11,6 +10,7 @@ import {
   useSidebarSideChoice,
 } from "@/lib/deskChoice";
 import { useStore } from "@/lib/store";
+import { TOUR_KEY } from "@/lib/tour";
 import type { SearchShortcut, SidebarSide } from "@/lib/types";
 
 /**
