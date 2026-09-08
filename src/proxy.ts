@@ -19,11 +19,12 @@ import { authEnabled } from "@/auth";
  * cookie at all.
  *
  * Which means a forged or expired cookie gets past this and is refused a moment
- * later by the route it reached. That is not a hole, because nothing here was
- * ever the real check: every API route calls `requireSession` for itself and
- * every page loads through `auth()`, both of which read the session properly.
- * What this does is send somebody without one to the sign-in page instead of to
- * a screen that cannot answer them.
+ * later by whatever it reached. That is not a hole, because nothing here was
+ * ever the real check: every API route calls `requireSession` for itself, and
+ * the layout every private page sits under resolves the session properly and
+ * redirects here if there is not one. What this does is send the ordinary
+ * signed-out visitor to the sign-in page without a database round trip on
+ * every request in the application.
  */
 export default async function proxy(request: NextRequest) {
   if (!authEnabled) return NextResponse.next();
