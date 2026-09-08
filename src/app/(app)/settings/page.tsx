@@ -16,6 +16,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArchiveIcon,
   BuildingIcon,
+  EmptyState,
+  GearIcon,
   Button,
   Card,
   Chip,
@@ -240,6 +242,31 @@ function SettingsBody() {
    */
   const tab = tabFrom(useSearchParams().get("tab"));
   const router = useRouter();
+
+  /*
+   * The whole page, not a tab of it.
+   *
+   * Every control on all six tabs is refused on the server for anybody who is
+   * not an administrator: the company's name and mark, its profile, its heads,
+   * its keys, its integrations and its backups. Left in the navigation it drew
+   * six headings with nothing under them, which reads as a page that failed to
+   * load rather than as one that is not yours. It is out of the menu and the
+   * drawer as well, so this is only what somebody following an old link sees.
+   */
+  if (!isAdmin) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <PageHeader eyebrow="Configuration" title="Settings" />
+        <div className="measure min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+          <EmptyState
+            icon={<GearIcon className="h-8 w-8" />}
+            title="An administrator looks after this"
+            description="The company's name, heads, keys and backups are set by whoever runs this business."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">

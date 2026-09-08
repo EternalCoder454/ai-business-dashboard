@@ -45,7 +45,6 @@ import type { Density, ThemeMode } from "@/lib/types";
  * lines saying so. One row leads to all of it.
  */
 const LINKS = [
-  { href: "/settings", label: "Settings", icon: <GearIcon className="h-4 w-4" /> },
   { href: "/wiki", label: "Internal wiki", icon: <BookIcon className="h-4 w-4" /> },
   /*
    * Directly under the wiki, because both are reading and somebody looking for
@@ -66,11 +65,21 @@ const LINKS = [
  * the keys. They are separate rows now because they lead to separate screens
  * with separate rules about whose data they can touch.
  */
-const ADMIN = {
-  href: "/manage",
-  label: "Management",
-  icon: <UsersIcon className="h-4 w-4" />,
-};
+/*
+ * The two rows only an administrator has any use for.
+ *
+ * Settings was in the list above, and every control on all six of its tabs is
+ * refused on the server for anybody else: the company's name and mark, its
+ * profile, its heads, its keys, its integrations and its backups. A member
+ * opening it got six headings with nothing under them, which reads as a page
+ * that failed to load rather than as one that is not theirs.
+ *
+ * The account page is where a member's own settings are, and that stays.
+ */
+const ADMIN_LINKS = [
+  { href: "/settings", label: "Settings", icon: <GearIcon className="h-4 w-4" /> },
+  { href: "/manage", label: "Management", icon: <UsersIcon className="h-4 w-4" /> },
+];
 
 export function ProfileMenu() {
   const { account, isOperator, workspaceRole, accountEmail, canOpenPath, settings } = useStore();
@@ -519,7 +528,7 @@ export function ProfileMenu() {
 
             {[
               ...LINKS.filter((link) => canOpenPath(link.href)),
-              ...(workspaceRole === "admin" ? [ADMIN] : []),
+              ...(workspaceRole === "admin" ? ADMIN_LINKS : []),
               ...(isOperator ? [OPERATOR] : []),
             ].map((link) => (
               <Link

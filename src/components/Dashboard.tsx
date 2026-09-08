@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarCard } from "./CalendarCard";
+import { DepartmentAvatar } from "./DepartmentAvatar";
 import type { DashboardPreview } from "@/lib/dashboardPreview";
 import { SpendCard } from "./SpendCard";
 import { ContextCard } from "./ContextCard";
@@ -13,6 +14,7 @@ import {
   ChevronIcon,
   DocIcon,
   FolderIcon,
+  FeedbackIcon,
   SparkIcon,
   UsersIcon,
   cx,
@@ -47,6 +49,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
     projects,
     memory,
     tasks,
+    taskComments,
     skills,
     profile,
     settings,
@@ -261,16 +264,29 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
           icon={<CheckIcon className="h-3.5 w-3.5" />}
           href="/tasks"
           empty="No open tasks."
-          items={openTasks.slice(0, 5).map((task) => ({
-            key: task.id,
-            href: "/tasks",
-            primary: task.title,
-            secondary: `${nameOf(task.departmentId)}${
-              task.dueAt
-                ? ` · due ${new Date(task.dueAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`
-                : ""
-            }`,
-          }))}
+          items={openTasks.slice(0, 5).map((task) => {
+            const said = taskComments.filter((comment) => comment.taskId === task.id).length;
+            return {
+              key: task.id,
+              href: "/tasks",
+              departmentId: task.departmentId,
+              primary: task.title,
+              secondary: `${nameOf(task.departmentId)}${
+                task.dueAt
+                  ? ` · due ${new Date(task.dueAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`
+                  : ""
+              }`,
+              trailing: said ? (
+                <span
+                  title={`${said} comment${said === 1 ? "" : "s"}`}
+                  className="md-label-sm flex flex-none items-center gap-1 text-on-variant/75"
+                >
+                  <FeedbackIcon className="h-3.5 w-3.5" />
+                  {said}
+                </span>
+              ) : undefined,
+            };
+          })}
         />
 
         <PaneList
@@ -282,6 +298,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
           items={decisions.map((entry) => ({
             key: entry.id,
             href: "/library/memory",
+            departmentId: entry.departmentId,
             primary: entry.label,
             secondary: `${nameOf(entry.departmentId)} · ${formatExactTime(entry.occurredAt)}`,
           }))}
@@ -296,6 +313,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
           items={deliverables.slice(0, 4).map((item) => ({
             key: item.id,
             href: "/library/deliverables",
+            departmentId: item.departmentId,
             primary: item.title,
             secondary: `${nameOf(item.departmentId)} · ${formatExactTime(item.updatedAt)}`,
           }))}
@@ -310,6 +328,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
           items={recent.map((conversation) => ({
             key: conversation.id,
             href: conversationHref(conversation.departmentId, conversation.id),
+            departmentId: conversation.departmentId,
             primary: conversation.title,
             secondary: `${nameOf(conversation.departmentId)} · ${formatExactTime(
               conversation.updatedAt,
@@ -655,10 +674,20 @@ function PaneList({
   icon: ReactNode;
   href: string;
   empty: string;
-  items: { key: string; href: string; primary: string; secondary: string }[];
+  items: {
+    key: string;
+    href: string;
+    primary: string;
+    secondary: string;
+    /** The head this belongs to, drawn as a disc at the head of the row. */
+    departmentId?: string;
+    /** Something small at the end of the row, when there is anything to say. */
+    trailing?: ReactNode;
+  }[];
   /** What this section is, behind a question mark. See Hint. */
   what?: string;
 }) {
+  const { allDepartments } = useStore();
   return (
     <section className="rounded-2xl bg-container p-4 shadow-e1">
       <div
@@ -687,20 +716,43 @@ function PaneList({
 
       {items.length === 0 ? null : (
         <ul className="-mx-2 space-y-0.5">
-          {items.map((item) => (
-            <li key={item.key}>
-              <Link
-                href={item.href}
-                onClick={createRipple}
-                className="md-state block rounded-lg px-2 py-1.5"
-              >
-                <span className="md-body block truncate">{item.primary}</span>
-                <span className="md-label-sm block truncate text-on-variant/75">
-                  {item.secondary}
-                </span>
-              </Link>
-            </li>
-          ))}
+          {items.map((item) => {
+            /*
+             * A disc at the head of the row.
+             *
+             * The one idea in the mock that generalises past the pane it was
+             * drawn for: every one of these lists is things a head did, the
+             * head is already named on the second line, and a name is something
+             * you read where a colour is something you see.
+             */
+            const department = item.departmentId
+              ? allDepartments.find((d) => d.id === item.departmentId)
+              : undefined;
+            return (
+              <li key={item.key}>
+                <Link
+                  href={item.href}
+                  onClick={createRipple}
+                  className="md-state flex items-center gap-2.5 rounded-lg px-2 py-1.5"
+                >
+                  {department ? (
+                    <DepartmentAvatar
+                      department={department}
+                      size={26}
+                      title={department.roleTitle}
+                    />
+                  ) : null}
+                  <span className="min-w-0 flex-1">
+                    <span className="md-body block truncate">{item.primary}</span>
+                    <span className="md-label-sm block truncate text-on-variant/75">
+                      {item.secondary}
+                    </span>
+                  </span>
+                  {item.trailing}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
