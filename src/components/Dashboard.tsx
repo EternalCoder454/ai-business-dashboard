@@ -3,6 +3,7 @@
 import { CalendarCard } from "./CalendarCard";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import type { DashboardPreview } from "@/lib/dashboardPreview";
+import { dueCounts } from "@/lib/taskCounts";
 import { SpendCard } from "./SpendCard";
 import { ContextCard } from "./ContextCard";
 import { StorageCard } from "./StorageCard";
@@ -111,19 +112,7 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
    * No date is its own column rather than folded into later, since a task
    * nobody dated is the one that quietly never gets done.
    */
-  const due = useMemo(() => {
-    const day = 86_400_000;
-    const midnight = new Date(now).setHours(0, 0, 0, 0);
-    const counts = { overdue: 0, week: 0, next: 0, later: 0, undated: 0 };
-    for (const task of openTasks) {
-      if (task.dueAt === undefined) counts.undated += 1;
-      else if (task.dueAt < midnight) counts.overdue += 1;
-      else if (task.dueAt < midnight + 7 * day) counts.week += 1;
-      else if (task.dueAt < midnight + 14 * day) counts.next += 1;
-      else counts.later += 1;
-    }
-    return counts;
-  }, [openTasks, now]);
+  const due = useMemo(() => dueCounts(tasks, now), [tasks, now]);
 
   /*
    * The two panes the server already drew, until the snapshot arrives.
@@ -216,12 +205,18 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
         }
       >
         <div className="grid grid-cols-2 gap-3 medium:grid-cols-4">
-          <Count label="Overdue" value={due.overdue} tone={due.overdue > 0 ? "bad" : undefined} />
-          <Count label="Due this week" value={due.week} />
-          <Count label="Due next week" value={due.next} />
+          <Count
+            label="Overdue"
+            value={due.overdue}
+            was={due.was.overdue}
+            tone={due.overdue > 0 ? "bad" : undefined}
+          />
+          <Count label="Due this week" value={due.week} was={due.was.week} />
+          <Count label="Due next week" value={due.next} was={due.was.next} />
           <Count
             label="No date"
             value={due.undated}
+            was={due.was.undated}
             hint={due.later > 0 ? `${due.later} further out` : undefined}
           />
         </div>
@@ -396,15 +391,32 @@ export function Dashboard({ preview }: { preview?: DashboardPreview | null }) {
   );
 }
 
+/**
+ * How a count has moved, in whole tasks.
+ *
+ * Not the percentage the mock drew. These are single digits: going from one
+ * overdue task to two is a hundred percent rise, which is true, useless, and
+ * reads as an emergency. Two of anything is two of anything.
+ */
+function moved(value: number, was: number): string {
+  const delta = value - was;
+  if (delta === 0) return "Same as last week";
+  if (delta > 0) return `${delta} more than last week`;
+  return `${-delta} fewer than last week`;
+}
+
 /** One number, big enough to read from the doorway. */
 function Count({
   label,
   value,
+  was,
   hint,
   tone,
 }: {
   label: string;
   value: number;
+  /** The same count a week ago, when it can be worked out. */
+  was?: number;
   hint?: string;
   tone?: "bad";
 }) {
@@ -419,7 +431,10 @@ function Count({
       >
         {value}
       </p>
-      {hint ? <p className="md-label-sm mt-1 text-on-variant/75">{hint}</p> : null}
+      {was === undefined ? null : (
+        <p className="md-label-sm mt-1 text-on-variant/75">{moved(value, was)}</p>
+      )}
+      {hint ? <p className="md-label-sm mt-0.5 text-on-variant/75">{hint}</p> : null}
     </div>
   );
 }
