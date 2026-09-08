@@ -38,7 +38,6 @@ const SCOPED = [
   "settings",
   "directMessages",
   "messageBlocks",
-  "matrixRooms",
   "apiKeys",
   "schedules",
   "briefings",
@@ -58,15 +57,6 @@ const SCOPED = [
  * is something nobody has thought about, which the audit says out loud.
  */
 const UNFENCED: Record<string, string> = {
-  matrixIdentities:
-    "which Matrix user a person is, keyed by address like accounts and for the " +
-    "same reason: somebody in two businesses is one human being with one " +
-    "identity, and the businesses are Spaces on the homeserver rather than " +
-    "separate people",
-  matrixTransactions:
-    "the homeserver's own delivery bookkeeping, so a retry is recognised after " +
-    "a restart; it holds transaction ids and a timestamp and nothing a business " +
-    "could own",
   feedbackFiles:
     "attached to a piece of feedback, which is addressed to whoever runs the " +
     "deployment rather than owned by the business that sent it; read only on " +

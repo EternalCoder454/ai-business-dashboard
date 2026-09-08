@@ -79,10 +79,6 @@ export const NOT_BACKED_UP: Record<string, string> = {
   linkAllowlist: "a security decision, and restoring an older one widens it",
   messageBlocks:
     "who has stopped somebody writing to them; the same shape of decision as the link allowlist, and reinstating an older list would either restore a block somebody lifted or drop one they meant",
-  matrixRooms:
-    "which homeserver room a thread lives in; the rooms are on the homeserver " +
-    "and have their own history, so restoring an older mapping would point " +
-    "threads at rooms that have moved on and orphan the ones made since",
   telemetry: "a record of what happened, which did still happen",
   addonRuns: "the same, for add-ons",
   reports: "generated output, reproducible from the briefing that made it",

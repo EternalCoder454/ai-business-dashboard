@@ -62,11 +62,6 @@ const PUBLIC: Record<string, string> = {
     "answers a wrong path with JSON rather than an HTML 404; demanding a key " +
     "first would tell somebody with a typo to go and check their credentials",
   "auth/[...all]/route.ts": "better-auth's own handler, which is how anybody signs in at all",
-  "matrix/transactions/[txnId]/route.ts":
-    "the appservice endpoint the homeserver pushes events to; it has no session " +
-    "because a homeserver is not a person, and is guarded instead by hs_token, " +
-    "which is a shared secret set in the same file that registers the " +
-    "appservice and is checked on every request before anything is read",
 };
 
 function routes(dir: string, found: string[] = []): string[] {
