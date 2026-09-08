@@ -289,6 +289,78 @@ for (const [themeName, selector] of [
   );
 }
 
+/*
+ * Every brand a workspace may choose, against every head and every status.
+ *
+ * The default is checked above with the rest of the palette. These are the
+ * other six, and they need the same check for the same reason: each is a tenth
+ * colour dropped onto a circle that is already full, and a business picking
+ * plum must not end up with a link that looks like its Design head.
+ *
+ * Read out of the stylesheet rather than from a list here, so a colour added to
+ * the CSS and forgotten about is still checked.
+ */
+function brandBlock(selector: RegExp): Record<string, string> {
+  const match = selector.exec(CSS);
+  if (!match) throw new Error(`cannot find a rule for ${selector}`);
+  const open = CSS.indexOf("{", match.index + match[0].length - 1);
+  const close = CSS.indexOf("}", open);
+  const out: Record<string, string> = {};
+  for (const m of CSS.slice(open, close).matchAll(
+    /--(md-[a-z0-9-]+):\s*(#[0-9a-fA-F]{3,8})\s*;/g,
+  )) {
+    out[m[1]] = m[2];
+  }
+  return out;
+}
+
+for (const themeName of ["dark", "light"] as const) {
+  const base = themeBlock(
+    themeName === "dark"
+      ? /:root,\s*\[data-theme="dark"\]\s*\{/
+      : /\[data-theme="light"\]\s*\{/,
+  );
+  const brands = [
+    ...CSS.matchAll(new RegExp(`\\[data-theme="${themeName}"\\]\\[data-brand="([a-z]+)"\\]`, "g")),
+  ].map((m) => m[1]);
+
+  console.log(`\n${themeName} brands`);
+  for (const brand of brands) {
+    // A brand block carries only what it overrides, so it is laid over the
+    // theme underneath exactly as the cascade lays it.
+    const merged = {
+      ...base,
+      ...brandBlock(
+        new RegExp(`\\[data-theme="${themeName}"\\]\\[data-brand="${brand}"\\]\\s*\\{`),
+      ),
+    };
+
+    let nearest = { d: Infinity, other: "", kind: "" };
+    for (const other of [
+      ...ACCENTS.map((name) => `md-accent-${name}`),
+      "md-warning",
+      "md-error",
+      "md-success",
+    ]) {
+      const worst = apart(merged, "md-primary", other);
+      if (worst.d < nearest.d) nearest = { d: worst.d, other, kind: worst.kind };
+    }
+    check(
+      `${brand} is not mistakable for a head or a status`,
+      nearest.d >= ACCENTS_APART,
+      `nearest is ${nearest.other} at ${nearest.d.toFixed(1)} under ${nearest.kind}, needs ${ACCENTS_APART}`,
+    );
+
+    const ramp = [1, 2, 3, 4, 5, 6, 7].map((n) => lightness(merged[`md-chart-${n}`]));
+    const steps = ramp.slice(1).map((value, i) => value - ramp[i]);
+    check(
+      `${brand} steps its context bar through lightness`,
+      steps.every((step) => step >= RAMP_STEP),
+      `smallest step ${Math.min(...steps).toFixed(1)}, needs ${RAMP_STEP}`,
+    );
+  }
+}
+
 console.log(
   failures === 0
     ? "\nall checks passed"

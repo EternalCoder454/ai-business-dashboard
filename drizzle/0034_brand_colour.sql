@@ -1,0 +1,1 @@
+ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "brand" text NOT NULL DEFAULT 'amber';

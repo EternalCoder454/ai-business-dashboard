@@ -826,12 +826,14 @@ export function StoreProvider({
    */
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
+    document.documentElement.dataset.brand = settings.brand;
     try {
       window.localStorage.setItem("eterneon-theme", settings.theme);
+      window.localStorage.setItem("eterneon-brand", settings.brand);
     } catch {
-      // Private mode or blocked storage. The theme still applies this session.
+      // Private mode or blocked storage. Both still apply this session.
     }
-  }, [settings.theme]);
+  }, [settings.theme, settings.brand]);
 
   /**
    * One shared empty array, rather than a fresh `[]` per fallback per render.

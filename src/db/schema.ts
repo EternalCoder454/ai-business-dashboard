@@ -452,6 +452,7 @@ export const settings = pgTable("settings", {
   roomBrevity: text("room_brevity").notNull().default("tight"),
   companyMark: text("company_mark").notNull().default("HQ"),
   companyLogoUrl: text("company_logo_url"),
+  brand: text("brand").notNull().default("amber"),
   sidebarSide: text("sidebar_side").notNull().default("left"),
   searchShortcut: text("search_shortcut").notNull().default("slash"),
   wikiTitle: text("wiki_title").notNull().default("Internal Wiki"),

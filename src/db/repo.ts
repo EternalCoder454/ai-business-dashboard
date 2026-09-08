@@ -1,3 +1,4 @@
+import { DEFAULT_BRAND, isBrandColour } from "@/lib/brand";
 import { writableSettings } from "@/lib/settingsWrite";
 import { forgetBudget } from "./budget";
 import { fireTaskEvents, type TaskEvent } from "@/lib/addons/runner";
@@ -327,6 +328,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
         webSearch: t.settings.webSearch,
         monthlyBudget: t.settings.monthlyBudget,
         companyLogoUrl: t.settings.companyLogoUrl,
+        brand: t.settings.brand,
         sidebarSide: t.settings.sidebarSide,
         searchShortcut: t.settings.searchShortcut,
         wikiTitle: t.settings.wikiTitle,
@@ -546,6 +548,10 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
           : "off",
       monthlyBudget: settingsRow[0]?.monthlyBudget ?? 0,
       companyLogoUrl: settingsRow[0]?.companyLogoUrl ?? undefined,
+      // Checked against the list rather than trusted, so a value written by
+      // hand or left over from a release that offered a different colour
+      // falls back to the default instead of leaving the panel unstyled.
+      brand: isBrandColour(settingsRow[0]?.brand) ? settingsRow[0].brand : DEFAULT_BRAND,
       sidebarSide: (settingsRow[0]?.sidebarSide ?? "left") as Settings["sidebarSide"],
       searchShortcut: (settingsRow[0]?.searchShortcut ?? "slash") as Settings["searchShortcut"],
       wikiTitle: settingsRow[0]?.wikiTitle ?? "Internal Wiki",

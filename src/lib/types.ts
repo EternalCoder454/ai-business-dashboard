@@ -1,3 +1,4 @@
+import type { BrandColour } from "./brand";
 import type { Provider } from "./providers";
 
 export type { Provider };
@@ -557,6 +558,14 @@ export interface Settings {
    * removal sent that way never reaches the server at all.
    */
   companyLogoUrl?: string | null;
+  /**
+   * The workspace's brand colour, one of BRAND_COLOURS.
+   *
+   * A company setting rather than a personal one, unlike the theme. It is the
+   * first impression of the panel and it goes with the mark and the name, so it
+   * belongs to the business the way the logo does.
+   */
+  brand: BrandColour;
   /** Which edge the navigation sits on. */
   sidebarSide: SidebarSide;
   /** The single key that opens search. "none" turns the bare key off. */

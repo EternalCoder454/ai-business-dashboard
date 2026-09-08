@@ -38,6 +38,7 @@ import {
 import { DEPARTMENT_ACCENTS, EFFORT_OPTIONS, WRITING_RULES, departmentAccent } from "@/lib/seed";
 import { useStore } from "@/lib/store";
 import { useTypedField } from "@/lib/useTypedField";
+import { BRAND_COLOURS } from "@/lib/brand";
 import type { Department, DepartmentStatus, Effort, SearchShortcut, SidebarSide, ThemeMode } from "@/lib/types";
 
 type DeptDraft = Partial<Department> & { isNew?: boolean };
@@ -319,6 +320,55 @@ function SettingsBody() {
                     >
                       {mode === "dark" ? "Dark" : "Light"}
                     </Chip>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {/*
+              * The brand colour, beside the theme because it is the same kind
+              * of decision: what the panel looks like to everybody who opens
+              * it. Unlike the theme there is no personal override, since this
+              * is the company's colour rather than a reading preference.
+              *
+              * Seven swatches rather than a picker. The brand is a tenth colour
+              * on a circle that already holds nine heads and three status
+              * colours, and a hue chosen freely lands on one of them sooner or
+              * later. See BRAND_COLOURS.
+              */}
+            {isAdmin ? (
+              <div className="mt-5">
+                <p className="md-label mb-2 text-on-variant">Brand colour</p>
+                <div className="flex flex-wrap gap-2">
+                  {BRAND_COLOURS.map((colour) => (
+                    <button
+                      key={colour}
+                      type="button"
+                      onClick={() => void updateSettings({ brand: colour })}
+                      aria-pressed={settings.brand === colour}
+                      aria-label={colour[0].toUpperCase() + colour.slice(1)}
+                      /* Both attributes, because that is what the brand
+                         blocks select on. With only data-brand the swatch
+                         inherits whatever brand is in force and all seven
+                         come out the same colour. */
+                      data-theme={settings.theme}
+                      data-brand={colour}
+                      className={cx(
+                        "md-state md-target flex items-center gap-2 rounded-lg border px-3 py-1.5 transition-colors",
+                        settings.brand === colour
+                          ? "border-primary text-on-surface"
+                          : "border-outline-variant text-on-variant",
+                      )}
+                    >
+                      {/* The swatch takes its colour from the data-brand on the
+                          button itself, so each one shows the colour it sets
+                          rather than the colour currently in force. */}
+                      <span
+                        aria-hidden
+                        className="h-3.5 w-3.5 flex-none rounded-full bg-primary"
+                      />
+                      <span className="md-label capitalize">{colour}</span>
+                    </button>
                   ))}
                 </div>
               </div>

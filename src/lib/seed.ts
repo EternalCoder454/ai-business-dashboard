@@ -370,6 +370,7 @@ export const DEFAULT_SETTINGS: Settings = {
   writingRules: WRITING_RULES,
   roomBrevity: "tight",
   companyMark: "HQ",
+  brand: "amber",
   sidebarSide: "left",
   searchShortcut: "slash",
   wikiTitle: "Internal Wiki",

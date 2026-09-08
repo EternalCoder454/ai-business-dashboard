@@ -112,7 +112,11 @@ export const viewport: Viewport = {
  * The store mirrors the stored theme into localStorage precisely so this can
  * run without waiting on IndexedDB, which resolves long after the first paint.
  */
-const THEME_SCRIPT = `try{var t=localStorage.getItem("eterneon-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+const THEME_SCRIPT =
+  `try{var d=document.documentElement,t=localStorage.getItem("eterneon-theme");` +
+  `if(t==="light"||t==="dark")d.dataset.theme=t;` +
+  `var b=localStorage.getItem("eterneon-brand");` +
+  `if(b&&/^[a-z]{3,10}$/.test(b))d.dataset.brand=b}catch(e){}`;
 
 /**
  * Deliberately bare.
@@ -128,6 +132,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html
       lang="en"
       data-theme="dark"
+      data-brand="amber"
       className={`${sans.variable} ${mono.variable}`}
       suppressHydrationWarning
     >

@@ -173,6 +173,254 @@
   --md-elev-3: 0 0 0 1px var(--md-hairline), 0 12px 32px rgb(0 0 0 / 0.12);
 }
 
+/*
+ * The brand colour a workspace has chosen.
+ *
+ * Seven, not a picker. The brand is a tenth colour on a circle that already
+ * holds nine heads and three status colours, and the defect this palette was
+ * rebuilt to fix was the brand sitting on top of one of the heads. A free hue
+ * would put that back and nothing would notice, so the list is fixed and every
+ * entry on it is checked by colourblind-test against every head and every
+ * status colour, in both themes.
+ *
+ * The wheel does not move with it. A business picking plum should not find its
+ * Marketing head has changed colour, so the nine accents stay where they are
+ * and each brand is fitted around them: the lightness and chroma that put that
+ * hue furthest from everything else, inside a band calm enough to be a filled
+ * button rather than a highlighter.
+ *
+ * There is no blue. Fifteen degrees of the circle have no safe answer, and it
+ * is the arc where cyan and slate already live.
+ *
+ * Both attributes in each selector, so these beat the theme blocks above
+ * whichever way round the source happens to run. data-theme is always present:
+ * the root layout writes it before anything else does.
+ */
+[data-theme="dark"][data-brand="amber"] {
+  --md-primary: #dea57a;
+  --md-on-primary: #331700;
+  --md-primary-container: #5e3819;
+  --md-on-primary-container: #f9dbc5;
+  --md-secondary-container: #42352b;
+  --md-on-secondary-container: #eee2d9;
+  --md-chart-1: #a7463c;
+  --md-chart-2: #b4603a;
+  --md-chart-3: #be7a3f;
+  --md-chart-4: #c4954e;
+  --md-chart-5: #c8af67;
+  --md-chart-6: #cac985;
+  --md-chart-7: #cde1a6;
+}
+
+[data-theme="light"][data-brand="amber"] {
+  --md-primary: #7d4612;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #f9dbc5;
+  --md-on-primary-container: #562b02;
+  --md-secondary-container: #ecded5;
+  --md-on-secondary-container: #412e20;
+  --md-chart-1: #7c1310;
+  --md-chart-2: #8f3702;
+  --md-chart-3: #9d5706;
+  --md-chart-4: #a77523;
+  --md-chart-5: #ae9445;
+  --md-chart-6: #b3b169;
+  --md-chart-7: #bace90;
+}
+
+[data-theme="dark"][data-brand="coral"] {
+  --md-primary: #c98d87;
+  --md-on-primary: #371210;
+  --md-primary-container: #62322f;
+  --md-on-primary-container: #fed6d2;
+  --md-secondary-container: #453331;
+  --md-on-secondary-container: #f0e0df;
+  --md-chart-1: #a0446d;
+  --md-chart-2: #b65869;
+  --md-chart-3: #c86f67;
+  --md-chart-4: #d58869;
+  --md-chart-5: #e0a272;
+  --md-chart-6: #e7bc83;
+  --md-chart-7: #ecd69b;
+}
+
+[data-theme="light"][data-brand="coral"] {
+  --md-primary: #934844;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #fed6d2;
+  --md-on-primary-container: #5a2522;
+  --md-secondary-container: #eedddb;
+  --md-on-secondary-container: #442c2a;
+  --md-chart-1: #761246;
+  --md-chart-2: #902f44;
+  --md-chart-3: #a64b43;
+  --md-chart-4: #b86847;
+  --md-chart-5: #c68653;
+  --md-chart-6: #d1a467;
+  --md-chart-7: #d9c284;
+}
+
+[data-theme="dark"][data-brand="moss"] {
+  --md-primary: #99b97f;
+  --md-on-primary: #142503;
+  --md-primary-container: #344a21;
+  --md-on-primary-container: #d6e8ca;
+  --md-secondary-container: #333b2d;
+  --md-on-secondary-container: #e0e7db;
+  --md-chart-1: #766a01;
+  --md-chart-2: #758320;
+  --md-chart-3: #6f9b51;
+  --md-chart-4: #6db17b;
+  --md-chart-5: #71c5a2;
+  --md-chart-6: #7fd7c7;
+  --md-chart-7: #96e8ea;
+}
+
+[data-theme="light"][data-brand="moss"] {
+  --md-primary: #3a5423;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #d6e8ca;
+  --md-on-primary-container: #28400f;
+  --md-secondary-container: #dce4d7;
+  --md-on-secondary-container: #2c3724;
+  --md-chart-1: #4b4301;
+  --md-chart-2: #525d00;
+  --md-chart-3: #4d7929;
+  --md-chart-4: #4a935b;
+  --md-chart-5: #4faa87;
+  --md-chart-6: #61c1b0;
+  --md-chart-7: #7dd6d7;
+}
+
+[data-theme="dark"][data-brand="teal"] {
+  --md-primary: #8cbeaa;
+  --md-on-primary: #00261b;
+  --md-primary-container: #0f4e3b;
+  --md-on-primary-container: #c6ebdc;
+  --md-secondary-container: #2b3c35;
+  --md-on-secondary-container: #dae9e2;
+  --md-chart-1: #3f7a28;
+  --md-chart-2: #328f58;
+  --md-chart-3: #2ea281;
+  --md-chart-4: #3eb3a7;
+  --md-chart-5: #5bc3cb;
+  --md-chart-6: #7ed3ea;
+  --md-chart-7: #a9e0ff;
+}
+
+[data-theme="light"][data-brand="teal"] {
+  --md-primary: #225241;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #c6ebdc;
+  --md-on-primary-container: #004331;
+  --md-secondary-container: #d5e6df;
+  --md-on-secondary-container: #20392f;
+  --md-chart-1: #1c5000;
+  --md-chart-2: #016837;
+  --md-chart-3: #007e61;
+  --md-chart-4: #029489;
+  --md-chart-5: #2fa9b1;
+  --md-chart-6: #5fbcd4;
+  --md-chart-7: #8bcef3;
+}
+
+[data-theme="dark"][data-brand="indigo"] {
+  --md-primary: #9dbcdf;
+  --md-on-primary: #06203b;
+  --md-primary-container: #254466;
+  --md-on-primary-container: #cce4ff;
+  --md-secondary-container: #2e3945;
+  --md-on-secondary-container: #dce6f1;
+  --md-chart-1: #027590;
+  --md-chart-2: #1783b9;
+  --md-chart-3: #598fcf;
+  --md-chart-4: #849be0;
+  --md-chart-5: #aba8ec;
+  --md-chart-6: #ceb7f5;
+  --md-chart-7: #edc8fb;
+}
+
+[data-theme="light"][data-brand="indigo"] {
+  --md-primary: #3c5775;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #cce4ff;
+  --md-on-primary-container: #143960;
+  --md-secondary-container: #d8e2ef;
+  --md-on-secondary-container: #253445;
+  --md-chart-1: #004a5d;
+  --md-chart-2: #005d87;
+  --md-chart-3: #326caf;
+  --md-chart-4: #657cc3;
+  --md-chart-5: #908dd3;
+  --md-chart-6: #b79fdf;
+  --md-chart-7: #dbb3e9;
+}
+
+[data-theme="dark"][data-brand="violet"] {
+  --md-primary: #bdb6e1;
+  --md-on-primary: #201939;
+  --md-primary-container: #433b64;
+  --md-on-primary-container: #e1ddfe;
+  --md-secondary-container: #383645;
+  --md-on-secondary-container: #e4e3f0;
+  --md-chart-1: #3e66b3;
+  --md-chart-2: #6a71c1;
+  --md-chart-3: #907eca;
+  --md-chart-4: #b28cd0;
+  --md-chart-5: #d19cd3;
+  --md-chart-6: #ecaed5;
+  --md-chart-7: #ffc5d8;
+}
+
+[data-theme="light"][data-brand="violet"] {
+  --md-primary: #524b70;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #e1ddfe;
+  --md-on-primary-container: #392f5d;
+  --md-secondary-container: #e1dfee;
+  --md-on-secondary-container: #333044;
+  --md-chart-1: #133c8b;
+  --md-chart-2: #474b9d;
+  --md-chart-3: #6f5baa;
+  --md-chart-4: #946cb3;
+  --md-chart-5: #b780b9;
+  --md-chart-6: #d695be;
+  --md-chart-7: #f2adc5;
+}
+
+[data-theme="dark"][data-brand="plum"] {
+  --md-primary: #d990d2;
+  --md-on-primary: #2f132d;
+  --md-primary-container: #573454;
+  --md-on-primary-container: #f3d7f0;
+  --md-secondary-container: #40333e;
+  --md-on-secondary-container: #ece0ea;
+  --md-chart-1: #7555a8;
+  --md-chart-2: #9662ab;
+  --md-chart-3: #b471ab;
+  --md-chart-4: #ce83aa;
+  --md-chart-5: #e597ab;
+  --md-chart-6: #f8adad;
+  --md-chart-7: #ffc9bb;
+}
+
+[data-theme="light"][data-brand="plum"] {
+  --md-primary: #795976;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #f3d7f0;
+  --md-on-primary-container: #4e274b;
+  --md-secondary-container: #e9dde8;
+  --md-on-secondary-container: #3d2c3c;
+  --md-chart-1: #4f2980;
+  --md-chart-2: #723b86;
+  --md-chart-3: #924e8a;
+  --md-chart-4: #b0638d;
+  --md-chart-5: #cb7a90;
+  --md-chart-6: #e29595;
+  --md-chart-7: #f6b19f;
+}
+
+
 /* Material 3 window size classes, replacing Tailwind's device-flavoured
    defaults. Compact gets a bottom bar, medium and expanded a navigation rail,
    large and above a permanent drawer. */

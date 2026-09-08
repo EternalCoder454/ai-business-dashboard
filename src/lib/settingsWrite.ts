@@ -31,6 +31,7 @@ export const WRITABLE_SETTINGS = [
   "monthlyBudget",
   "maxEffort",
   "companyLogoUrl",
+  "brand",
   "sidebarSide",
   "searchShortcut",
   "wikiTitle",
@@ -58,6 +59,9 @@ export const ADMIN_ONLY_SETTINGS = new Set<string>([
   "wikiTitle",
   "wikiSubtitle",
   "writingRules",
+  // The brand colour, which is the mark and the name again in another
+  // form: on every screen, and nobody's personal preference.
+  "brand",
   "monthlyBudget",
   // A spending control like the budget beside it.
   "maxEffort",
