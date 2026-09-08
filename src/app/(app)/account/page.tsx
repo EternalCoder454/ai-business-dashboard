@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountTabs } from "@/components/AccountTabs";
 import { PageHeader } from "@/components/PageHeader";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -95,6 +96,7 @@ export default function AccountPage() {
         title="Account"
         actions={saved ? <Chip tone="success">Saved</Chip> : null}
       />
+      <AccountTabs />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 medium:px-6 expanded:px-8">
         <div className="measure flex flex-col gap-5">

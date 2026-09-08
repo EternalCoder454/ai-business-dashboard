@@ -77,6 +77,7 @@ import type {
 import { PROVIDERS, type Provider } from "./providers";
 import type { Credential } from "@/db/keys";
 import { useDensityChoice } from "./densityChoice";
+import { useSearchShortcutChoice, useSidebarSideChoice } from "./deskChoice";
 import { useThemeChoice } from "./themeChoice";
 
 export interface StoreValue {
@@ -731,6 +732,8 @@ export function StoreProvider({
    */
   const themeChoice = useThemeChoice();
   const densityChoice = useDensityChoice();
+  const sideChoice = useSidebarSideChoice();
+  const searchChoice = useSearchShortcutChoice();
 
   const [storedTheme] = useState<Settings["theme"] | null>(() => {
     if (typeof window === "undefined") return null;
@@ -789,11 +792,21 @@ export function StoreProvider({
     // And this person's own density over the company's, for the same reason:
     // a thirteen inch laptop is not a company decision.
     const packed = densityChoice ? { ...themed, density: densityChoice } : themed;
+    /*
+     * And how this desk is arranged, which was never the company's business.
+     * The columns stay for now so an existing workspace keeps whatever it
+     * had until somebody chooses, and nothing writes them any more.
+     */
+    const desked = {
+      ...packed,
+      ...(sideChoice ? { sidebarSide: sideChoice } : {}),
+      ...(searchChoice ? { searchShortcut: searchChoice } : {}),
+    };
 
     // Neither storage holds the credentials, so they are laid over the top from
     // this browser once read. Overlaying unconditionally is what lets an empty
     // key mean cleared rather than merely absent.
-    return credentialsReady ? { ...packed, ...credentials } : packed;
+    return credentialsReady ? { ...desked, ...credentials } : desked;
   }, [
     remote?.settings,
     credentials,
@@ -802,6 +815,8 @@ export function StoreProvider({
     storedTheme,
     themeChoice,
     densityChoice,
+    sideChoice,
+    searchChoice,
   ]);
 
   /**

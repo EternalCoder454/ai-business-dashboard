@@ -34,8 +34,6 @@ export const WRITABLE_SETTINGS = [
   "brand",
   "sections",
   "density",
-  "sidebarSide",
-  "searchShortcut",
   "wikiTitle",
   "wikiSubtitle",
 ] as const;

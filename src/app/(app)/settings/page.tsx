@@ -284,6 +284,77 @@ function SettingsBody() {
             <>
           <Card>
             <h2 className="md-title-lg mb-5">Company</h2>
+            {/*
+              * The mark, above the name it stands in for.
+              *
+              * It had a card of its own called Appearance, holding the logo, two
+              * letters, which side the navigation sits on and which key opens
+              * search. Only the first two were about the company at all: the
+              * other two are facts about the person and the machine in front of
+              * them, and they have gone to the account page where the theme and
+              * the density already are.
+              *
+              * The letters went with them. CompanyMark already falls back to the
+              * company's own name, which is a better answer than two characters
+              * somebody has to think of, and a logo is right there for anybody
+              * who wants something else.
+              */}
+            {isAdmin ? (
+              <div className="mb-5">
+                <p className="md-label mb-2 text-on-variant">Logo</p>
+                <div className="flex items-center gap-3">
+                  {/* Framed, because a logo on a transparent background is
+                      otherwise a shape floating next to two buttons with
+                      nothing to say where it ends. */}
+                  <span className="grid h-14 w-14 flex-none place-items-center rounded-xl border border-outline-variant bg-lowest">
+                    <CompanyMark size={40} />
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outlined"
+                      onClick={() => markInput.current?.click()}
+                    >
+                      {settings.companyLogoUrl ? "Replace logo" : "Upload logo"}
+                    </Button>
+                    {settings.companyLogoUrl ? (
+                      <Button
+                        size="sm"
+                        variant="text"
+                        // null, not undefined: JSON.stringify drops an undefined
+                        // value, so the server never sees the key. It clears on
+                        // null, which the write path allows for this field alone.
+                        onClick={() => void updateSettings({ companyLogoUrl: null })}
+                      >
+                        Remove
+                      </Button>
+                    ) : null}
+                    <input
+                      ref={markInput}
+                      type="file"
+                      accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                      hidden
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (!file) return;
+                        try {
+                          await updateSettings({ companyLogoUrl: await fileToAvatar(file) });
+                          setMarkError(null);
+                        } catch (error) {
+                          setMarkError(
+                            error instanceof Error
+                              ? error.message
+                              : "That image could not be read.",
+                          );
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                {markError ? <p className="md-label mt-2 text-error">{markError}</p> : null}
+              </div>
+            ) : null}
             {isAdmin ? (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="Company name">
@@ -478,92 +549,6 @@ function SettingsBody() {
             </Card>
           ) : null}
 
-          <Card>
-            <h2 className="md-title-lg mb-1">Appearance</h2>
-
-
-            <div className="flex items-center gap-4">
-              <CompanyMark size={56} />
-              <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="outlined" onClick={() => markInput.current?.click()}>
-                  {settings.companyLogoUrl ? "Replace logo" : "Upload logo"}
-                </Button>
-                {settings.companyLogoUrl ? (
-                  <Button
-                    size="sm"
-                    variant="text"
-                    // null, not undefined: JSON.stringify drops an undefined value, so
-                    // the server never sees the key. It clears on null, which
-                    // the write path allows for this field alone.
-                    onClick={() => void updateSettings({ companyLogoUrl: null })}
-                  >
-                    Remove
-                  </Button>
-                ) : null}
-                <input
-                  ref={markInput}
-                  type="file"
-                  accept={ACCEPTED_IMAGE_TYPES.join(",")}
-                  hidden
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    event.target.value = "";
-                    if (!file) return;
-                    try {
-                      await updateSettings({ companyLogoUrl: await fileToAvatar(file) });
-                      setMarkError(null);
-                    } catch (error) {
-                      setMarkError(
-                        error instanceof Error ? error.message : "That image could not be read.",
-                      );
-                    }
-                  }}
-                />
-              </div>
-            </div>
-
-            {markError ? <p className="md-label mt-2 text-error">{markError}</p> : null}
-
-            <div className="mt-5 grid grid-cols-1 gap-4 medium:grid-cols-3">
-              <Field label="Letters">
-                <TextInput
-                  value={companyMark.value}
-                  maxLength={2}
-                  className="text-center uppercase"
-                  onChange={(event) => companyMark.onChange(event.target.value.toUpperCase())}
-                />
-              </Field>
-
-              <Field label="Navigation side">
-                <Select
-                  value={settings.sidebarSide}
-                  onChange={(event) =>
-                    void updateSettings({ sidebarSide: event.target.value as SidebarSide })
-                  }
-                >
-                  <option value="left">Left</option>
-                  <option value="right">Right</option>
-                </Select>
-              </Field>
-
-              <Field
-                label="Search key"
-              >
-                <Select
-                  value={settings.searchShortcut}
-                  onChange={(event) =>
-                    void updateSettings({
-                      searchShortcut: event.target.value as SearchShortcut,
-                    })
-                  }
-                >
-                  <option value="slash">Slash</option>
-                  <option value="k">K</option>
-                  <option value="none">Off</option>
-                </Select>
-              </Field>
-            </div>
-          </Card>
             </>
           ) : null}
 
