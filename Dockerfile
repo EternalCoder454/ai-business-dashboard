@@ -60,6 +60,14 @@ COPY --from=builder --chown=panel:panel /app/.next/static ./.next/static
 COPY --from=builder --chown=panel:panel /app/drizzle ./drizzle
 COPY --from=builder --chown=panel:panel /app/scripts/migrate.mjs ./scripts/migrate.mjs
 
+# The driver, on its own.
+#
+# Next bundles the server's dependencies into its own chunks, so the standalone
+# output has no node_modules/postgres for the migration runner to import even
+# though the app itself uses it on every request. One package, and it has no
+# dependencies of its own, so this is the whole of it.
+COPY --from=deps --chown=panel:panel /app/node_modules/postgres ./node_modules/postgres
+
 USER panel
 EXPOSE 3000
 
