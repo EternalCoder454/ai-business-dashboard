@@ -477,7 +477,7 @@ function MeetingsBody() {
               />
             ) : null}
 
-            <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-lowest py-2 pl-2 pr-2 transition-colors focus-within:border-primary">
+            <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-field py-2 pl-2 pr-2 transition-colors focus-within:border-primary">
               <ComposerMenu
                 libraryCount={0}
                 brevity={{

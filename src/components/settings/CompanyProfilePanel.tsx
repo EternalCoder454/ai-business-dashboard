@@ -231,8 +231,8 @@ function ProfileEntry({
         onChange={(event) => onChange(event.target.value)}
         className={cx(
           "md-body w-full min-w-0 resize-none overflow-hidden rounded-lg border-0 px-3 py-2.5",
-          "bg-lowest/60 text-on-surface placeholder:text-on-variant/60",
-          "transition-colors hover:bg-lowest focus:bg-lowest focus:outline-none",
+          "bg-field text-on-surface placeholder:text-on-variant/60",
+          "transition-colors focus:outline-none",
           "focus:ring-1 focus:ring-primary",
         )}
       />

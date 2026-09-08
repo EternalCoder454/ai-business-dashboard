@@ -6,7 +6,8 @@ import { SpendCard } from "./SpendCard";
 import { ContextCard } from "./ContextCard";
 import { StorageCard } from "./StorageCard";
 import Link from "next/link";
-import { useMemo, useState, type ReactNode, useEffect, useRef} from "react";
+import { createPortal } from "react-dom";
+import { useLayoutEffect, useMemo, useState, type ReactNode, useEffect, useRef } from "react";
 import {
   CheckIcon,
   ChevronIcon,
@@ -528,38 +529,90 @@ function Band({
  * And it only closed by pressing the same small target again. Escape and a
  * click anywhere else both close it now, which is what a person will try.
  */
+/**
+ * The question mark beside a heading, and what it says when pressed.
+ *
+ * The note is drawn into the document rather than beside the button, which
+ * looks like over-engineering and is not. The Activity band is a CSS multi
+ * column masonry, and the spec fragments an absolutely positioned descendant of
+ * a multi column container across its columns: measured, the Decisions note
+ * came out as two boxes, the first half at the bottom of one column and the
+ * second half four hundred pixels up the next. There is no way to opt out of
+ * that from inside. Leaving the container is the fix.
+ *
+ * Fixed rather than absolute, for the same reason: the note is a child of the
+ * body now, so page coordinates would be wrong the moment the feed scrolled.
+ */
 function Hint({ what, side = "right" }: { what: string; side?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
-  const holder = useRef<HTMLSpanElement | null>(null);
+  const [at, setAt] = useState<{ top: number; left: number } | null>(null);
+  const button = useRef<HTMLButtonElement | null>(null);
+  const note = useRef<HTMLSpanElement | null>(null);
 
-  useEffect(() => {
+  /*
+   * Measured after the note exists, so its real height is known and it can be
+   * flipped above the button when there is no room below. Width is capped at
+   * 20rem by the class, and the clamp keeps both edges on screen.
+   */
+  useLayoutEffect(() => {
     if (!open) return;
+
+    const place = () => {
+      const anchor = button.current?.getBoundingClientRect();
+      if (!anchor) return;
+      const width = note.current?.offsetWidth ?? 320;
+      const height = note.current?.offsetHeight ?? 0;
+      const margin = 8;
+
+      const below = anchor.bottom + margin;
+      const flip = height > 0 && below + height > window.innerHeight - margin;
+      const top = flip ? Math.max(margin, anchor.top - margin - height) : below;
+
+      const wanted = side === "right" ? anchor.right - width : anchor.left;
+      const left = Math.min(
+        Math.max(margin, wanted),
+        Math.max(margin, window.innerWidth - width - margin),
+      );
+
+      setAt({ top, left });
+    };
+
+    place();
 
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
     const onDown = (event: MouseEvent) => {
-      if (!holder.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (button.current?.contains(target) || note.current?.contains(target)) return;
+      setOpen(false);
     };
 
     document.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onDown);
+    // Capture, so a scroll in the feed moves it and not only a scroll of the
+    // window, which is the one thing that never happens on this page.
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
     return () => {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
     };
-  }, [open]);
+  }, [open, side]);
 
   return (
-    <span ref={holder} className="relative flex-none">
+    <>
       <button
+        ref={button}
         type="button"
         aria-label={open ? "Hide what this is" : "What is this"}
         aria-expanded={open}
         title={open ? undefined : what}
         onClick={() => setOpen((value) => !value)}
         className={cx(
-          "md-state grid h-5 w-5 place-items-center rounded-full text-[0.6875rem] font-semibold leading-none transition-colors",
+          "md-state grid h-5 w-5 flex-none place-items-center rounded-lg text-[0.6875rem] font-semibold leading-none transition-colors",
           open
             ? "bg-primary text-on-primary"
             : "bg-highest text-on-variant hover:text-on-surface",
@@ -568,22 +621,25 @@ function Hint({ what, side = "right" }: { what: string; side?: "left" | "right" 
         ?
       </button>
 
-      {open ? (
-        <span
-          role="note"
-          className={cx(
-            // Never wider than the window it has to fit inside.
-            "absolute top-7 z-30 w-[min(20rem,calc(100vw-2rem))]",
-            side === "right" ? "right-0" : "left-0",
-            "rounded-xl border border-outline-variant bg-container p-3 shadow-e3",
-            // The heading this sits inside is uppercase and tracked out.
-            "md-body-sm block normal-case tracking-normal text-on-surface",
-          )}
-        >
-          {what}
-        </span>
-      ) : null}
-    </span>
+      {open && typeof document !== "undefined"
+        ? createPortal(
+            <span
+              ref={note}
+              role="note"
+              style={{ top: at?.top ?? -9999, left: at?.left ?? -9999 }}
+              className={cx(
+                "fixed z-50 w-[min(20rem,calc(100vw-2rem))]",
+                "rounded-xl border border-outline-variant bg-container p-3 shadow-e3",
+                // The heading this belongs to is uppercase and tracked out.
+                "md-body-sm block normal-case tracking-normal text-on-surface",
+              )}
+            >
+              {what}
+            </span>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 

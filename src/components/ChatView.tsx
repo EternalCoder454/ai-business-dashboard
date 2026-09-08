@@ -1606,7 +1606,7 @@ ${turn.content}` }
           {/* items-end keeps the buttons on the last line as the field grows,
               which needs every control in the row to be the same height as one
               line. md-target and md-composer-field are that height. */}
-          <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-lowest py-2 pl-3 pr-2 transition-colors focus-within:border-primary">
+          <div className="flex items-end gap-2 rounded-3xl border border-outline-variant bg-field py-2 pl-3 pr-2 transition-colors focus-within:border-primary">
             {/* One plus rather than a row of glyphs. Uploads can be switched
                 off for one person, and the Library picker goes with them: both
                 put a file into the business. */}

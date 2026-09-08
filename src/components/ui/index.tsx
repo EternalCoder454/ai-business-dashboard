@@ -297,7 +297,7 @@ export function StatusDot({
 // its content's minimum. One long model name was widening every card on the
 // settings page past the side of a phone.
 const FIELD_BASE =
-  "w-full min-w-0 rounded-xl border border-outline-variant bg-lowest md-body " +
+  "w-full min-w-0 rounded-xl border border-outline-variant bg-field md-body " +
   "text-on-surface placeholder:text-on-variant/70 transition-colors " +
   "focus:border-primary focus:outline-none";
 

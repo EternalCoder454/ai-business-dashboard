@@ -92,6 +92,16 @@
   --md-motion-medium2: 300ms;
   --md-motion-long1: 450ms;
 
+  /*
+   * What you type into.
+   *
+   * The shared field was bg-lowest, the flattest surface there is, which on a
+   * card reads as a hole cut in it. The Company Profile had worked this out
+   * already and mixed its own answer by hand, so the panel had two colours of
+   * text box depending on which screen you were on. This is that answer, named,
+   * and both use it.
+   */
+  --md-field: #151719;
   --md-hairline: #343a40;
   --md-elev-1: 0 0 0 1px var(--md-hairline);
   --md-elev-2: 0 0 0 1px var(--md-hairline), 0 2px 8px rgb(0 0 0 / 0.28);
@@ -167,6 +177,8 @@
   --md-state-pressed: rgb(25 28 30 / 0.11);
   --md-ripple: rgb(25 28 30 / 0.14);
 
+  /* White on a light card is already the right answer, and was already it. */
+  --md-field: #ffffff;
   --md-hairline: #dfe3e7;
   --md-elev-1: 0 0 0 1px var(--md-hairline);
   --md-elev-2: 0 0 0 1px var(--md-hairline), 0 2px 8px rgb(0 0 0 / 0.07);
@@ -465,6 +477,7 @@
   --color-on-variant: var(--md-on-surface-variant);
   --color-outline: var(--md-outline);
   --color-outline-variant: var(--md-outline-variant);
+  --color-field: var(--md-field);
 
   --color-primary: var(--md-primary);
   --color-on-primary: var(--md-on-primary);

@@ -514,17 +514,21 @@ function NavigationRail({
         * Only at large, where this rail is the sidebar folded. Below that it is
         * the navigation itself and there is nothing to unfold to.
         *
-        * Drawn as the same bordered circle that folds it, rather than as the
+        * Drawn as the same bordered button that folds it, rather than as the
         * bare chevron the 28px list rails use. Those are a thin strip where the
         * whole strip is the affordance; this is an 80px column of destinations,
         * and a dim chevron at the foot of it reads as one more of them.
+        *
+        * Square, like every other control. It was the last fully round thing
+        * left in the navigation after the sweep, which made the folded rail
+        * look like a different app from the drawer it folds out of.
         */}
       <div className="hidden w-full flex-none flex-col items-center pb-1 pt-1 large:flex">
         <RailRule />
         <PaneUnfoldButton
           id="nav"
           label="the navigation"
-          className="mt-1 h-8 w-8 flex-none rounded-full border border-outline-variant bg-low shadow-e1"
+          className="mt-1 h-8 w-8 flex-none rounded-lg border border-outline-variant bg-low shadow-e1"
         />
       </div>
     </nav>
