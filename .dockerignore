@@ -17,6 +17,7 @@ npm-debug.log*
 # in explicitly by the Dockerfile, because a deploy has to be able to bring the
 # schema up to what the code in the same image expects.
 scripts
+!scripts/migrate.mjs
 
 .vscode
 .claude
