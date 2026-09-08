@@ -41,6 +41,16 @@ interface Slide {
   adminOnly?: boolean;
 }
 
+/**
+ * Whether this browser has been through the tour.
+ *
+ * The key carries a version, so the tour can be shown to everybody again later
+ * by bumping it rather than by hunting for who has already seen what. Exported
+ * because the account settings offer a way back to it, which used to mean
+ * knowing the string and clearing it by hand.
+ */
+export const TOUR_KEY = "eterneon:tour-v1";
+
 export function Setup() {
   const { ready, storage, settings, departments, orchestrator, workspaceRole } = useStore();
   const router = useRouter();
@@ -51,9 +61,7 @@ export function Setup() {
   const dismissed = useMemo(() => {
     if (typeof window === "undefined") return false;
     try {
-      // The key carries a version, so this can be shown again later by bumping
-      // it rather than by hunting for who has already seen what.
-      return window.localStorage.getItem("eterneon:tour-v1") === "done";
+      return window.localStorage.getItem(TOUR_KEY) === "done";
     } catch {
       // A browser with storage blocked simply gets asked again, which is a
       // better failure than a crash on the first screen anybody sees.
@@ -127,7 +135,7 @@ export function Setup() {
 
   const done = () => {
     try {
-      window.localStorage.setItem("eterneon:tour-v1", "done");
+      window.localStorage.setItem(TOUR_KEY, "done");
     } catch {
       // Then it appears again next time, which is the whole consequence.
     }

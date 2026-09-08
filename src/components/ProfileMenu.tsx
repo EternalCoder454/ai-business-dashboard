@@ -258,7 +258,7 @@ export function ProfileMenu() {
         <div
           role="menu"
           className={cx(
-            "absolute right-0 top-12 z-50 w-72 rounded-2xl",
+                        "absolute right-0 top-12 z-50 w-72 rounded-2xl",
             "border border-outline-variant bg-container shadow-e3",
             /*
              * Never taller than the screen it is on.
@@ -377,38 +377,35 @@ export function ProfileMenu() {
             * Settings now is what the business opens as, and this is what you
             * read in. It reaches your browser and nothing else.
             *
-            * Three choices, not two. Following the company is a real state and
-            * not the same as having picked the colour it happens to be on: pick
-            * dark today and you stay dark when the business moves to light,
-            * leave it alone and you move with it.
+            * Two choices. There was a third, "Company", for following the
+            * business rather than choosing: it is still what somebody who has
+            * never touched this gets, and the row shows whichever they are
+            * actually on. What went is the way back to it, which nobody was
+            * looking for and which cost the row a third of its width.
             */}
           <div className="border-t border-outline-variant px-4 py-3">
             <p className="md-label mb-2 text-on-variant">Appearance</p>
             <div className="flex gap-1.5" role="radiogroup" aria-label="Appearance">
               {(
                 [
-                  { value: "light" as ThemeMode | null, label: "Light" },
-                  { value: "dark" as ThemeMode | null, label: "Dark" },
-                  { value: null as ThemeMode | null, label: "Company" },
+                  { value: "light" as ThemeMode, label: "Light" },
+                  { value: "dark" as ThemeMode, label: "Dark" },
                 ]
               ).map((option) => (
                 <button
                   key={option.label}
                   type="button"
                   role="radio"
-                  aria-checked={themeChoice === option.value}
+                  // settings.theme already has any personal choice laid over
+                  // the company's, so it is what is on screen either way.
+                  aria-checked={settings.theme === option.value}
                   onClick={(event) => {
                     createRipple(event);
                     setThemeChoice(option.value);
                   }}
-                  title={
-                    option.value === null
-                      ? `Follow the business, which is set to ${settings.theme}`
-                      : undefined
-                  }
                   className={cx(
                     "md-state md-label flex-1 rounded-lg border px-2 py-1.5 transition-colors",
-                    themeChoice === option.value
+                    settings.theme === option.value
                       ? "border-primary bg-primary-container text-on-primary-container"
                       : "border-outline-variant text-on-variant hover:text-on-surface",
                   )}
@@ -429,28 +426,33 @@ export function ProfileMenu() {
             <div className="flex gap-1.5" role="radiogroup" aria-label="Density">
               {(
                 [
-                  { value: "comfortable" as Density | null, label: "Comfortable" },
-                  { value: "compact" as Density | null, label: "Compact" },
-                  { value: null as Density | null, label: "Company" },
+                  /*
+                   * Two, not three.
+                   *
+                   * The theme keeps a "Company" option because a business
+                   * genuinely decides what it opens as and somebody may want to
+                   * go back to following that. Density is a fact about the
+                   * screen in front of you: once you have said which you want,
+                   * there is nothing to go back to. Three equal buttons also
+                   * gave each 71px in a menu this wide, and "Comfortable" needs
+                   * 93, so it read as "Comfortabl".
+                   */
+                  { value: "comfortable" as Density, label: "Comfortable" },
+                  { value: "compact" as Density, label: "Compact" },
                 ]
               ).map((option) => (
                 <button
                   key={option.label}
                   type="button"
                   role="radio"
-                  aria-checked={densityChoice === option.value}
+                  aria-checked={settings.density === option.value}
                   onClick={(event) => {
                     createRipple(event);
                     setDensityChoice(option.value);
                   }}
-                  title={
-                    option.value === null
-                      ? `Follow the business, which is set to ${settings.density}`
-                      : undefined
-                  }
                   className={cx(
                     "md-state md-label flex-1 rounded-lg border px-2 py-1.5 transition-colors",
-                    densityChoice === option.value
+                    settings.density === option.value
                       ? "border-primary bg-primary-container text-on-primary-container"
                       : "border-outline-variant text-on-variant hover:text-on-surface",
                   )}

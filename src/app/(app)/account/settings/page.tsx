@@ -2,7 +2,8 @@
 
 import { AccountTabs } from "@/components/AccountTabs";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, Field, Select } from "@/components/ui";
+import { TOUR_KEY } from "@/components/Setup";
+import { Button, Card, Field, Select } from "@/components/ui";
 import {
   setSearchShortcutChoice,
   setSidebarSideChoice,
@@ -67,6 +68,40 @@ export default function AccountSettingsPage() {
                   <option value="none">Off</option>
                 </Select>
               </Field>
+            </div>
+          </Card>
+
+          {/*
+            * A way back to the tour.
+            *
+            * It is nine slides shown once and then never again, and the only
+            * way to see it a second time was to know the localStorage key and
+            * clear it by hand. Somebody who skipped it on their first morning
+            * had no way to ask for it back.
+            */}
+          <Card>
+            <h2 className="md-title-lg mb-1">The tour</h2>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={() => {
+                  try {
+                    window.localStorage.removeItem(TOUR_KEY);
+                  } catch {
+                    // Blocked storage means it was never marked done, so it is
+                    // about to be shown anyway.
+                  }
+                  // A full load rather than a route change: the tour reads the
+                  // key once when it mounts, and it is already mounted.
+                  window.location.assign("/");
+                }}
+              >
+                Show it again
+              </Button>
+              <span className="md-body-sm text-on-variant/75">
+                Nine slides on what is where. Opens the dashboard.
+              </span>
             </div>
           </Card>
         </div>
