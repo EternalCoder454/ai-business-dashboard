@@ -52,29 +52,31 @@ import { seedWikiPages } from "./seedWiki";
 import { toBlob } from "./blobUpload";
 import { report } from "./telemetryClient";
 import type {
-  Meeting,
   CompanyProfile,
   Conversation,
   Deliverable,
   DeliverableStatus,
+  Density,
   Department,
   LibraryFile,
+  Meeting,
   MemoryEntry,
   MemoryKind,
-  Task,
-  TaskComment,
-  TaskStatus,
-  WikiPage,
   Message,
   Project,
   Settings,
   Skill,
+  Task,
+  TaskComment,
+  TaskStatus,
   ThemeMode,
   UserAccount,
+  WikiPage,
 } from "./types";
 
 import { PROVIDERS, type Provider } from "./providers";
 import type { Credential } from "@/db/keys";
+import { useDensityChoice } from "./densityChoice";
 import { useThemeChoice } from "./themeChoice";
 
 export interface StoreValue {
@@ -184,6 +186,8 @@ export interface StoreValue {
    * otherwise see their own preference ticked and set the company to it.
    */
   companyTheme: ThemeMode;
+  /** Before the personal override, as companyTheme is. */
+  companyDensity: Density;
   account: UserAccount;
 
   getDepartment: (id: string) => Department | undefined;
@@ -726,6 +730,7 @@ export function StoreProvider({
    * localStorage and the markup carries the default anyway.
    */
   const themeChoice = useThemeChoice();
+  const densityChoice = useDensityChoice();
 
   const [storedTheme] = useState<Settings["theme"] | null>(() => {
     if (typeof window === "undefined") return null;
@@ -742,6 +747,10 @@ export function StoreProvider({
     (remote?.settings?.theme as ThemeMode | undefined) ??
     storedTheme ??
     DEFAULT_SETTINGS.theme;
+
+  /** The same distinction for density, and for the same reason. */
+  const companyDensity: Density =
+    (remote?.settings?.density as Density | undefined) ?? DEFAULT_SETTINGS.density;
 
   const settings: Settings = useMemo(() => {
     // The server's answer sits between the shipped defaults and the workspace
@@ -777,11 +786,14 @@ export function StoreProvider({
      * keeps standing when it changes.
      */
     const themed = themeChoice ? { ...base, theme: themeChoice } : base;
+    // And this person's own density over the company's, for the same reason:
+    // a thirteen inch laptop is not a company decision.
+    const packed = densityChoice ? { ...themed, density: densityChoice } : themed;
 
     // Neither storage holds the credentials, so they are laid over the top from
     // this browser once read. Overlaying unconditionally is what lets an empty
     // key mean cleared rather than merely absent.
-    return credentialsReady ? { ...themed, ...credentials } : themed;
+    return credentialsReady ? { ...packed, ...credentials } : packed;
   }, [
     remote?.settings,
     credentials,
@@ -789,6 +801,7 @@ export function StoreProvider({
     initialBranding,
     storedTheme,
     themeChoice,
+    densityChoice,
   ]);
 
   /**
@@ -827,13 +840,15 @@ export function StoreProvider({
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
     document.documentElement.dataset.brand = settings.brand;
+    document.documentElement.dataset.density = settings.density;
     try {
       window.localStorage.setItem("eterneon-theme", settings.theme);
       window.localStorage.setItem("eterneon-brand", settings.brand);
+      window.localStorage.setItem("eterneon-density", settings.density);
     } catch {
-      // Private mode or blocked storage. Both still apply this session.
+      // Private mode or blocked storage. All three still apply this session.
     }
-  }, [settings.theme, settings.brand]);
+  }, [settings.theme, settings.brand, settings.density]);
 
   /**
    * One shared empty array, rather than a fresh `[]` per fallback per render.
@@ -999,6 +1014,7 @@ export function StoreProvider({
       profile,
       settings,
       companyTheme,
+      companyDensity,
       account,
 
       getDepartment: (id: string) => departmentList.find((d) => d.id === id),
@@ -1685,6 +1701,7 @@ export function StoreProvider({
     profile,
     settings,
     companyTheme,
+    companyDensity,
     account,
   ]);
 

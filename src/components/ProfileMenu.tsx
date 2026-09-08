@@ -20,9 +20,10 @@ import { signOutAction } from "@/app/auth-actions";
 import { useNotifications } from "@/lib/notifications";
 import { baselineChangelog, useUnseenChangelog } from "@/lib/changelogSeen";
 import { useStore } from "@/lib/store";
+import { setDensityChoice, useDensityChoice } from "@/lib/densityChoice";
 import { setThemeChoice, useThemeChoice } from "@/lib/themeChoice";
 import { setLayoutMode, useLayoutMode, type LayoutMode } from "@/lib/layoutMode";
-import type { ThemeMode } from "@/lib/types";
+import type { Density, ThemeMode } from "@/lib/types";
 
 /**
  * The account menu, in the top right of every screen.
@@ -74,6 +75,7 @@ const ADMIN = {
 export function ProfileMenu() {
   const { account, isOperator, workspaceRole, accountEmail, canOpenPath, settings } = useStore();
   const themeChoice = useThemeChoice();
+  const densityChoice = useDensityChoice();
   const layout = useLayoutMode();
   const [open, setOpen] = useState(false);
 
@@ -398,6 +400,48 @@ export function ProfileMenu() {
                   className={cx(
                     "md-state md-label flex-1 rounded-lg border px-2 py-1.5 transition-colors",
                     themeChoice === option.value
+                      ? "border-primary bg-primary-container text-on-primary-container"
+                      : "border-outline-variant text-on-variant hover:text-on-surface",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/*
+            * How much air there is, which is a fact about the screen somebody
+            * is on rather than about the business. A thirteen inch laptop wants
+            * everything closer together whatever the company thinks.
+            */}
+          <div className="border-t border-outline-variant px-4 py-3">
+            <p className="md-label mb-2 text-on-variant">Density</p>
+            <div className="flex gap-1.5" role="radiogroup" aria-label="Density">
+              {(
+                [
+                  { value: "comfortable" as Density | null, label: "Comfortable" },
+                  { value: "compact" as Density | null, label: "Compact" },
+                  { value: null as Density | null, label: "Company" },
+                ]
+              ).map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={densityChoice === option.value}
+                  onClick={(event) => {
+                    createRipple(event);
+                    setDensityChoice(option.value);
+                  }}
+                  title={
+                    option.value === null
+                      ? `Follow the business, which is set to ${settings.density}`
+                      : undefined
+                  }
+                  className={cx(
+                    "md-state md-label flex-1 rounded-lg border px-2 py-1.5 transition-colors",
+                    densityChoice === option.value
                       ? "border-primary bg-primary-container text-on-primary-container"
                       : "border-outline-variant text-on-variant hover:text-on-surface",
                   )}

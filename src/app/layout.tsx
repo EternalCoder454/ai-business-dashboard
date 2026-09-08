@@ -116,7 +116,9 @@ const THEME_SCRIPT =
   `try{var d=document.documentElement,t=localStorage.getItem("eterneon-theme");` +
   `if(t==="light"||t==="dark")d.dataset.theme=t;` +
   `var b=localStorage.getItem("eterneon-brand");` +
-  `if(b&&/^[a-z]{3,10}$/.test(b))d.dataset.brand=b}catch(e){}`;
+  `if(b&&/^[a-z]{3,10}$/.test(b))d.dataset.brand=b;` +
+  `var n=localStorage.getItem("eterneon-density");` +
+  `if(n==="compact"||n==="comfortable")d.dataset.density=n}catch(e){}`;
 
 /**
  * Deliberately bare.
@@ -133,6 +135,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="en"
       data-theme="dark"
       data-brand="amber"
+      data-density="comfortable"
       className={`${sans.variable} ${mono.variable}`}
       suppressHydrationWarning
     >

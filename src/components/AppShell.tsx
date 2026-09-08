@@ -27,6 +27,7 @@ import { NoWorkspace } from "./NoWorkspace";
 import { Setup } from "./Setup";
 import { WriteError } from "./WriteError";
 import { usePageHeading } from "@/lib/pageHeading";
+import { applySections } from "@/lib/sections";
 import { usePane } from "@/lib/paneLayout";
 import { PaneUnfoldButton } from "./ui/SidePane";
 import {
@@ -377,7 +378,8 @@ function NavigationRail({
   onOpenHeads: () => void;
   headsOpen: boolean;
 }) {
-  const { canOpenPath, canOpenHead, allDepartments } = useStore();
+  const { canOpenPath, canOpenHead, allDepartments, settings } = useStore();
+  const sections = settings.sections;
 
   /*
    * Only whether there is anybody to show. The panel builds its own list, and
@@ -455,9 +457,11 @@ function NavigationRail({
       </button>
 
       <div className="flex w-full flex-none flex-col items-center">
-        {PRIMARY_LINKS.filter((link) => canOpenPath(link.href)).map((link) => (
-          <RailItem key={link.href} link={link} active={isActive(pathname, link.href)} />
-        ))}
+        {applySections(PRIMARY_LINKS, sections)
+          .filter((link) => canOpenPath(link.href))
+          .map((link) => (
+            <RailItem key={link.href} link={link} active={isActive(pathname, link.href)} />
+          ))}
       </div>
 
       {heads.length > 0 ? (
@@ -592,12 +596,13 @@ function BottomBar({
   onOpenHeads: () => void;
 }) {
   const { unread } = useMessages();
-  const { canOpenPath } = useStore();
+  const { canOpenPath, settings } = useStore();
   // Home, then the heads picker is spliced in, then these two, minus whichever
   // of them this person's business has switched off.
+  const shown = applySections(PRIMARY_LINKS, settings.sections);
   const links = [
-    PRIMARY_LINKS[0],
-    ...PRIMARY_LINKS.filter(
+    shown[0],
+    ...shown.filter(
       (link) =>
         (link.href === "/meetings" || link.href === "/inbox") && canOpenPath(link.href),
     ),

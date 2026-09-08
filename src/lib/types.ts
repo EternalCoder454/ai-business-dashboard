@@ -1,4 +1,5 @@
 import type { BrandColour } from "./brand";
+import type { Sections } from "./sections";
 import type { Provider } from "./providers";
 
 export type { Provider };
@@ -566,6 +567,20 @@ export interface Settings {
    * belongs to the business the way the logo does.
    */
   brand: BrandColour;
+  /**
+   * Which destinations this business shows, and what it calls them.
+   *
+   * Keyed by href. Absent means the shipped list, unchanged.
+   */
+  sections?: Sections;
+  /**
+   * How tightly packed the panel is, as the business opens it.
+   *
+   * A default rather than a rule: anybody may set their own in the account
+   * menu, the same way the theme works, because screen size and eyesight are
+   * not company decisions. See densityChoice.
+   */
+  density: Density;
   /** Which edge the navigation sits on. */
   sidebarSide: SidebarSide;
   /** The single key that opens search. "none" turns the bare key off. */
@@ -575,6 +590,9 @@ export interface Settings {
   /** The line under it, usually a reading time. */
   wikiSubtitle: string;
 }
+
+/** How much air there is around things. */
+export type Density = "comfortable" | "compact";
 
 /** Which edge the drawer and rail sit on. */
 export type SidebarSide = "left" | "right";

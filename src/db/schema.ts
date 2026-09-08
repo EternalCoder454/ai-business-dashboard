@@ -453,6 +453,8 @@ export const settings = pgTable("settings", {
   companyMark: text("company_mark").notNull().default("HQ"),
   companyLogoUrl: text("company_logo_url"),
   brand: text("brand").notNull().default("amber"),
+  sections: jsonb("sections").$type<import("@/lib/sections").Sections>().notNull().default({}),
+  density: text("density").notNull().default("comfortable"),
   sidebarSide: text("sidebar_side").notNull().default("left"),
   searchShortcut: text("search_shortcut").notNull().default("slash"),
   wikiTitle: text("wiki_title").notNull().default("Internal Wiki"),

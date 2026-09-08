@@ -1,4 +1,5 @@
 import { DEFAULT_BRAND, isBrandColour } from "@/lib/brand";
+import { SECTION_HREFS, readSections } from "@/lib/sections";
 import { writableSettings } from "@/lib/settingsWrite";
 import { forgetBudget } from "./budget";
 import { fireTaskEvents, type TaskEvent } from "@/lib/addons/runner";
@@ -329,6 +330,8 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
         monthlyBudget: t.settings.monthlyBudget,
         companyLogoUrl: t.settings.companyLogoUrl,
         brand: t.settings.brand,
+        sections: t.settings.sections,
+        density: t.settings.density,
         sidebarSide: t.settings.sidebarSide,
         searchShortcut: t.settings.searchShortcut,
         wikiTitle: t.settings.wikiTitle,
@@ -552,6 +555,10 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       // hand or left over from a release that offered a different colour
       // falls back to the default instead of leaving the panel unstyled.
       brand: isBrandColour(settingsRow[0]?.brand) ? settingsRow[0].brand : DEFAULT_BRAND,
+      // Filtered rather than trusted: a key for a page that has since moved,
+      // or a name long enough to break the rail, must not reach a navigation.
+      sections: readSections(settingsRow[0]?.sections, SECTION_HREFS),
+      density: settingsRow[0]?.density === "compact" ? "compact" : "comfortable",
       sidebarSide: (settingsRow[0]?.sidebarSide ?? "left") as Settings["sidebarSide"],
       searchShortcut: (settingsRow[0]?.searchShortcut ?? "slash") as Settings["searchShortcut"],
       wikiTitle: settingsRow[0]?.wikiTitle ?? "Internal Wiki",

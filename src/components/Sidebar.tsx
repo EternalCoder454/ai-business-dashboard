@@ -37,6 +37,7 @@ import { createRipple } from "./ui/ripple";
 import { PaneFoldButton, PaneResizeHandle, usePaneResize } from "./ui/SidePane";
 import { setPaneHidden } from "@/lib/paneLayout";
 import { useLayoutMode } from "@/lib/layoutMode";
+import { applySections } from "@/lib/sections";
 
 
 export interface NavLink {
@@ -477,7 +478,12 @@ export function SidebarContent({
    * are the same either way and only the placement differs.
    */
   const legacy = useLayoutMode() === "legacy";
-  const workLinks = legacy ? LEGACY_WORK_LINKS : WORK_LINKS;
+  /* Hidden and renamed sections, applied here rather than at each of the
+     four places that draw a navigation, so they cannot disagree. */
+  const workLinks = applySections(
+    legacy ? LEGACY_WORK_LINKS : WORK_LINKS,
+    settings.sections,
+  );
 
   const [subtitle, setSubtitle] = useState(settings.companySubtitle);
 

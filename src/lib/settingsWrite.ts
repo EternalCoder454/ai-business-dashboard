@@ -32,6 +32,8 @@ export const WRITABLE_SETTINGS = [
   "maxEffort",
   "companyLogoUrl",
   "brand",
+  "sections",
+  "density",
   "sidebarSide",
   "searchShortcut",
   "wikiTitle",
@@ -62,6 +64,12 @@ export const ADMIN_ONLY_SETTINGS = new Set<string>([
   // The brand colour, which is the mark and the name again in another
   // form: on every screen, and nobody's personal preference.
   "brand",
+  // Which destinations exist and what they are called. A member
+  // renaming Meetings renames it for the whole company.
+  "sections",
+  // The density the business opens at, which is not the density
+  // anybody has to read at. Same shape as the theme above.
+  "density",
   "monthlyBudget",
   // A spending control like the budget beside it.
   "maxEffort",

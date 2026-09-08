@@ -371,6 +371,7 @@ export const DEFAULT_SETTINGS: Settings = {
   roomBrevity: "tight",
   companyMark: "HQ",
   brand: "amber",
+  density: "comfortable",
   sidebarSide: "left",
   searchShortcut: "slash",
   wikiTitle: "Internal Wiki",

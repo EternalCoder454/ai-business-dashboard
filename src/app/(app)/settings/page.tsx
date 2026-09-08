@@ -39,7 +39,9 @@ import { DEPARTMENT_ACCENTS, EFFORT_OPTIONS, WRITING_RULES, departmentAccent } f
 import { useStore } from "@/lib/store";
 import { useTypedField } from "@/lib/useTypedField";
 import { BRAND_COLOURS } from "@/lib/brand";
-import type { Department, DepartmentStatus, Effort, SearchShortcut, SidebarSide, ThemeMode } from "@/lib/types";
+import { ALWAYS_SHOWN, SECTION_NAME_LIMIT } from "@/lib/sections";
+import { WORK_LINKS as SECTION_LINKS } from "@/components/Sidebar";
+import type { Density, Department, DepartmentStatus, Effort, SearchShortcut, SidebarSide, ThemeMode } from "@/lib/types";
 
 type DeptDraft = Partial<Department> & { isNew?: boolean };
 
@@ -88,6 +90,7 @@ function SettingsBody() {
   const {
     settings,
     companyTheme,
+    companyDensity,
     updateSettings,
     departments,
     orchestrator,
@@ -373,7 +376,108 @@ function SettingsBody() {
                 </div>
               </div>
             ) : null}
+            {/*
+              * What the business opens at. Anybody may set their own in the
+              * account menu, the same way the theme works, because screen size
+              * and eyesight are not company decisions.
+              */}
+            {isAdmin ? (
+              <div className="mt-5">
+                <p className="md-label mb-2 text-on-variant">Default density</p>
+                <div className="flex gap-2">
+                  {(["comfortable", "compact"] as Density[]).map((value) => (
+                    <Chip
+                      key={value}
+                      selected={companyDensity === value}
+                      onClick={() => void updateSettings({ density: value })}
+                    >
+                      {value === "comfortable" ? "Comfortable" : "Compact"}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </Card>
+
+          {/*
+            * Which destinations this business has, and what it calls them.
+            *
+            * Seven shipped as one list is an opinion about what a business
+            * looks like. A shop that never opens Projects is reading a
+            * navigation a third of which is dead weight, and "Meetings" is a
+            * war room to one company and a standup to another.
+            *
+            * Hiding a section takes it out of every navigation and leaves the
+            * page answering, so a bookmark or a link in a message still works.
+            * The dashboard has no switch: it is where "/" goes.
+            */}
+          {isAdmin ? (
+            <Card>
+              <h2 className="md-title-lg mb-3">Sections</h2>
+              <ul className="flex flex-col gap-1.5">
+                {SECTION_LINKS.map((link) => {
+                  const override = settings.sections?.[link.href];
+                  const locked = link.href === ALWAYS_SHOWN;
+                  const on = locked || !override?.hidden;
+                  return (
+                    <li key={link.href} className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={on}
+                        aria-label={link.label}
+                        disabled={locked}
+                        onClick={() =>
+                          void updateSettings({
+                            sections: {
+                              ...settings.sections,
+                              [link.href]: { ...override, hidden: on ? true : undefined },
+                            },
+                          })
+                        }
+                        className={cx(
+                          "md-state md-target flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left",
+                          locked ? "cursor-default opacity-60" : "",
+                          on ? "text-on-surface" : "text-on-variant/60",
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className={cx(
+                            "h-3.5 w-3.5 flex-none rounded-sm border",
+                            on ? "border-primary bg-primary" : "border-outline-variant",
+                          )}
+                        />
+                        <span className="md-body truncate">{link.label}</span>
+                      </button>
+                      <input
+                        value={override?.label ?? ""}
+                        placeholder={link.label}
+                        maxLength={SECTION_NAME_LIMIT}
+                        aria-label={`What this business calls ${link.label}`}
+                        onChange={(event) =>
+                          void updateSettings({
+                            sections: {
+                              ...settings.sections,
+                              [link.href]: {
+                                ...override,
+                                label: event.target.value || undefined,
+                              },
+                            },
+                          })
+                        }
+                        className={cx(
+                          "md-body w-40 flex-none rounded-lg border border-outline-variant bg-transparent px-2 py-1",
+                          "text-on-surface transition-colors focus:border-primary focus:outline-none",
+                        )}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
+          ) : null}
+
           <Card>
             <h2 className="md-title-lg mb-1">Appearance</h2>
 
