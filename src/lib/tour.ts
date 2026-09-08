@@ -12,3 +12,11 @@
  * by bumping it rather than by hunting for who has already seen what.
  */
 export const TOUR_KEY = "eterneon:tour-v1";
+
+/**
+ * Which introduction this is.
+ *
+ * Stored on the account rather than a flag, so the tour can be shown to
+ * everybody again later by moving this on. Compared against account.tourSeen.
+ */
+export const TOUR_VERSION = "v1";

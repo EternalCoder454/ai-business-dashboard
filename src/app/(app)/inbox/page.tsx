@@ -16,6 +16,7 @@ import {
   cx,
 } from "@/components/ui";
 import { createRipple } from "@/components/ui/ripple";
+import { isHidden, setThreadHidden, useHiddenThreads } from "@/lib/hiddenThreads";
 import { useMessages, useThread } from "@/lib/messages";
 import { formatDay, formatExactTime, sameDay } from "@/lib/routes";
 import { useStore } from "@/lib/store";
@@ -59,6 +60,34 @@ const DOT: Record<PresenceStatus, "online" | "busy" | "offline"> = {
 };
 
 /**
+ * Where somebody is, in words, rather than a verdict on them.
+ *
+ * "Offline" is true about a colleague who stepped out for a coffee and it
+ * reads like a machine that has been switched off. The moment is more use than
+ * the state: "active 20m ago" answers the question somebody is actually asking,
+ * which is whether it is worth waiting for a reply.
+ *
+ * Only the away case changes. Online and do not disturb are already about now,
+ * and somebody who has been invited and never arrived has no moment to report,
+ * so they keep the plain word.
+ */
+function presenceWords(person: Colleague): string {
+  if (person.presence !== "offline") return PRESENCE_LABEL[person.presence];
+  if (!person.lastSeenAt) return PRESENCE_LABEL.offline;
+
+  const away = Date.now() - person.lastSeenAt;
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (away < 2 * minute) return "Active just now";
+  if (away < hour) return `Active ${Math.floor(away / minute)}m ago`;
+  if (away < day) return `Active ${Math.floor(away / hour)}h ago`;
+  if (away < 7 * day) return `Active ${Math.floor(away / day)}d ago`;
+  return PRESENCE_LABEL.offline;
+}
+
+/**
  * A two pane list-detail layout, which is the Material pattern for exactly this
  * shape of content. On an expanded window both panes are visible; below that
  * they become one pane at a time, since a 360px phone cannot hold a readable
@@ -66,7 +95,9 @@ const DOT: Record<PresenceStatus, "online" | "busy" | "offline"> = {
  */
 export default function MessagesPage() {
   const staggered = useStaggeredList();
-  const { ready, enabled, self, threads, people, refresh, clearUnreadFor } = useMessages();
+  const { ready, enabled, self, threads, people, refresh, clearUnreadFor, blocked } =
+    useMessages();
+  const hiddenAt = useHiddenThreads();
   const [open, setOpen] = useState<string>();
   const [query, setQuery] = useState("");
 
@@ -104,14 +135,25 @@ export default function MessagesPage() {
      * filter and a way of finding a conversation: what somebody remembers about
      * a thread is usually a word in it, not who it was with.
      */
+    /*
+     * Threads put away, until they say something.
+     *
+     * Dropped before the search rather than after, so looking for somebody by
+     * name finds them: a hidden conversation is out of the way, not gone, and
+     * searching is the way back to it.
+     */
+    const showing = all.filter(
+      (row) => !isHidden(hiddenAt, row.email, row.at, row.lastFromSelf),
+    );
+
     const needle = query.trim().toLowerCase();
-    if (!needle) return all;
+    if (!needle) return showing;
     return all.filter((row) =>
       [row.person?.displayName, row.email, row.preview]
         .filter(Boolean)
         .some((field) => field!.toLowerCase().includes(needle)),
     );
-  }, [threads, people, byEmail, query]);
+  }, [threads, people, byEmail, query, hiddenAt]);
 
   // Opening a thread is what marks it read, so the badge should drop at once
   // rather than at the next poll.
@@ -281,6 +323,7 @@ export default function MessagesPage() {
               other={open}
               person={byEmail.get(open)}
               self={self}
+              blocked={blocked.includes(open)}
               onBack={() => setOpen(undefined)}
               onSent={refresh}
             />
@@ -295,7 +338,16 @@ export default function MessagesPage() {
   );
 }
 
-function Avatar({ person, email }: { person?: Colleague; email: string }) {
+function Avatar({
+  person,
+  email,
+  size = 40,
+}: {
+  person?: Colleague;
+  email: string;
+  size?: number;
+}) {
+  const box = { width: size, height: size };
   if (person?.avatarUrl) {
     // Google's own CDN, already sized for this.
     // eslint-disable-next-line @next/next/no-img-element
@@ -303,16 +355,18 @@ function Avatar({ person, email }: { person?: Colleague; email: string }) {
       <img
         src={person.avatarUrl}
         alt=""
-        width={40}
-        height={40}
-        className="h-10 w-10 flex-none rounded-full"
+        width={size}
+        height={size}
+        style={box}
+        className="flex-none rounded-full"
       />
     );
   }
   return (
     <span
       aria-hidden
-      className="grid h-10 w-10 flex-none place-items-center rounded-full bg-primary-container text-on-primary-container"
+      style={{ ...box, fontSize: Math.round(size * 0.4) }}
+      className="grid flex-none place-items-center rounded-full bg-primary-container text-on-primary-container"
     >
       {(person?.displayName || email).charAt(0).toUpperCase()}
     </span>
@@ -323,17 +377,35 @@ function Thread({
   other,
   person,
   self,
+  blocked,
   onBack,
   onSent,
 }: {
   other: string;
   person?: Colleague;
   self?: string;
+  /** Whether this person has been stopped from writing here. */
+  blocked: boolean;
   onBack: () => void;
   onSent: () => void;
 }) {
   const { messages, sending, error, send, retry, edit, withdraw, seenThrough } =
     useThread(other, self);
+  const { setBlocked } = useMessages();
+  const hiddenAt = useHiddenThreads();
+  const [find, setFind] = useState("");
+
+  /*
+   * Which messages match, over what is loaded rather than over the database.
+   *
+   * A thread is held in memory in full by the time it is on screen, so this is
+   * a filter rather than a query, and it stays a filter: an endpoint for it
+   * would be a round trip to search something the browser is already holding.
+   */
+  const needle = find.trim().toLowerCase();
+  const shown = needle
+    ? messages.filter((message) => message.body.toLowerCase().includes(needle))
+    : messages;
   // Own picture and name, so a run of your own messages is headed like theirs.
   const { account } = useStore();
   const [draft, setDraft] = useState("");
@@ -354,7 +426,8 @@ function Thread({
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col">
+    <div className="flex h-full min-h-0 w-full">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
       <header className="safe-top safe-pt-3 medium:safe-pt-4 flex flex-none items-center gap-3 border-b border-outline-variant px-2 pb-3 medium:px-6 medium:pb-4 expanded:px-6">
         <button
           type="button"
@@ -378,7 +451,7 @@ function Thread({
           <span className="flex flex-none items-center gap-1.5">
             <StatusDot status={DOT[person.presence]} animate={person.presence === "online"} />
             <span className="md-label-sm hidden text-on-variant medium:inline">
-              {PRESENCE_LABEL[person.presence]}
+              {presenceWords(person)}
             </span>
           </span>
         ) : null}
@@ -391,7 +464,7 @@ function Thread({
           </p>
         ) : (
           <ul className="measure-read flex flex-col pb-2">
-            {messages.map((message, index) => (
+            {shown.map((message, index) => (
               <Fragment key={message.id}>
                 {/*
                   * The day, once, where it turns.
@@ -402,7 +475,7 @@ function Thread({
                   * because those are the two a reader resolves instantly
                   * and the two most messages fall in.
                   */}
-                {index === 0 || !sameDay(message.sentAt, messages[index - 1].sentAt) ? (
+                {index === 0 || !sameDay(message.sentAt, shown[index - 1].sentAt) ? (
                   <li className="flex items-center gap-3 px-2 py-3">
                     <span className="h-px flex-1 bg-outline-variant" />
                     <span className="md-label-sm flex-none text-on-variant/75">
@@ -414,8 +487,8 @@ function Thread({
               <MessageRow
                 message={message}
                 self={self}
-                previous={messages[index - 1]}
-                next={messages[index + 1]}
+                previous={shown[index - 1]}
+                next={shown[index + 1]}
                 delivery={deliveryOf(message, self, seenThrough)}
                 onRetry={retry}
                 onEdit={edit}
@@ -477,6 +550,19 @@ function Thread({
         </div>
       </div>
     </div>
+
+    <PersonPane
+      other={other}
+      person={person}
+      query={find}
+      onQuery={setFind}
+      hits={shown.length}
+      hidden={hiddenAt[other] !== undefined}
+      onHide={(hide) => setThreadHidden(other, hide)}
+      blocked={blocked}
+      onBlock={(next) => setBlocked(other, next)}
+    />
+    </div>
   );
 }
 
@@ -487,6 +573,94 @@ function Thread({
  * picture and name once and then indents the rest under it, so a back and
  * forth reads as a conversation rather than as alternating blocks.
  */
+/**
+ * Who you are talking to, beside the conversation.
+ *
+ * The mock had one of these and the first pass left it out, because it was a
+ * second copy of the thread header: name, avatar, presence. What makes it worth
+ * a column is the part the header has no room for, which is finding something
+ * in a long thread, and the two decisions you can make about a person.
+ *
+ * Only from large, where there is a third column to spare. Below that the
+ * thread header still names them and the search lives in the header's own
+ * button, so nothing is unreachable.
+ */
+function PersonPane({
+  other,
+  person,
+  query,
+  onQuery,
+  hits,
+  hidden,
+  onHide,
+  blocked,
+  onBlock,
+}: {
+  other: string;
+  person?: Colleague;
+  query: string;
+  onQuery: (value: string) => void;
+  hits: number;
+  hidden: boolean;
+  onHide: (hide: boolean) => void;
+  blocked: boolean;
+  onBlock: (block: boolean) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <aside className="hidden w-72 flex-none flex-col gap-4 overflow-y-auto border-l border-outline-variant p-4 large:flex">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <Avatar person={person} email={other} size={72} />
+        <p className="md-title-lg mt-1 truncate">{person?.displayName || other}</p>
+        {person?.roleTitle ? (
+          <p className="md-label truncate text-on-variant">{person.roleTitle}</p>
+        ) : null}
+        {person ? (
+          <span className="flex items-center gap-1.5">
+            <StatusDot status={DOT[person.presence]} animate={person.presence === "online"} />
+            <span className="md-label-sm text-on-variant">{presenceWords(person)}</span>
+          </span>
+        ) : null}
+      </div>
+
+      <div>
+        <p className="md-label mb-1.5 text-on-variant">Search this conversation</p>
+        <TextInput
+          size="sm"
+          value={query}
+          onChange={(event) => onQuery(event.target.value)}
+          placeholder="A word they used"
+          aria-label="Search this conversation"
+        />
+        {query.trim() ? (
+          <p className="md-label-sm mt-1.5 text-on-variant/75">
+            {hits === 0 ? "Nothing matches" : `${hits} message${hits === 1 ? "" : "s"}`}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="mt-auto flex flex-col gap-2 border-t border-outline-variant pt-4">
+        <Button variant="outlined" size="sm" onClick={() => onHide(!hidden)}>
+          {hidden ? "Keep in the list" : "Hide until they reply"}
+        </Button>
+        <Button
+          variant={blocked ? "outlined" : "danger"}
+          size="sm"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            await onBlock(!blocked);
+            setBusy(false);
+          }}
+        >
+          {blocked ? "Unblock" : "Block"}
+        </Button>
+      </div>
+    </aside>
+  );
+}
+
 function MessageRow({
   message,
   self,

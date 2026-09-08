@@ -42,6 +42,12 @@ interface MessagesValue {
   threads: MessageThread[];
   people: Colleague[];
   unread: number;
+  /** Addresses this person has stopped writing to them. */
+  blocked: string[];
+  /** Addresses that have stopped this person writing to them. */
+  blockedBy: string[];
+  /** Blocks or unblocks, then refreshes so the screen agrees with the server. */
+  setBlocked: (email: string, blocked: boolean) => Promise<void>;
   refresh: () => Promise<void>;
   /** Adjusts the count without waiting for the next poll, on opening a thread. */
   clearUnreadFor: (email: string) => void;
@@ -51,6 +57,9 @@ const MessagesContext = createContext<MessagesValue | null>(null);
 
 const NO_THREADS: MessageThread[] = [];
 const NO_PEOPLE: Colleague[] = [];
+/* One identity for the empty case, so a poll that returns no blocks does not
+   hand every consumer of this context a new array to re-render over. */
+const NO_BLOCKS: string[] = [];
 
 export function MessagesProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -59,6 +68,8 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
   const [threads, setThreads] = useState<MessageThread[]>(NO_THREADS);
   const [people, setPeople] = useState<Colleague[]>(NO_PEOPLE);
   const [unread, setUnread] = useState(0);
+  const [blocked, setBlockedList] = useState<string[]>(NO_BLOCKS);
+  const [blockedBy, setBlockedBy] = useState<string[]>(NO_BLOCKS);
 
   /*
    * How many polls in a row have returned the same inbox, and what that inbox
@@ -94,12 +105,16 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
         people: Colleague[];
         unread: number;
         self: string;
+        blocked?: string[];
+        blockedBy?: string[];
       };
       setEnabled(true);
       setThreads(body.threads ?? NO_THREADS);
       setPeople(body.people ?? NO_PEOPLE);
       setUnread(body.unread ?? 0);
       setSelf(body.self);
+      setBlockedList(body.blocked?.length ? body.blocked : NO_BLOCKS);
+      setBlockedBy(body.blockedBy?.length ? body.blockedBy : NO_BLOCKS);
 
       /*
        * Whether that was worth asking for. An identical answer widens the next
@@ -176,9 +191,53 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /*
+   * Blocking, then a refresh rather than a local edit.
+   *
+   * The server is the one that decides, and it is the one that will refuse the
+   * next message, so the screen should be showing what it thinks rather than
+   * what this browser hopes. It is one round trip on a thing somebody does
+   * roughly never.
+   */
+  const setBlocked = useCallback(
+    async (email: string, blocked: boolean) => {
+      await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(blocked ? { block: email } : { unblock: email }),
+      }).catch(() => {});
+      await refresh();
+    },
+    [refresh],
+  );
+
   const value = useMemo<MessagesValue>(
-    () => ({ ready, enabled, self, threads, people, unread, refresh, clearUnreadFor }),
-    [ready, enabled, self, threads, people, unread, refresh, clearUnreadFor],
+    () => ({
+      ready,
+      enabled,
+      self,
+      threads,
+      people,
+      unread,
+      blocked,
+      blockedBy,
+      setBlocked,
+      refresh,
+      clearUnreadFor,
+    }),
+    [
+      ready,
+      enabled,
+      self,
+      threads,
+      people,
+      unread,
+      blocked,
+      blockedBy,
+      setBlocked,
+      refresh,
+      clearUnreadFor,
+    ],
   );
 
   return <MessagesContext.Provider value={value}>{children}</MessagesContext.Provider>;

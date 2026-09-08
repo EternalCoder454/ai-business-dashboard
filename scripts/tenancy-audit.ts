@@ -37,6 +37,7 @@ const SCOPED = [
   "profiles",
   "settings",
   "directMessages",
+  "messageBlocks",
   "apiKeys",
   "schedules",
   "briefings",

@@ -119,6 +119,10 @@ export async function listColleagues(workspaceId: string, self: string): Promise
         roleTitle: row?.roleTitle || undefined,
         avatarUrl: row?.avatarUrl ?? undefined,
         presence: presenceOf(row?.presence, row?.lastSeenAt),
+        // The moment, not the verdict. "Offline" is true and unkind about
+        // somebody who stepped out for coffee, and the inbox can say "active
+        // 20m ago" instead only if it is given the number.
+        lastSeenAt: row?.lastSeenAt ? row.lastSeenAt.getTime() : undefined,
       };
     })
     .sort((a, b) =>
@@ -283,6 +287,91 @@ export async function listThread(
  */
 export function unreadIn(threads: MessageThread[]): number {
   return threads.reduce((sum, thread) => sum + thread.unread, 0);
+}
+
+/**
+ * Who this person has blocked, and who has blocked them.
+ *
+ * Both directions in one read, because the inbox needs both: a thread you have
+ * blocked is drawn differently, and a thread where you are the blocked one has
+ * to stop offering a box that will refuse.
+ */
+export async function blocksFor(
+  workspaceId: string,
+  self: string,
+): Promise<{ blocked: string[]; blockedBy: string[] }> {
+  const db = requireDb();
+  const me = normalise(self);
+  const rows = await db
+    .select()
+    .from(t.messageBlocks)
+    .where(
+      and(
+        eq(t.messageBlocks.workspaceId, workspaceId),
+        or(eq(t.messageBlocks.blockerEmail, me), eq(t.messageBlocks.blockedEmail, me)),
+      ),
+    );
+  return {
+    blocked: rows.filter((row) => row.blockerEmail === me).map((row) => row.blockedEmail),
+    blockedBy: rows.filter((row) => row.blockedEmail === me).map((row) => row.blockerEmail),
+  };
+}
+
+/** Idempotent, so pressing it twice is not an error. */
+export async function setBlocked(
+  workspaceId: string,
+  self: string,
+  other: string,
+  blocked: boolean,
+): Promise<void> {
+  const db = requireDb();
+  const blockerEmail = normalise(self);
+  const blockedEmail = normalise(other);
+  if (blockerEmail === blockedEmail) return;
+
+  if (!blocked) {
+    await db
+      .delete(t.messageBlocks)
+      .where(
+        and(
+          eq(t.messageBlocks.workspaceId, workspaceId),
+          eq(t.messageBlocks.blockerEmail, blockerEmail),
+          eq(t.messageBlocks.blockedEmail, blockedEmail),
+        ),
+      );
+    return;
+  }
+
+  await db
+    .insert(t.messageBlocks)
+    .values({ workspaceId, blockerEmail, blockedEmail, createdAt: Date.now() })
+    .onConflictDoNothing();
+}
+
+/**
+ * Whether a message may be delivered, checked in the direction that matters.
+ *
+ * The recipient's decision, not the sender's: blocking somebody stops them
+ * writing to you and leaves you free to write to them.
+ */
+export async function isBlocked(
+  workspaceId: string,
+  from: string,
+  to: string,
+): Promise<boolean> {
+  const db = requireDb();
+  const rows = await db
+    .select({ blockerEmail: t.messageBlocks.blockerEmail })
+    .from(t.messageBlocks)
+    .where(
+      and(
+        eq(t.messageBlocks.workspaceId, workspaceId),
+        eq(t.messageBlocks.blockerEmail, normalise(to)),
+        eq(t.messageBlocks.blockedEmail, normalise(from)),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
 }
 
 export async function sendMessage(

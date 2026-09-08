@@ -508,6 +508,7 @@ export async function loadWorkspace(workspaceId: string, email: string): Promise
       roleTitle: accountRow[0]?.roleTitle ?? "Founder",
       pronouns: accountRow[0]?.pronouns ?? "",
       timezone: accountRow[0]?.timezone ?? "",
+      tourSeen: accountRow[0]?.tourSeen ?? "",
       expertise: accountRow[0]?.expertise ?? "",
       preferences: accountRow[0]?.preferences ?? "",
       currentFocus: accountRow[0]?.currentFocus ?? "",

@@ -49,7 +49,7 @@ import type { SearchShortcut, SidebarSide } from "@/lib/types";
 const ADMIN_NOTICES = new Set<NoticeId>(["no-key", "no-profile", "bare-departments"]);
 
 export default function AccountSettingsPage() {
-  const { settings, workspaceRole } = useStore();
+  const { settings, workspaceRole, updateAccount } = useStore();
   const side = useSidebarSideChoice();
   const search = useSearchShortcutChoice();
   const muted = useMutedNotices();
@@ -192,15 +192,18 @@ export default function AccountSettingsPage() {
               <Button
                 variant="outlined"
                 size="sm"
-                onClick={() => {
+                onClick={async () => {
+                  // Both: the account is where it lives now, and the old
+                  // browser key is still honoured on the way in, so clearing
+                  // one without the other would leave the tour still dismissed.
+                  await updateAccount({ tourSeen: "" });
                   try {
                     window.localStorage.removeItem(TOUR_KEY);
                   } catch {
-                    // Blocked storage means it was never marked done, so it is
-                    // about to be shown anyway.
+                    // Blocked storage means it was never marked done there.
                   }
-                  // A full load rather than a route change: the tour reads the
-                  // key once when it mounts, and it is already mounted.
+                  // A full load rather than a route change: the tour reads this
+                  // once when it mounts, and it is already mounted.
                   window.location.assign("/");
                 }}
               >

@@ -345,6 +345,19 @@ export const accounts = pgTable("accounts", {
    * do-not-disturb is a thing a person says about themselves and no amount of
    * activity should override it.
    */
+  /**
+   * Which version of the introduction this person has been through.
+   *
+   * On the account rather than in the browser, which is the correction. It was
+   * a localStorage key, so somebody who read the tour on their desktop was
+   * shown it again the first time they opened the panel on their phone, and
+   * again on a second laptop. It is a fact about the person.
+   *
+   * The version is stored rather than a flag, so the tour can be shown to
+   * everybody again later by moving the constant on rather than by clearing a
+   * column and hoping.
+   */
+  tourSeen: text("tour_seen").notNull().default(""),
   presence: text("presence").notNull().default("auto"),
   /** Touched while the app is open, so "here now" can be told from "has an account". */
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
@@ -724,6 +737,38 @@ export const directMessages = pgTable(
     index("dm_unread_idx").on(table.toEmail, table.readAt),
     // The overview needs everything either address touched, in one pass.
     index("dm_from_idx").on(table.fromEmail, table.sentAt),
+  ],
+);
+
+/**
+ * Who has stopped somebody writing to them.
+ *
+ * One row per direction: blocking somebody is a decision about your own inbox
+ * and does not stop you writing to them, which is the difference between this
+ * and a mutual severing that neither party asked for.
+ *
+ * Refused on the server rather than hidden in the client, because a hidden
+ * thread is not a block: the whole point is that the message does not arrive.
+ * It is scoped to the workspace, so the same two addresses in two businesses
+ * are two separate decisions.
+ *
+ * Nothing already sent is removed. A block is about what happens next, and
+ * deleting a record because a relationship soured is the kind of thing a
+ * business later needs and cannot get back.
+ */
+export const messageBlocks = pgTable(
+  "message_blocks",
+  {
+    workspaceId: workspace(),
+    /** The person who does not want to hear from the other. */
+    blockerEmail: text("blocker_email").notNull(),
+    blockedEmail: text("blocked_email").notNull(),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workspaceId, table.blockerEmail, table.blockedEmail] }),
+    // The send path asks "has the recipient blocked me", which reads this way.
+    index("message_blocks_blocked_idx").on(table.workspaceId, table.blockedEmail),
   ],
 );
 

@@ -560,6 +560,7 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
     // a workspace id, and the version that compared it to an email deleted
     // nothing at all.
     await tx.delete(t.directMessages).where(eq(t.directMessages.workspaceId, owner));
+    await tx.delete(t.messageBlocks).where(eq(t.messageBlocks.workspaceId, owner));
 
     // The rhythms, and what they produced.
     await tx.delete(t.briefings).where(eq(t.briefings.workspaceId, owner));

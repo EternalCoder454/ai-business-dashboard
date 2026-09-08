@@ -3,16 +3,19 @@ import { randomUUID } from "node:crypto";
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import {
+  blocksFor,
+  deleteMessage,
+  editMessage,
+  isBlocked,
   listColleagues,
   listThread,
   listThreads,
-  unreadIn,
   markThreadRead,
   seenThrough,
   sendMessage,
+  setBlocked,
   touchPresence,
-  editMessage,
-  deleteMessage,
+  unreadIn,
   withdrawnSince,
 } from "@/db/messages";
 import { readJson } from "@/lib/guard";
@@ -145,17 +148,21 @@ export async function GET(request: Request) {
     // request per person per minute for the same fact.
     void touchPresence(sender.email);
 
-    const [threads, people] = await track("messages.overview", workspace.workspaceId, () =>
-      Promise.all([
-        listThreads(workspace.workspaceId, sender.email),
-        listColleagues(workspace.workspaceId, sender.email),
-      ]),
+    const [threads, people, blocks] = await track(
+      "messages.overview",
+      workspace.workspaceId,
+      () =>
+        Promise.all([
+          listThreads(workspace.workspaceId, sender.email),
+          listColleagues(workspace.workspaceId, sender.email),
+          blocksFor(workspace.workspaceId, sender.email),
+        ]),
     );
 
     // Summed from what came back rather than counted again. See unreadIn.
     const unread = unreadIn(threads);
 
-    return Response.json({ threads, people, unread, self: sender.email });
+    return Response.json({ threads, people, unread, self: sender.email, ...blocks });
   } catch (error) {
     console.error("[api/messages] read", error);
     return Response.json({ error: "Could not read your messages." }, { status: 500 });
@@ -177,9 +184,24 @@ export async function POST(request: Request) {
     return Response.json({ error: parsed.error }, { status: parsed.status });
   }
 
-  const { to, body, markRead, edit, withdraw } = parsed.body;
+  const { to, body, markRead, edit, withdraw, block, unblock } = parsed.body;
 
   try {
+    /*
+     * Blocking, which is a decision about your own inbox.
+     *
+     * It stops them writing to you and leaves you free to write to them, so
+     * there is one row per direction and this only ever writes your own.
+     */
+    if (block || unblock) {
+      const other = (block ?? unblock)!.trim().toLowerCase();
+      if (other === sender.email) {
+        return Response.json({ error: "You cannot block yourself." }, { status: 400 });
+      }
+      await setBlocked(sender.membership.workspaceId, sender.email, other, Boolean(block));
+      return Response.json({ ok: true });
+    }
+
     /*
      * Changing a message already sent. Both are the sender's own doing: the
      * ownership check lives on the row in db/messages, so an administrator
@@ -236,6 +258,18 @@ export async function POST(request: Request) {
     if (!(await canReceive(mine.workspaceId, recipient))) {
       return Response.json(
         { error: "That address is not on the allowlist for this workspace." },
+        { status: 403 },
+      );
+    }
+    /*
+     * Refused here rather than hidden in the client, which is the whole
+     * difference between a block and a muted thread: the message does not
+     * arrive. The wording says so plainly rather than failing quietly, because
+     * a message that vanishes with a cheerful tick is worse than a refusal.
+     */
+    if (await isBlocked(mine.workspaceId, sender.email, recipient)) {
+      return Response.json(
+        { error: "They are not accepting messages from you." },
         { status: 403 },
       );
     }

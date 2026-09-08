@@ -8,7 +8,7 @@ import { DepartmentAvatar } from "./DepartmentAvatar";
 import { createRipple } from "./ui/ripple";
 import { departmentHref } from "@/lib/routes";
 import { useStore } from "@/lib/store";
-import { TOUR_KEY } from "@/lib/tour";
+import { TOUR_KEY, TOUR_VERSION } from "@/lib/tour";
 
 /**
  * A short walk around the panel, once, that walks with you.
@@ -43,13 +43,27 @@ interface Slide {
 }
 
 export function Setup() {
-  const { ready, storage, settings, departments, orchestrator, workspaceRole } = useStore();
+  const { ready, storage, settings, departments, orchestrator, workspaceRole, account, updateAccount } =
+    useStore();
   const router = useRouter();
 
   const [step, setStep] = useState(0);
   const [closed, setClosed] = useState(false);
 
+  /*
+   * Whether this person has been through it, not whether this browser has.
+   *
+   * It was a localStorage key, so somebody who read the tour on their desktop
+   * was shown it again the first time they opened the panel on their phone. It
+   * is on the account now, which is what "has seen it" was always a fact about.
+   *
+   * The old key is still honoured, read only. Everybody who dismissed the tour
+   * before this has a browser saying so and an account that does not, and
+   * showing it to all of them again to tidy up a storage key would be the
+   * change doing the exact thing it is meant to stop.
+   */
   const dismissed = useMemo(() => {
+    if (account.tourSeen === TOUR_VERSION) return true;
     if (typeof window === "undefined") return false;
     try {
       return window.localStorage.getItem(TOUR_KEY) === "done";
@@ -58,7 +72,7 @@ export function Setup() {
       // better failure than a crash on the first screen anybody sees.
       return false;
     }
-  }, []);
+  }, [account.tourSeen]);
 
   const heads = [orchestrator, ...departments.filter((d) => !d.isOrchestrator && !d.personal)]
     .filter(Boolean)
@@ -125,11 +139,10 @@ export function Setup() {
   if (dismissed || closed || !current) return null;
 
   const done = () => {
-    try {
-      window.localStorage.setItem(TOUR_KEY, "done");
-    } catch {
-      // Then it appears again next time, which is the whole consequence.
-    }
+    // On the account, so it follows them to the next device. Closed locally at
+    // once as well, because waiting on a round trip to dismiss something is the
+    // thing that makes a dialog feel stuck.
+    void updateAccount({ tourSeen: TOUR_VERSION });
     setClosed(true);
   };
 

@@ -278,6 +278,13 @@ export interface UserAccount {
   pronouns: string;
   /** IANA zone, so "this week" and "by Friday" mean something. */
   timezone: string;
+  /**
+   * Which version of the introduction they have been through, or empty.
+   *
+   * On the account so it follows them between a laptop and a phone, rather
+   * than being asked again on every new browser.
+   */
+  tourSeen?: string;
   /** What you know well and what you would rather have explained. */
   expertise: string;
   /** How you like answers: length, directness, format. */
@@ -802,4 +809,11 @@ export interface Colleague {
    * who was invited this morning and has not arrived.
    */
   presence: PresenceStatus;
+  /**
+   * When they were last here, for saying so in words.
+   *
+   * Undefined for somebody who has been invited and never arrived, which is a
+   * different thing from having been away a while and reads differently.
+   */
+  lastSeenAt?: number;
 }

@@ -109,6 +109,9 @@ export const messagesBody = z.object({
    */
   edit: id.optional(),
   withdraw: id.optional(),
+  /** Stop somebody writing to you, or let them again. */
+  block: email.optional(),
+  unblock: email.optional(),
 });
 
 export const keysBody = z.object({

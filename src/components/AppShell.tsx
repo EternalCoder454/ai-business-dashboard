@@ -555,13 +555,23 @@ function RailItem({
       aria-current={active ? "page" : undefined}
       className="flex w-full flex-col items-center gap-1 py-1"
     >
-      <span
-        className={cx(
-          "md-state relative grid h-8 w-14 place-items-center rounded-lg transition-colors",
-          active ? "bg-secondary-container text-on-secondary-container" : "text-on-variant",
-        )}
-      >
-        {link.icon}
+      {/*
+        * The badge sits outside the pressable box, not in it.
+        *
+        * md-state hides its own overflow so the ripple stays inside the shape,
+        * and the badge is placed four pixels past the top right corner, so the
+        * two of them together cut the corner off the number. It needs a
+        * positioning parent that does not clip, which is this one.
+        */}
+      <span className="relative">
+        <span
+          className={cx(
+            "md-state grid h-8 w-14 place-items-center rounded-lg transition-colors",
+            active ? "bg-secondary-container text-on-secondary-container" : "text-on-variant",
+          )}
+        >
+          {link.icon}
+        </span>
         {link.href === "/inbox" ? (
           <NavBadge count={unread} label={`${unread} unread messages`} />
         ) : null}
@@ -623,15 +633,17 @@ function BottomBar({
             aria-current={active ? "page" : undefined}
             className="flex flex-1 flex-col items-center justify-center gap-1 py-2"
           >
-            <span
-              className={cx(
-                "md-state relative grid h-8 w-16 place-items-center rounded-lg transition-colors",
-                active
-                  ? "bg-secondary-container text-on-secondary-container"
-                  : "text-on-variant",
-              )}
-            >
-              {link.icon}
+            <span className="relative">
+              <span
+                className={cx(
+                  "md-state grid h-8 w-16 place-items-center rounded-lg transition-colors",
+                  active
+                    ? "bg-secondary-container text-on-secondary-container"
+                    : "text-on-variant",
+                )}
+              >
+                {link.icon}
+              </span>
               {link.href === "/inbox" ? (
                 <NavBadge count={unread} label={`${unread} unread messages`} />
               ) : null}
@@ -661,15 +673,17 @@ function BottomBar({
             aria-current={active ? "page" : undefined}
             className="flex flex-1 flex-col items-center justify-center gap-1 py-2"
           >
-            <span
-              className={cx(
-                "md-state relative grid h-8 w-16 place-items-center rounded-lg transition-colors",
-                active
-                  ? "bg-secondary-container text-on-secondary-container"
-                  : "text-on-variant",
-              )}
-            >
-              {link.icon}
+            <span className="relative">
+              <span
+                className={cx(
+                  "md-state grid h-8 w-16 place-items-center rounded-lg transition-colors",
+                  active
+                    ? "bg-secondary-container text-on-secondary-container"
+                    : "text-on-variant",
+                )}
+              >
+                {link.icon}
+              </span>
               {link.href === "/inbox" ? (
                 <NavBadge count={unread} label={`${unread} unread messages`} />
               ) : null}

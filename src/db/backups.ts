@@ -77,6 +77,8 @@ export const NOT_BACKED_UP: Record<string, string> = {
   apiKeys: "credentials, so an old backup can never reinstate a revoked key",
   googleConnections: "OAuth tokens, which are a live grant rather than content",
   linkAllowlist: "a security decision, and restoring an older one widens it",
+  messageBlocks:
+    "who has stopped somebody writing to them; the same shape of decision as the link allowlist, and reinstating an older list would either restore a block somebody lifted or drop one they meant",
   telemetry: "a record of what happened, which did still happen",
   addonRuns: "the same, for add-ons",
   reports: "generated output, reproducible from the briefing that made it",

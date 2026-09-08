@@ -1,0 +1,1 @@
+ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "tour_seen" text NOT NULL DEFAULT '';
