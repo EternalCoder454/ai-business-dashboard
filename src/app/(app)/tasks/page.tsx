@@ -365,7 +365,7 @@ function TasksBody() {
                         openNew(status);
                       }}
                       aria-label={`Add a task to ${COLUMN_LABEL[status]}`}
-                      className="md-state md-target grid h-7 w-7 place-items-center rounded-full text-on-variant"
+                      className="md-state md-target grid h-7 w-7 place-items-center rounded-lg text-on-variant"
                     >
                       <PlusIcon className="h-3.5 w-3.5" />
                     </button>
@@ -462,7 +462,7 @@ function TasksBody() {
                               <button
                                 onClick={() => setRemoving(task)}
                                 aria-label={`Delete the task ${task.title}`}
-                                className="md-state md-target grid h-7 w-7 flex-none place-items-center rounded-full text-on-variant/70"
+                                className="md-state md-target grid h-7 w-7 flex-none place-items-center rounded-lg text-on-variant/70"
                               >
                                 <TrashIcon className="h-3.5 w-3.5" />
                               </button>

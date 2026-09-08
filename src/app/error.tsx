@@ -32,7 +32,7 @@ export default function Error({
         ) : null}
         <button
           onClick={reset}
-          className="md-state md-label mt-6 rounded-full bg-primary px-5 py-2.5 text-on-primary"
+          className="md-state md-label mt-6 rounded-lg bg-primary px-5 py-2.5 text-on-primary"
         >
           Try again
         </button>

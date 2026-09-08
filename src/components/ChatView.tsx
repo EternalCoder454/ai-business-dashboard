@@ -1293,7 +1293,7 @@ ${turn.content}` }
             else router.push("/");
           }}
           aria-label="Go back"
-          className="md-state grid h-11 w-11 flex-none place-items-center rounded-full text-on-surface medium:hidden"
+          className="md-state grid h-11 w-11 flex-none place-items-center rounded-lg text-on-surface medium:hidden"
         >
           <ChevronIcon className="h-5 w-5 rotate-180" />
         </button>
@@ -1313,7 +1313,7 @@ ${turn.content}` }
             aria-label={`All conversations with ${department.personaName || department.name}`}
             onClick={createRipple}
             className={cx(
-              "md-state md-target hidden flex-none place-items-center rounded-full text-on-variant medium:grid",
+              "md-state md-target hidden flex-none place-items-center rounded-lg text-on-variant medium:grid",
               !listFolded && "large:hidden",
             )}
           >
@@ -1334,7 +1334,7 @@ ${turn.content}` }
           type="button"
           onClick={() => setProfileOpen(true)}
           aria-label={`About ${department.personaName || department.name}`}
-          className="md-state hidden flex-none rounded-full medium:block"
+          className="md-state hidden flex-none rounded-lg medium:block"
         >
           <DepartmentAvatar department={department} size={44} />
         </button>
@@ -1387,7 +1387,7 @@ ${turn.content}` }
                 );
               }}
               title="Delete this conversation"
-              className="md-state md-target grid h-9 w-9 place-items-center rounded-full text-on-variant"
+              className="md-state md-target grid h-9 w-9 place-items-center rounded-lg text-on-variant"
             >
               <TrashIcon className="h-4 w-4" />
             </button>
@@ -1732,7 +1732,7 @@ ${turn.content}` }
                 aria-label={dictation.listening ? "Stop dictating" : "Dictate"}
                 title="Speak instead of typing. Your browser does the listening, and on Chrome the audio is sent to Google to be recognised."
                 className={cx(
-                  "md-state md-target grid h-10 w-10 flex-none place-items-center rounded-full transition-colors",
+                  "md-state md-target grid h-10 w-10 flex-none place-items-center rounded-lg transition-colors",
                   dictation.listening
                     ? "bg-error-container text-on-error-container"
                     : "text-on-variant",
@@ -1758,7 +1758,7 @@ ${turn.content}` }
                 disabled={!draft.trim() && pending.length === 0}
                 aria-label="Send message"
                 className={cx(
-                  "md-state md-target grid h-10 w-10 flex-none place-items-center rounded-full transition-colors",
+                  "md-state md-target grid h-10 w-10 flex-none place-items-center rounded-lg transition-colors",
                   "bg-primary text-on-primary shadow-e1",
                   "disabled:bg-highest disabled:text-on-variant/75 disabled:shadow-none",
                 )}
@@ -2255,7 +2255,7 @@ function MessageBubble({
               key={offer}
               type="button"
               onClick={() => onSuggest(offer)}
-              className="md-label-lg max-w-full truncate rounded-full border border-outline-variant bg-surface px-4 py-2 text-left text-primary transition-colors hover:bg-primary-container hover:text-on-primary-container focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="md-label-lg max-w-full truncate rounded-lg border border-outline-variant bg-surface px-4 py-2 text-left text-primary transition-colors hover:bg-primary-container hover:text-on-primary-container focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               {offer.replace(/\.$/, "")}
             </button>

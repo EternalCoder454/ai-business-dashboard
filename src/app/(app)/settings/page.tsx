@@ -470,7 +470,7 @@ function SettingsBody() {
                     onClick={() => setDraft({ ...department })}
                     title="Edit"
                     aria-label={`Edit ${department.name}`}
-                    className="md-state md-target grid h-9 w-9 place-items-center rounded-full text-on-variant"
+                    className="md-state md-target grid h-9 w-9 place-items-center rounded-lg text-on-variant"
                   >
                     <EditIcon className="h-4 w-4" />
                   </button>
@@ -483,7 +483,7 @@ function SettingsBody() {
                         : "Delete department"
                     }
                     aria-label={`Delete ${department.name}`}
-                    className="md-state md-target grid h-9 w-9 place-items-center rounded-full text-on-variant disabled:pointer-events-none disabled:opacity-25"
+                    className="md-state md-target grid h-9 w-9 place-items-center rounded-lg text-on-variant disabled:pointer-events-none disabled:opacity-25"
                   >
                     <TrashIcon className="h-4 w-4" />
                   </button>

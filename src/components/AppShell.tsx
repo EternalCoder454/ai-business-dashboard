@@ -449,7 +449,7 @@ function NavigationRail({
           onOpenSearch();
         }}
         aria-label="Search"
-        className="md-state mb-1 grid h-8 w-14 place-items-center rounded-full text-on-variant"
+        className="md-state mb-1 grid h-8 w-14 place-items-center rounded-lg text-on-variant"
       >
         <SearchIcon className="h-5 w-5" />
       </button>
@@ -490,7 +490,7 @@ function NavigationRail({
                 >
                   <span
                     className={cx(
-                      "md-state grid h-10 w-14 place-items-center rounded-full transition-colors",
+                      "md-state grid h-10 w-14 place-items-center rounded-lg transition-colors",
                       active ? "bg-secondary-container" : "",
                     )}
                   >
@@ -549,7 +549,7 @@ function RailItem({
     >
       <span
         className={cx(
-          "md-state relative grid h-8 w-14 place-items-center rounded-full transition-colors",
+          "md-state relative grid h-8 w-14 place-items-center rounded-lg transition-colors",
           active ? "bg-secondary-container text-on-secondary-container" : "text-on-variant",
         )}
       >
@@ -616,7 +616,7 @@ function BottomBar({
           >
             <span
               className={cx(
-                "md-state relative grid h-8 w-16 place-items-center rounded-full transition-colors",
+                "md-state relative grid h-8 w-16 place-items-center rounded-lg transition-colors",
                 active
                   ? "bg-secondary-container text-on-secondary-container"
                   : "text-on-variant",
@@ -654,7 +654,7 @@ function BottomBar({
           >
             <span
               className={cx(
-                "md-state relative grid h-8 w-16 place-items-center rounded-full transition-colors",
+                "md-state relative grid h-8 w-16 place-items-center rounded-lg transition-colors",
                 active
                   ? "bg-secondary-container text-on-secondary-container"
                   : "text-on-variant",
@@ -699,7 +699,7 @@ function BarButton({
     >
       <span
         className={cx(
-          "md-state grid h-8 w-16 place-items-center rounded-full transition-colors",
+          "md-state grid h-8 w-16 place-items-center rounded-lg transition-colors",
           active ? "bg-secondary-container text-on-secondary-container" : "text-on-variant",
         )}
       >
@@ -739,7 +739,7 @@ function HeadsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
           <button
             onClick={onClose}
             aria-label="Close"
-            className="md-state grid h-10 w-10 place-items-center rounded-full text-on-variant"
+            className="md-state grid h-10 w-10 place-items-center rounded-lg text-on-variant"
           >
             <CloseIcon className="h-5 w-5" />
           </button>
@@ -955,7 +955,7 @@ function ModalDrawer({
           <button
             onClick={onClose}
             aria-label="Close navigation drawer"
-            className="md-state grid h-12 w-12 place-items-center rounded-full text-on-variant"
+            className="md-state grid h-12 w-12 place-items-center rounded-lg text-on-variant"
           >
             <CloseIcon className="h-5 w-5" />
           </button>

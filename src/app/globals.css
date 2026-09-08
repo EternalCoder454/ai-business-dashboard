@@ -92,9 +92,10 @@
   --md-motion-medium2: 300ms;
   --md-motion-long1: 450ms;
 
-  --md-elev-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px 1px rgb(0 0 0 / 0.22);
-  --md-elev-2: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 6px 2px rgb(0 0 0 / 0.22);
-  --md-elev-3: 0 1px 3px rgb(0 0 0 / 0.4), 0 4px 10px 3px rgb(0 0 0 / 0.24);
+  --md-hairline: #343a40;
+  --md-elev-1: 0 0 0 1px var(--md-hairline);
+  --md-elev-2: 0 0 0 1px var(--md-hairline), 0 2px 8px rgb(0 0 0 / 0.28);
+  --md-elev-3: 0 0 0 1px var(--md-hairline), 0 12px 32px rgb(0 0 0 / 0.42);
 }
 
 [data-theme="light"] {
@@ -166,9 +167,10 @@
   --md-state-pressed: rgb(25 28 30 / 0.11);
   --md-ripple: rgb(25 28 30 / 0.14);
 
-  --md-elev-1: 0 1px 2px rgb(0 0 0 / 0.12), 0 1px 3px 1px rgb(0 0 0 / 0.08);
-  --md-elev-2: 0 1px 2px rgb(0 0 0 / 0.14), 0 2px 6px 2px rgb(0 0 0 / 0.08);
-  --md-elev-3: 0 1px 3px rgb(0 0 0 / 0.14), 0 4px 10px 3px rgb(0 0 0 / 0.1);
+  --md-hairline: #dfe3e7;
+  --md-elev-1: 0 0 0 1px var(--md-hairline);
+  --md-elev-2: 0 0 0 1px var(--md-hairline), 0 2px 8px rgb(0 0 0 / 0.07);
+  --md-elev-3: 0 0 0 1px var(--md-hairline), 0 12px 32px rgb(0 0 0 / 0.12);
 }
 
 /* Material 3 window size classes, replacing Tailwind's device-flavoured
@@ -214,14 +216,36 @@
   --shadow-e2: var(--md-elev-2);
   --shadow-e3: var(--md-elev-3);
 
-  --font-sans: var(--font-roboto), "Roboto", ui-sans-serif, system-ui,
+  --font-sans: var(--font-sans-face), "IBM Plex Sans", ui-sans-serif, system-ui,
     -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: var(--font-roboto-mono), "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+  --font-mono: var(--font-mono-face), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
     monospace;
 
   --radius-md3: 12px;
   --radius-md3-lg: 16px;
   --radius-md3-xl: 28px;
+
+  /*
+   * The corners, pulled in from Material's.
+   *
+   * Material rounds hard: 12px on a small surface, 16 on a card, 28 on a
+   * sheet, and a fully round edge on every button and chip. It is drawn for a
+   * touchscreen, where a soft edge reads as something you can push, and on a
+   * monitor it reads as a phone app that has been stretched.
+   *
+   * A tighter scale, and one that still steps. Six for anything you interact
+   * with, eight for the things those sit in, ten for a card and fourteen for a
+   * dialog. Tailwind's own names, redefined, so the hundred and thirty odd
+   * places already asking for rounded-lg or rounded-2xl move together and
+   * nothing has to be swept.
+   *
+   * rounded-full is untouched and is now for round things only: avatars,
+   * status dots, the ends of a progress bar.
+   */
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-2xl: 10px;
+  --radius-3xl: 14px;
 }
 
 /*
@@ -852,20 +876,26 @@ table,
   background: var(--md-outline-variant);
 }
 
+/*
+ * The press flash. Covers the control rather than starting where the pointer
+ * was, and takes the control's own corners, so it reads as the button
+ * acknowledging the click rather than as ink spreading across it.
+ */
 .md-ripple-dot {
   position: absolute;
+  inset: 0;
   z-index: -1;
-  border-radius: 9999px;
+  border-radius: inherit;
   background: var(--md-ripple);
-  transform: scale(0);
-  opacity: 0.7;
   pointer-events: none;
-  animation: md-ripple var(--md-motion-long1) var(--md-motion-standard) forwards;
+  animation: md-press var(--md-motion-short3) var(--md-motion-standard) forwards;
 }
 
-@keyframes md-ripple {
+@keyframes md-press {
+  from {
+    opacity: 0.9;
+  }
   to {
-    transform: scale(2.6);
     opacity: 0;
   }
 }

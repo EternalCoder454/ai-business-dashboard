@@ -212,7 +212,7 @@ export function WikiEditor() {
                         onClick={() => void movePage(page, -1)}
                         disabled={index === 0}
                         aria-label={`Move ${page.title} up`}
-                        className="md-state grid h-8 w-8 place-items-center rounded-full text-on-variant disabled:opacity-30"
+                        className="md-state grid h-8 w-8 place-items-center rounded-lg text-on-variant disabled:opacity-30"
                       >
                         <ChevronIcon className="h-4 w-4 -rotate-90" />
                       </button>
@@ -220,7 +220,7 @@ export function WikiEditor() {
                         onClick={() => void movePage(page, 1)}
                         disabled={index === ordered.length - 1}
                         aria-label={`Move ${page.title} down`}
-                        className="md-state grid h-8 w-8 place-items-center rounded-full text-on-variant disabled:opacity-30"
+                        className="md-state grid h-8 w-8 place-items-center rounded-lg text-on-variant disabled:opacity-30"
                       >
                         <ChevronIcon className="h-4 w-4 rotate-90" />
                       </button>
@@ -228,7 +228,7 @@ export function WikiEditor() {
                         onClick={() => void duplicate(page)}
                         aria-label={`Duplicate ${page.title}`}
                         title="Duplicate"
-                        className="md-state grid h-8 w-8 place-items-center rounded-full text-on-variant"
+                        className="md-state grid h-8 w-8 place-items-center rounded-lg text-on-variant"
                       >
                         <CopyIcon className="h-4 w-4" />
                       </button>
@@ -245,7 +245,7 @@ export function WikiEditor() {
                           setRemoving(page);
                         }}
                         aria-label={`Delete ${page.title}`}
-                        className="md-state grid h-8 w-8 place-items-center rounded-full text-on-variant"
+                        className="md-state grid h-8 w-8 place-items-center rounded-lg text-on-variant"
                       >
                         <TrashIcon className="h-4 w-4" />
                       </button>
@@ -489,7 +489,7 @@ function BlockEditor({
             onClick={() => void onMove(-1)}
             disabled={first}
             aria-label="Move card up"
-            className="md-state grid h-8 w-8 place-items-center rounded-full text-on-variant disabled:opacity-30"
+            className="md-state grid h-8 w-8 place-items-center rounded-lg text-on-variant disabled:opacity-30"
           >
             <ChevronIcon className="h-4 w-4 -rotate-90" />
           </button>
@@ -497,7 +497,7 @@ function BlockEditor({
             onClick={() => void onMove(1)}
             disabled={last}
             aria-label="Move card down"
-            className="md-state grid h-8 w-8 place-items-center rounded-full text-on-variant disabled:opacity-30"
+            className="md-state grid h-8 w-8 place-items-center rounded-lg text-on-variant disabled:opacity-30"
           >
             <ChevronIcon className="h-4 w-4 rotate-90" />
           </button>
@@ -505,14 +505,14 @@ function BlockEditor({
             onClick={() => void onDuplicate()}
             aria-label="Duplicate card"
             title="Duplicate"
-            className="md-state grid h-8 w-8 place-items-center rounded-full text-on-variant"
+            className="md-state grid h-8 w-8 place-items-center rounded-lg text-on-variant"
           >
             <CopyIcon className="h-4 w-4" />
           </button>
           <button
             onClick={() => void onDelete()}
             aria-label="Delete card"
-            className="md-state grid h-8 w-8 place-items-center rounded-full text-on-variant"
+            className="md-state grid h-8 w-8 place-items-center rounded-lg text-on-variant"
           >
             <TrashIcon className="h-4 w-4" />
           </button>

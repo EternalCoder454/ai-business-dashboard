@@ -70,7 +70,7 @@ export function ConversationList({
           type="button"
           onClick={() => setProfileOpen(true)}
           aria-label={`About ${who}`}
-          className="md-state flex-none rounded-full"
+          className="md-state flex-none rounded-lg"
         >
           <DepartmentAvatar department={department} size={40} />
         </button>
@@ -187,7 +187,7 @@ export function ConversationList({
                 onClick={() => onDelete(conversation.id)}
                 className={cx(
                   "md-state md-target relative z-10 grid flex-none place-items-center",
-                  "rounded-full text-on-variant/60 opacity-0 transition-opacity",
+                  "rounded-lg text-on-variant/60 opacity-0 transition-opacity",
                   "hover:text-error group-hover:opacity-100 focus-visible:opacity-100",
                   // A touch screen has no hover, so there it is simply always
                   // there rather than unreachable.

@@ -221,7 +221,7 @@ export default function LibraryPage() {
         <div
           role="group"
           aria-label="Layout"
-          className="flex flex-none overflow-hidden rounded-full border border-outline-variant"
+          className="flex flex-none overflow-hidden rounded-lg border border-outline-variant"
         >
           {LIBRARY_VIEWS.map((option) => (
             <button
@@ -275,7 +275,7 @@ export default function LibraryPage() {
           */}
         <div className={cx(visible.length > 0 && "measure")}>
           {notice ? (
-            <p className="md-label mb-4 inline-block rounded-full bg-low px-4 py-2 text-on-variant">
+            <p className="md-label mb-4 inline-block rounded-lg bg-low px-4 py-2 text-on-variant">
               {notice}
             </p>
           ) : null}
@@ -465,7 +465,7 @@ function IconAction({
       }}
       title={label}
       aria-label={label}
-      className="md-state md-target grid h-9 w-9 flex-none place-items-center rounded-full text-on-variant"
+      className="md-state md-target grid h-9 w-9 flex-none place-items-center rounded-lg text-on-variant"
     >
       {children}
     </button>

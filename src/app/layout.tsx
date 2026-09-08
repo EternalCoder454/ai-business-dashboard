@@ -1,6 +1,6 @@
 import { loadBranding } from "@/lib/branding";
 import type { Metadata, Viewport } from "next";
-import { Roboto, Roboto_Mono } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -11,17 +11,25 @@ import "./globals.css";
  * Self-hosted by next/font, so there is no third-party round trip on the
  * critical path and no shift when the face swaps in.
  *
- * Roboto rather than Inter. Inter is the correct answer often enough that it
- * has stopped being an answer: it is the face of every dashboard shipped in the
- * last five years, and a panel wearing it looks like the others by default
- * rather than by decision. Roboto is also the typeface Material Design is drawn
- * for, and the whole of this interface is Material 3 tokens, so the metrics
- * this was measured against are the ones it is now set in.
+ * Not Inter, and no longer Roboto. Inter is the correct answer often enough
+ * that it has stopped being an answer: it is the face of every dashboard
+ * shipped in the last five years. Roboto was the argument against it, being the
+ * face Material is drawn for, and that turned out to be the problem rather than
+ * the point. Roboto is Android's typeface. Set an interface in it, give every
+ * control a fully round edge, and it reads as a phone app whatever it is
+ * actually for, which is not what a business wants its panel to look like.
+ *
+ * IBM Plex Sans is the same job done by somebody else: a grotesque built for
+ * dense technical interfaces, with more in the letterforms than Roboto has and
+ * none of the association. Weights are named rather than left to the variable
+ * default, so the 500 the labels ask for is a real weight and not a synthesised
+ * one.
  */
-const roboto = Roboto({
+const sans = IBM_Plex_Sans({
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
   display: "swap",
-  variable: "--font-roboto",
+  variable: "--font-sans-face",
 });
 
 /**
@@ -34,14 +42,15 @@ const roboto = Roboto({
  * the stack against the width of the same string in a family that does not
  * exist. They were identical.
  *
- * Roboto Mono because it is Roboto's own companion and shares its metrics, so a
- * figure sitting in a label and the same figure in a table are the same size
- * and the same colour on the page.
+ * IBM Plex Mono because it is Plex Sans's own companion and is drawn on the
+ * same skeleton, so a figure sitting in a label and the same figure in a code
+ * block are the same size and the same colour on the page.
  */
-const robotoMono = Roboto_Mono({
+const mono = IBM_Plex_Mono({
   subsets: ["latin"],
+  weight: ["400", "500"],
   display: "swap",
-  variable: "--font-roboto-mono",
+  variable: "--font-mono-face",
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -119,7 +128,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html
       lang="en"
       data-theme="dark"
-      className={`${roboto.variable} ${robotoMono.variable}`}
+      className={`${sans.variable} ${mono.variable}`}
       suppressHydrationWarning
     >
       <head>

@@ -256,7 +256,7 @@ export function ComposerMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Add to this message"
-        className="md-state md-target grid h-10 w-10 place-items-center rounded-full text-on-variant"
+        className="md-state md-target grid h-10 w-10 place-items-center rounded-lg text-on-variant"
       >
         <PlusIcon className="h-5 w-5" />
       </button>

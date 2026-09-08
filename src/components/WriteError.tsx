@@ -40,7 +40,7 @@ export function WriteError() {
             dismissWriteError();
           }}
           aria-label="Dismiss"
-          className="md-state md-target -my-1 grid flex-none place-items-center rounded-full"
+          className="md-state md-target -my-1 grid flex-none place-items-center rounded-lg"
         >
           <CloseIcon className="h-4 w-4" />
         </button>

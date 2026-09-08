@@ -396,7 +396,7 @@ export function ProfileMenu() {
                       : undefined
                   }
                   className={cx(
-                    "md-state md-label flex-1 rounded-full border px-2 py-1.5 transition-colors",
+                    "md-state md-label flex-1 rounded-lg border px-2 py-1.5 transition-colors",
                     themeChoice === option.value
                       ? "border-primary bg-primary-container text-on-primary-container"
                       : "border-outline-variant text-on-variant hover:text-on-surface",
@@ -445,7 +445,7 @@ export function ProfileMenu() {
                       : "Chief of Staff leading the heads, Briefings as a tab of Tasks"
                   }
                   className={cx(
-                    "md-state md-label flex-1 rounded-full border px-2 py-1.5 transition-colors",
+                    "md-state md-label flex-1 rounded-lg border px-2 py-1.5 transition-colors",
                     layout === option.value
                       ? "border-primary bg-primary-container text-on-primary-container"
                       : "border-outline-variant text-on-variant hover:text-on-surface",

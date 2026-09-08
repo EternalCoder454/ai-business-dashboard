@@ -64,7 +64,7 @@ export function Lightbox({
         aria-label="Close"
         className={cx(
           "md-state md-target safe-top fixed right-3 top-3 z-10 grid place-items-center",
-          "rounded-full bg-black/50 text-white",
+          "rounded-lg bg-black/50 text-white",
         )}
       >
         <CloseIcon className="h-5 w-5" />

@@ -323,7 +323,7 @@ function Thread({
           type="button"
           onClick={onBack}
           aria-label="Back to messages"
-          className="md-state grid h-11 w-11 flex-none place-items-center rounded-full text-on-surface expanded:hidden"
+          className="md-state grid h-11 w-11 flex-none place-items-center rounded-lg text-on-surface expanded:hidden"
         >
           <ChevronIcon className="h-5 w-5 rotate-180" />
         </button>
@@ -572,7 +572,7 @@ function MessageRow({
                 setProblem(null);
                 setEditing(true);
               }}
-              className="md-state md-label-sm rounded-full px-2 py-1 text-on-variant"
+              className="md-state md-label-sm rounded-lg px-2 py-1 text-on-variant"
             >
               Edit
             </button>
@@ -580,7 +580,7 @@ function MessageRow({
               type="button"
               disabled={busy}
               onClick={() => void remove()}
-              className="md-state md-label-sm rounded-full px-2 py-1 text-on-variant"
+              className="md-state md-label-sm rounded-lg px-2 py-1 text-on-variant"
             >
               Delete
             </button>
@@ -599,7 +599,7 @@ function MessageRow({
                 <button
                   type="button"
                   onClick={() => void onRetry(message)}
-                  className="md-state md-label -mr-2 rounded-full px-2 py-1 text-primary"
+                  className="md-state md-label -mr-2 rounded-lg px-2 py-1 text-primary"
                 >
                   Retry
                 </button>

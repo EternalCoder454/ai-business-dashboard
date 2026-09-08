@@ -150,7 +150,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           <button
             onClick={onClose}
             aria-label="Close search"
-            className="md-state md-target grid h-9 w-9 flex-none place-items-center rounded-full text-on-variant"
+            className="md-state md-target grid h-9 w-9 flex-none place-items-center rounded-lg text-on-variant"
           >
             <CloseIcon className="h-4 w-4" />
           </button>

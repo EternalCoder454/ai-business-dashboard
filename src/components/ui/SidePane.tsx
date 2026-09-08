@@ -333,7 +333,7 @@ export function PaneFoldButton({
          * the end of the list, and against a full one a bare chevron reads as
          * part of whatever row it happens to land on.
          */
-        className="md-state grid h-8 w-8 place-items-center rounded-full border border-outline-variant bg-low text-on-variant shadow-e1 transition-colors hover:text-on-surface"
+        className="md-state grid h-8 w-8 place-items-center rounded-lg border border-outline-variant bg-low text-on-variant shadow-e1 transition-colors hover:text-on-surface"
       >
         <ChevronLeft className="h-4 w-4" />
       </button>

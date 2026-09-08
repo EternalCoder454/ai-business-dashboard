@@ -84,7 +84,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         onClick?.(event);
       }}
       className={cx(
-        "md-state inline-flex items-center justify-center gap-2 rounded-full font-medium",
+        "md-state inline-flex items-center justify-center gap-2 rounded-lg font-medium",
         "transition-shadow duration-150 disabled:pointer-events-none disabled:opacity-[0.38]",
         iconOnly ? BUTTON_ICON_SIZES[size] : BUTTON_SIZES[size],
         BUTTON_VARIANTS[variant],
@@ -529,7 +529,7 @@ export function Dialog({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="md-state md-target grid h-9 w-9 place-items-center rounded-full text-on-variant"
+            className="md-state md-target grid h-9 w-9 place-items-center rounded-lg text-on-variant"
           >
             <CloseIcon className="h-5 w-5" />
           </button>
@@ -587,7 +587,7 @@ export function LinkButton({
       href={href}
       onClick={createRipple}
       className={cx(
-        "md-state inline-flex h-10 items-center justify-center gap-2 rounded-full",
+        "md-state inline-flex h-10 items-center justify-center gap-2 rounded-lg",
         "bg-primary px-5 text-[0.875rem] font-medium text-on-primary shadow-e1",
         className,
       )}

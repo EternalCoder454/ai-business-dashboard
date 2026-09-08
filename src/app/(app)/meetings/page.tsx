@@ -275,7 +275,7 @@ function MeetingsBody() {
               setOpenId(null);
               setComposingNew(false);
             }}
-            className="md-state md-target grid flex-none place-items-center rounded-full text-on-variant large:hidden"
+            className="md-state md-target grid flex-none place-items-center rounded-lg text-on-variant large:hidden"
           >
             <ChevronIcon className="h-5 w-5 rotate-180" />
           </button>
@@ -310,7 +310,7 @@ function MeetingsBody() {
               setComposingNew(false);
             }}
             title="Delete this meeting"
-            className="md-state md-target grid h-9 w-9 flex-none place-items-center rounded-full text-on-variant"
+            className="md-state md-target grid h-9 w-9 flex-none place-items-center rounded-lg text-on-variant"
           >
             <TrashIcon className="h-4 w-4" />
           </button>
@@ -360,7 +360,7 @@ function MeetingsBody() {
                   <span
                     key={department.id}
                     className={cx(
-                      "relative flex flex-none items-center gap-1.5 rounded-full border py-1 pl-2.5",
+                      "relative flex flex-none items-center gap-1.5 rounded-lg border py-1 pl-2.5",
                       done ? "pr-1" : "pr-2.5",
                       !inRoom
                         ? "border-outline-variant text-on-variant/50"
@@ -380,7 +380,7 @@ function MeetingsBody() {
                           ? `${department.personaName}, ${department.roleTitle}. Tap to leave out.`
                           : `${department.personaName} is not in this meeting. Tap to include.`
                       }
-                      className="md-state flex items-center gap-1.5 before:absolute before:inset-0 before:rounded-full"
+                      className="md-state flex items-center gap-1.5 before:absolute before:inset-0 before:rounded-lg"
                     >
                       <span className={cx(!inRoom && "opacity-40")}>
                         <DepartmentAvatar department={department} size={18} />
@@ -393,7 +393,7 @@ function MeetingsBody() {
                         type="button"
                         aria-label={`Jump to ${department.personaName}`}
                         onClick={() => jumpTo(department.id)}
-                        className="md-state relative z-10 grid h-5 w-5 place-items-center rounded-full"
+                        className="md-state relative z-10 grid h-5 w-5 place-items-center rounded-lg"
                       >
                         <ChevronIcon className="h-3.5 w-3.5 rotate-90" />
                       </button>
@@ -658,7 +658,7 @@ function MeetingsBody() {
                       type="button"
                       aria-label={`Jump to ${department.personaName || department.name}`}
                       onClick={() => jumpTo(department.id)}
-                      className="md-state relative z-10 grid h-7 w-7 flex-none place-items-center rounded-full text-success"
+                      className="md-state relative z-10 grid h-7 w-7 flex-none place-items-center rounded-lg text-success"
                     >
                       <CheckIcon className="h-3.5 w-3.5" />
                     </button>

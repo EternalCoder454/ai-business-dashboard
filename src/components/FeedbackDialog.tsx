@@ -194,7 +194,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
                       type="button"
                       aria-label={`Remove ${file.name}`}
                       onClick={() => setFiles(files.filter((_, at) => at !== index))}
-                      className="md-state md-target grid h-7 w-7 flex-none place-items-center rounded-full text-on-variant"
+                      className="md-state md-target grid h-7 w-7 flex-none place-items-center rounded-lg text-on-variant"
                     >
                       <CloseIcon className="h-3.5 w-3.5" />
                     </button>

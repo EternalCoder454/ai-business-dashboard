@@ -548,7 +548,7 @@ function IconAction({
       }}
       title={label}
       aria-label={label}
-      className="md-state md-target grid h-9 w-9 place-items-center rounded-full text-on-variant"
+      className="md-state md-target grid h-9 w-9 place-items-center rounded-lg text-on-variant"
     >
       {children}
     </button>

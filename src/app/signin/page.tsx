@@ -101,7 +101,7 @@ export default async function SignInPage({
         >
           <button
             type="submit"
-            className="md-state mt-6 flex h-12 w-full items-center justify-center gap-3 rounded-full bg-primary px-6 text-on-primary shadow-e1"
+            className="md-state mt-6 flex h-12 w-full items-center justify-center gap-3 rounded-lg bg-primary px-6 text-on-primary shadow-e1"
           >
             <GoogleMark />
             <span className="md-label">Continue with Google</span>

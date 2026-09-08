@@ -238,7 +238,7 @@ export default function MemoryPage() {
                           <button
                             onClick={() => void deleteMemory(entry.id)}
                             aria-label={`Delete the ${label} reading from ${formatDay(entry.occurredAt)}`}
-                            className="md-state grid h-7 w-7 place-items-center rounded-full text-on-variant"
+                            className="md-state grid h-7 w-7 place-items-center rounded-lg text-on-variant"
                           >
                             <TrashIcon className="h-3.5 w-3.5" />
                           </button>
@@ -419,7 +419,7 @@ function EntryCard({
           <button
             onClick={onDelete}
             aria-label="Delete this entry"
-            className="md-state grid h-8 w-8 place-items-center rounded-full text-on-variant"
+            className="md-state grid h-8 w-8 place-items-center rounded-lg text-on-variant"
           >
             <TrashIcon className="h-4 w-4" />
           </button>
