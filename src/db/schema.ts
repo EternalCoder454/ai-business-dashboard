@@ -773,6 +773,54 @@ export const messageBlocks = pgTable(
 );
 
 /**
+ * Which Matrix user each person is.
+ *
+ * Keyed by address rather than by workspace, like accounts and for the same
+ * reason: a person is one person, and somebody in two businesses is the same
+ * human being with the same Matrix identity in both. The workspaces are Spaces
+ * on the homeserver; the person is not scoped to one.
+ *
+ * A table rather than a function, because the user id is a hash of the address
+ * and a hash does not read backwards. This is the record of who is who.
+ */
+export const matrixIdentities = pgTable("matrix_identities", {
+  email: text("email").primaryKey(),
+  matrixUserId: text("matrix_user_id").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+/**
+ * Which room a thread lives in.
+ *
+ * Scoped, because a thread key already belongs to one business: the same two
+ * people talking in two workspaces are two conversations and must not share a
+ * room.
+ */
+export const matrixRooms = pgTable(
+  "matrix_rooms",
+  {
+    workspaceId: workspace(),
+    threadKey: text("thread_key").notNull(),
+    roomId: text("room_id").notNull(),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.workspaceId, table.threadKey] })],
+);
+
+/**
+ * Transactions the homeserver has already delivered.
+ *
+ * Synapse retries a transaction until the appservice answers 200, and it is
+ * entitled to: the alternative is dropping events when the panel restarts
+ * mid-push. So a repeat has to be recognised and ignored, or every restart
+ * would duplicate whatever was in flight.
+ */
+export const matrixTransactions = pgTable("matrix_transactions", {
+  txnId: text("txn_id").primaryKey(),
+  receivedAt: bigint("received_at", { mode: "number" }).notNull(),
+});
+
+/**
  * Who a project is shared with.
  *
  * A project still belongs to the person who made it; this grants read and write
