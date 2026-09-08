@@ -28,12 +28,12 @@
   /* The one saturated hue. Pulled back from where it was, because a
      saturated colour used for every link and button is the palette
      shouting continuously, and nothing else can then be heard. */
-  --md-primary: #62c6da;
-  --md-on-primary: #04313a;
-  --md-primary-container: #1d525d;
-  --md-on-primary-container: #c2ecf5;
-  --md-secondary-container: #364a4e;
-  --md-on-secondary-container: #d1e2e6;
+  --md-primary: #dea57a;
+  --md-on-primary: #331700;
+  --md-primary-container: #5e3819;
+  --md-on-primary-container: #f9dbc5;
+  --md-secondary-container: #42352b;
+  --md-on-secondary-container: #eee2d9;
 
   /* Semantics share one saturation, but not one value, and the difference
      matters more than it looks. They used to share both, which meant hue was
@@ -53,15 +53,15 @@
      because a single mid-lightness colour cannot clear 3:1 against both a
      near-black and a near-white card. Lightness varies by hue: the eye
      does not read yellow and blue as equally light at the same value. */
-  --md-accent-amber: #d2ad56;
-  --md-accent-rose: #d86e83;
-  --md-accent-cyan: #56bdd2;
-  --md-accent-violet: #a77edd;
-  --md-accent-lime: #87d256;
-  --md-accent-slate: #6ea0d8;
-  --md-accent-teal: #4ed0b2;
-  --md-accent-blue: #7e91dd;
-  --md-accent-orchid: #db76d4;
+  --md-accent-amber: #ff8f4a;
+  --md-accent-rose: #fe94c6;
+  --md-accent-cyan: #69ede9;
+  --md-accent-violet: #bd94f9;
+  --md-accent-lime: #e2de5d;
+  --md-accent-slate: #05a1d7;
+  --md-accent-teal: #67bb94;
+  --md-accent-blue: #c8cdff;
+  --md-accent-orchid: #d173b0;
 
   /* A stacked bar is not nine departments.
      The accent wheel above is categorical: nine hues spread right round the
@@ -73,13 +73,13 @@
      meaning: the bands are always in the same sequence, so the legend maps by
      position and the colours only have to stay apart. Reversed per theme, the
      dark end nearest the card in each. */
-  --md-chart-1: #008b9e;
-  --md-chart-2: #0098bf;
-  --md-chart-3: #22a4de;
-  --md-chart-4: #5caef8;
-  --md-chart-5: #8cb8ff;
-  --md-chart-6: #b5c4ff;
-  --md-chart-7: #d6d2ff;
+  --md-chart-1: #a7463c;
+  --md-chart-2: #b4603a;
+  --md-chart-3: #be7a3f;
+  --md-chart-4: #c4954e;
+  --md-chart-5: #c8af67;
+  --md-chart-6: #cac985;
+  --md-chart-7: #cde1a6;
 
   --md-state-hover: rgb(227 226 230 / 0.07);
   --md-state-pressed: rgb(227 226 230 / 0.12);
@@ -120,12 +120,12 @@
   /* The one saturated hue. Pulled back from where it was, because a
      saturated colour used for every link and button is the palette
      shouting continuously, and nothing else can then be heard. */
-  --md-primary: #156d7f;
+  --md-primary: #7d4612;
   --md-on-primary: #ffffff;
-  --md-primary-container: #c5eaf1;
-  --md-on-primary-container: #073740;
-  --md-secondary-container: #d7e7ea;
-  --md-on-secondary-container: #103941;
+  --md-primary-container: #f9dbc5;
+  --md-on-primary-container: #562b02;
+  --md-secondary-container: #ecded5;
+  --md-on-secondary-container: #412e20;
 
   /* Semantics share one saturation, but not one value, and the difference
      matters more than it looks. They used to share both, which meant hue was
@@ -145,23 +145,23 @@
      because a single mid-lightness colour cannot clear 3:1 against both a
      near-black and a near-white card. Lightness varies by hue: the eye
      does not read yellow and blue as equally light at the same value. */
-  --md-accent-amber: #886920;
-  --md-accent-rose: #ae2943;
-  --md-accent-cyan: #1e7080;
-  --md-accent-violet: #702fc6;
-  --md-accent-lime: #437c1d;
-  --md-accent-slate: #2762a5;
-  --md-accent-teal: #1c7862;
-  --md-accent-blue: #2d4abe;
-  --md-accent-orchid: #ae29a5;
+  --md-accent-amber: #a84f33;
+  --md-accent-rose: #6b194d;
+  --md-accent-cyan: #02789f;
+  --md-accent-violet: #6d4cba;
+  --md-accent-lime: #3b4300;
+  --md-accent-slate: #004f86;
+  --md-accent-teal: #014145;
+  --md-accent-blue: #2d2571;
+  --md-accent-orchid: #8a2259;
 
-  --md-chart-1: #004f60;
-  --md-chart-2: #006182;
-  --md-chart-3: #0071a4;
-  --md-chart-4: #3580c2;
-  --md-chart-5: #6890d7;
-  --md-chart-6: #93a1e5;
-  --md-chart-7: #b9b5ec;
+  --md-chart-1: #7c1310;
+  --md-chart-2: #8f3702;
+  --md-chart-3: #9d5706;
+  --md-chart-4: #a77523;
+  --md-chart-5: #ae9445;
+  --md-chart-6: #b3b169;
+  --md-chart-7: #bace90;
 
   --md-state-hover: rgb(25 28 30 / 0.06);
   --md-state-pressed: rgb(25 28 30 / 0.11);

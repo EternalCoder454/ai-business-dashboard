@@ -41,6 +41,37 @@ const SUPPORTED = 15;
 /** A sequential scale is read by its lightness, so that is what is checked. */
 const RAMP_STEP = 4;
 
+/**
+ * The nine head accents, against each other.
+ *
+ * Lower than SUPPORTED on purpose, and the reason is arithmetic rather than
+ * indulgence. Nine colours that must also each clear 4.5:1 against the page
+ * cannot all sit fifteen points apart once a deficiency has flattened two of
+ * the three axes they differ on; five is about the ceiling. So this is not
+ * asking the colour to identify the head. The name is written beside every one
+ * of these and the disc carries the head's initial, so what the colour has to
+ * do is stop two heads reading as the same head at a glance.
+ *
+ * It is here because both halves of that were broken and nothing caught it. The
+ * accents were nine hues at one lightness, which is the one thing a dichromat
+ * cannot see, so the wheel collapsed: rose and orchid measured 0.0 apart on the
+ * light theme, meaning identical. They differ in lightness as well now, which is
+ * what this number is really guarding.
+ */
+const ACCENTS_APART = 6;
+
+const ACCENTS = [
+  "amber",
+  "rose",
+  "cyan",
+  "violet",
+  "lime",
+  "slate",
+  "teal",
+  "blue",
+  "orchid",
+];
+
 function themeBlock(selector: RegExp): Record<string, string> {
   const match = selector.exec(CSS);
   if (!match) throw new Error(`cannot find a rule for ${selector}`);
@@ -201,6 +232,54 @@ for (const [themeName, selector] of [
    * correct, which is a test being wrong about a design rather than the other
    * way round.
    */
+  /*
+   * Every head against every other head. Reported as the closest pair rather
+   * than as thirty six lines, because the closest pair is the whole answer.
+   */
+  let closest = { d: Infinity, a: "", b: "", kind: "" };
+  for (let i = 0; i < ACCENTS.length; i += 1) {
+    for (let j = i + 1; j < ACCENTS.length; j += 1) {
+      const worst = apart(theme, `md-accent-${ACCENTS[i]}`, `md-accent-${ACCENTS[j]}`);
+      if (worst.d < closest.d) {
+        closest = { d: worst.d, a: ACCENTS[i], b: ACCENTS[j], kind: worst.kind };
+      }
+    }
+  }
+  check(
+    "no two heads collapse into one colour",
+    closest.d >= ACCENTS_APART,
+    `${closest.a} and ${closest.b} are ${closest.d.toFixed(1)} apart under ${closest.kind}, needs ${ACCENTS_APART}`,
+  );
+
+  /*
+   * The brand against everything it shares a screen with.
+   *
+   * This is the check that would have caught the defect the palette was built
+   * to fix, and it did not exist while that defect shipped: the primary was on
+   * the same hue as the cyan head, so a link and a head were one colour. It
+   * came back a second time in a different disguise, an amber brand measuring
+   * 0.8 from the lime head on the light theme, which is what put this here.
+   *
+   * The brand is not an accent and is not a status colour, but it is drawn
+   * beside both, and it is the one colour on the page that means "you can press
+   * this" rather than naming a thing.
+   */
+  let nearest = { d: Infinity, other: "", kind: "" };
+  for (const other of [
+    ...ACCENTS.map((name) => `md-accent-${name}`),
+    "md-warning",
+    "md-error",
+    "md-success",
+  ]) {
+    const worst = apart(theme, "md-primary", other);
+    if (worst.d < nearest.d) nearest = { d: worst.d, other, kind: worst.kind };
+  }
+  check(
+    "the brand is not mistakable for a head or a status",
+    nearest.d >= ACCENTS_APART,
+    `nearest is ${nearest.other} at ${nearest.d.toFixed(1)} under ${nearest.kind}, needs ${ACCENTS_APART}`,
+  );
+
   const ramp = [1, 2, 3, 4, 5, 6, 7].map((n) => lightness(theme[`md-chart-${n}`]));
   const steps = ramp.slice(1).map((value, i) => value - ramp[i]);
   check(
