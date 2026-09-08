@@ -1,0 +1,22 @@
+# What the image does not need, and what it must not have.
+#
+# .env.local is the important line: it holds this machine's database URL and the
+# key every business's model credentials are encrypted with. An image is a thing
+# that gets pushed somewhere, and a secret baked into one is a secret you cannot
+# take back.
+.env*
+!.env.local.example
+
+.git
+.next
+node_modules
+npm-debug.log*
+
+# The one-off scripts. `npm test` and the live checks are run from a checkout,
+# never from the container. scripts/migrate.mjs is the exception and is copied
+# in explicitly by the Dockerfile, because a deploy has to be able to bring the
+# schema up to what the code in the same image expects.
+scripts
+
+.vscode
+.claude

@@ -6,7 +6,7 @@ import { fireTaskEvents, type TaskEvent } from "@/lib/addons/runner";
 import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
-import { forgetBlobs } from "./blobs";
+import { forgetStoredFiles } from "@/lib/fileStore";
 import { optimiseImage } from "@/lib/optimiseImage";
 import type { MutationOp, Workspace } from "@/lib/workspace";
 import type {
@@ -46,7 +46,7 @@ type FileRow = Omit<
   typeof t.files.$inferSelect,
   // Bytes, where they are kept, and what they were before we re-encoded them.
   // The last is only ever read by the download, which reads the row directly.
-  "data" | "blobUrl" | "originalMediaType"
+  "data" | "storageKey" | "originalMediaType"
 >;
 
 function toAttachment(row: FileRow): Attachment {
@@ -783,8 +783,8 @@ export async function applyMutations(
                 // gone. Deleted after the transaction, so a store that is having
                 // a bad day cannot roll back a delete somebody asked for.
                 orphaned.push(
-                  ...(await tx.select({ url: t.files.blobUrl }).from(t.files).where(where)).map(
-                    (row) => row.url,
+                  ...(await tx.select({ key: t.files.storageKey }).from(t.files).where(where)).map(
+                    (row) => row.key,
                   ),
                 );
                 await tx.delete(t.files).where(where);
@@ -856,7 +856,7 @@ export async function applyMutations(
                   // Empty only when the client never had the bytes, which means
                   // the row already exists; the insert below leaves it alone.
                   data: stored,
-                  blobUrl: attachment.blobUrl ?? "",
+                  storageKey: attachment.storageKey ?? "",
                   textContent: attachment.text ?? null,
                   width: attachment.width,
                   height: attachment.height,
@@ -1203,8 +1203,8 @@ export async function applyMutations(
                 inArray(t.files.id, op.ids),
               );
               orphaned.push(
-                ...(await tx.select({ url: t.files.blobUrl }).from(t.files).where(where)).map(
-                  (row) => row.url,
+                ...(await tx.select({ key: t.files.storageKey }).from(t.files).where(where)).map(
+                  (row) => row.key,
                 ),
               );
               await tx.delete(t.files).where(where);
@@ -1224,7 +1224,7 @@ export async function applyMutations(
                * blob store and clears `data`, so a row without it has the bytes
                * in neither place and the file opens as nothing.
                */
-              blobUrl: row.blobUrl ?? "",
+              storageKey: row.storageKey ?? "",
               textContent: row.text ?? null,
               width: row.width,
               height: row.height,
@@ -1368,7 +1368,7 @@ export async function applyMutations(
   });
 
   // After the rows, and never in a way that can fail the write.
-  await forgetBlobs(orphaned);
+  await forgetStoredFiles(orphaned);
 
   // After the commit, so an addon only ever sees a task that is really saved,
   // and never blocks the save itself. fireTaskEvents does not throw.

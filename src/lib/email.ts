@@ -27,11 +27,17 @@ export const emailEnabled = Boolean(process.env.RESEND_API_KEY?.trim());
  */
 const FROM = process.env.INVITE_FROM?.trim() || "onboarding@resend.dev";
 
+/**
+ * Not the shared siteUrl, deliberately.
+ *
+ * That one falls back to localhost, which is right for a redirect the browser
+ * follows and wrong in an email: a message telling somebody to open
+ * http://localhost:3000 is worse than one that leaves the link out and tells
+ * them to ask. Empty here means the deployment does not know its own address,
+ * and the invitation says so instead of guessing.
+ */
 function siteUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (configured) return configured.replace(/\/$/, "");
-  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
-  return vercel ? `https://${vercel}` : "";
+  return process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "") ?? "";
 }
 
 /** Collapses anything that could break out of a header into a single line. */

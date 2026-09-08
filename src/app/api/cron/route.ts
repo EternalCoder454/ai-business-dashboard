@@ -10,22 +10,29 @@ import { rateLimitPrune } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Every business's schedules plus a pass of the reviewer. The longest thing
-// this deployment does, and it must not be cut off half way.
+/*
+ * Every business's schedules plus a pass of the reviewer. The longest thing
+ * this deployment does, and it must not be cut off half way.
+ *
+ * Meaningless on a server that runs the whole app, where nothing is cutting a
+ * request off at five minutes. Kept because it costs nothing and says what the
+ * shape of this route is.
+ */
 export const maxDuration = 300;
 
 /**
  * Everything that happens on a timer, in one call.
  *
- * One endpoint rather than one per job, because Vercel's free plan allows two
- * cron entries and there will be more than two kinds of scheduled work. What
- * the schedule decides is how often the tick happens; what the tick decides is
- * what is owed a run.
+ * One endpoint rather than one per job. What the schedule decides is how often
+ * the tick happens; what the tick decides is what is owed a run. Adding a kind
+ * of scheduled work is then a change in here rather than a change to whatever
+ * is holding the clock.
  *
  * Two ways in:
  *
- * - `Authorization: Bearer $CRON_SECRET`, which is what Vercel sends. Compared
- *   in constant time, because this is a secret comparison and not a lookup.
+ * - `Authorization: Bearer $CRON_SECRET`, which is what the timer on the server
+ *   sends. Compared in constant time, because this is a secret comparison and
+ *   not a lookup.
  * - An operator with a session, so it can be opened by hand to see what a tick
  *   does without waiting for the morning.
  *

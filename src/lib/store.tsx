@@ -49,7 +49,7 @@ import { memoryFor as liveMemoryFor } from "./memory";
 import { skillReconciliation, writingRulesReplaceable } from "./shippedSkills";
 import { seedSkills } from "./seedSkills";
 import { seedWikiPages } from "./seedWiki";
-import { toBlob } from "./blobUpload";
+import { toStore } from "./fileUpload";
 import { report } from "./telemetryClient";
 import type {
   CompanyProfile,
@@ -1189,9 +1189,10 @@ export function StoreProvider({
       },
 
       addFile: async (file) => {
-        // The bytes go to the store first, so the row carries a location rather
-        // than a third of a megabyte of base64.
-        file = { ...file, ...(await toBlob(file)) };
+        // The bytes go to the store first, so the row carries a key rather
+        // than a third of a megabyte of base64. Raises when there is no room
+        // left, which the Library reports rather than swallowing.
+        file = { ...file, ...(await toStore(file)) };
         await push({ table: "files", action: "upsert", rows: [file] });
       },
 

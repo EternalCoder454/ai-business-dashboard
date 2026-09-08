@@ -41,12 +41,9 @@ function contentSecurityPolicy() {
     // never needs to reach api.anthropic.com and should not be allowed to.
     isProduction ? "connect-src 'self'" : "connect-src 'self' ws: wss:",
     isProduction
-      ? // On Vercel the analytics and speed-insights beacons are served from
-        // this origin under /_vercel, so 'self' already covers them.
-        "script-src 'self' 'unsafe-inline'"
-      : // Turbopack's dev client evaluates code it fetches, and the same two
-        // beacons load their debug builds from Vercel's CDN off-platform.
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com",
+      ? "script-src 'self' 'unsafe-inline'"
+      : // Turbopack's dev client evaluates code it fetches.
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   ];
 
   // No upgrade-insecure-requests. Every source above is already same-origin or
@@ -59,6 +56,16 @@ function contentSecurityPolicy() {
 
 const nextConfig = {
   reactStrictMode: true,
+
+  /*
+   * A self-contained server, for the image this now ships in.
+   *
+   * Next traces what the app actually imports and writes a directory that runs
+   * on its own, so the runtime image carries a few megabytes of server rather
+   * than the whole of node_modules. On Vercel this was the platform's job and
+   * there was nothing to say.
+   */
+  output: "standalone",
   // Do not advertise the framework and version to anyone probing the app.
   poweredByHeader: false,
   // Lets a second instance run on another port with its own build output, so

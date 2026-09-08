@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { databaseEnabled, db, requireDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { decryptSecret, encryptSecret } from "@/db/secrets";
+import { siteUrl } from "@/lib/site";
 
 /**
  * Reading somebody's Google Calendar, and nothing else.
@@ -28,12 +29,10 @@ export const googleEnabled = () =>
 
 /** Where Google sends somebody back to. Has to match the console exactly. */
 export function redirectUri(): string {
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : "http://localhost:3000");
-  return `${base}/api/integrations/google/callback`;
+  // The shared one, rather than a third copy of the same fallback chain. Two
+  // copies is how this app once shipped a redirect URI Google had never heard
+  // of on every preview deployment.
+  return `${siteUrl()}/api/integrations/google/callback`;
 }
 
 /**

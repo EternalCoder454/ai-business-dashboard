@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { databaseEnabled, requireDb } from "@/db/client";
 import { membershipFor } from "@/db/tenancy";
 import * as t from "@/db/schema";
-import { get } from "@vercel/blob";
+import { readStoredFile } from "@/lib/fileStore";
 import { requireSession } from "@/lib/guard";
 import { toOriginalFormat } from "@/lib/optimiseImage";
 
@@ -83,13 +83,14 @@ export async function GET(
   }
 
   /*
-   * The bytes, from wherever this row keeps them: newer rows point at the blob
-   * store and older ones still carry base64.
+   * The bytes, from wherever this row keeps them: most point at a file on the
+   * disk beside this app, and a row written before there was one still carries
+   * base64.
    *
-   * Served through this route rather than by redirecting to the blob URL,
-   * which would be faster and wrong. That URL is permanent, answers to nobody,
-   * and is never checked against a workspace again, so a redirect would route
-   * around the tenancy check a few lines above.
+   * Read and served here rather than handed to the browser as a path it could
+   * fetch. Nothing under the store is reachable over HTTP at all, which is what
+   * makes the membership check a few lines above the only way in rather than
+   * the polite way in.
    */
   const bytes = await load(row);
   if (!bytes) {
@@ -137,27 +138,11 @@ export async function GET(
   });
 }
 
-/** The blob store if the row points at one, the row itself if it does not. */
+/** The disk if the row points at it, the row itself if it does not. */
 async function load(row: {
-  blobUrl: string;
+  storageKey: string;
   data: string;
 }): Promise<Buffer | null> {
-  if (!row.blobUrl) return row.data ? Buffer.from(row.data, "base64") : null;
-
-  try {
-    /*
-     * Through the SDK rather than a plain fetch. The store is private, so a
-     * blob URL answers nothing on its own and reading one needs the
-     * deployment's credential, which lives here and nowhere near a browser.
-     */
-    const found = await get(row.blobUrl, { access: "private" });
-    if (!found) {
-      console.error("[api/files] the store has no such blob");
-      return null;
-    }
-    return Buffer.from(await new Response(found.stream).arrayBuffer());
-  } catch (error) {
-    console.error("[api/files] could not read from the store", error);
-    return null;
-  }
+  if (!row.storageKey) return row.data ? Buffer.from(row.data, "base64") : null;
+  return readStoredFile(row.storageKey);
 }

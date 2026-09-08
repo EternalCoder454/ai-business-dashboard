@@ -24,13 +24,16 @@ interface Line {
  */
 export function StorageCard() {
   const [lines, setLines] = useState<Line[] | null>(null);
+  const [limit, setLimit] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     void fetch("/api/storage")
       .then((response) => (response.ok ? response.json() : null))
-      .then((body: { lines?: Line[] } | null) => {
-        if (!cancelled) setLines(body?.lines ?? []);
+      .then((body: { lines?: Line[]; limit?: number } | null) => {
+        if (cancelled) return;
+        setLines(body?.lines ?? []);
+        setLimit(body?.limit ?? 0);
       })
       .catch(() => {
         if (!cancelled) setLines([]);
@@ -65,10 +68,33 @@ export function StorageCard() {
         <h2 className="md-title-lg">Storage</h2>
         {lines ? (
           <span className="md-label-sm tabular-nums text-on-variant/75">
-            {formatBytes(total)} in total, as stored
+            {limit
+              ? `${formatBytes(total)} of ${formatBytes(limit)}`
+              : `${formatBytes(total)} in total, as stored`}
           </span>
         ) : null}
       </div>
+
+      {/*
+        * How full, before what is filling it.
+        *
+        * The bars below answer which part is big, measured against each other.
+        * That is the useful question right up until the moment the answer is
+        * "you are nearly out of room", which none of them can say, so this one
+        * is measured against the limit instead and sits above them.
+        */}
+      {lines && limit ? (
+        <div
+          className="mb-3 h-1.5 overflow-hidden rounded-full bg-highest"
+          role="img"
+          aria-label={`${formatBytes(total)} used of ${formatBytes(limit)}`}
+        >
+          <div
+            className={`h-full rounded-full ${total / limit >= 0.9 ? "bg-error" : "bg-primary"}`}
+            style={{ width: `${Math.min(Math.max((total / limit) * 100, 1), 100)}%` }}
+          />
+        </div>
+      ) : null}
 
       {lines === null ? (
         <p className="md-body text-on-variant">Reading…</p>

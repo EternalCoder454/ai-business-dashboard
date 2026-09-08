@@ -7,7 +7,7 @@ import { usePane } from "@/lib/paneLayout";
 import { ComposerMenu } from "./ComposerMenu";
 import { DepartmentAvatar } from "./DepartmentAvatar";
 import { HeadProfile } from "./HeadProfile";
-import { allToBlob } from "@/lib/blobUpload";
+import { allToStore } from "@/lib/fileUpload";
 import { useRouter, useSearchParams } from "next/navigation";
 import { setConversationOpen, showsConversationList } from "@/lib/chatRoute";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -1009,11 +1009,20 @@ ${turn.content}` }
     }
 
     /*
-     * Attachments reach the blob store on send rather than on pick, so
-     * something attached and then removed is never paid for. The bytes are in
-     * memory either way, which is where the model reads them from.
+     * Attachments are stored on send rather than on pick, so something attached
+     * and then removed is never kept. The bytes are in memory either way, which
+     * is where the model reads them from.
+     *
+     * Out of room is the one failure that stops the send. Everything else falls
+     * back to carrying the bytes in the row, so the message still goes.
      */
-    const attached = pending.length ? await allToBlob(pending) : [];
+    let attached: Attachment[] = [];
+    try {
+      attached = pending.length ? await allToStore(pending) : [];
+    } catch (error) {
+      setAttachError(error instanceof Error ? error.message : "That file could not be saved.");
+      return;
+    }
 
     const userMessage: Message = {
       id: newId("msg"),

@@ -1,17 +1,17 @@
 /**
- * The canonical origin, derived rather than hardcoded.
+ * The canonical origin, from the deployment rather than hardcoded.
  *
- * The explicit variable comes first because the platform one can resolve to a
- * preview deployment, which would put the wrong host in every absolute URL the
- * app emits. Production is business.eterneon.net; eterneon.net itself is the
- * portfolio and is a different site.
+ * One variable and a local fallback. There used to be a platform one in
+ * between, read from Vercel, and it was worth removing along with the platform:
+ * it resolved to a per deployment hostname on previews, which put a host Google
+ * has never heard of into the redirect URI and broke sign in on branches while
+ * looking correct in production.
+ *
+ * Production is business.eterneon.net; eterneon.net itself is the portfolio and
+ * is a different site.
  */
 export function siteUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (explicit) return explicit.replace(/\/+$/, "");
-
-  const platform = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
-  if (platform) return `https://${platform}`;
-
   return "http://localhost:3000";
 }

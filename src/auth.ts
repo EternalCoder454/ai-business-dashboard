@@ -135,10 +135,8 @@ const instance =
   authEnabled && db
     ? betterAuth({
         secret: process.env.AUTH_SECRET,
-        // siteUrl reads VERCEL_PROJECT_PRODUCTION_URL, not VERCEL_URL: the
-        // per deployment hostname is not a registered Google redirect URI, so
-        // building from it breaks sign in on previews only.
-
+        // One origin, from NEXT_PUBLIC_SITE_URL, and it has to be the one
+        // registered with Google or sign in fails on the redirect back.
         baseURL: siteUrl(),
         // Every preview has its own hostname, so the list cannot be fixed.
         // The request is optional because better-auth also calls this outside

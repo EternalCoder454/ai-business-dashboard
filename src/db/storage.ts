@@ -13,8 +13,9 @@
  * the jsonb columns, and TOAST compression on the long text, which between them
  * are the difference between a guess and a number.
  */
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { requireDb } from "./client";
+import * as t from "./schema";
 
 export interface StorageLine {
   /** What to call it on screen. */
@@ -62,8 +63,29 @@ export async function storageFor(workspaceId: string): Promise<StorageLine[]> {
    *
    * The table names are ours, from the list above, and never from a request.
    */
-  const parts = COUNTED.map(
-    ({ table, label }) => sql`
+  const parts = COUNTED.map(({ table, label }) =>
+    table === "files"
+      ? /*
+         * Files are counted in two places at once, because that is where they
+         * are. The row holds the name, the type and the extracted text, and
+         * since the move off Vercel Blob the bytes are on a disk beside the
+         * app. Reporting only the row would say a workspace holding six
+         * hundred megabytes of screenshots is using two.
+         *
+         * `size` is the raw byte count written when the row was made, so this
+         * does not go near the disk to draw a card. A row that still carries
+         * base64 has no key and is already counted by pg_column_size, which is
+         * why the filter is there rather than summing every row's size.
+         */
+        sql`
+      SELECT ${label}::text AS label,
+             count(*)::int AS rows,
+             (coalesce(sum(pg_column_size(x.*)), 0)
+              + coalesce(sum(x.size) FILTER (WHERE x.storage_key <> ''), 0))::bigint AS bytes
+      FROM "files" x
+      WHERE x.workspace_id = ${workspaceId}
+    `
+      : sql`
       SELECT ${label}::text AS label,
              count(*)::int AS rows,
              coalesce(sum(pg_column_size(x.*)), 0)::bigint AS bytes
@@ -83,4 +105,39 @@ export async function storageFor(workspaceId: string): Promise<StorageLine[]> {
       bytes: Number(row.bytes),
     }))
     .sort((a, b) => b.bytes - a.bytes);
+}
+
+/** The default every workspace starts on, and what the product says out loud. */
+export const DEFAULT_STORAGE_LIMIT = 1_000_000_000;
+
+export interface StorageUsage {
+  lines: StorageLine[];
+  /** Everything above, added up. */
+  used: number;
+  /** What this workspace is allowed, which is a column and can be raised. */
+  limit: number;
+}
+
+/**
+ * What a workspace is using and what it is allowed.
+ *
+ * One place, because two answers to this question drift: a card that says 1.1
+ * GB beside an upload that still succeeds is worse than either number alone.
+ * The upload route and the dashboard both read it here.
+ */
+export async function storageUsage(workspaceId: string): Promise<StorageUsage> {
+  const [lines, [row]] = await Promise.all([
+    storageFor(workspaceId),
+    requireDb()
+      .select({ limit: t.workspaces.storageLimitBytes })
+      .from(t.workspaces)
+      .where(eq(t.workspaces.id, workspaceId))
+      .limit(1),
+  ]);
+
+  return {
+    lines,
+    used: lines.reduce((sum, line) => sum + line.bytes, 0),
+    limit: Number(row?.limit ?? DEFAULT_STORAGE_LIMIT),
+  };
 }

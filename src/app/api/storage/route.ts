@@ -1,7 +1,7 @@
 import { auth, authEnabled } from "@/auth";
 import { databaseEnabled } from "@/db/client";
 import { membershipFor } from "@/db/tenancy";
-import { storageFor } from "@/db/storage";
+import { storageUsage } from "@/db/storage";
 import { allowsArea } from "@/lib/permissions";
 import { track } from "@/lib/telemetry";
 
@@ -36,10 +36,13 @@ export async function GET() {
   }
 
   try {
-    const lines = await track("storage.read", membership.workspaceId, () =>
-      storageFor(membership.workspaceId),
+    // Used and allowed come back with the lines rather than being worked out on
+    // the client, so the card and the upload route cannot disagree about how
+    // full something is.
+    const usage = await track("storage.read", membership.workspaceId, () =>
+      storageUsage(membership.workspaceId),
     );
-    return Response.json({ lines });
+    return Response.json(usage);
   } catch (error) {
     console.error("[api/storage] read", error);
     return Response.json({ error: "Could not read your storage." }, { status: 500 });

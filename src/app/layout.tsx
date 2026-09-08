@@ -2,8 +2,6 @@ import { loadBranding } from "@/lib/branding";
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import type { ReactNode } from "react";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
@@ -144,10 +142,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body className="antialiased">
         {children}
-        {/* Vercel's own beacon, served from this origin in production, so the
-            content policy's script-src and connect-src of 'self' cover it. */}
-        <Analytics />
-        <SpeedInsights />
       </body>
     </html>
   );

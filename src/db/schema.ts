@@ -244,15 +244,19 @@ export const files = pgTable(
      *
      * A fifteen megabyte PDF became twenty megabytes of base64 in a row, so the
      * database was a blob store: backups, restores and storage all priced as
-     * though a scanned tax return were a business record. It is a URL now, and
-     * the bytes are served through this app rather than from it.
+     * though a scanned tax return were a business record. The bytes are on a
+     * disk beside the app now, and this is the key that finds them.
      *
-     * `data` stays for two reasons. A deployment with no blob store configured
-     * still works exactly as it did, which is what makes this safe to ship
-     * before the store exists. And a row written before the change still has
-     * its bytes where it left them.
+     * It was a blob store URL until the move off Vercel. The name changed with
+     * the value, because a column called blob_url holding
+     * `workspaces/abc/0f3e.webp` is a column that lies to whoever reads it next.
+     *
+     * `data` stays for two reasons. A deployment with nowhere to put files
+     * still works exactly as it did, which is what makes this safe on a local
+     * checkout. And a row written before any of this still has its bytes where
+     * it left them.
      */
-    blobUrl: text("blob_url").notNull().default(""),
+    storageKey: text("storage_key").notNull().default(""),
     /** Base64, for a row written before there was anywhere else to put it. */
     data: text("data").notNull().default(""),
     /** Extracted text for documents the API cannot read directly. */
@@ -863,6 +867,17 @@ export const workspaces = pgTable("workspaces", {
   name: text("name").notNull(),
   /** Why it exists, in the operator's words. Never shown to the customer. */
   note: text("note"),
+  /**
+   * How much room this business gets, in bytes.
+   *
+   * A column rather than a constant because it is meant to move: the plan is
+   * that a business buying more room gets more room, and the difference between
+   * that being a database update and a deploy is the difference between selling
+   * it and not. Every workspace starts on the same gigabyte.
+   */
+  storageLimitBytes: bigint("storage_limit_bytes", { mode: "number" })
+    .notNull()
+    .default(1_000_000_000),
   createdBy: text("created_by"),
   createdAt: created(),
   updatedAt: updated(),

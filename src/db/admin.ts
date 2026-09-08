@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { requireDb } from "./client";
 import * as t from "./schema";
-import { forgetBlobs } from "./blobs";
+import { forgetStoredFiles, forgetWorkspaceFiles } from "@/lib/fileStore";
 import type { Message } from "@/lib/types";
 
 /**
@@ -515,7 +515,7 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
 
   // Cleared after the transaction. A store having a bad day must not stop a
   // business being deleted when somebody asked for it to be.
-  const blobs: string[] = [];
+  const stored: string[] = [];
 
   /*
    * Anything holding a workspace_id belongs in this list. `npm run
@@ -531,13 +531,13 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
     await tx.delete(t.deliverables).where(eq(t.deliverables.workspaceId, owner));
     await tx.delete(t.projects).where(eq(t.projects.workspaceId, owner));
     // Where this business kept its bytes, read before the rows that say so go.
-    blobs.push(
+    stored.push(
       ...(
         await tx
-          .select({ url: t.files.blobUrl })
+          .select({ key: t.files.storageKey })
           .from(t.files)
           .where(eq(t.files.workspaceId, owner))
-      ).map((row) => row.url),
+      ).map((row) => row.key),
     );
     await tx.delete(t.files).where(eq(t.files.workspaceId, owner));
     await tx.delete(t.skills).where(eq(t.skills.workspaceId, owner));
@@ -601,8 +601,15 @@ export async function deleteEverythingFor(workspaceId: string): Promise<void> {
      */
   });
 
-  // After the rows. A business deleted with its files left in the store would
-  // be paying for a company that no longer exists.
-  await forgetBlobs(blobs);
+  /*
+   * After the rows. A business deleted with its files still on the disk is a
+   * company that no longer exists taking up room.
+   *
+   * Both, and the second is not redundant. The keys come from rows, so a row
+   * that lost its key at some point in its life leaves bytes nothing points at;
+   * the directory is named after the workspace and takes everything with it.
+   */
+  await forgetStoredFiles(stored);
+  await forgetWorkspaceFiles(owner);
 }
 
