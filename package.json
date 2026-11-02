@@ -98,7 +98,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",
     "@google/genai": "^2.20.0",
-    "better-auth": "^1.7.2",
+    "better-auth": "^1.7.15",
     "drizzle-orm": "^0.45.2",
     "html-entities": "^2.6.0",
     "jszip": "^3.10.1",
